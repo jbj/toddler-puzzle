@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "art": "node scripts/preview.mjs",
+    "art:check": "node scripts/check-art.mjs",
     "shot": "node scripts/shot.mjs"
   },
   "devDependencies": {

@@ -18,7 +18,8 @@ npm run dev
 | `npm run dev` | Vite dev server |
 | `npm run build` | Type-check, then production build into `dist/` |
 | `npm run test` | Unit tests (Vitest) |
-| `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review |
+| `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large |
+| `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level) |
 | `npm run shot` | Drives real drags in headless Chromium and screenshots the result (run `npm run build` first) |
 
 ## Design notes
@@ -62,6 +63,16 @@ out of alignment with its hole. If a file is missing its silhouette, or uses the
 wrong `viewBox`, loading throws immediately rather than shipping an unsolvable
 puzzle.
 
+Two rules follow from that shared path, and `npm run art:check` enforces both:
+
+- **Detail has to stay inside the silhouette.** The hole is cut from the outline
+  alone, so a mark that pokes past it makes the piece overhang the hole it is
+  meant to fill. This is easy to do by accident - a mouth line that grazes a
+  cheek, a spot half off a neck - and hard to see at tray size.
+- **A deliberate exception is tagged.** Small appendages may look better hanging
+  out; the giraffe's tail does. Mark those with `data-overhang="tail"` and the
+  check will skip them, so a genuine mistake still fails.
+
 ## Adding an animal
 
 1. Draw `src/assets/animals/<name>.svg` following the contract above. Silhouettes
@@ -70,11 +81,18 @@ puzzle.
 2. Check it renders: `npm run art`, then look at `.art/contact-sheet.png`. It
    shows every animal in colour **and** as a bare silhouette; if you can't tell
    what the silhouette is, neither can a two-year-old.
-3. Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
-4. Add its foot level to `FOOT_LEVEL` in `src/layout.ts` - the fraction of the
-   240x240 art box where its feet sit. Measure it rather than guessing: render
-   the silhouette and take the bottom of its bounding box.
-5. Put it in a stage in `STAGES`, and make room for it by bumping the matching
+3. Review it close up with `npm run art -- <name>`. The contact sheet is too
+   small to judge whether details line up with the outline, which is exactly
+   where hand-drawn art goes wrong.
+4. Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
+5. Add its foot level to `FOOT_LEVEL` in `src/layout.ts` - the fraction of the
+   240x240 art box where its feet sit, so it stands on the ground line instead
+   of being aligned by its box. Don't measure it by hand: `npm run art:check`
+   reports the right value.
+6. Run `npm run art:check`. It verifies the structure, that the art is not
+   clipped by the art box, that detail stays inside the silhouette, and that the
+   declared foot level matches the artwork.
+7. Put it in a stage in `STAGES`, and make room for it by bumping the matching
    row counts in the `LANDSCAPE` and `PORTRAIT` arrangements (see below). The
    layout tests fail if a stage's rows and its animals disagree, if holes
    overlap, if snap zones collide, or if anything falls off the canvas.
@@ -120,6 +138,9 @@ piece of art.
 | `src/game.ts` | Rules, state, and the stage lifecycle |
 | `src/audio.ts` | Web Audio sound synthesis |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
+| `scripts/preview.mjs` | Renders the art for review, as a contact sheet or one animal large |
+| `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG |
+| `scripts/shot.mjs` | End-to-end drag test in headless Chromium |
 
 ## Testing
 
@@ -134,3 +155,9 @@ pointer drags over the Chrome DevTools Protocol, and plays all three stages
 through - asserting that pieces snap, that a bad drop does *not* stick, that each
 stage hands over to the next, that rotating to portrait preserves progress, and
 that the last stage loops back to the first. Screenshots land in `.art/shots/`.
+
+`npm run art:check` covers the artwork itself, which the unit tests can't see:
+it rasterises each animal and checks that nothing is clipped by the art box,
+that no detail mark strays outside the silhouette, and that `FOOT_LEVEL` matches
+where the feet actually are. It needs `rsvg-convert` and ImageMagick, the same
+tools `npm run art` uses.

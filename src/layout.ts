@@ -52,8 +52,8 @@ const FOOT_LEVEL: Record<AnimalId, number> = {
   elephant: 216 / ART_BOX,
   duck: 200 / ART_BOX,
   turtle: 184 / ART_BOX,
-  rabbit: 214 / ART_BOX,
-  butterfly: 205 / ART_BOX,
+  rabbit: 212 / ART_BOX,
+  butterfly: 204 / ART_BOX,
 };
 
 export interface GroundBand {

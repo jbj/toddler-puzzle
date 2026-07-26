@@ -6,7 +6,11 @@
  * gets cut into the scene as a hole: if a toddler can't tell what it is from the
  * outline alone, the puzzle doesn't work.
  *
- *   node scripts/preview.mjs
+ *   node scripts/preview.mjs           every animal, as a contact sheet
+ *   node scripts/preview.mjs rabbit    one animal, large enough to judge detail
+ *
+ * The contact sheet is too small to see whether details line up with the
+ * outline; review a single animal large before calling its art finished.
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -16,7 +20,8 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const animalsDir = join(root, "src/assets/animals");
 const outDir = join(root, ".art");
-const CELL = 300;
+const only = process.argv[2];
+const CELL = only ? 900 : 300;
 
 mkdirSync(outDir, { recursive: true });
 
@@ -42,9 +47,14 @@ function render(svgText, outPath, background) {
   ]);
 }
 
-const files = readdirSync(animalsDir).filter((f) => f.endsWith(".svg")).sort();
+const files = readdirSync(animalsDir)
+  .filter((f) => f.endsWith(".svg"))
+  .filter((f) => !only || basename(f, ".svg") === only)
+  .sort();
 if (files.length === 0) {
-  console.error("No animal SVGs found in", animalsDir);
+  console.error(
+    only ? `No animal named "${only}" in ${animalsDir}` : `No animal SVGs found in ${animalsDir}`,
+  );
   process.exit(1);
 }
 
@@ -59,20 +69,27 @@ for (const file of files) {
   render(silhouetteOnly(svg), silPng, "#fdf6e3");
 
   // Stack the two views vertically, labelled, to form one column per animal.
+  // A single animal is laid out side by side instead: it is being inspected,
+  // not compared, and a 900px column would not fit on screen.
   const column = join(outDir, `${name}-column.png`);
-  execFileSync("magick", [
-    "-background", "white",
-    "-fill", "#333",
-    "-pointsize", "22",
-    "label:" + name,
-    colourPng,
-    silPng,
-    "-append",
-    column,
-  ]);
+  execFileSync(
+    "magick",
+    only
+      ? [colourPng, silPng, "+append", column]
+      : [
+          "-background", "white",
+          "-fill", "#333",
+          "-pointsize", "22",
+          "label:" + name,
+          colourPng,
+          silPng,
+          "-append",
+          column,
+        ],
+  );
   columns.push(column);
 }
 
-const sheet = join(outDir, "contact-sheet.png");
+const sheet = join(outDir, only ? `${only}-large.png` : "contact-sheet.png");
 execFileSync("magick", [...columns, "+append", "-bordercolor", "white", "-border", "8", sheet]);
 console.log(sheet);
