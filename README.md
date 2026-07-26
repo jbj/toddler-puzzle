@@ -65,13 +65,26 @@ puzzle.
 
 Two rules follow from that shared path, and `npm run art:check` enforces both:
 
-- **Detail has to stay inside the silhouette.** The hole is cut from the outline
-  alone, so a mark that pokes past it makes the piece overhang the hole it is
-  meant to fill. This is easy to do by accident - a mouth line that grazes a
-  cheek, a spot half off a neck - and hard to see at tray size.
-- **A deliberate exception is tagged.** Small appendages may look better hanging
-  out; the giraffe's tail does. Mark those with `data-overhang="tail"` and the
-  check will skip them, so a genuine mistake still fails.
+- **Detail has to stay inside the silhouette, unless it is meant not to.** The
+  hole is cut from the outline alone, so a mark drawn past it hangs over the
+  edge of the hole when the piece drops in.
+- **Every overhang is declared.** Tag the element `data-overhang="tail"`.
+
+### Overhanging on purpose
+
+A little overhang looks *better* than the alternative. The giraffe's tail and
+the rabbit's cottontail both read as tails precisely because they break the
+outline; tucked inside they flatten into markings. So the policy is about
+intent, not purity:
+
+- an **untagged** mark outside the outline fails, because nobody chose it -
+  these are the accidents, like a mouth line grazing a cheek or a spot half off
+  a neck, easy to draw and hard to see at tray size;
+- a **tagged** one is allowed, up to a budget of **3% of the animal's area**.
+  Both tails sit near 1.5%. Past a few percent a piece stops looking styled and
+  starts looking like it doesn't fit its hole.
+
+The check reports the share so it can be judged rather than guessed.
 
 ## Adding an animal
 
@@ -90,8 +103,8 @@ Two rules follow from that shared path, and `npm run art:check` enforces both:
    of being aligned by its box. Don't measure it by hand: `npm run art:check`
    reports the right value.
 6. Run `npm run art:check`. It verifies the structure, that the art is not
-   clipped by the art box, that detail stays inside the silhouette, and that the
-   declared foot level matches the artwork.
+   clipped by the art box, that nothing hangs outside the silhouette except
+   declared overhangs, and that the declared foot level matches the artwork.
 7. Put it in a stage in `STAGES`, and make room for it by bumping the matching
    row counts in the `LANDSCAPE` and `PORTRAIT` arrangements (see below). The
    layout tests fail if a stage's rows and its animals disagree, if holes
@@ -158,6 +171,6 @@ that the last stage loops back to the first. Screenshots land in `.art/shots/`.
 
 `npm run art:check` covers the artwork itself, which the unit tests can't see:
 it rasterises each animal and checks that nothing is clipped by the art box,
-that no detail mark strays outside the silhouette, and that `FOOT_LEVEL` matches
-where the feet actually are. It needs `rsvg-convert` and ImageMagick, the same
+that no undeclared detail strays outside the silhouette and declared overhangs
+stay within budget, and that `FOOT_LEVEL` matches where the feet actually are. It needs `rsvg-convert` and ImageMagick, the same
 tools `npm run art` uses.

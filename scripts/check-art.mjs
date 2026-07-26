@@ -58,15 +58,20 @@ function mask(svg, css, name) {
 }
 
 const HIDE_DETAIL = "#detail{display:none}";
-/**
- * Marks tagged `data-overhang` are deliberately allowed past the outline - the
- * giraffe's tail, for instance. They still overhang the hole slightly, which is
- * fine for a small appendage and wrong for anything larger, so it has to be
- * opted into per mark rather than tolerated everywhere.
- */
-const HIDE_SILHOUETTE = "#silhouette{display:none}#detail [data-overhang]{display:none}";
+/** Only the marks that have not been declared as deliberate overhangs. */
+const DETAIL_UNTAGGED = "#silhouette{display:none}#detail [data-overhang]{display:none}";
+/** Every mark, including the deliberate overhangs. */
+const DETAIL_ALL = "#silhouette{display:none}";
 /** The outline without its stroke - the shape the animal actually occupies. */
 const FILL_ONLY = `${HIDE_DETAIL}#silhouette{stroke-width:0}`;
+
+/**
+ * How much of an animal may hang past its outline, as a share of the animal's
+ * own area. A little is good - a tail or an ear reads better loose than tucked
+ * in - but every bit of it overhangs the hole the piece drops into, so it stays
+ * small enough to look like styling rather than a misfit.
+ */
+const OVERHANG_BUDGET = 0.03;
 
 function opaquePixels(png) {
   const out = execFileSync("magick", [png, "-format", "%[fx:mean*w*h]", "info:"]).toString();
@@ -145,22 +150,36 @@ for (const file of files) {
       `${drawn.top.toFixed(1)}..${drawn.bottom.toFixed(1)}`,
   );
 
-  // The piece and the hole are both drawn from #silhouette with the same
-  // stroke, so a detail mark is safe exactly when it lands on that shape.
+  // The piece and the hole are both drawn from #silhouette, so anything outside
+  // that shape hangs over the edge of the hole. A tagged mark is allowed to;
+  // an untagged one is a mistake, because nobody chose it.
   // Masks are plain black/white by this point, so "outside" is an ordinary
   // multiply against the inverted silhouette rather than an alpha operation.
   const silhouette = mask(svg, HIDE_DETAIL, `${id}-silhouette`);
-  const detail = mask(svg, HIDE_SILHOUETTE, `${id}-detail`);
   const outside = join(scratch, `${id}-outside.png`);
   execFileSync("magick", [silhouette, "-negate", outside]);
-  const strayPng = join(scratch, `${id}-stray.png`);
-  execFileSync("magick", [detail, outside, "-compose", "Multiply", "-composite", strayPng]);
-  const stray = opaquePixels(strayPng);
-  const exempt = (svg.match(/data-overhang/g) ?? []).length;
+
+  const strayOf = (css, name) => {
+    const png = join(scratch, `${id}-${name}.png`);
+    execFileSync("magick", [mask(svg, css, `${id}-${name}-marks`), outside,
+      "-compose", "Multiply", "-composite", png]);
+    return { pixels: opaquePixels(png), png };
+  };
+
+  const accidental = strayOf(DETAIL_UNTAGGED, "stray");
   check(
-    `detail stays inside the silhouette${exempt ? ` (${exempt} mark(s) opted out)` : ""}`,
-    stray === 0,
-    `${stray} px outside - see ${strayPng.slice(root.length)}`,
+    "anything outside the silhouette is a deliberate overhang",
+    accidental.pixels === 0,
+    `${accidental.pixels} px of untagged detail outside - see ${accidental.png.slice(root.length)}` +
+      "; tag it data-overhang if you meant it",
+  );
+
+  const overhang = strayOf(DETAIL_ALL, "overhang").pixels / opaquePixels(silhouette);
+  const share = `${(overhang * 100).toFixed(1)}%`;
+  check(
+    `overhang stays within budget${overhang > 0 ? ` (${share} of the animal)` : ""}`,
+    overhang <= OVERHANG_BUDGET,
+    `budget is ${(OVERHANG_BUDGET * 100).toFixed(0)}% of the animal's area`,
   );
 
   // Feet are measured from the fill, ignoring the stroke that hangs below it.
