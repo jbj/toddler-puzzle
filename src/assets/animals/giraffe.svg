@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <path
+    id="silhouette"
+    fill="#f4c542"
+    stroke="#a9701c"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M34 42
+       C30 28 42 18 55 21
+       L70 25
+       C70 12 84 12 84 25
+       C92 28 97 36 95 47
+       C106 76 116 100 130 124
+       C166 122 200 134 200 158
+       C200 168 196 174 190 178
+       L192 218 Q192 226 182 226 Q172 226 172 218 L170 178
+       L136 180
+       L138 218 Q138 226 128 226 Q118 226 118 218 L116 178
+       C106 174 99 165 99 152
+       C97 124 84 84 62 55
+       C54 51 42 50 34 42 Z"
+  />
+  <g id="detail">
+    <circle cx="60" cy="35" r="5" fill="#2b3440" />
+    <path d="M77 25 v-9" stroke="#a9701c" stroke-width="5" stroke-linecap="round" />
+    <path d="M198 150 c14 4 18 18 12 28" fill="none" stroke="#a9701c" stroke-width="6" stroke-linecap="round" />
+    <g fill="#b5762a">
+      <circle cx="152" cy="142" r="9" />
+      <circle cx="178" cy="152" r="8" />
+      <circle cx="150" cy="166" r="8" />
+      <circle cx="120" cy="108" r="7" />
+      <circle cx="106" cy="76" r="6" />
+    </g>
+  </g>
+</svg>
