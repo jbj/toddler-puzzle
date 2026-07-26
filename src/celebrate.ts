@@ -1,6 +1,6 @@
 /**
  * Reward feedback: sparkles when a piece lands, and a finish celebration with a
- * big "play again" button that appears in the now-empty tray.
+ * big button in the now-empty tray that leads on to the next puzzle.
  */
 import type { Point } from "./geometry";
 import type { Layout } from "./layout";
@@ -60,11 +60,30 @@ export function celebrationBurst(fxLayer: SVGGElement, layout: Layout): void {
 }
 
 /**
- * Large, unmissable play-again button. It lives in the tray, which is empty by
- * the time the puzzle is complete, and is far bigger than any adult UI control
- * because it is meant to be hit by a toddler.
+ * Large, unmissable button shown when a puzzle is finished: an arrow onwards to
+ * the next stage, or a replay arrow after the last one. It lives in the tray,
+ * which is empty by the time the puzzle is complete, and is far bigger than any
+ * adult UI control because it is meant to be hit by a toddler.
  */
-export function showPlayAgain(fxLayer: SVGGElement, layout: Layout, onAgain: () => void): void {
+export type FinishButton = "next" | "again";
+
+const BUTTON_ICON: Record<FinishButton, string> = {
+  next: `
+    <path d="M-40 0 H10" fill="none" stroke="#7a5200" stroke-width="15" stroke-linecap="round" />
+    <path d="M2 -32 L44 0 L2 32 Z" fill="#7a5200" />
+  `,
+  again: `
+    <path d="M-34 8 A34 34 0 1 1 0 42" fill="none" stroke="#7a5200" stroke-width="15" stroke-linecap="round" />
+    <path d="M-34 -14 L-34 12 L-11 12 Z" fill="#7a5200" />
+  `,
+};
+
+export function showFinishButton(
+  fxLayer: SVGGElement,
+  layout: Layout,
+  kind: FinishButton,
+  onPress: () => void,
+): void {
   const anchor = document.createElementNS(SVG_NS, "g");
   const centerY = (layout.trayTop + layout.canvas.height) / 2;
   anchor.setAttribute("transform", `translate(${layout.canvas.width / 2} ${centerY})`);
@@ -74,12 +93,11 @@ export function showPlayAgain(fxLayer: SVGGElement, layout: Layout, onAgain: () 
   const button = document.createElementNS(SVG_NS, "g");
   button.setAttribute("class", "reset-button");
   button.setAttribute("role", "button");
-  button.setAttribute("aria-label", "Play again");
+  button.setAttribute("aria-label", kind === "next" ? "Next puzzle" : "Play again");
   button.style.transformOrigin = "0 0";
   button.innerHTML = `
     <circle r="82" fill="#ffd23f" stroke="#e0a615" stroke-width="7" />
-    <path d="M-34 8 A34 34 0 1 1 0 42" fill="none" stroke="#7a5200" stroke-width="15" stroke-linecap="round" />
-    <path d="M-34 -14 L-34 12 L-11 12 Z" fill="#7a5200" />
+    ${BUTTON_ICON[kind]}
   `;
 
   if (!prefersReducedMotion()) {
@@ -91,7 +109,7 @@ export function showPlayAgain(fxLayer: SVGGElement, layout: Layout, onAgain: () 
 
   button.addEventListener("pointerdown", (event) => {
     event.stopPropagation();
-    onAgain();
+    onPress();
   });
 
   anchor.append(button);

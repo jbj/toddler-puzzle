@@ -7,7 +7,7 @@
  */
 import type { AnimalId } from "./assets";
 import { clampToCanvas, screenToLogical, type Point } from "./geometry";
-import { FINGER_LIFT, PIECE_SIZE, type Layout } from "./layout";
+import { FINGER_LIFT, type Layout } from "./layout";
 
 export interface DragCallbacks {
   isDraggable(animal: AnimalId): boolean;
@@ -65,7 +65,7 @@ export function enableDragging(
     callbacks.onMove(animal, clampToCanvas({
       x: pointer.x + active.offset.x,
       y: pointer.y + active.offset.y,
-    }, PIECE_SIZE, layout.canvas));
+    }, layout.pieceSize, layout.canvas));
   });
 
   stage.addEventListener("pointermove", (event: PointerEvent) => {
@@ -74,7 +74,7 @@ export function enableDragging(
     const pointer = logicalPointer(event, stage, layout);
     active.position = clampToCanvas(
       { x: pointer.x + active.offset.x, y: pointer.y + active.offset.y },
-      PIECE_SIZE,
+      layout.pieceSize,
       layout.canvas,
     );
     callbacks.onMove(active.animal, active.position);

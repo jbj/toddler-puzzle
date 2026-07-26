@@ -13,12 +13,14 @@
  * hole exactly. If an asset is malformed we throw immediately at startup rather
  * than silently rendering an unsolvable puzzle.
  */
+import butterflySvg from "./assets/animals/butterfly.svg?raw";
 import duckSvg from "./assets/animals/duck.svg?raw";
 import elephantSvg from "./assets/animals/elephant.svg?raw";
 import giraffeSvg from "./assets/animals/giraffe.svg?raw";
+import rabbitSvg from "./assets/animals/rabbit.svg?raw";
 import turtleSvg from "./assets/animals/turtle.svg?raw";
 
-export const ANIMAL_IDS = ["duck", "elephant", "giraffe", "turtle"] as const;
+export const ANIMAL_IDS = ["duck", "elephant", "giraffe", "turtle", "rabbit", "butterfly"] as const;
 export type AnimalId = (typeof ANIMAL_IDS)[number];
 
 /** Every animal is authored on this square canvas. */
@@ -40,6 +42,8 @@ const SOURCES: Record<AnimalId, { name: string; svg: string }> = {
   elephant: { name: "Elephant", svg: elephantSvg },
   giraffe: { name: "Giraffe", svg: giraffeSvg },
   turtle: { name: "Turtle", svg: turtleSvg },
+  rabbit: { name: "Rabbit", svg: rabbitSvg },
+  butterfly: { name: "Butterfly", svg: butterflySvg },
 };
 
 function parseSvg(source: string, label: string): SVGSVGElement {
@@ -89,12 +93,11 @@ let cachedAnimals: Record<AnimalId, AnimalArt> | null = null;
 
 export function loadAnimals(): Record<AnimalId, AnimalArt> {
   if (!cachedAnimals) {
-    cachedAnimals = {
-      duck: parseAnimal("duck"),
-      elephant: parseAnimal("elephant"),
-      giraffe: parseAnimal("giraffe"),
-      turtle: parseAnimal("turtle"),
-    };
+    const parsed = {} as Record<AnimalId, AnimalArt>;
+    // Every animal is parsed up front: a malformed asset should fail loudly at
+    // startup, not on the stage that happens to use it.
+    for (const id of ANIMAL_IDS) parsed[id] = parseAnimal(id);
+    cachedAnimals = parsed;
   }
   return cachedAnimals;
 }

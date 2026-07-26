@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ANIMAL_IDS } from "../src/assets";
 import {
   boxCenter,
   clampToCanvas,
@@ -8,9 +9,17 @@ import {
   screenToLogical,
   shuffle,
 } from "../src/geometry";
-import { LAYOUTS, PIECE_SIZE, SNAP_RADIUS, chooseLayout } from "../src/layout";
+import {
+  LAYOUTS,
+  STAGES,
+  STAGE_COUNT,
+  chooseLayout,
+  holeOf,
+  nextStage,
+} from "../src/layout";
 
 const CANVAS = { width: 1000, height: 700 };
+const PIECE = 190;
 
 describe("fitScale", () => {
   it("uses the limiting axis so the canvas always fits", () => {
@@ -66,52 +75,91 @@ describe("screenToLogical", () => {
 
 describe("clampToCanvas", () => {
   it("keeps a piece fully on screen so it can never be lost", () => {
-    expect(clampToCanvas({ x: -500, y: -500 }, PIECE_SIZE, CANVAS)).toEqual({ x: 0, y: 0 });
-    expect(clampToCanvas({ x: 9999, y: 9999 }, PIECE_SIZE, CANVAS)).toEqual({
-      x: CANVAS.width - PIECE_SIZE,
-      y: CANVAS.height - PIECE_SIZE,
+    expect(clampToCanvas({ x: -500, y: -500 }, PIECE, CANVAS)).toEqual({ x: 0, y: 0 });
+    expect(clampToCanvas({ x: 9999, y: 9999 }, PIECE, CANVAS)).toEqual({
+      x: CANVAS.width - PIECE,
+      y: CANVAS.height - PIECE,
     });
   });
 
   it("leaves in-bounds positions untouched", () => {
-    expect(clampToCanvas({ x: 300, y: 200 }, PIECE_SIZE, CANVAS)).toEqual({ x: 300, y: 200 });
+    expect(clampToCanvas({ x: 300, y: 200 }, PIECE, CANVAS)).toEqual({ x: 300, y: 200 });
   });
 });
 
 describe("snapping", () => {
+  const layout = LAYOUTS[0]!;
+
   it("accepts a drop that is close but not exact", () => {
-    const hole = boxCenter(LAYOUTS[0].holes.duck, PIECE_SIZE);
+    const hole = boxCenter(holeOf(layout, "duck"), layout.pieceSize);
     const sloppy = { x: hole.x + 80, y: hole.y - 60 };
-    expect(distance(sloppy, hole)).toBeLessThan(SNAP_RADIUS);
-    expect(isWithinSnapRadius(sloppy, hole, SNAP_RADIUS)).toBe(true);
+    expect(distance(sloppy, hole)).toBeLessThan(layout.snapRadius);
+    expect(isWithinSnapRadius(sloppy, hole, layout.snapRadius)).toBe(true);
   });
 
   it("rejects a drop that is clearly somewhere else", () => {
-    const layout = LAYOUTS[0];
-    const hole = boxCenter(layout.holes.duck, PIECE_SIZE);
-    const tray = boxCenter(layout.traySlots[0]!, PIECE_SIZE);
-    expect(isWithinSnapRadius(tray, hole, SNAP_RADIUS)).toBe(false);
+    const hole = boxCenter(holeOf(layout, "duck"), layout.pieceSize);
+    const tray = boxCenter(layout.traySlots[0]!, layout.pieceSize);
+    expect(isWithinSnapRadius(tray, hole, layout.snapRadius)).toBe(false);
   });
 });
 
-describe.each(LAYOUTS)("$id layout", (layout) => {
+describe("stages", () => {
+  it("grows from three animals to four to six", () => {
+    expect(STAGES.map((animals) => animals.length)).toEqual([3, 4, 6]);
+    expect(STAGE_COUNT).toBe(3);
+  });
+
+  it("only uses animals that actually exist, with no repeats in a stage", () => {
+    for (const animals of STAGES) {
+      expect(new Set(animals).size).toBe(animals.length);
+      for (const animal of animals) expect(ANIMAL_IDS).toContain(animal);
+    }
+  });
+
+  it("uses every animal by the final stage", () => {
+    expect(new Set(STAGES[STAGE_COUNT - 1]!)).toEqual(new Set(ANIMAL_IDS));
+  });
+
+  it("loops back to the first stage after the last", () => {
+    expect(nextStage(1)).toBe(2);
+    expect(nextStage(2)).toBe(3);
+    expect(nextStage(STAGE_COUNT)).toBe(1);
+  });
+
+  it("has a landscape and a portrait layout for every stage", () => {
+    expect(LAYOUTS).toHaveLength(STAGE_COUNT * 2);
+    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
+      expect(chooseLayout({ width: 1280, height: 800 }, stage).stage).toBe(stage);
+      expect(chooseLayout({ width: 390, height: 844 }, stage).stage).toBe(stage);
+    }
+  });
+});
+
+describe.each(LAYOUTS)("stage $stage, $id layout", (layout) => {
   const { width, height } = layout.canvas;
-  const holes = Object.values(layout.holes);
+  const { pieceSize, snapRadius } = layout;
+  const holes = layout.animals.map((animal) => holeOf(layout, animal));
+
+  it("gives exactly this stage's animals a hole", () => {
+    expect(layout.animals).toEqual(STAGES[layout.stage - 1]);
+    expect(Object.keys(layout.holes).sort()).toEqual([...layout.animals].sort());
+  });
 
   it("keeps every hole inside the scenery, above the tray", () => {
     for (const hole of holes) {
       expect(hole.x).toBeGreaterThanOrEqual(0);
-      expect(hole.x + PIECE_SIZE).toBeLessThanOrEqual(width);
+      expect(hole.x + pieceSize).toBeLessThanOrEqual(width);
       expect(hole.y).toBeGreaterThanOrEqual(0);
-      expect(hole.y + PIECE_SIZE).toBeLessThanOrEqual(layout.trayTop + PIECE_SIZE);
+      expect(hole.y + pieceSize).toBeLessThanOrEqual(layout.trayTop + pieceSize);
     }
   });
 
   it("keeps snap zones from overlapping each other", () => {
-    const centers = holes.map((hole) => boxCenter(hole, PIECE_SIZE));
+    const centers = holes.map((hole) => boxCenter(hole, pieceSize));
     for (let i = 0; i < centers.length; i++) {
       for (let j = i + 1; j < centers.length; j++) {
-        expect(distance(centers[i]!, centers[j]!)).toBeGreaterThan(SNAP_RADIUS);
+        expect(distance(centers[i]!, centers[j]!)).toBeGreaterThan(snapRadius);
       }
     }
   });
@@ -120,9 +168,9 @@ describe.each(LAYOUTS)("$id layout", (layout) => {
     expect(layout.traySlots).toHaveLength(holes.length);
     for (const slot of layout.traySlots) {
       expect(slot.x).toBeGreaterThanOrEqual(0);
-      expect(slot.x + PIECE_SIZE).toBeLessThanOrEqual(width);
+      expect(slot.x + pieceSize).toBeLessThanOrEqual(width);
       expect(slot.y).toBeGreaterThanOrEqual(layout.trayTop);
-      expect(slot.y + PIECE_SIZE).toBeLessThanOrEqual(height);
+      expect(slot.y + pieceSize).toBeLessThanOrEqual(height);
     }
   });
 
@@ -132,7 +180,7 @@ describe.each(LAYOUTS)("$id layout", (layout) => {
       for (let j = i + 1; j < slots.length; j++) {
         const a = slots[i]!;
         const b = slots[j]!;
-        const overlaps = Math.abs(a.x - b.x) < PIECE_SIZE && Math.abs(a.y - b.y) < PIECE_SIZE;
+        const overlaps = Math.abs(a.x - b.x) < pieceSize && Math.abs(a.y - b.y) < pieceSize;
         expect(overlaps).toBe(false);
       }
     }
@@ -141,34 +189,47 @@ describe.each(LAYOUTS)("$id layout", (layout) => {
   it("does not let a tray slot sit inside a hole's snap zone", () => {
     for (const slot of layout.traySlots) {
       for (const hole of holes) {
-        const gap = distance(boxCenter(slot, PIECE_SIZE), boxCenter(hole, PIECE_SIZE));
-        expect(gap).toBeGreaterThan(SNAP_RADIUS);
+        const gap = distance(boxCenter(slot, pieceSize), boxCenter(hole, pieceSize));
+        expect(gap).toBeGreaterThan(snapRadius);
       }
     }
+  });
+
+  it("keeps pieces big enough for a toddler to grab", () => {
+    // A piece narrower than a tenth of the canvas would be a fiddly target on a
+    // small screen, however many animals the stage has.
+    expect(pieceSize / width).toBeGreaterThan(0.1);
   });
 });
 
 describe("chooseLayout", () => {
   it("uses the portrait reflow only when taller than wide", () => {
-    expect(chooseLayout({ width: 1280, height: 800 }).id).toBe("landscape");
-    expect(chooseLayout({ width: 1024, height: 1024 }).id).toBe("landscape");
-    expect(chooseLayout({ width: 390, height: 844 }).id).toBe("portrait");
+    expect(chooseLayout({ width: 1280, height: 800 }, 1).id).toBe("landscape");
+    expect(chooseLayout({ width: 1024, height: 1024 }, 2).id).toBe("landscape");
+    expect(chooseLayout({ width: 390, height: 844 }, 3).id).toBe("portrait");
+  });
+
+  it("rejects a stage that does not exist rather than showing an empty board", () => {
+    expect(() => chooseLayout({ width: 1280, height: 800 }, 0)).toThrow();
+    expect(() => chooseLayout({ width: 1280, height: 800 }, STAGE_COUNT + 1)).toThrow();
   });
 
   it("fills a decent share of the viewport in both orientations", () => {
     const cases = [
-      { viewport: { width: 1280, height: 800 } },
-      { viewport: { width: 390, height: 844 } },
-      { viewport: { width: 820, height: 1180 } },
+      { width: 1280, height: 800 },
+      { width: 390, height: 844 },
+      { width: 820, height: 1180 },
     ];
-    for (const { viewport } of cases) {
-      const layout = chooseLayout(viewport);
-      const scale = fitScale(viewport, layout.canvas);
-      const used =
-        (layout.canvas.width * scale * layout.canvas.height * scale) /
-        (viewport.width * viewport.height);
-      // Letterboxing a landscape canvas into a phone would score ~0.4 here.
-      expect(used).toBeGreaterThan(0.75);
+    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
+      for (const viewport of cases) {
+        const layout = chooseLayout(viewport, stage);
+        const scale = fitScale(viewport, layout.canvas);
+        const used =
+          (layout.canvas.width * scale * layout.canvas.height * scale) /
+          (viewport.width * viewport.height);
+        // Letterboxing a landscape canvas into a phone would score ~0.4 here.
+        expect(used).toBeGreaterThan(0.75);
+      }
     }
   });
 });

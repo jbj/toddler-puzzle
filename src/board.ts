@@ -1,24 +1,32 @@
 /**
- * Builds the SVG scene graph: background, holes cut into it, and the draggable
- * pieces. Rendering only - all decisions live in game.ts.
+ * Builds the SVG scene graph: background, holes cut into it, the draggable
+ * pieces, and the stage indicator. Rendering only - all decisions live in
+ * game.ts. Only the current stage's animals are built.
  */
-import { ART_BOX, ANIMAL_IDS, type AnimalArt, type AnimalId } from "./assets";
+import { ART_BOX, type AnimalArt, type AnimalId } from "./assets";
 import type { Point } from "./geometry";
-import { PIECE_SIZE, type Layout } from "./layout";
+import { STAGE_COUNT, holeOf, type Layout } from "./layout";
 import { renderScenery } from "./scenery";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-
-/** Art units -> logical units. */
-export const PIECE_SCALE = PIECE_SIZE / ART_BOX;
 
 export interface Board {
   readonly stage: SVGSVGElement;
   readonly piecesLayer: SVGGElement;
   readonly fxLayer: SVGGElement;
-  readonly pieces: Record<AnimalId, SVGGElement>;
-  readonly holes: Record<AnimalId, SVGGElement>;
+  readonly pieces: ReadonlyMap<AnimalId, SVGGElement>;
+  readonly holes: ReadonlyMap<AnimalId, SVGGElement>;
   readonly resetButton: SVGGElement;
+}
+
+/** An element built for the current stage. Throws if the animal isn't in play. */
+export function elementFor(
+  elements: ReadonlyMap<AnimalId, SVGGElement>,
+  animal: AnimalId,
+): SVGGElement {
+  const element = elements.get(animal);
+  if (!element) throw new Error(`Animal "${animal}" is not on the board.`);
+  return element;
 }
 
 function group(className?: string): SVGGElement {
@@ -33,11 +41,11 @@ export function setPiecePosition(piece: SVGGElement, position: Point): void {
   piece.style.transform = `translate(${position.x}px, ${position.y}px)`;
 }
 
-function buildHole(art: AnimalArt, layout: Layout): SVGGElement {
+function buildHole(art: AnimalArt, layout: Layout, scale: number): SVGGElement {
   const hole = group("hole");
   hole.dataset["animal"] = art.id;
-  const origin = layout.holes[art.id];
-  hole.setAttribute("transform", `translate(${origin.x} ${origin.y}) scale(${PIECE_SCALE})`);
+  const origin = holeOf(layout, art.id);
+  hole.setAttribute("transform", `translate(${origin.x} ${origin.y}) scale(${scale})`);
   // A soft dark fill plus a light rim reads as a recess against both the sky
   // and the grass, so one treatment works everywhere in the scene.
   hole.innerHTML = `
@@ -47,14 +55,14 @@ function buildHole(art: AnimalArt, layout: Layout): SVGGElement {
   return hole;
 }
 
-function buildPiece(art: AnimalArt): SVGGElement {
+function buildPiece(art: AnimalArt, scale: number): SVGGElement {
   const piece = group("piece");
   piece.dataset["animal"] = art.id;
   piece.setAttribute("role", "img");
   piece.setAttribute("aria-label", art.name);
 
   const scaled = group();
-  scaled.setAttribute("transform", `scale(${PIECE_SCALE})`);
+  scaled.setAttribute("transform", `scale(${scale})`);
   scaled.innerHTML = `${art.silhouetteMarkup}<g>${art.detailMarkup}</g>`;
   piece.append(scaled);
   return piece;
@@ -64,13 +72,32 @@ function buildResetButton(): SVGGElement {
   const button = group("reset-button");
   button.setAttribute("transform", "translate(58 58)");
   button.setAttribute("role", "button");
-  button.setAttribute("aria-label", "Start again");
+  button.setAttribute("aria-label", "Start this puzzle again");
   button.innerHTML = `
     <circle r="32" fill="#ffffff" fill-opacity="0.82" stroke="#4f7d8c" stroke-width="4" />
     <path d="M-13 3 A13 13 0 1 1 0 16" fill="none" stroke="#4f7d8c" stroke-width="6" stroke-linecap="round" />
     <path d="M-13 -6 L-13 4 L-4 4 Z" fill="#4f7d8c" />
   `;
   return button;
+}
+
+/**
+ * One dot per stage, filled up to the current one, so a grown-up can see how
+ * far along the three puzzles are. Deliberately not interactive: every target a
+ * toddler can hit should do something they meant to do.
+ */
+function buildStageDots(layout: Layout): SVGGElement {
+  const dots = group("stage-dots");
+  dots.setAttribute("transform", "translate(122 58)");
+  dots.setAttribute("aria-label", `Puzzle ${layout.stage} of ${STAGE_COUNT}`);
+  dots.style.pointerEvents = "none";
+  dots.innerHTML = Array.from({ length: STAGE_COUNT }, (_, index) => {
+    const reached = index < layout.stage;
+    return `<circle cx="${index * 32}" cy="0" r="11"
+      fill="${reached ? "#ffd23f" : "#ffffff"}" fill-opacity="${reached ? 1 : 0.35}"
+      stroke="#4f7d8c" stroke-width="3" stroke-opacity="0.75" />`;
+  }).join("");
+  return dots;
 }
 
 export function buildBoard(
@@ -83,6 +110,7 @@ export function buildBoard(
   stage.setAttribute("viewBox", `0 0 ${layout.canvas.width} ${layout.canvas.height}`);
   stage.setAttribute("preserveAspectRatio", "xMidYMid meet");
   stage.dataset["layout"] = layout.id;
+  stage.dataset["stage"] = String(layout.stage);
 
   const sceneLayer = group("scene");
   sceneLayer.innerHTML = renderScenery(layout);
@@ -91,20 +119,22 @@ export function buildBoard(
   const piecesLayer = group("pieces");
   const fxLayer = group("fx");
 
-  const pieces = {} as Record<AnimalId, SVGGElement>;
-  const holes = {} as Record<AnimalId, SVGGElement>;
-  for (const id of ANIMAL_IDS) {
+  // Art units -> logical units, at this stage's piece size.
+  const scale = layout.pieceSize / ART_BOX;
+  const pieces = new Map<AnimalId, SVGGElement>();
+  const holes = new Map<AnimalId, SVGGElement>();
+  for (const id of layout.animals) {
     const art = animals[id];
-    const hole = buildHole(art, layout);
-    holes[id] = hole;
+    const hole = buildHole(art, layout, scale);
+    holes.set(id, hole);
     holesLayer.append(hole);
-    const piece = buildPiece(art);
-    pieces[id] = piece;
+    const piece = buildPiece(art, scale);
+    pieces.set(id, piece);
     piecesLayer.append(piece);
   }
 
   const resetButton = buildResetButton();
-  stage.append(sceneLayer, holesLayer, piecesLayer, fxLayer, resetButton);
+  stage.append(sceneLayer, holesLayer, piecesLayer, fxLayer, resetButton, buildStageDots(layout));
 
   root.replaceChildren(stage);
   return { stage, piecesLayer, fxLayer, pieces, holes, resetButton };

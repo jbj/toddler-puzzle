@@ -74,9 +74,11 @@ export function playReturn(): void {
   tone({ frequency: 320, duration: 0.14, gain: 0.07, type: "triangle" });
 }
 
-/** Rising arpeggio when the whole puzzle is finished. */
-export function playFanfare(): void {
-  const notes = [523.25, 659.25, 783.99, 1046.5];
+/** Rising arpeggio when a puzzle is finished; longer for the final stage. */
+export function playFanfare(grand = false): void {
+  const notes = grand
+    ? [523.25, 659.25, 783.99, 1046.5, 1318.51, 1567.98]
+    : [523.25, 659.25, 783.99, 1046.5];
   notes.forEach((frequency, index) => {
     tone({ frequency, delay: index * 0.13, duration: 0.4, gain: 0.15 });
   });
