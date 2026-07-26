@@ -72,7 +72,7 @@ function buildResetButton(): SVGGElement {
   const button = group("reset-button");
   button.setAttribute("transform", "translate(58 58)");
   button.setAttribute("role", "button");
-  button.setAttribute("aria-label", "Start this puzzle again");
+  button.setAttribute("aria-label", "Start a fresh puzzle");
   button.innerHTML = `
     <circle r="32" fill="#ffffff" fill-opacity="0.82" stroke="#4f7d8c" stroke-width="4" />
     <path d="M-13 3 A13 13 0 1 1 0 16" fill="none" stroke="#4f7d8c" stroke-width="6" stroke-linecap="round" />

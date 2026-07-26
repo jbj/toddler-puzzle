@@ -115,7 +115,3 @@ export function showFinishButton(
   anchor.append(button);
   fxLayer.append(anchor);
 }
-
-export function clearEffects(fxLayer: SVGGElement): void {
-  fxLayer.replaceChildren();
-}

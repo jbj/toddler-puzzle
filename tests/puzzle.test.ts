@@ -7,19 +7,48 @@ import {
   fitScale,
   isWithinSnapRadius,
   screenToLogical,
+  seededRandom,
   shuffle,
 } from "../src/geometry";
 import {
-  LAYOUTS,
-  STAGES,
   STAGE_COUNT,
+  STAGE_SIZES,
+  buildStageLayout,
   chooseLayout,
   holeOf,
   nextStage,
+  pickStageAnimals,
+  stageSize,
+  type Layout,
 } from "../src/layout";
 
 const CANVAS = { width: 1000, height: 700 };
 const PIECE = 190;
+
+const ORIENTATIONS = ["landscape", "portrait"] as const;
+
+/**
+ * Every cast a stage could be dealt is a subset of the animals in some order,
+ * which is far too many to enumerate. Rotating the animal list puts each animal
+ * in each position at least once, which is what the layout actually depends on:
+ * a hole's height comes from the foot level of whichever animal stands there.
+ */
+function castsFor(stage: number): AnimalIdList[] {
+  const size = stageSize(stage);
+  return ANIMAL_IDS.map((_, offset) =>
+    Array.from({ length: size }, (_, index) => ANIMAL_IDS[(offset + index) % ANIMAL_IDS.length]!),
+  );
+}
+
+type AnimalIdList = (typeof ANIMAL_IDS)[number][];
+
+/** Every stage, both orientations, across a representative spread of casts. */
+const LAYOUTS: Layout[] = [];
+for (let stage = 1; stage <= STAGE_COUNT; stage++) {
+  for (const id of ORIENTATIONS) {
+    for (const cast of castsFor(stage)) LAYOUTS.push(buildStageLayout(id, stage, cast));
+  }
+}
 
 describe("fitScale", () => {
   it("uses the limiting axis so the canvas always fits", () => {
@@ -89,16 +118,17 @@ describe("clampToCanvas", () => {
 
 describe("snapping", () => {
   const layout = LAYOUTS[0]!;
+  const animal = layout.animals[0]!;
 
   it("accepts a drop that is close but not exact", () => {
-    const hole = boxCenter(holeOf(layout, "duck"), layout.pieceSize);
+    const hole = boxCenter(holeOf(layout, animal), layout.pieceSize);
     const sloppy = { x: hole.x + 80, y: hole.y - 60 };
     expect(distance(sloppy, hole)).toBeLessThan(layout.snapRadius);
     expect(isWithinSnapRadius(sloppy, hole, layout.snapRadius)).toBe(true);
   });
 
   it("rejects a drop that is clearly somewhere else", () => {
-    const hole = boxCenter(holeOf(layout, "duck"), layout.pieceSize);
+    const hole = boxCenter(holeOf(layout, animal), layout.pieceSize);
     const tray = boxCenter(layout.traySlots[0]!, layout.pieceSize);
     expect(isWithinSnapRadius(tray, hole, layout.snapRadius)).toBe(false);
   });
@@ -106,19 +136,8 @@ describe("snapping", () => {
 
 describe("stages", () => {
   it("grows from three animals to four to six", () => {
-    expect(STAGES.map((animals) => animals.length)).toEqual([3, 4, 6]);
+    expect([...STAGE_SIZES]).toEqual([3, 4, 6]);
     expect(STAGE_COUNT).toBe(3);
-  });
-
-  it("only uses animals that actually exist, with no repeats in a stage", () => {
-    for (const animals of STAGES) {
-      expect(new Set(animals).size).toBe(animals.length);
-      for (const animal of animals) expect(ANIMAL_IDS).toContain(animal);
-    }
-  });
-
-  it("uses every animal by the final stage", () => {
-    expect(new Set(STAGES[STAGE_COUNT - 1]!)).toEqual(new Set(ANIMAL_IDS));
   });
 
   it("loops back to the first stage after the last", () => {
@@ -128,21 +147,70 @@ describe("stages", () => {
   });
 
   it("has a landscape and a portrait layout for every stage", () => {
-    expect(LAYOUTS).toHaveLength(STAGE_COUNT * 2);
     for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-      expect(chooseLayout({ width: 1280, height: 800 }, stage).stage).toBe(stage);
-      expect(chooseLayout({ width: 390, height: 844 }, stage).stage).toBe(stage);
+      const cast = pickStageAnimals(stage);
+      expect(chooseLayout({ width: 1280, height: 800 }, stage, cast).stage).toBe(stage);
+      expect(chooseLayout({ width: 390, height: 844 }, stage, cast).stage).toBe(stage);
     }
   });
 });
 
-describe.each(LAYOUTS)("stage $stage, $id layout", (layout) => {
+describe("pickStageAnimals", () => {
+  it("deals the right number of animals for each stage", () => {
+    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
+      expect(pickStageAnimals(stage)).toHaveLength(stageSize(stage));
+    }
+  });
+
+  it("only uses animals that actually exist, with no repeats in a stage", () => {
+    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
+      for (let run = 0; run < 50; run++) {
+        const cast = pickStageAnimals(stage);
+        expect(new Set(cast).size).toBe(cast.length);
+        for (const animal of cast) expect(ANIMAL_IDS).toContain(animal);
+      }
+    }
+  });
+
+  it("uses every animal in the final stage", () => {
+    for (let run = 0; run < 20; run++) {
+      expect(new Set(pickStageAnimals(STAGE_COUNT))).toEqual(new Set(ANIMAL_IDS));
+    }
+  });
+
+  it("varies which animals turn up in the shorter stages", () => {
+    const seen = new Set<string>();
+    for (let run = 0; run < 200; run++) {
+      for (const animal of pickStageAnimals(1)) seen.add(animal);
+    }
+    // Given enough deals a three-animal stage should have shown all six.
+    expect(seen.size).toBe(ANIMAL_IDS.length);
+  });
+
+  it("varies the order the animals are laid out in", () => {
+    const orders = new Set<string>();
+    for (let run = 0; run < 200; run++) orders.add(pickStageAnimals(STAGE_COUNT).join());
+    expect(orders.size).toBeGreaterThan(1);
+  });
+
+  it("repeats exactly when given the same seed, so a run can be replayed", () => {
+    expect(pickStageAnimals(2, seededRandom(7))).toEqual(pickStageAnimals(2, seededRandom(7)));
+    expect(pickStageAnimals(2, seededRandom(7))).not.toEqual(pickStageAnimals(2, seededRandom(8)));
+  });
+
+  it("rejects a stage that does not exist", () => {
+    expect(() => pickStageAnimals(0)).toThrow();
+    expect(() => pickStageAnimals(STAGE_COUNT + 1)).toThrow();
+  });
+});
+
+describe.each(LAYOUTS)("stage $stage, $id layout of $animals", (layout) => {
   const { width, height } = layout.canvas;
   const { pieceSize, snapRadius } = layout;
   const holes = layout.animals.map((animal) => holeOf(layout, animal));
 
   it("gives exactly this stage's animals a hole", () => {
-    expect(layout.animals).toEqual(STAGES[layout.stage - 1]);
+    expect(layout.animals).toHaveLength(stageSize(layout.stage));
     expect(Object.keys(layout.holes).sort()).toEqual([...layout.animals].sort());
   });
 
@@ -203,15 +271,22 @@ describe.each(LAYOUTS)("stage $stage, $id layout", (layout) => {
 });
 
 describe("chooseLayout", () => {
+  const cast = (stage: number) => pickStageAnimals(stage);
+
   it("uses the portrait reflow only when taller than wide", () => {
-    expect(chooseLayout({ width: 1280, height: 800 }, 1).id).toBe("landscape");
-    expect(chooseLayout({ width: 1024, height: 1024 }, 2).id).toBe("landscape");
-    expect(chooseLayout({ width: 390, height: 844 }, 3).id).toBe("portrait");
+    expect(chooseLayout({ width: 1280, height: 800 }, 1, cast(1)).id).toBe("landscape");
+    expect(chooseLayout({ width: 1024, height: 1024 }, 2, cast(2)).id).toBe("landscape");
+    expect(chooseLayout({ width: 390, height: 844 }, 3, cast(3)).id).toBe("portrait");
   });
 
   it("rejects a stage that does not exist rather than showing an empty board", () => {
-    expect(() => chooseLayout({ width: 1280, height: 800 }, 0)).toThrow();
-    expect(() => chooseLayout({ width: 1280, height: 800 }, STAGE_COUNT + 1)).toThrow();
+    expect(() => chooseLayout({ width: 1280, height: 800 }, 0, cast(1))).toThrow();
+    expect(() => chooseLayout({ width: 1280, height: 800 }, STAGE_COUNT + 1, cast(1))).toThrow();
+  });
+
+  it("rejects a cast that does not fill the stage rather than leaving a gap", () => {
+    expect(() => chooseLayout({ width: 1280, height: 800 }, 2, cast(1))).toThrow();
+    expect(() => chooseLayout({ width: 390, height: 844 }, 1, cast(3))).toThrow();
   });
 
   it("fills a decent share of the viewport in both orientations", () => {
@@ -222,7 +297,7 @@ describe("chooseLayout", () => {
     ];
     for (let stage = 1; stage <= STAGE_COUNT; stage++) {
       for (const viewport of cases) {
-        const layout = chooseLayout(viewport, stage);
+        const layout = chooseLayout(viewport, stage, cast(stage));
         const scale = fitScale(viewport, layout.canvas);
         const used =
           (layout.canvas.width * scale * layout.canvas.height * scale) /
@@ -230,6 +305,23 @@ describe("chooseLayout", () => {
         // Letterboxing a landscape canvas into a phone would score ~0.4 here.
         expect(used).toBeGreaterThan(0.75);
       }
+    }
+  });
+});
+
+describe("seededRandom", () => {
+  it("replays the same sequence for the same seed", () => {
+    const draw = (seed: number) => Array.from({ length: 5 }, seededRandom(seed));
+    expect(draw(99)).toEqual(draw(99));
+    expect(draw(99)).not.toEqual(draw(100));
+  });
+
+  it("stays inside the range Math.random promises", () => {
+    const next = seededRandom(1234);
+    for (let i = 0; i < 500; i++) {
+      const value = next();
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThan(1);
     }
   });
 });

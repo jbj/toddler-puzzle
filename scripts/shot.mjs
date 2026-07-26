@@ -21,6 +21,9 @@ const dist = join(root, "dist");
 const shotsDir = join(root, ".art/shots");
 const PORT = 4319;
 const DEBUG_PORT = 9333;
+// The game deals its animals at random; `?seed=` pins them down so the
+// screenshots from two runs show the same puzzle.
+const SEED = 20260726;
 const profileDir = join(root, ".art/chrome-profile");
 
 const MIME = {
@@ -183,6 +186,10 @@ const layoutName = () => evaluate(`document.querySelector('#stage').dataset.layo
 const animalsOnBoard = () => evaluate(
   `[...document.querySelectorAll('.piece')].map((p) => p.dataset.animal)`,
 );
+/** The cast is random, so the script asks the board who is on it. */
+const unplacedAnimals = () => evaluate(
+  `[...document.querySelectorAll('.piece:not(.is-placed)')].map((p) => p.dataset.animal)`,
+);
 const finishButtons = () => evaluate(
   `document.querySelectorAll('#stage .fx [role="button"]').length`,
 );
@@ -200,10 +207,7 @@ async function pressFinishButton() {
 
 /** Drag every animal still in the tray into its hole. */
 async function solveRemaining() {
-  const animals = await evaluate(
-    `[...document.querySelectorAll('.piece:not(.is-placed)')].map((p) => p.dataset.animal)`,
-  );
-  for (const animal of animals) await dragAnimal(animal);
+  for (const animal of await unplacedAnimals()) await dragAnimal(animal);
   await sleep(700);
 }
 
@@ -219,7 +223,9 @@ try {
   await send("Page.enable");
   await send("Runtime.enable");
   await setViewport(1280, 800);
-  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/` });
+  // The cast is dealt at random; a seed keeps the screenshots comparable
+  // between runs. Randomness itself is checked at the end.
+  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?seed=${SEED}` });
   await sleep(900);
 
   const bootError = await evaluate(`document.querySelector('#stage') ? '' : 'stage missing'`);
@@ -229,15 +235,17 @@ try {
   check("starts on stage 1", (await stageNumber()) === 1);
   check("three pieces rendered", (await pieceCount()) === 3);
   check("three holes rendered", (await holeCount()) === 3);
+  const stage1Cast = await animalsOnBoard();
+  check("stage 1 deals three different animals", new Set(stage1Cast).size === 3);
   await shot("01-stage1-start");
 
   // Drag one animal in, pausing mid-flight to capture the piece in hand.
-  await dragAnimal("elephant", { pauseAtHalfway: () => shot("02-mid-drag") });
+  await dragAnimal(stage1Cast[0], { pauseAtHalfway: () => shot("02-mid-drag") });
   check("dragged piece snapped into its hole", (await placedCount()) === 1);
 
   // A deliberately bad drop must not stick.
-  const duck = await centreOf(`.piece[data-animal="duck"]`);
-  await mouse("mousePressed", duck.x, duck.y);
+  const stray = await centreOf(`.piece[data-animal="${stage1Cast[1]}"]`);
+  await mouse("mousePressed", stray.x, stray.y);
   await mouse("mouseMoved", 640, 120);
   await mouse("mouseReleased", 640, 120);
   await sleep(500);
@@ -255,6 +263,7 @@ try {
   check("moves on to stage 2", (await stageNumber()) === 2);
   check("stage 2 has four pieces", (await pieceCount()) === 4);
   check("stage 2 starts empty", (await placedCount()) === 0);
+  check("stage 2 deals four different animals", new Set(await animalsOnBoard()).size === 4);
   await shot("05-stage2-start");
 
   await solveRemaining();
@@ -265,13 +274,13 @@ try {
   check("moves on to stage 3", (await stageNumber()) === 3);
   check("stage 3 has six pieces", (await pieceCount()) === 6);
   const cast = await animalsOnBoard();
-  check("stage 3 brings in the new animals", cast.includes("rabbit") && cast.includes("butterfly"));
+  check("the last stage brings on the whole cast", new Set(cast).size === 6);
   await shot("06-stage3-start");
 
-  await dragAnimal("rabbit");
-  await dragAnimal("butterfly");
-  check("the new animals snap into their holes", (await placedCount()) === 2);
-  await shot("07-stage3-new-animals");
+  await dragAnimal(cast[0]);
+  await dragAnimal(cast[1]);
+  check("the pieces snap into their holes", (await placedCount()) === 2);
+  await shot("07-stage3-two-placed");
 
   // Rotating mid-puzzle must reflow and keep progress.
   await setViewport(480, 900);
@@ -308,6 +317,26 @@ try {
   check("looping back deals three fresh pieces", (await pieceCount()) === 3);
   check("looping back clears the board", (await placedCount()) === 0);
   await shot("10-looped-back");
+
+  // --- a fresh deal every time ---------------------------------------------
+  await evaluate(`document.querySelector('.reset-button').dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true })
+  )`);
+  await sleep(600);
+  check("reset deals a fresh puzzle", (await pieceCount()) === 3 && (await placedCount()) === 0);
+  check("reset keeps the stage", (await stageNumber()) === 1);
+
+  await setViewport(1280, 800);
+  const castForSeed = async (seed) => {
+    await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?seed=${seed}` });
+    await sleep(800);
+    return (await animalsOnBoard()).join();
+  };
+  check("the same seed deals the same puzzle", (await castForSeed(SEED)) === stage1Cast.join());
+  const deals = new Set();
+  for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
+  check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
+  await shot("11-another-deal");
 } finally {
   socket.close();
   chrome.kill();

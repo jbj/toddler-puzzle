@@ -7,10 +7,12 @@
  *  - dropping near enough counts as in;
  *  - anything else drifts gently back to the tray, never off screen.
  *
- * A game is three stages long: three animals, then four, then six. Finishing a
- * stage shows one big button that leads to the next one, and the button after
- * the last stage starts the whole game over - so the only way to go is forward
- * and there is never a menu to get lost in.
+ * A game is three stages long: three animals, then four, then six. The animals
+ * themselves are dealt at random every time a puzzle starts - which ones turn up
+ * and where they stand - so a stage never plays out quite the same way twice.
+ * Finishing a stage shows one big button that leads to the next one, and the
+ * button after the last stage starts the whole game over - so the only way to go
+ * is forward and there is never a menu to get lost in.
  *
  * Which pieces are placed, and which tray slot each piece belongs to, lives
  * here and survives a re-layout, so rotating the device mid-puzzle does not
@@ -19,10 +21,17 @@
 import { loadAnimals, type AnimalArt, type AnimalId } from "./assets";
 import { playFanfare, playPickUp, playReturn, playSnap, unlockAudio } from "./audio";
 import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
-import { celebrationBurst, clearEffects, showFinishButton, sparkleBurst } from "./celebrate";
+import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
 import { enableDragging } from "./drag";
 import { boxCenter, isWithinSnapRadius, shuffle, type Point, type Size } from "./geometry";
-import { STAGE_COUNT, chooseLayout, holeOf, nextStage, type Layout } from "./layout";
+import {
+  STAGE_COUNT,
+  chooseLayout,
+  holeOf,
+  nextStage,
+  pickStageAnimals,
+  type Layout,
+} from "./layout";
 
 const SETTLE_MS = 340;
 
@@ -35,13 +44,20 @@ interface PieceState {
 
 const viewport = (): Size => ({ width: window.innerWidth, height: window.innerHeight });
 
-export function createGame(root: HTMLElement): void {
+/**
+ * `random` is injectable so a run can be made repeatable - `?seed=` in main.ts
+ * uses it. Left alone, every puzzle deals a fresh cast.
+ */
+export function createGame(root: HTMLElement, random: () => number = Math.random): void {
   const animals: Record<AnimalId, AnimalArt> = loadAnimals();
   const state = new Map<AnimalId, PieceState>();
 
   let stage = 1;
-  let layout: Layout = chooseLayout(viewport(), stage);
-  let board: Board = mount(layout);
+  // Assigned by the startPuzzle() call at the end of this function, which is
+  // what deals the first cast and mounts the first board.
+  let cast: readonly AnimalId[] = [];
+  let layout!: Layout;
+  let board!: Board;
   let complete = false;
 
   function stateOf(animal: AnimalId): PieceState {
@@ -109,12 +125,18 @@ export function createGame(root: HTMLElement): void {
     checkComplete();
   }
 
-  /** Deal this stage's animals into shuffled tray slots and draw them there. */
+  /**
+   * Deal a fresh puzzle for the current stage: new cast, new board, shuffled
+   * tray slots. Both the reset button and moving between stages come through
+   * here, so a toddler never sees the same line-up twice in a row for long.
+   */
   function startPuzzle(): void {
     complete = false;
-    clearEffects(board.fxLayer);
+    cast = pickStageAnimals(stage, random);
+    layout = chooseLayout(viewport(), stage, cast);
+    board = mount(layout);
     state.clear();
-    const slots = shuffle(layout.traySlots.map((_, index) => index));
+    const slots = shuffle(layout.traySlots.map((_, index) => index), random);
     layout.animals.forEach((animal, index) => {
       state.set(animal, { slot: slots[index] as number, position: { x: 0, y: 0 }, placed: false });
     });
@@ -124,8 +146,6 @@ export function createGame(root: HTMLElement): void {
   /** Move on to a different stage: new animal set, new layout, fresh board. */
   function goToStage(next: number): void {
     stage = next;
-    layout = chooseLayout(viewport(), stage);
-    board = mount(layout);
     startPuzzle();
   }
 
@@ -168,7 +188,7 @@ export function createGame(root: HTMLElement): void {
 
   /** Rebuild for a new orientation, keeping progress intact. */
   function relayout(): void {
-    const next = chooseLayout(viewport(), stage);
+    const next = chooseLayout(viewport(), stage, cast);
     if (next.id === layout.id) return;
     layout = next;
     board = mount(layout);

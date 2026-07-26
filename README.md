@@ -6,6 +6,11 @@ puzzles long and grows as it goes - **three animals, then four, then six** - so
 the first win comes quickly and the board fills up from there. Finish one and a
 big arrow leads to the next; finish the last and the arrow starts the game over.
 
+**Every puzzle is dealt fresh.** Which animals turn up and the order they stand
+in are drawn at random each time a puzzle starts, so the same three animals are
+never waiting in the same places twice. Add `?seed=123` to the URL to replay a
+particular deal - the screenshot run uses it to keep its shots comparable.
+
 Works with a finger or a mouse, in landscape or portrait.
 
 ```
@@ -105,21 +110,28 @@ The check reports the share so it can be judged rather than guessed.
 6. Run `npm run art:check`. It verifies the structure, that the art is not
    clipped by the art box, that nothing hangs outside the silhouette except
    declared overhangs, and that the declared foot level matches the artwork.
-7. Put it in a stage in `STAGES`, and make room for it by bumping the matching
-   row counts in the `LANDSCAPE` and `PORTRAIT` arrangements (see below). The
-   layout tests fail if a stage's rows and its animals disagree, if holes
-   overlap, if snap zones collide, or if anything falls off the canvas.
+7. That's it - every animal in `ANIMAL_IDS` is in the draw, so the new one will
+   start turning up on its own. To make a stage *bigger*, bump its entry in
+   `STAGE_SIZES` and the matching row counts in the `LANDSCAPE` and `PORTRAIT`
+   arrangements (see below). The layout tests fail if a stage's rows and its
+   animals disagree, if holes overlap, if snap zones collide, or if anything
+   falls off the canvas.
 
 ## Stages and layout
 
-`STAGES` in `src/layout.ts` lists the animals of each stage in the order they are
-laid out. Everything else about a stage - two layouts, one per orientation - is
-generated from a small arrangement table: how many animals stand on each ground
-line, how many wait in each tray row, and how big a piece is.
+`STAGE_SIZES` in `src/layout.ts` says how many animals each stage holds;
+`pickStageAnimals` deals that many at random from `ANIMAL_IDS`, which fixes both
+the cast and the order they are laid out in. Everything else about a stage - two
+layouts, one per orientation - is generated from a small arrangement table: how
+many animals stand on each ground line, how many wait in each tray row, and how
+big a piece is.
 
 ```ts
 { pieceSize: 145, sceneRows: [{ groundY: 428, count: 6 }], trayRows: [{ top: 505, count: 6 }], ... }
 ```
+
+Layouts are therefore built when a puzzle starts rather than up front: a hole's
+height depends on the foot level of whichever animal was dealt into that place.
 
 `spreadX` then spaces each row evenly across the canvas, and the snap radius
 follows the piece size, so a busier stage automatically gets tighter, more
@@ -158,16 +170,18 @@ piece of art.
 ## Testing
 
 `npm run test` covers the coordinate mapping (including letterboxing in both
-orientations), snap tolerance, clamping, the stage list, and every stage layout
+orientations), snap tolerance, clamping, the random deal, and every stage layout
 in both orientations - holes stay on canvas, snap zones never overlap, tray slots
 never collide, pieces stay big enough to grab, and each orientation fills at
-least 75% of its viewport.
+least 75% of its viewport. Because the cast is random, the layout checks run
+against a rotation of the animal list that puts every animal in every place.
 
 `npm run shot` is an end-to-end check: it serves the built app, drives real
 pointer drags over the Chrome DevTools Protocol, and plays all three stages
 through - asserting that pieces snap, that a bad drop does *not* stick, that each
-stage hands over to the next, that rotating to portrait preserves progress, and
-that the last stage loops back to the first. Screenshots land in `.art/shots/`.
+stage hands over to the next, that rotating to portrait preserves progress, that
+the last stage loops back to the first, and that different seeds deal different
+puzzles while one seed always deals the same. Screenshots land in `.art/shots/`.
 
 `npm run art:check` covers the artwork itself, which the unit tests can't see:
 it rasterises each animal and checks that nothing is clipped by the art box,

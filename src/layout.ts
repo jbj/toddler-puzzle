@@ -11,14 +11,16 @@
  *
  * Layouts are generated from the table below rather than placed by hand: a
  * stage says how many animals stand on each ground line and how many wait in
- * each tray row, and `spreadX` spaces them evenly. The unit tests then check
- * every stage in both orientations - holes on canvas, snap zones apart, tray
- * slots apart.
+ * each tray row, and `spreadX` spaces them evenly. Which animals fill those
+ * places is drawn at random when the puzzle starts, so layouts are built on
+ * demand rather than up front. The unit tests then check every stage in both
+ * orientations, for every cast the game could deal - holes on canvas, snap zones
+ * apart, tray slots apart.
  *
  * All values are in logical canvas units; geometry.ts maps them to pixels.
  */
-import { ART_BOX, type AnimalId } from "./assets";
-import type { Point, Size } from "./geometry";
+import { ANIMAL_IDS, ART_BOX, type AnimalId } from "./assets";
+import { shuffle, type Point, type Size } from "./geometry";
 
 /**
  * How close a piece's centre must get to its hole's centre to snap in, as a
@@ -34,14 +36,38 @@ const SNAP_FRACTION = 0.68;
  */
 export const FINGER_LIFT = 34;
 
-/** Which animals appear in each stage, in the order they are laid out. */
-export const STAGES: readonly (readonly AnimalId[])[] = [
-  ["elephant", "duck", "turtle"],
-  ["giraffe", "elephant", "duck", "turtle"],
-  ["giraffe", "elephant", "duck", "turtle", "rabbit", "butterfly"],
-];
+/**
+ * How many animals each stage holds. The cast itself is drawn at random from
+ * `ANIMAL_IDS` every time a puzzle starts, so no two runs are quite the same;
+ * only the *number* of animals is fixed, because the arrangements below are
+ * tuned per count.
+ */
+export const STAGE_SIZES: readonly number[] = [3, 4, 6];
 
-export const STAGE_COUNT = STAGES.length;
+export const STAGE_COUNT = STAGE_SIZES.length;
+
+/** How many animals stage `stage` (1-based) shows. */
+export function stageSize(stage: number): number {
+  const size = STAGE_SIZES[stage - 1];
+  if (size === undefined) throw new Error(`No stage ${stage}.`);
+  return size;
+}
+
+/**
+ * Deal a stage's animals: a random subset of the cast, in a random order. Both
+ * matter - which animals turn up keeps the puzzle fresh, and their order decides
+ * which hole each one stands in, so the same animal isn't always on the left.
+ */
+export function pickStageAnimals(
+  stage: number,
+  random: () => number = Math.random,
+): readonly AnimalId[] {
+  const size = stageSize(stage);
+  if (size > ANIMAL_IDS.length) {
+    throw new Error(`Stage ${stage} needs ${size} animals but only ${ANIMAL_IDS.length} exist.`);
+  }
+  return shuffle(ANIMAL_IDS, random).slice(0, size);
+}
 
 /**
  * Where each animal's feet sit within its 240x240 art box, as a fraction.
@@ -300,21 +326,22 @@ const PORTRAIT: readonly Arrangement[] = [
   },
 ];
 
-interface StageLayouts {
-  readonly landscape: Layout;
-  readonly portrait: Layout;
+/**
+ * Build one stage's layout for one orientation around a given cast. Layouts are
+ * built on demand rather than up front because the cast is random: the holes
+ * depend on which animal stands where, since each animal's feet sit at a
+ * different height in its art box.
+ */
+export function buildStageLayout(
+  id: Layout["id"],
+  stage: number,
+  animals: readonly AnimalId[],
+): Layout {
+  const arrangements = id === "landscape" ? LANDSCAPE : PORTRAIT;
+  const arrangement = arrangements[stage - 1];
+  if (!arrangement) throw new Error(`No ${id} arrangement for stage ${stage}.`);
+  return buildLayout(id, stage, animals, arrangement);
 }
-
-const STAGE_LAYOUTS: readonly StageLayouts[] = STAGES.map((animals, index) => ({
-  landscape: buildLayout("landscape", index + 1, animals, LANDSCAPE[index] as Arrangement),
-  portrait: buildLayout("portrait", index + 1, animals, PORTRAIT[index] as Arrangement),
-}));
-
-/** Every layout the game can show - handy for tests and for eyeballing the set. */
-export const LAYOUTS: readonly Layout[] = STAGE_LAYOUTS.flatMap((stage) => [
-  stage.landscape,
-  stage.portrait,
-]);
 
 /** Stages are numbered from 1; the stage after the last one is the first again. */
 export function nextStage(stage: number): number {
@@ -322,8 +349,6 @@ export function nextStage(stage: number): number {
 }
 
 /** Portrait reflow kicks in once the viewport is taller than it is wide. */
-export function chooseLayout(viewport: Size, stage: number): Layout {
-  const layouts = STAGE_LAYOUTS[stage - 1];
-  if (!layouts) throw new Error(`No layouts for stage ${stage}.`);
-  return viewport.height > viewport.width ? layouts.portrait : layouts.landscape;
+export function chooseLayout(viewport: Size, stage: number, animals: readonly AnimalId[]): Layout {
+  return buildStageLayout(viewport.height > viewport.width ? "portrait" : "landscape", stage, animals);
 }
