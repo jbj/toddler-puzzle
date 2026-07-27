@@ -16,7 +16,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { canLabel, magick, requireArtTools, rsvg } from "./tools.mjs";
+import { magick, requireArtTools, rsvg } from "./tools.mjs";
 
 requireArtTools();
 
@@ -75,10 +75,11 @@ for (const file of files) {
       : [
           "-background",
           "white",
-          // Where ImageMagick has no font the name is dropped rather than the
-          // sheet: the shapes are what a review looks at, and they stay in
-          // alphabetical order left to right.
-          ...(canLabel() ? ["-fill", "#333", "-pointsize", "22", `label:${name}`] : []),
+          "-fill",
+          "#333",
+          "-pointsize",
+          "22",
+          "label:" + name,
           colourPng,
           silPng,
           "-append",
