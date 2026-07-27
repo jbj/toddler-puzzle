@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMAL_IDS } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
 import {
   boxCenter,
   clampToCanvas,
@@ -17,10 +17,11 @@ import {
   chooseLayout,
   holeOf,
   nextStage,
-  pickStageAnimals,
+  pickStagePieces,
   stageSize,
   type Layout,
 } from "../src/layout";
+import { pieceId, type PieceShape } from "../src/piece";
 
 const CANVAS = { width: 1000, height: 700 };
 const PIECE = 190;
@@ -28,19 +29,31 @@ const PIECE = 190;
 const ORIENTATIONS = ["landscape", "portrait"] as const;
 
 /**
- * Every cast a stage could be dealt is a subset of the animals in some order,
- * which is far too many to enumerate. Rotating the animal list puts each animal
- * in each position at least once, which is what the layout actually depends on:
- * a hole's height comes from the foot level of whichever animal stands there.
+ * The animals as the layout sees them. Only the identity and the anchor matter
+ * here, and the artwork needs a DOM to parse, so these carry no markup: layout
+ * is deliberately blind to what a piece looks like.
  */
-function castsFor(stage: number): AnimalIdList[] {
+const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
+  id: pieceId(id),
+  outline: "",
+  artwork: "",
+  box: ANIMAL_BOX,
+  anchor: animalAnchor(id),
+  label: id,
+}));
+
+/**
+ * Every cast a stage could be dealt is a subset of the shapes in some order,
+ * which is far too many to enumerate. Rotating the list puts each shape in each
+ * position at least once, which is what the layout actually depends on: a hole's
+ * height comes from the anchor of whichever piece stands there.
+ */
+function castsFor(stage: number): PieceShape[][] {
   const size = stageSize(stage);
-  return ANIMAL_IDS.map((_, offset) =>
-    Array.from({ length: size }, (_, index) => ANIMAL_IDS[(offset + index) % ANIMAL_IDS.length]!),
+  return SHAPES.map((_, offset) =>
+    Array.from({ length: size }, (_, index) => SHAPES[(offset + index) % SHAPES.length]!),
   );
 }
-
-type AnimalIdList = (typeof ANIMAL_IDS)[number][];
 
 /** Every stage, both orientations, across a representative spread of casts. */
 const LAYOUTS: Layout[] = [];
@@ -49,6 +62,28 @@ for (let stage = 1; stage <= STAGE_COUNT; stage++) {
     for (const cast of castsFor(stage)) LAYOUTS.push(buildStageLayout(id, stage, cast));
   }
 }
+
+/** Where a piece's anchor lands once it is standing in its hole. */
+const groundOf = (layout: Layout, shape: PieceShape): number => {
+  // The board scales authored boxes from width, so the anchor must climb back
+  // to the ground line with that same factor.
+  const scale = layout.pieceSize / shape.box.width;
+  return holeOf(layout, shape.id).y + shape.anchor.y * scale;
+};
+
+describe("anchors", () => {
+  it("stands every piece on one ground line, whatever its anchor", () => {
+    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
+      for (const cast of castsFor(stage)) {
+        // Landscape puts a stage's whole cast on a single ground line, so any
+        // difference here is a piece floating or sinking rather than standing.
+        const layout = buildStageLayout("landscape", stage, cast);
+        const grounds = layout.pieces.map((shape) => groundOf(layout, shape));
+        for (const ground of grounds) expect(ground).toBeCloseTo(grounds[0]!);
+      }
+    }
+  });
+});
 
 describe("fitScale", () => {
   it("uses the limiting axis so the canvas always fits", () => {
@@ -118,17 +153,17 @@ describe("clampToCanvas", () => {
 
 describe("snapping", () => {
   const layout = LAYOUTS[0]!;
-  const animal = layout.animals[0]!;
+  const piece = layout.pieces[0]!.id;
 
   it("accepts a drop that is close but not exact", () => {
-    const hole = boxCenter(holeOf(layout, animal), layout.pieceSize);
+    const hole = boxCenter(holeOf(layout, piece), layout.pieceSize);
     const sloppy = { x: hole.x + 80, y: hole.y - 60 };
     expect(distance(sloppy, hole)).toBeLessThan(layout.snapRadius);
     expect(isWithinSnapRadius(sloppy, hole, layout.snapRadius)).toBe(true);
   });
 
   it("rejects a drop that is clearly somewhere else", () => {
-    const hole = boxCenter(holeOf(layout, animal), layout.pieceSize);
+    const hole = boxCenter(holeOf(layout, piece), layout.pieceSize);
     const tray = boxCenter(layout.traySlots[0]!, layout.pieceSize);
     expect(isWithinSnapRadius(tray, hole, layout.snapRadius)).toBe(false);
   });
@@ -148,70 +183,103 @@ describe("stages", () => {
 
   it("has a landscape and a portrait layout for every stage", () => {
     for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-      const cast = pickStageAnimals(stage);
+      const cast = pickStagePieces(stage, SHAPES);
       expect(chooseLayout({ width: 1280, height: 800 }, stage, cast).stage).toBe(stage);
       expect(chooseLayout({ width: 390, height: 844 }, stage, cast).stage).toBe(stage);
     }
   });
 });
 
-describe("pickStageAnimals", () => {
-  it("deals the right number of animals for each stage", () => {
+describe("pickStagePieces", () => {
+  const idsOf = (cast: readonly PieceShape[]): string[] => cast.map((shape) => shape.id);
+
+  it("deals the right number of pieces for each stage", () => {
     for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-      expect(pickStageAnimals(stage)).toHaveLength(stageSize(stage));
+      expect(pickStagePieces(stage, SHAPES)).toHaveLength(stageSize(stage));
     }
   });
 
-  it("only uses animals that actually exist, with no repeats in a stage", () => {
+  it("only uses pieces that actually exist, with no repeats in a stage", () => {
     for (let stage = 1; stage <= STAGE_COUNT; stage++) {
       for (let run = 0; run < 50; run++) {
-        const cast = pickStageAnimals(stage);
-        expect(new Set(cast).size).toBe(cast.length);
-        for (const animal of cast) expect(ANIMAL_IDS).toContain(animal);
+        const cast = pickStagePieces(stage, SHAPES);
+        expect(new Set(idsOf(cast)).size).toBe(cast.length);
+        for (const shape of cast) expect(SHAPES).toContain(shape);
       }
     }
   });
 
-  it("uses every animal in the final stage", () => {
+  it("rejects shapes whose piece ids are not unique", () => {
+    const duplicateId = SHAPES[0]!.id;
+    const duplicateIds = [SHAPES[0]!, { ...SHAPES[1]!, id: duplicateId }];
+    expect(() => pickStagePieces(1, duplicateIds, seededRandom(7))).toThrow(
+      new RegExp(`duplicate .*"${duplicateId}"`, "i"),
+    );
+  });
+
+  it("rejects building a layout from duplicate piece ids", () => {
+    const duplicateId = SHAPES[0]!.id;
+    const duplicateIds = [SHAPES[0]!, { ...SHAPES[1]!, id: duplicateId }, SHAPES[2]!];
+    expect(() => buildStageLayout("landscape", 1, duplicateIds)).toThrow(
+      new RegExp(`duplicate .*"${duplicateId}"`, "i"),
+    );
+  });
+
+  it("uses every piece in the final stage", () => {
     for (let run = 0; run < 20; run++) {
-      expect(new Set(pickStageAnimals(STAGE_COUNT))).toEqual(new Set(ANIMAL_IDS));
+      expect(new Set(idsOf(pickStagePieces(STAGE_COUNT, SHAPES)))).toEqual(new Set(idsOf(SHAPES)));
     }
   });
 
-  it("varies which animals turn up in the shorter stages", () => {
+  it("varies which pieces turn up in the shorter stages", () => {
     const seen = new Set<string>();
     for (let run = 0; run < 200; run++) {
-      for (const animal of pickStageAnimals(1)) seen.add(animal);
+      for (const shape of pickStagePieces(1, SHAPES)) seen.add(shape.id);
     }
-    // Given enough deals a three-animal stage should have shown all six.
-    expect(seen.size).toBe(ANIMAL_IDS.length);
+    // Given enough deals a three-piece stage should have shown all six.
+    expect(seen.size).toBe(SHAPES.length);
   });
 
-  it("varies the order the animals are laid out in", () => {
+  it("varies the order the pieces are laid out in", () => {
     const orders = new Set<string>();
-    for (let run = 0; run < 200; run++) orders.add(pickStageAnimals(STAGE_COUNT).join());
+    for (let run = 0; run < 200; run++) {
+      orders.add(idsOf(pickStagePieces(STAGE_COUNT, SHAPES)).join());
+    }
     expect(orders.size).toBeGreaterThan(1);
   });
 
   it("repeats exactly when given the same seed, so a run can be replayed", () => {
-    expect(pickStageAnimals(2, seededRandom(7))).toEqual(pickStageAnimals(2, seededRandom(7)));
-    expect(pickStageAnimals(2, seededRandom(7))).not.toEqual(pickStageAnimals(2, seededRandom(8)));
+    expect(pickStagePieces(2, SHAPES, seededRandom(7))).toEqual(
+      pickStagePieces(2, SHAPES, seededRandom(7)),
+    );
+    expect(pickStagePieces(2, SHAPES, seededRandom(7))).not.toEqual(
+      pickStagePieces(2, SHAPES, seededRandom(8)),
+    );
   });
 
   it("rejects a stage that does not exist", () => {
-    expect(() => pickStageAnimals(0)).toThrow();
-    expect(() => pickStageAnimals(STAGE_COUNT + 1)).toThrow();
+    expect(() => pickStagePieces(0, SHAPES)).toThrow();
+    expect(() => pickStagePieces(STAGE_COUNT + 1, SHAPES)).toThrow();
+  });
+
+  it("rejects a stage bigger than the shapes on offer", () => {
+    expect(() => pickStagePieces(STAGE_COUNT, SHAPES.slice(0, 2))).toThrow();
   });
 });
 
-describe.each(LAYOUTS)("stage $stage, $id layout of $animals", (layout) => {
+const CASES = LAYOUTS.map((layout) => ({
+  layout,
+  cast: layout.pieces.map((shape) => shape.id).join(" "),
+}));
+
+describe.each(CASES)("stage $layout.stage, $layout.id layout of $cast", ({ layout }) => {
   const { width, height } = layout.canvas;
   const { pieceSize, snapRadius } = layout;
-  const holes = layout.animals.map((animal) => holeOf(layout, animal));
+  const holes = layout.pieces.map((shape) => holeOf(layout, shape.id));
 
-  it("gives exactly this stage's animals a hole", () => {
-    expect(layout.animals).toHaveLength(stageSize(layout.stage));
-    expect(Object.keys(layout.holes).sort()).toEqual([...layout.animals].sort());
+  it("gives exactly this stage's pieces a hole", () => {
+    expect(layout.pieces).toHaveLength(stageSize(layout.stage));
+    expect([...layout.holes.keys()].sort()).toEqual(layout.pieces.map((s) => s.id).sort());
   });
 
   it("keeps every hole inside the scenery, above the tray", () => {
@@ -271,7 +339,7 @@ describe.each(LAYOUTS)("stage $stage, $id layout of $animals", (layout) => {
 });
 
 describe("chooseLayout", () => {
-  const cast = (stage: number) => pickStageAnimals(stage);
+  const cast = (stage: number) => pickStagePieces(stage, SHAPES);
 
   it("uses the portrait reflow only when taller than wide", () => {
     expect(chooseLayout({ width: 1280, height: 800 }, 1, cast(1)).id).toBe("landscape");

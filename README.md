@@ -71,12 +71,14 @@ Each animal is one SVG file with a strict structure:
 </svg>
 ```
 
-`src/assets.ts` imports these with Vite's `?raw` and uses **the same
-`#silhouette` path** twice: once filled dark to cut the hole in the scene, and
-once in full colour to draw the draggable piece. A piece therefore cannot drift
-out of alignment with its hole. If a file is missing its silhouette, or uses the
-wrong `viewBox`, loading throws immediately rather than shipping an unsolvable
-puzzle.
+`src/assets.ts` imports these with Vite's `?raw` and turns each one into a
+`PieceShape` (`src/piece.ts`): an id, one `outline`, the `artwork` drawn inside
+it, the box it was authored in, and the `anchor` it stands on. The engine knows
+only that shape - animals are simply one provider of them - and uses **the same
+`outline` path** twice: once filled dark to cut the hole in the scene, and once
+in full colour to draw the draggable piece. A piece therefore cannot drift out of
+alignment with its hole. If a file is missing its silhouette, or uses the wrong
+`viewBox`, loading throws immediately rather than shipping an unsolvable puzzle.
 
 Two rules follow from that shared path, and `npm run art:check` enforces both:
 
@@ -113,10 +115,10 @@ The check reports the share so it can be judged rather than guessed.
    small to judge whether details line up with the outline, which is exactly
    where hand-drawn art goes wrong.
 4. Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
-5. Add its foot level to `FOOT_LEVEL` in `src/layout.ts` - the fraction of the
-   240x240 art box where its feet sit, so it stands on the ground line instead
-   of being aligned by its box. Don't measure it by hand: `npm run art:check`
-   reports the right value.
+5. Add its foot level to `FOOT_LEVEL` in `src/assets.ts` - where in the 240x240
+   art box its feet sit, which becomes the shape's anchor, so it stands on the
+   ground line instead of being aligned by its box. Don't measure it by hand:
+   `npm run art:check` reports the right value.
 6. Run `npm run art:check`. It verifies the structure, that the art is not
    clipped by the art box, that nothing hangs outside the silhouette except
    declared overhangs, and that the declared foot level matches the artwork.
@@ -129,9 +131,9 @@ The check reports the share so it can be judged rather than guessed.
 
 ## Stages and layout
 
-`STAGE_SIZES` in `src/layout.ts` says how many animals each stage holds;
-`pickStageAnimals` deals that many at random from `ANIMAL_IDS`, which fixes both
-the cast and the order they are laid out in. Everything else about a stage - two
+`STAGE_SIZES` in `src/layout.ts` says how many pieces each stage holds;
+`pickStagePieces` deals that many at random from the shapes on offer, which fixes
+both the cast and the order they are laid out in. Everything else about a stage - two
 layouts, one per orientation - is generated from a small arrangement table: how
 many animals stand on each ground line, how many wait in each tray row, and how
 big a piece is.
@@ -141,7 +143,7 @@ big a piece is.
 ```
 
 Layouts are therefore built when a puzzle starts rather than up front: a hole's
-height depends on the foot level of whichever animal was dealt into that place.
+height depends on the anchor of whichever piece was dealt into that place.
 
 `spreadX` then spaces each row evenly across the canvas, and the snap radius
 follows the piece size, so a busier stage automatically gets tighter, more
@@ -165,9 +167,10 @@ piece of art.
 | File | Role |
 | --- | --- |
 | `src/geometry.ts` | Pure maths: screen↔logical mapping, snapping, clamping |
+| `src/piece.ts` | What a piece is: `PieceId` and `PieceShape`, independent of any provider |
 | `src/layout.ts` | The stages, their layouts, and all tunable constants |
 | `src/scenery.ts` | Generates the background for a layout |
-| `src/assets.ts` | Loads and validates the animal SVGs |
+| `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |
 | `src/board.ts` | Builds the SVG scene graph for one stage |
 | `src/drag.ts` | Pointer-event drag engine |
 | `src/game.ts` | Rules, state, and the stage lifecycle |
@@ -203,5 +206,5 @@ pull request.
 `npm run art:check` covers the artwork itself, which the unit tests can't see:
 it rasterises each animal and checks that nothing is clipped by the art box,
 that no undeclared detail strays outside the silhouette and declared overhangs
-stay within budget, and that `FOOT_LEVEL` matches where the feet actually are. It needs `rsvg-convert` and ImageMagick, the same
+stay within budget, and that `FOOT_LEVEL` in `src/assets.ts` matches where the feet actually are. It needs `rsvg-convert` and ImageMagick, the same
 tools `npm run art` uses.

@@ -1,11 +1,11 @@
 /**
  * Builds the SVG scene graph: background, holes cut into it, the draggable
  * pieces, and the stage indicator. Rendering only - all decisions live in
- * game.ts. Only the current stage's animals are built.
+ * game.ts. Only the current stage's pieces are built.
  */
-import { ART_BOX, type AnimalArt, type AnimalId } from "./assets";
 import type { Point } from "./geometry";
 import { STAGE_COUNT, holeOf, type Layout } from "./layout";
+import type { PieceId, PieceShape } from "./piece";
 import { renderScenery } from "./scenery";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -14,18 +14,18 @@ export interface Board {
   readonly stage: SVGSVGElement;
   readonly piecesLayer: SVGGElement;
   readonly fxLayer: SVGGElement;
-  readonly pieces: ReadonlyMap<AnimalId, SVGGElement>;
-  readonly holes: ReadonlyMap<AnimalId, SVGGElement>;
+  readonly pieces: ReadonlyMap<PieceId, SVGGElement>;
+  readonly holes: ReadonlyMap<PieceId, SVGGElement>;
   readonly resetButton: SVGGElement;
 }
 
-/** An element built for the current stage. Throws if the animal isn't in play. */
+/** An element built for the current stage. Throws if the piece isn't in play. */
 export function elementFor(
-  elements: ReadonlyMap<AnimalId, SVGGElement>,
-  animal: AnimalId,
+  elements: ReadonlyMap<PieceId, SVGGElement>,
+  piece: PieceId,
 ): SVGGElement {
-  const element = elements.get(animal);
-  if (!element) throw new Error(`Animal "${animal}" is not on the board.`);
+  const element = elements.get(piece);
+  if (!element) throw new Error(`Piece "${piece}" is not on the board.`);
   return element;
 }
 
@@ -41,29 +41,29 @@ export function setPiecePosition(piece: SVGGElement, position: Point): void {
   piece.style.transform = `translate(${position.x}px, ${position.y}px)`;
 }
 
-function buildHole(art: AnimalArt, layout: Layout, scale: number): SVGGElement {
+function buildHole(shape: PieceShape, layout: Layout, scale: number): SVGGElement {
   const hole = group("hole");
-  hole.dataset["animal"] = art.id;
-  const origin = holeOf(layout, art.id);
+  hole.dataset["piece"] = shape.id;
+  const origin = holeOf(layout, shape.id);
   hole.setAttribute("transform", `translate(${origin.x} ${origin.y}) scale(${scale})`);
   // A soft dark fill plus a light rim reads as a recess against both the sky
   // and the grass, so one treatment works everywhere in the scene.
   hole.innerHTML = `
-    <path d="${art.silhouettePath}" fill="#1f3b34" opacity="0.24" />
-    <path d="${art.silhouettePath}" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="5" />
+    <path d="${shape.outline}" fill="#1f3b34" opacity="0.24" />
+    <path d="${shape.outline}" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="5" />
   `;
   return hole;
 }
 
-function buildPiece(art: AnimalArt, scale: number): SVGGElement {
+function buildPiece(shape: PieceShape, scale: number): SVGGElement {
   const piece = group("piece");
-  piece.dataset["animal"] = art.id;
+  piece.dataset["piece"] = shape.id;
   piece.setAttribute("role", "img");
-  piece.setAttribute("aria-label", art.name);
+  piece.setAttribute("aria-label", shape.label);
 
   const scaled = group();
   scaled.setAttribute("transform", `scale(${scale})`);
-  scaled.innerHTML = `${art.silhouetteMarkup}<g>${art.detailMarkup}</g>`;
+  scaled.innerHTML = shape.artwork;
   piece.append(scaled);
   return piece;
 }
@@ -100,11 +100,7 @@ function buildStageDots(layout: Layout): SVGGElement {
   return dots;
 }
 
-export function buildBoard(
-  root: HTMLElement,
-  animals: Record<AnimalId, AnimalArt>,
-  layout: Layout,
-): Board {
+export function buildBoard(root: HTMLElement, layout: Layout): Board {
   const stage = document.createElementNS(SVG_NS, "svg");
   stage.setAttribute("id", "stage");
   stage.setAttribute("viewBox", `0 0 ${layout.canvas.width} ${layout.canvas.height}`);
@@ -119,17 +115,16 @@ export function buildBoard(
   const piecesLayer = group("pieces");
   const fxLayer = group("fx");
 
-  // Art units -> logical units, at this stage's piece size.
-  const scale = layout.pieceSize / ART_BOX;
-  const pieces = new Map<AnimalId, SVGGElement>();
-  const holes = new Map<AnimalId, SVGGElement>();
-  for (const id of layout.animals) {
-    const art = animals[id];
-    const hole = buildHole(art, layout, scale);
-    holes.set(id, hole);
+  const pieces = new Map<PieceId, SVGGElement>();
+  const holes = new Map<PieceId, SVGGElement>();
+  for (const shape of layout.pieces) {
+    // Authored units -> logical units, at this stage's piece size.
+    const scale = layout.pieceSize / shape.box.width;
+    const hole = buildHole(shape, layout, scale);
+    holes.set(shape.id, hole);
     holesLayer.append(hole);
-    const piece = buildPiece(art, scale);
-    pieces.set(id, piece);
+    const piece = buildPiece(shape, scale);
+    pieces.set(shape.id, piece);
     piecesLayer.append(piece);
   }
 

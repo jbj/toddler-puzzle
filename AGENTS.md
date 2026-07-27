@@ -21,8 +21,9 @@ matches large animal pieces to matching animal-shaped holes.
 - Keep `#detail` inside `#silhouette` unless an element is tagged
   `data-overhang="..."`; tagged overhang is budgeted at 3% of the animal's area.
   Why: accidental overhang makes a piece look as if it does not fit.
-- Set `FOOT_LEVEL` in `src/layout.ts` from `npm run art:check`, never by eye.
-  Why: the check measures where the animal actually stands.
+- Set `FOOT_LEVEL` in `src/assets.ts`, which becomes each shape's anchor, from
+  `npm run art:check`, never by eye. Why: the check measures where the animal
+  actually stands.
 - Let a piece snap only into its own hole. Make it impossible to place an animal
   wrongly; a wrong drop drifts back to the tray with a soft warm tone, never a
   buzzer. Why: the game should correct imprecision without scolding.
@@ -49,7 +50,9 @@ Use the README's Source map table as the full map. This is only the quick route:
 
 - `src/layout.ts` holds stages, arrangements, snap size, foot levels, and all
   layout tunables.
-- `src/assets.ts` loads animal SVGs and enforces the browser-side asset shape.
+- `src/piece.ts` defines what a piece is: `PieceId` and `PieceShape`.
+- `src/assets.ts` loads animal SVGs as piece shapes and enforces the browser-side
+  asset shape.
 - `src/geometry.ts` keeps coordinate mapping, clamping, and snap maths pure.
 - `src/game.ts` owns the stage lifecycle, piece state, snapping, and returns.
 - `scripts/check-art.mjs` is the mechanised art contract.

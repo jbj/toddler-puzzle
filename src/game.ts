@@ -7,7 +7,7 @@
  *  - dropping near enough counts as in;
  *  - anything else drifts gently back to the tray, never off screen.
  *
- * A game is three stages long: three animals, then four, then six. The animals
+ * A game is three stages long: three pieces, then four, then six. The pieces
  * themselves are dealt at random every time a puzzle starts - which ones turn up
  * and where they stand - so a stage never plays out quite the same way twice.
  * Finishing a stage shows one big button that leads to the next one, and the
@@ -18,7 +18,6 @@
  * here and survives a re-layout, so rotating the device mid-puzzle does not
  * lose progress.
  */
-import { loadAnimals, type AnimalArt, type AnimalId } from "./assets";
 import { playFanfare, playPickUp, playReturn, playSnap, unlockAudio } from "./audio";
 import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
 import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
@@ -29,9 +28,10 @@ import {
   chooseLayout,
   holeOf,
   nextStage,
-  pickStageAnimals,
+  pickStagePieces,
   type Layout,
 } from "./layout";
+import type { PieceId, PieceShape } from "./piece";
 
 const SETTLE_MS = 340;
 
@@ -45,36 +45,40 @@ interface PieceState {
 const viewport = (): Size => ({ width: window.innerWidth, height: window.innerHeight });
 
 /**
- * `random` is injectable so a run can be made repeatable - `?seed=` in main.ts
- * uses it. Left alone, every puzzle deals a fresh cast.
+ * `shapes` are the pieces the game may deal from; `random` is injectable so a
+ * run can be made repeatable - `?seed=` in main.ts uses it. Left alone, every
+ * puzzle deals a fresh cast.
  */
-export function createGame(root: HTMLElement, random: () => number = Math.random): void {
-  const animals: Record<AnimalId, AnimalArt> = loadAnimals();
-  const state = new Map<AnimalId, PieceState>();
+export function createGame(
+  root: HTMLElement,
+  shapes: readonly PieceShape[],
+  random: () => number = Math.random,
+): void {
+  const state = new Map<PieceId, PieceState>();
 
   let stage = 1;
   // Assigned by the startPuzzle() call at the end of this function, which is
   // what deals the first cast and mounts the first board.
-  let cast: readonly AnimalId[] = [];
+  let cast: readonly PieceShape[] = [];
   let layout!: Layout;
   let board!: Board;
   let complete = false;
 
-  function stateOf(animal: AnimalId): PieceState {
-    const piece = state.get(animal);
-    if (!piece) throw new Error(`No state for animal "${animal}".`);
-    return piece;
+  function stateOf(piece: PieceId): PieceState {
+    const found = state.get(piece);
+    if (!found) throw new Error(`No state for piece "${piece}".`);
+    return found;
   }
 
-  const pieceEl = (animal: AnimalId): SVGGElement => elementFor(board.pieces, animal);
+  const pieceEl = (piece: PieceId): SVGGElement => elementFor(board.pieces, piece);
 
-  const homeOf = (animal: AnimalId): Point => layout.traySlots[stateOf(animal).slot] as Point;
+  const homeOf = (piece: PieceId): Point => layout.traySlots[stateOf(piece).slot] as Point;
 
-  function moveTo(animal: AnimalId, position: Point, animated: boolean): void {
-    const element = pieceEl(animal);
+  function moveTo(piece: PieceId, position: Point, animated: boolean): void {
+    const element = pieceEl(piece);
     element.classList.toggle("is-settling", animated);
     setPiecePosition(element, position);
-    stateOf(animal).position = position;
+    stateOf(piece).position = position;
     if (animated) {
       window.setTimeout(() => element.classList.remove("is-settling"), SETTLE_MS);
     }
@@ -82,21 +86,21 @@ export function createGame(root: HTMLElement, random: () => number = Math.random
 
   /** Push current state into the DOM, e.g. after a fresh puzzle or a re-layout. */
   function render(): void {
-    for (const animal of layout.animals) {
-      const piece = stateOf(animal);
-      const target = piece.placed ? holeOf(layout, animal) : homeOf(animal);
-      const element = pieceEl(animal);
+    for (const shape of layout.pieces) {
+      const current = stateOf(shape.id);
+      const target = current.placed ? holeOf(layout, shape.id) : homeOf(shape.id);
+      const element = pieceEl(shape.id);
       element.classList.remove("is-dragging", "is-settling");
-      element.classList.toggle("is-placed", piece.placed);
-      elementFor(board.holes, animal).style.opacity = piece.placed ? "0" : "1";
+      element.classList.toggle("is-placed", current.placed);
+      elementFor(board.holes, shape.id).style.opacity = current.placed ? "0" : "1";
       setPiecePosition(element, target);
-      piece.position = target;
+      current.position = target;
     }
   }
 
   function checkComplete(): void {
     if (complete) return;
-    if (!layout.animals.every((animal) => stateOf(animal).placed)) return;
+    if (!layout.pieces.every((shape) => stateOf(shape.id).placed)) return;
 
     complete = true;
     const last = stage === STAGE_COUNT;
@@ -110,14 +114,14 @@ export function createGame(root: HTMLElement, random: () => number = Math.random
     }, 260);
   }
 
-  function place(animal: AnimalId): void {
-    const target = holeOf(layout, animal);
-    stateOf(animal).placed = true;
-    moveTo(animal, target, true);
+  function place(piece: PieceId): void {
+    const target = holeOf(layout, piece);
+    stateOf(piece).placed = true;
+    moveTo(piece, target, true);
 
-    pieceEl(animal).classList.add("is-placed");
+    pieceEl(piece).classList.add("is-placed");
     // The piece now covers the hole exactly; hiding it avoids the rim peeking.
-    elementFor(board.holes, animal).style.opacity = "0";
+    elementFor(board.holes, piece).style.opacity = "0";
 
     playSnap();
     sparkleBurst(board.fxLayer, boxCenter(target, layout.pieceSize));
@@ -131,7 +135,7 @@ export function createGame(root: HTMLElement, random: () => number = Math.random
    */
   function startPuzzle(): void {
     complete = false;
-    cast = pickStageAnimals(stage, random);
+    cast = pickStagePieces(stage, shapes, random);
     layout = chooseLayout(viewport(), stage, cast);
     board = mount(layout);
     state.clear();
@@ -139,25 +143,29 @@ export function createGame(root: HTMLElement, random: () => number = Math.random
       layout.traySlots.map((_, index) => index),
       random,
     );
-    layout.animals.forEach((animal, index) => {
-      state.set(animal, { slot: slots[index] as number, position: { x: 0, y: 0 }, placed: false });
+    layout.pieces.forEach((shape, index) => {
+      state.set(shape.id, {
+        slot: slots[index] as number,
+        position: { x: 0, y: 0 },
+        placed: false,
+      });
     });
     render();
   }
 
-  /** Move on to a different stage: new animal set, new layout, fresh board. */
+  /** Move on to a different stage: new cast, new layout, fresh board. */
   function goToStage(next: number): void {
     stage = next;
     startPuzzle();
   }
 
   function mount(next: Layout): Board {
-    const built = buildBoard(root, animals, next);
+    const built = buildBoard(root, next);
 
     enableDragging(built.stage, next, {
-      isDraggable: (animal) => !stateOf(animal).placed,
-      getPosition: (animal) => stateOf(animal).position,
-      onPickUp: (_animal, element) => {
+      isDraggable: (piece) => !stateOf(piece).placed,
+      getPosition: (piece) => stateOf(piece).position,
+      onPickUp: (_piece, element) => {
         unlockAudio();
         element.classList.add("is-dragging");
         element.classList.remove("is-settling");
@@ -165,15 +173,15 @@ export function createGame(root: HTMLElement, random: () => number = Math.random
         built.piecesLayer.append(element);
         playPickUp();
       },
-      onMove: (animal, position) => moveTo(animal, position, false),
-      onDrop: (animal, position) => {
-        elementFor(built.pieces, animal).classList.remove("is-dragging");
-        const holeCenter = boxCenter(holeOf(layout, animal), layout.pieceSize);
+      onMove: (piece, position) => moveTo(piece, position, false),
+      onDrop: (piece, position) => {
+        elementFor(built.pieces, piece).classList.remove("is-dragging");
+        const holeCenter = boxCenter(holeOf(layout, piece), layout.pieceSize);
         const dropped = boxCenter(position, layout.pieceSize);
         if (isWithinSnapRadius(dropped, holeCenter, layout.snapRadius)) {
-          place(animal);
+          place(piece);
         } else {
-          moveTo(animal, homeOf(animal), true);
+          moveTo(piece, homeOf(piece), true);
           playReturn();
         }
       },

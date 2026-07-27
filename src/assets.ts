@@ -1,5 +1,5 @@
 /**
- * Asset loading.
+ * Animal shapes: one provider of `PieceShape`s.
  *
  * Each animal is authored as a standalone SVG with a strict structure:
  *
@@ -8,11 +8,16 @@
  *     <g id="detail"> ... </g>          eyes, ears, spots
  *   </svg>
  *
- * The *same* silhouette path is used both to draw the draggable piece and to
- * cut the hole in the scene, which is what guarantees a piece always fits its
- * hole exactly. If an asset is malformed we throw immediately at startup rather
- * than silently rendering an unsolvable puzzle.
+ * The silhouette's `d` becomes the shape's `outline`, and the artwork is built
+ * from that same string, so the piece and the hole it fills are drawn from one
+ * path and cannot drift apart. If an asset is malformed we throw immediately at
+ * startup rather than silently rendering an unsolvable puzzle.
+ *
+ * Nothing but this file knows that a piece happens to be an animal.
  */
+import type { Point, Size } from "./geometry";
+import { pieceId, type PieceShape } from "./piece";
+
 import butterflySvg from "./assets/animals/butterfly.svg?raw";
 import duckSvg from "./assets/animals/duck.svg?raw";
 import elephantSvg from "./assets/animals/elephant.svg?raw";
@@ -26,16 +31,29 @@ export type AnimalId = (typeof ANIMAL_IDS)[number];
 /** Every animal is authored on this square canvas. */
 export const ART_BOX = 240;
 
-export interface AnimalArt {
-  readonly id: AnimalId;
-  readonly name: string;
-  /** The `d` attribute of the outline - used for the hole. */
-  readonly silhouettePath: string;
-  /** Full `<path id="silhouette">` markup - used for the coloured piece. */
-  readonly silhouetteMarkup: string;
-  /** Inner markup of `<g id="detail">`. */
-  readonly detailMarkup: string;
-}
+/** The box every animal is authored in. */
+export const ANIMAL_BOX: Size = { width: ART_BOX, height: ART_BOX };
+
+/**
+ * Where each animal's feet sit within its 240x240 art box, in art units. This
+ * becomes the shape's anchor, which is what stands an animal on the ground line
+ * instead of aligning its box. Set these from `npm run art:check`, never by eye.
+ */
+const FOOT_LEVEL: Record<AnimalId, number> = {
+  giraffe: 226,
+  elephant: 216,
+  duck: 200,
+  turtle: 184,
+  rabbit: 212,
+  butterfly: 204,
+};
+
+/** Where an animal stands within its art box: on its feet, centred. */
+export const animalAnchor = (id: AnimalId): Point => {
+  const y = FOOT_LEVEL[id];
+  if (y === undefined) throw new Error(`Animal "${id}" has no FOOT_LEVEL.`);
+  return { x: ART_BOX / 2, y };
+};
 
 const SOURCES: Record<AnimalId, { name: string; svg: string }> = {
   duck: { name: "Duck", svg: duckSvg },
@@ -58,7 +76,23 @@ function parseSvg(source: string, label: string): SVGSVGElement {
   return root;
 }
 
-function parseAnimal(id: AnimalId): AnimalArt {
+/** Escaped for use inside a double-quoted attribute in the markup we build. */
+const attributeValue = (value: string): string =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
+/** The silhouette's styling, minus the two attributes the artwork supplies. */
+function bodyAttributes(silhouette: SVGPathElement): string {
+  return [...silhouette.attributes]
+    .filter((attribute) => attribute.name !== "d" && attribute.name !== "id")
+    .map((attribute) => `${attribute.name}="${attributeValue(attribute.value)}"`)
+    .join(" ");
+}
+
+function parseAnimal(id: AnimalId): PieceShape {
   const { name, svg } = SOURCES[id];
   const root = parseSvg(svg, id);
 
@@ -66,9 +100,15 @@ function parseAnimal(id: AnimalId): AnimalArt {
   if (!(silhouette instanceof SVGPathElement)) {
     throw new Error(`Animal "${id}" is missing a <path id="silhouette">.`);
   }
-  const silhouettePath = silhouette.getAttribute("d");
-  if (!silhouettePath) {
+  const outline = silhouette.getAttribute("d");
+  if (!outline) {
     throw new Error(`Animal "${id}" has a silhouette with no "d" attribute.`);
+  }
+  // The outline is interpolated straight into markup, both here and when the
+  // hole is cut, so anything that could break a quoted attribute is a broken
+  // asset rather than something the runtime should try to recover from.
+  if (/[&"<>]/.test(outline)) {
+    throw new Error(`Animal "${id}" has a silhouette whose "d" is not path data.`);
   }
 
   const viewBox = root.getAttribute("viewBox");
@@ -81,23 +121,27 @@ function parseAnimal(id: AnimalId): AnimalArt {
   const detail = root.querySelector("#detail");
 
   return {
-    id,
-    name,
-    silhouettePath,
-    silhouetteMarkup: silhouette.outerHTML,
-    detailMarkup: detail ? detail.innerHTML : "",
+    id: pieceId(id),
+    outline,
+    // The body is drawn from `outline` itself, so the coloured piece and the
+    // hole it drops into can only ever be the same shape.
+    artwork:
+      `<path d="${outline}" ${bodyAttributes(silhouette)} />` +
+      `<g>${detail ? detail.innerHTML : ""}</g>`,
+    box: ANIMAL_BOX,
+    anchor: animalAnchor(id),
+    label: name,
   };
 }
 
-let cachedAnimals: Record<AnimalId, AnimalArt> | null = null;
+let cachedShapes: readonly PieceShape[] | null = null;
 
-export function loadAnimals(): Record<AnimalId, AnimalArt> {
-  if (!cachedAnimals) {
-    const parsed = {} as Record<AnimalId, AnimalArt>;
+/** Every animal, as a piece shape. */
+export function loadAnimalShapes(): readonly PieceShape[] {
+  if (!cachedShapes) {
     // Every animal is parsed up front: a malformed asset should fail loudly at
     // startup, not on the stage that happens to use it.
-    for (const id of ANIMAL_IDS) parsed[id] = parseAnimal(id);
-    cachedAnimals = parsed;
+    cachedShapes = ANIMAL_IDS.map(parseAnimal);
   }
-  return cachedAnimals;
+  return cachedShapes;
 }
