@@ -10,6 +10,7 @@ What it says:
 - an approval is dismissed when new commits are pushed, so an agent cannot add
   code after the fact to an approved branch;
 - the `Verify` check must pass - that is `npm run verify` running in CI;
+- Copilot reviews every pull request, drafts included, and again on each push;
 - `main` cannot be deleted or force-pushed.
 
 The repository admin can bypass. That is deliberate: a solo maintainer cannot
@@ -36,6 +37,14 @@ for a check that never reports.
 
 ## Copilot code review
 
-Automatic Copilot review on new pull requests is a repository setting rather
-than part of this ruleset. Turn it on under Settings, so the first pass over an
-agent's diff is not the maintainer's.
+`copilot_code_review` is part of this ruleset rather than a settings toggle, so
+it is reviewable like everything else here.
+
+`review_draft_pull_requests` is on, which is the setting that matters for this
+repository: the cloud agent opens its pull requests as drafts and works in them,
+so a rule that skipped drafts would only ever look at the finished article -
+after the agent had stopped reading feedback. `review_on_push` keeps the review
+attached to the current code rather than the first commit.
+
+Both make Copilot noisier on a long-running branch. Turn `review_on_push` off
+first if that becomes tiresome; leave draft review alone.
