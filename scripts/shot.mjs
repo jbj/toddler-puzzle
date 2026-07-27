@@ -101,12 +101,20 @@ async function findTarget() {
   throw new Error(`${CHROME} did not expose a debuggable page.`);
 }
 
-const target = await findTarget();
-const socket = new WebSocket(target.webSocketDebuggerUrl);
-await new Promise((resolve, reject) => {
-  socket.addEventListener("open", resolve, { once: true });
-  socket.addEventListener("error", reject, { once: true });
-});
+let socket;
+try {
+  const target = await findTarget();
+  socket = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => {
+    socket.addEventListener("open", resolve, { once: true });
+    socket.addEventListener("error", reject, { once: true });
+  });
+} catch (error) {
+  socket?.close();
+  chrome.kill();
+  server.close();
+  throw error;
+}
 
 let nextId = 0;
 const pending = new Map();
