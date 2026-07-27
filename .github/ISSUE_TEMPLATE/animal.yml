@@ -46,9 +46,9 @@ body:
       description: The PR is done when these README steps have been followed.
       options:
         - label: Draw `src/assets/animals/<name>.svg` with the required `viewBox`, one closed `#silhouette` path, and a `#detail` group.
+        - label: Render it with `npm run art -- <name>` and look at `.art/<name>-large.png`, fixing and re-rendering until it reads right; if you cannot view the image, do not add the animal.
         - label: Run `npm run art` and review `.art/contact-sheet.png` in colour and as a bare silhouette.
-        - label: Review the animal close up with `npm run art -- <name>`.
         - label: Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
-        - label: Add `FOOT_LEVEL` in `src/layout.ts` using the value reported by `npm run art:check`.
+        - label: Add `FOOT_LEVEL` in `src/assets.ts` using the value reported by `npm run art:check`.
         - label: Run `npm run art:check` and fix any structure, clipping, containment, overhang, or foot-level failures.
         - label: Confirm every animal in `ANIMAL_IDS` is still drawn at random, and only change stage sizes with matching layout updates.
