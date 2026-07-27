@@ -1,14 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Elephant, facing left. The trunk tapers all the way from the mouth to the
+    tip, and the tusk sweeps forward past it.
+  -->
   <path
     id="silhouette"
     fill="#9aa7b8"
     stroke="#5c6b7f"
     stroke-width="5"
     stroke-linejoin="round"
-    d="M44 204
-       C38 196 40 176 46 156
-       C50 144 52 136 54 128
-       C54 100 66 78 86 70
+    d="M48 202
+       C42 190 42 176 46 158
+       C49 144 53 134 56 124
+       C56 100 66 78 86 70
        C104 60 124 66 131 82
        C135 94 133 104 129 112
        C150 86 198 88 210 124
@@ -16,11 +20,12 @@
        L202 208 Q202 216 190 216 Q178 216 178 208 L176 174
        L142 176
        L140 208 Q140 216 128 216 Q116 216 116 208 L114 174
-       C102 172 88 162 78 140
-       C78 158 70 180 60 196
-       Q54 208 48 207 Q43 206 44 204 Z"
+       C102 172 88 162 80 142
+       C68 152 61 172 58 194
+       Q56 206 48 202 Z"
   />
   <g id="detail">
+    <!-- ear -->
     <path
       d="M92 78 C114 70 130 82 128 98 C126 116 112 126 98 122 C87 118 85 96 92 78 Z"
       fill="#b3bdc9"
@@ -28,8 +33,11 @@
       stroke-width="5"
       stroke-linejoin="round"
     />
+    <!-- eye -->
     <circle cx="72" cy="112" r="6" fill="#2b3440" />
-    <path d="M84 134 C96 138 101 148 100 158" fill="none" stroke="#f4f1e8" stroke-width="9" stroke-linecap="round" />
-    <path d="M52 150 h20 M50 172 h18" stroke="#5c6b7f" stroke-width="4" stroke-linecap="round" opacity="0.55" />
+    <!-- tusk, pointing forward past the trunk -->
+    <path d="M80 136 C70 144 62 150 54 148" fill="none" stroke="#f4f1e8" stroke-width="9" stroke-linecap="round" />
+    <!-- trunk wrinkles -->
+    <path d="M50 160 h16 M47 180 h14" stroke="#5c6b7f" stroke-width="4" stroke-linecap="round" opacity="0.55" />
   </g>
 </svg>

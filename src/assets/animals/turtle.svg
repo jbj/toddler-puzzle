@@ -1,30 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Turtle, facing right. The shell is one symmetric dome; the darker inner
+    shell repeats that dome inset by 6 units, so the rim is the same width all
+    the way round.
+  -->
   <path
     id="silhouette"
     fill="#7cc47c"
     stroke="#3f7f46"
     stroke-width="5"
     stroke-linejoin="round"
-    d="M40 155
-       C40 80 88 58 122 58
-       C158 58 196 84 200 128
-       C206 112 228 110 232 126
-       C236 142 222 154 206 150
-       L202 158
-       L200 176 Q200 184 190 184 Q178 184 178 176 L176 158
-       L84 158
-       L82 176 Q82 184 71 184 Q60 184 60 176 L58 158
+    d="M40 157
+       C40 82 78 56 120 56
+       C162 56 200 82 200 126
+       C206 110 228 108 232 124
+       C236 140 222 152 206 148
+       L202 157
+       L200 176 Q200 184 190 184 Q178 184 178 176 L176 157
+       L84 157
+       L82 176 Q82 184 71 184 Q60 184 60 176 L58 157
        L46 157
        C36 159 27 154 24 146
-       C33 147 40 151 45 153 Z"
+       C33 147 40 151 45 154 Z"
   />
   <g id="detail">
+    <!-- inner shell -->
     <path
-      d="M44 152 C44 84 88 64 122 64 C156 64 194 88 196 152 Z"
+      d="M46 151 C46 86 80 62 120 62 C160 62 194 86 194 151 Z"
       fill="#4f9e57"
       stroke="#3f7f46"
       stroke-width="4"
     />
-    <circle cx="222" cy="126" r="5" fill="#2b3440" />
+    <!-- eye -->
+    <circle cx="222" cy="124" r="5" fill="#2b3440" />
   </g>
 </svg>
