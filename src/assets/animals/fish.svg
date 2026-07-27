@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Fish, facing right. A deep oval body meets a broad forked tail, giving it a
+    compact outline unlike any of the standing animals.
+  -->
+  <path
+    id="silhouette"
+    fill="#55b9d2"
+    stroke="#28758f"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M12 72
+       L58 96
+       C82 68 118 56 156 64
+       C190 71 217 94 230 120
+       C217 146 190 169 156 176
+       C118 184 82 172 58 144
+       L12 168
+       L30 120 Z"
+  />
+  <g id="detail">
+    <!-- tail -->
+    <path d="M22 82 L62 103 Q50 120 62 137 L22 158 L36 120 Z" fill="#f0a33a" />
+    <!-- fin -->
+    <path
+      d="M111 121 C122 103 146 102 158 116 C146 128 132 138 112 140 Z"
+      fill="#318fae"
+      stroke="#28758f"
+      stroke-width="4"
+      stroke-linejoin="round"
+    />
+    <!-- stripes -->
+    <path
+      d="M83 87 C76 106 76 134 83 153 M104 74 C96 101 96 139 104 166"
+      fill="none"
+      stroke="#f3d24a"
+      stroke-width="9"
+      stroke-linecap="round"
+    />
+    <!-- eye and smile -->
+    <circle cx="188" cy="105" r="7" fill="#2b3440" />
+    <path
+      d="M190 139 Q202 147 211 136"
+      fill="none"
+      stroke="#28758f"
+      stroke-width="4"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>

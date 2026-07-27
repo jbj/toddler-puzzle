@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Snail, facing right. Its high round shell, low foot, and two raised feelers
+    form a slow, friendly profile.
+  -->
+  <path
+    id="silhouette"
+    fill="#79bf67"
+    stroke="#4a7f3d"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M27 200
+       C18 178 21 148 39 126
+       C34 91 56 55 91 46
+       C128 36 165 56 177 91
+       C181 103 181 114 179 125
+       C188 118 194 105 193 88
+       L188 70
+       C184 61 190 52 199 53
+       C208 54 212 64 206 72
+       L201 88
+       C202 97 206 104 212 109
+       L218 92
+       C216 82 221 74 228 77
+       C235 80 235 90 229 96
+       L224 112
+       C236 126 238 149 229 167
+       C218 188 194 199 167 198
+       L72 198
+       C55 206 38 207 27 200 Z"
+  />
+  <g id="detail">
+    <!-- shell -->
+    <circle cx="99" cy="112" r="57" fill="#e9a64a" stroke="#a9652d" stroke-width="5" />
+    <path
+      d="M99 79
+         C121 79 134 96 131 115
+         C128 137 105 146 88 136
+         C73 127 73 106 85 98
+         C96 91 111 97 112 109
+         C113 119 105 126 97 123"
+      fill="none"
+      stroke="#f7d27b"
+      stroke-width="9"
+      stroke-linecap="round"
+    />
+    <!-- face -->
+    <circle cx="207" cy="132" r="5.5" fill="#2b3440" />
+    <path
+      d="M207 153 Q215 159 221 151"
+      fill="none"
+      stroke="#4a7f3d"
+      stroke-width="4"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>

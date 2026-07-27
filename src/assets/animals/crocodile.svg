@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Crocodile, facing right. A very long body, pointed tail, back ridges, and
+    broad jaw keep the low silhouette easy to recognise.
+  -->
+  <path
+    id="silhouette"
+    fill="#71b858"
+    stroke="#3f7535"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M8 143
+       C20 132 31 120 43 108
+       L52 91
+       L67 105
+       L82 86
+       L98 104
+       L116 88
+       L132 105
+       C151 98 174 100 190 108
+       L224 108
+       C232 108 237 114 234 122
+       L225 132
+       L194 136
+       L231 142
+       C222 154 196 160 166 157
+       L150 170
+       L163 184
+       L142 184
+       L124 159
+       L82 159
+       L67 184
+       L45 184
+       L59 158
+       C39 157 21 152 8 143 Z"
+  />
+  <g id="detail">
+    <!-- belly -->
+    <path d="M60 145 C103 139 151 144 190 146 C179 155 158 157 126 154 L69 154 Z" fill="#b7d96d" />
+    <!-- eye -->
+    <circle cx="198" cy="119" r="6.5" fill="#f4d94e" />
+    <circle cx="199" cy="119" r="3.5" fill="#2b3440" />
+    <!-- smile and teeth -->
+    <path
+      d="M187 135 L220 140"
+      fill="none"
+      stroke="#3f7535"
+      stroke-width="3.5"
+      stroke-linecap="round"
+    />
+    <path d="M200 137 L204 145 L209 138 L213 146 L217 139" fill="#fffaf2" />
+  </g>
+</svg>

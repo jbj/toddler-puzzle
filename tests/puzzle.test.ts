@@ -225,10 +225,14 @@ describe("pickStagePieces", () => {
     );
   });
 
-  it("uses every piece in the final stage", () => {
-    for (let run = 0; run < 20; run++) {
-      expect(new Set(idsOf(pickStagePieces(STAGE_COUNT, SHAPES)))).toEqual(new Set(idsOf(SHAPES)));
+  it("draws the final stage from the full cast", () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 50; seed++) {
+      for (const shape of pickStagePieces(STAGE_COUNT, SHAPES, seededRandom(seed))) {
+        seen.add(shape.id);
+      }
     }
+    expect(seen).toEqual(new Set(idsOf(SHAPES)));
   });
 
   it("varies which pieces turn up in the shorter stages", () => {
@@ -236,7 +240,7 @@ describe("pickStagePieces", () => {
     for (let run = 0; run < 200; run++) {
       for (const shape of pickStagePieces(1, SHAPES)) seen.add(shape.id);
     }
-    // Given enough deals a three-piece stage should have shown all six.
+    // Given enough deals a three-piece stage should have shown the whole cast.
     expect(seen.size).toBe(SHAPES.length);
   });
 
