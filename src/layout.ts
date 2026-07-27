@@ -155,7 +155,10 @@ function spreadX(count: number, size: number, width: number, margin: number): nu
 
 /** Top-left of a piece's box such that its anchor lands on `groundY`. */
 function standing(shape: PieceShape, x: number, groundY: number, pieceSize: number): Point {
-  return { x, y: groundY - (shape.anchor.y / shape.box.width) * pieceSize };
+  // Board rendering scales an authored box from its width, so the anchor must
+  // use that same factor to keep the piece standing on its ground line.
+  const scale = pieceSize / shape.box.width;
+  return { x, y: groundY - shape.anchor.y * scale };
 }
 
 const total = (rows: readonly { readonly count: number }[]): number =>
