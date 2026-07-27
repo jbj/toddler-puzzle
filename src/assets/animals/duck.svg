@@ -1,26 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Duck, facing left. Head, breast and body are one unbroken left-hand curve,
+    the way a rubber duck reads; the tail is a short upswept wedge at the back.
+  -->
   <path
     id="silhouette"
     fill="#ffd83d"
     stroke="#c98a12"
     stroke-width="5"
     stroke-linejoin="round"
-    d="M22 96
-       L48 82
-       C44 60 60 46 82 46
-       C106 46 120 64 118 86
-       C116 104 130 110 150 112
-       C182 116 196 132 196 144
-       C206 130 218 118 230 112
-       C228 130 224 148 216 160
-       C204 184 168 200 132 200
-       C92 200 62 182 58 156
-       C56 140 66 124 84 116
-       C76 112 66 106 56 104
-       L48 104 Z"
+    d="M22 88
+       L54 70
+       C56 44 76 34 98 40
+       C118 46 130 62 128 84
+       C146 92 162 104 172 124
+       C186 116 204 108 222 104
+       C218 124 212 140 200 152
+       C194 178 164 200 126 200
+       C86 200 54 180 52 152
+       C50 126 58 106 74 98
+       C64 96 56 94 22 88 Z"
   />
   <g id="detail">
-    <circle cx="74" cy="72" r="6" fill="#2b3440" />
-    <path d="M22 96 L48 82 L48 104 Z" fill="#f08a24" stroke="#c25d0a" stroke-width="4" stroke-linejoin="round" />
+    <!-- eye -->
+    <circle cx="84" cy="70" r="6" fill="#2b3440" />
+    <!-- beak -->
+    <path d="M27 88 L53 73 L54 93 Z" fill="#f08a24" stroke="#c25d0a" stroke-width="4" stroke-linejoin="round" />
+    <!-- wing -->
+    <path
+      d="M96 120 C130 114 156 128 156 148 C156 166 138 176 118 172 C98 168 88 144 96 120 Z"
+      fill="#f5c21f"
+      stroke="#c98a12"
+      stroke-width="4"
+      stroke-linejoin="round"
+    />
   </g>
 </svg>

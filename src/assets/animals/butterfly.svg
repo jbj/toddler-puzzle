@@ -1,4 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Butterfly, seen from above. Two upper wings, two lower wings, and a pair of
+    antennae, all in one symmetric outline.
+  -->
   <path
     id="silhouette"
     fill="#b58ae8"
@@ -32,21 +36,25 @@
        C134 34 122 48 120 62 Z"
   />
   <g id="detail">
+    <!-- body -->
     <path
       d="M114 64 C104 68 102 92 106 116 C108 140 112 168 120 184
          C128 168 132 140 134 116 C138 92 136 68 126 64 Z"
       fill="#6f4fb0"
     />
+    <!-- wing spots, large -->
     <g fill="#ffd23f">
       <circle cx="58" cy="52" r="15" />
       <circle cx="182" cy="52" r="15" />
       <circle cx="70" cy="174" r="11" />
       <circle cx="170" cy="174" r="11" />
     </g>
+    <!-- wing spots, small -->
     <g fill="#ff8fa3">
       <circle cx="82" cy="88" r="10" />
       <circle cx="158" cy="88" r="10" />
     </g>
+    <!-- head -->
     <circle cx="120" cy="66" r="12" fill="#4d3080" />
   </g>
 </svg>
