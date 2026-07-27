@@ -2,6 +2,7 @@ import "./style.css";
 import { loadAnimalShapes } from "./assets";
 import { createGame } from "./game";
 import { seededRandom } from "./geometry";
+import { shapeMatch } from "./kinds/shape-match";
 
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) {
@@ -13,6 +14,7 @@ if (!root) {
 const seed = Number(new URLSearchParams(window.location.search).get("seed"));
 createGame(
   root,
+  shapeMatch,
   loadAnimalShapes(),
   Number.isFinite(seed) && seed !== 0 ? seededRandom(seed) : Math.random,
 );

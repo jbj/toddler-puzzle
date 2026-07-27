@@ -51,10 +51,14 @@ Use the README's Source map table as the full map. This is only the quick route:
 - `src/layout.ts` holds stages, arrangements, snap size, foot levels, and all
   layout tunables.
 - `src/piece.ts` defines what a piece is: `PieceId` and `PieceShape`.
+- `src/puzzle.ts` defines what a kind of puzzle is: the `PuzzleKind` contract.
+- `src/kinds/shape-match.ts` is the animal-and-hole game as one `PuzzleKind`:
+  the deal, the holes, what counts as a good drop, and when a stage is done.
 - `src/assets.ts` loads animal SVGs as piece shapes and enforces the browser-side
   asset shape.
 - `src/geometry.ts` keeps coordinate mapping, clamping, and snap maths pure.
-- `src/game.ts` owns the stage lifecycle, piece state, snapping, and returns.
+- `src/game.ts` is the host: drag state, settling, sound, sparkles, and the stage
+  lifecycle. It holds no rules; it asks the kind.
 - `scripts/check-art.mjs` is the mechanised art contract.
 - `scripts/preview.mjs` renders the contact sheet and one-animal art previews.
 - `scripts/shot.mjs` drives the end-to-end Chrome drag run and screenshots.

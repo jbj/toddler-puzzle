@@ -1,37 +1,34 @@
 /**
- * Game rules and state.
+ * The host the puzzle kinds plug into.
  *
- * The rules are deliberately simple and forgiving:
- *  - a piece only ever goes into its own hole, so there is no way to put the
- *    wrong animal somewhere and be told off for it;
- *  - dropping near enough counts as in;
- *  - anything else drifts gently back to the tray, never off screen.
+ * This file owns everything that is the same whatever sort of level is being
+ * played: picking a piece up, following the finger, settling it back down,
+ * sound, sparkles, and the stage lifecycle. It owns no rules. Which pieces are
+ * dealt, what sits behind them, whether a drop counts and when a level is over
+ * all come from the `PuzzleKind` (see `puzzle.ts`); shape-match is one such
+ * kind, and the host cannot tell it from any other.
  *
- * A game is three stages long: three pieces, then four, then six. The pieces
- * themselves are dealt at random every time a puzzle starts - which ones turn up
- * and where they stand - so a stage never plays out quite the same way twice.
- * Finishing a stage shows one big button that leads to the next one, and the
- * button after the last stage starts the whole game over - so the only way to go
- * is forward and there is never a menu to get lost in.
+ * What the host does insist on is that the game stays forgiving: a drop the
+ * kind refuses drifts gently back to the tray with a soft tone, never off
+ * screen and never a buzzer.
  *
- * Which pieces are placed, and which tray slot each piece belongs to, lives
- * here and survives a re-layout, so rotating the device mid-puzzle does not
- * lose progress.
+ * A game is three stages long: three pieces, then four, then six. Every stage
+ * is dealt fresh, so it never plays out quite the same way twice. Finishing a
+ * stage shows one big button that leads to the next one, and the button after
+ * the last stage starts the whole game over - so the only way to go is forward
+ * and there is never a menu to get lost in.
+ *
+ * Which tray slot each piece belongs to lives here and survives a re-layout, so
+ * rotating the device mid-puzzle does not lose progress.
  */
 import { playFanfare, playPickUp, playReturn, playSnap, unlockAudio } from "./audio";
 import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
 import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
 import { enableDragging } from "./drag";
-import { boxCenter, isWithinSnapRadius, shuffle, type Point, type Size } from "./geometry";
-import {
-  STAGE_COUNT,
-  chooseLayout,
-  holeOf,
-  nextStage,
-  pickStagePieces,
-  type Layout,
-} from "./layout";
+import { boxCenter, shuffle, type Point, type Size } from "./geometry";
+import { STAGE_COUNT, chooseLayout, nextStage, type Layout } from "./layout";
 import type { PieceId, PieceShape } from "./piece";
+import type { Puzzle, PuzzleKind } from "./puzzle";
 
 const SETTLE_MS = 340;
 
@@ -39,18 +36,18 @@ interface PieceState {
   /** Index into the current layout's tray slots. */
   slot: number;
   position: Point;
-  placed: boolean;
 }
 
 const viewport = (): Size => ({ width: window.innerWidth, height: window.innerHeight });
 
 /**
- * `shapes` are the pieces the game may deal from; `random` is injectable so a
- * run can be made repeatable - `?seed=` in main.ts uses it. Left alone, every
- * puzzle deals a fresh cast.
+ * `kind` supplies the rules; `shapes` are the pieces it may deal from; `random`
+ * is injectable so a run can be made repeatable - `?seed=` in main.ts uses it.
+ * Left alone, every puzzle deals a fresh cast.
  */
 export function createGame(
   root: HTMLElement,
+  kind: PuzzleKind,
   shapes: readonly PieceShape[],
   random: () => number = Math.random,
 ): void {
@@ -58,8 +55,8 @@ export function createGame(
 
   let stage = 1;
   // Assigned by the startPuzzle() call at the end of this function, which is
-  // what deals the first cast and mounts the first board.
-  let cast: readonly PieceShape[] = [];
+  // what deals the first level and mounts the first board.
+  let puzzle!: Puzzle;
   let layout!: Layout;
   let board!: Board;
   let complete = false;
@@ -72,7 +69,12 @@ export function createGame(
 
   const pieceEl = (piece: PieceId): SVGGElement => elementFor(board.pieces, piece);
 
+  const isPlaced = (piece: PieceId): boolean => puzzle.placed.has(piece);
+
   const homeOf = (piece: PieceId): Point => layout.traySlots[stateOf(piece).slot] as Point;
+
+  const restingPlace = (piece: PieceId): Point =>
+    isPlaced(piece) ? kind.target(puzzle, layout, piece) : homeOf(piece);
 
   function moveTo(piece: PieceId, position: Point, animated: boolean): void {
     const element = pieceEl(piece);
@@ -84,23 +86,29 @@ export function createGame(
     }
   }
 
+  /**
+   * The kind draws everything behind the pieces, so a filled target can look
+   * different from an empty one. Redrawn whenever the puzzle moves on.
+   */
+  function renderBackdrop(): void {
+    board.backdropLayer.innerHTML = kind.backdrop(puzzle, layout);
+  }
+
   /** Push current state into the DOM, e.g. after a fresh puzzle or a re-layout. */
   function render(): void {
-    for (const shape of layout.pieces) {
-      const current = stateOf(shape.id);
-      const target = current.placed ? holeOf(layout, shape.id) : homeOf(shape.id);
+    renderBackdrop();
+    for (const shape of puzzle.pieces) {
       const element = pieceEl(shape.id);
+      const target = restingPlace(shape.id);
       element.classList.remove("is-dragging", "is-settling");
-      element.classList.toggle("is-placed", current.placed);
-      elementFor(board.holes, shape.id).style.opacity = current.placed ? "0" : "1";
+      element.classList.toggle("is-placed", isPlaced(shape.id));
       setPiecePosition(element, target);
-      current.position = target;
+      stateOf(shape.id).position = target;
     }
   }
 
   function checkComplete(): void {
-    if (complete) return;
-    if (!layout.pieces.every((shape) => stateOf(shape.id).placed)) return;
+    if (complete || !kind.isComplete(puzzle)) return;
 
     complete = true;
     const last = stage === STAGE_COUNT;
@@ -114,14 +122,13 @@ export function createGame(
     }, 260);
   }
 
+  /** Settle an accepted piece where the kind says it belongs. */
   function place(piece: PieceId): void {
-    const target = holeOf(layout, piece);
-    stateOf(piece).placed = true;
+    puzzle.placed.add(piece);
+    const target = kind.target(puzzle, layout, piece);
     moveTo(piece, target, true);
-
     pieceEl(piece).classList.add("is-placed");
-    // The piece now covers the hole exactly; hiding it avoids the rim peeking.
-    elementFor(board.holes, piece).style.opacity = "0";
+    renderBackdrop();
 
     playSnap();
     sparkleBurst(board.fxLayer, boxCenter(target, layout.pieceSize));
@@ -129,31 +136,27 @@ export function createGame(
   }
 
   /**
-   * Deal a fresh puzzle for the current stage: new cast, new board, shuffled
+   * Deal a fresh level for the current stage: new pieces, new board, shuffled
    * tray slots. Both the reset button and moving between stages come through
    * here, so a toddler never sees the same line-up twice in a row for long.
    */
   function startPuzzle(): void {
     complete = false;
-    cast = pickStagePieces(stage, shapes, random);
-    layout = chooseLayout(viewport(), stage, cast);
+    puzzle = kind.deal({ stage, shapes }, random);
+    layout = chooseLayout(viewport(), stage, puzzle.pieces);
     board = mount(layout);
     state.clear();
     const slots = shuffle(
       layout.traySlots.map((_, index) => index),
       random,
     );
-    layout.pieces.forEach((shape, index) => {
-      state.set(shape.id, {
-        slot: slots[index] as number,
-        position: { x: 0, y: 0 },
-        placed: false,
-      });
+    puzzle.pieces.forEach((shape, index) => {
+      state.set(shape.id, { slot: slots[index] as number, position: { x: 0, y: 0 } });
     });
     render();
   }
 
-  /** Move on to a different stage: new cast, new layout, fresh board. */
+  /** Move on to a different stage: new level, new layout, fresh board. */
   function goToStage(next: number): void {
     stage = next;
     startPuzzle();
@@ -163,7 +166,7 @@ export function createGame(
     const built = buildBoard(root, next);
 
     enableDragging(built.stage, next, {
-      isDraggable: (piece) => !stateOf(piece).placed,
+      isDraggable: (piece) => !isPlaced(piece),
       getPosition: (piece) => stateOf(piece).position,
       onPickUp: (_piece, element) => {
         unlockAudio();
@@ -176,9 +179,7 @@ export function createGame(
       onMove: (piece, position) => moveTo(piece, position, false),
       onDrop: (piece, position) => {
         elementFor(built.pieces, piece).classList.remove("is-dragging");
-        const holeCenter = boxCenter(holeOf(layout, piece), layout.pieceSize);
-        const dropped = boxCenter(position, layout.pieceSize);
-        if (isWithinSnapRadius(dropped, holeCenter, layout.snapRadius)) {
+        if (kind.accepts(puzzle, layout, piece, position)) {
           place(piece);
         } else {
           moveTo(piece, homeOf(piece), true);
@@ -198,7 +199,7 @@ export function createGame(
 
   /** Rebuild for a new orientation, keeping progress intact. */
   function relayout(): void {
-    const next = chooseLayout(viewport(), stage, cast);
+    const next = chooseLayout(viewport(), stage, puzzle.pieces);
     if (next.id === layout.id) return;
     layout = next;
     board = mount(layout);
