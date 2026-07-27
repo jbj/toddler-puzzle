@@ -32,7 +32,7 @@ npm run dev
 | `npm run format` | Formats with Prettier |
 | `npm run build` | Type-check, then production build into `dist/` |
 | `npm run test` | Unit tests (Vitest) |
-| `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large, and `npm run art -- rabbit --ascii` also prints it as text for anyone who cannot open the image |
+| `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large |
 | `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level) |
 | `npm run shot` | Drives real drags in headless Chromium and screenshots the result (run `npm run build` first) |
 | `npm run shot:sheet` | Rebuilds `.art/shots/contact-sheet.png` from the last run's screenshots |
@@ -111,8 +111,7 @@ The check reports the share so it can be judged rather than guessed.
    what the silhouette is, neither can a two-year-old.
 3. Review it close up with `npm run art -- <name>`. The contact sheet is too
    small to judge whether details line up with the outline, which is exactly
-   where hand-drawn art goes wrong. Add `--ascii` if you are working somewhere
-   that cannot show you the PNG - it is coarse, but it is a look.
+   where hand-drawn art goes wrong.
 4. Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
 5. Add its foot level to `FOOT_LEVEL` in `src/layout.ts` - the fraction of the
    240x240 art box where its feet sit, so it stands on the ground line instead
