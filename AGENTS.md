@@ -131,3 +131,21 @@ a reviewer now takes them on trust. So:
 
 `.art/` is ignored by git. Do not commit the images to get around the upload -
 that is the pipeline this project deliberately removed, rebuilt by hand.
+
+### If you cannot attach an image
+
+Dragging a file into a pull request is a browser action. An agent working
+through the GitHub API cannot do it: there is no token-authenticated endpoint
+for it, so Copilot CLI in particular will not manage it however hard it tries.
+
+Do not treat that as permission to skip the evidence. Instead, say in the pull
+request that you could not attach the images, and link the `puzzle-screenshots`
+artifact from this branch's CI run, which holds the same screenshots and the
+same contact sheet:
+
+    gh run list --branch <your-branch> --workflow CI --limit 1
+    gh run view <run-id>          # the artifact is listed at the bottom
+
+Then ask the reviewer to look at the artifact, or to run `npm run shot`
+themselves. An unattached screenshot a reviewer can still find beats a claim
+that the puzzle looks fine.
