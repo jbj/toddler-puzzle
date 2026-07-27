@@ -24,4 +24,5 @@ Before calling art finished:
 - use `npm run art` if the contact sheet helps compare silhouettes.
 
 A new animal must be distinct in outline from duck, turtle, giraffe, elephant,
-butterfly, and rabbit. Toddlers match the outline before the detail.
+butterfly, rabbit, penguin, sheep, crab, and fox. Toddlers match the outline
+before the detail.

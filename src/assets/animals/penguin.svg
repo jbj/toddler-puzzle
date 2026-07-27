@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Penguin, facing forward. One upright teardrop from head to tail, a beak
+    poking out to the left, and two flat feet at the bottom - a shape nothing
+    else in the set shares.
+  -->
+  <path
+    id="silhouette"
+    fill="#3b4a5c"
+    stroke="#26303c"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M120 22
+       C99 22 82 40 80 62
+       L56 76
+       L80 88
+       C82 94 85 98 90 102
+       C66 112 48 142 46 174
+       C45 187 51 196 60 200
+       C61 204 63 207 66 210
+       C56 212 48 214 44 217
+       Q39 220 46 222
+       C58 225 84 222 98 215
+       L142 215
+       C156 222 182 225 194 222
+       Q201 220 196 217
+       C192 214 184 212 174 210
+       C177 207 179 204 180 200
+       C189 196 195 187 194 174
+       C192 142 174 112 150 102
+       C155 98 158 94 160 88
+       C160 62 146 22 120 22 Z"
+  />
+  <g id="detail">
+    <!-- belly -->
+    <path
+      d="M120 104 C98 104 80 138 80 176 C80 198 98 208 120 208
+         C142 208 160 198 160 176 C160 138 142 104 120 104 Z"
+      fill="#f7f4ee"
+    />
+    <!-- feet -->
+    <path
+      d="M66 207 C57 210 50 213 46 216 Q42 219 48 220 C59 223 82 220 94 214 Z"
+      fill="#f0a02c"
+    />
+    <path
+      d="M174 207 C183 210 190 213 194 216 Q198 219 192 220 C181 223 158 220 146 214 Z"
+      fill="#f0a02c"
+    />
+    <!-- beak -->
+    <path d="M80 62 L60 76 L80 86 Z" fill="#f0a02c" />
+    <!-- eyes -->
+    <circle cx="99" cy="62" r="7" fill="#f7f4ee" />
+    <circle cx="141" cy="62" r="7" fill="#f7f4ee" />
+    <circle cx="100" cy="63" r="4" fill="#26303c" />
+    <circle cx="140" cy="63" r="4" fill="#26303c" />
+  </g>
+</svg>

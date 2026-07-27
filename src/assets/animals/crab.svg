@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Crab, seen from the front. A wide shell with two pincers held up and three
+    stubby legs a side: the widest, lowest outline in the set.
+  -->
+  <path
+    id="silhouette"
+    fill="#ef6b52"
+    stroke="#b23c2a"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M120 104
+       C96 104 74 110 66 120
+       C50 108 40 96 38 80
+       C30 62 8 62 8 82
+       C8 96 16 106 28 108
+       L40 98
+       L30 118
+       C44 126 60 118 64 104
+       C66 114 62 124 62 132
+       C58 138 56 145 56 152
+       L22 154 Q16 158 23 162 L58 168
+       L34 188 Q28 194 36 196 L70 182
+       L60 210 Q56 216 64 214 L92 192
+       C100 198 110 200 120 200
+       C130 200 140 198 148 192
+       L176 214 Q184 216 180 210 L170 182
+       L204 196 Q212 194 206 188 L182 168
+       L217 162 Q224 158 218 154 L184 152
+       C184 145 182 138 178 132
+       C178 124 174 114 176 104
+       C180 118 196 126 210 118
+       L200 98
+       L212 108
+       C224 106 232 96 232 82
+       C232 62 210 62 202 80
+       C200 96 190 108 174 120
+       C166 110 144 104 120 104 Z"
+  />
+  <g id="detail">
+    <!-- shell -->
+    <path
+      d="M120 114 C94 114 72 130 72 152 C72 176 94 190 120 190
+         C146 190 168 176 168 152 C168 130 146 114 120 114 Z"
+      fill="#f78d76"
+    />
+    <!-- eyes -->
+    <circle cx="100" cy="142" r="11" fill="#fdf3ec" />
+    <circle cx="140" cy="142" r="11" fill="#fdf3ec" />
+    <circle cx="101" cy="144" r="6" fill="#2b3440" />
+    <circle cx="139" cy="144" r="6" fill="#2b3440" />
+    <!-- smile -->
+    <path
+      d="M102 166 C110 176 130 176 138 166"
+      fill="none"
+      stroke="#b23c2a"
+      stroke-width="5"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>

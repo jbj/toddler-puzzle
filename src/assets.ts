@@ -19,13 +19,28 @@ import type { Point, Size } from "./geometry";
 import { pieceId, type PieceShape } from "./piece";
 
 import butterflySvg from "./assets/animals/butterfly.svg?raw";
+import crabSvg from "./assets/animals/crab.svg?raw";
 import duckSvg from "./assets/animals/duck.svg?raw";
 import elephantSvg from "./assets/animals/elephant.svg?raw";
+import foxSvg from "./assets/animals/fox.svg?raw";
 import giraffeSvg from "./assets/animals/giraffe.svg?raw";
+import penguinSvg from "./assets/animals/penguin.svg?raw";
 import rabbitSvg from "./assets/animals/rabbit.svg?raw";
+import sheepSvg from "./assets/animals/sheep.svg?raw";
 import turtleSvg from "./assets/animals/turtle.svg?raw";
 
-export const ANIMAL_IDS = ["duck", "elephant", "giraffe", "turtle", "rabbit", "butterfly"] as const;
+export const ANIMAL_IDS = [
+  "duck",
+  "elephant",
+  "giraffe",
+  "turtle",
+  "rabbit",
+  "butterfly",
+  "penguin",
+  "sheep",
+  "crab",
+  "fox",
+] as const;
 export type AnimalId = (typeof ANIMAL_IDS)[number];
 
 /** Every animal is authored on this square canvas. */
@@ -46,6 +61,10 @@ const FOOT_LEVEL: Record<AnimalId, number> = {
   turtle: 184,
   rabbit: 212,
   butterfly: 204,
+  penguin: 223,
+  sheep: 218,
+  crab: 214,
+  fox: 218,
 };
 
 /** Where an animal stands within its art box: on its feet, centred. */
@@ -62,6 +81,10 @@ const SOURCES: Record<AnimalId, { name: string; svg: string }> = {
   turtle: { name: "Turtle", svg: turtleSvg },
   rabbit: { name: "Rabbit", svg: rabbitSvg },
   butterfly: { name: "Butterfly", svg: butterflySvg },
+  penguin: { name: "Penguin", svg: penguinSvg },
+  sheep: { name: "Sheep", svg: sheepSvg },
+  crab: { name: "Crab", svg: crabSvg },
+  fox: { name: "Fox", svg: foxSvg },
 };
 
 function parseSvg(source: string, label: string): SVGSVGElement {

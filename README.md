@@ -58,7 +58,7 @@ doesn't cover it.
 
 **No binary assets.** The animals are hand-authored SVG and the sounds are
 synthesised with the Web Audio API, so there is nothing to download and nothing
-to fail to load. The whole bundle is around 24 kB.
+to fail to load. The whole bundle is around 35 kB.
 
 ## The host and the kind
 

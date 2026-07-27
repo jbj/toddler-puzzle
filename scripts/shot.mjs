@@ -303,7 +303,7 @@ try {
   check("moves on to stage 3", (await stageNumber()) === 3);
   check("stage 3 has six pieces", (await pieceCount()) === 6);
   const cast = await animalsOnBoard();
-  check("the last stage brings on the whole cast", new Set(cast).size === 6);
+  check("the last stage brings on six different animals", new Set(cast).size === 6);
   await shot("06-stage3-start");
 
   await dragAnimal(cast[0]);

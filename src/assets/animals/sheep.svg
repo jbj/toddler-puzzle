@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Sheep, facing left. The fleece is scalloped all the way round and the head
+    is part of the same outline, so the silhouette reads as a woolly cloud on
+    legs rather than another smooth body.
+  -->
+  <path
+    id="silhouette"
+    fill="#f4efe4"
+    stroke="#9b9384"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M110 70
+       C96 64 84 66 80 78
+       C74 62 56 56 42 66
+       C26 76 18 96 26 114
+       C32 130 48 140 66 136
+       C76 133 82 142 86 152
+       L90 210 Q90 218 100 218 Q110 218 110 210 L106 160
+       C120 168 136 168 150 162
+       L156 210 Q156 218 166 218 Q176 218 176 210 L172 158
+       C186 156 196 148 198 136
+       C210 128 210 108 198 100
+       C204 84 190 74 176 78
+       C170 64 152 58 140 66
+       C132 62 120 62 110 70 Z"
+  />
+  <g id="detail">
+    <!-- face -->
+    <path
+      d="M78 80 C72 66 56 60 44 70 C30 80 24 96 30 112
+         C36 126 50 134 64 130 C74 126 80 110 78 80 Z"
+      fill="#6b6257"
+    />
+    <!-- ear -->
+    <path d="M72 96 C84 96 98 104 100 116 C96 124 82 120 74 110 Z" fill="#544c43" />
+    <!-- eye -->
+    <circle cx="48" cy="96" r="6" fill="#2b3440" />
+    <!-- fleece curls -->
+    <g fill="none" stroke="#ded5c4" stroke-width="5" stroke-linecap="round">
+      <path d="M104 106 a12 12 0 1 1 24 4" />
+      <path d="M142 96 a12 12 0 1 1 22 8" />
+      <path d="M112 138 a12 12 0 1 1 24 4" />
+      <path d="M156 128 a12 12 0 1 1 22 6" />
+    </g>
+  </g>
+</svg>
