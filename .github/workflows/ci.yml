@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# This workflow only ever reads. Screenshots leave as an artifact, which needs no
+# write access and no privileged second job: see docs/decisions/0006.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install art check tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends librsvg2-bin imagemagick
+
+      - name: Resolve Chrome
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROME_BIN=google-chrome" >> "$GITHUB_ENV"
+            google-chrome --version
+          elif command -v chromium >/dev/null 2>&1; then
+            echo "CHROME_BIN=chromium" >> "$GITHUB_ENV"
+            chromium --version
+          else
+            echo "::error::Neither google-chrome nor chromium is available; npm run shot needs a headless Chrome binary."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify
+
+      # Kept as an artifact rather than posted into the PR: producing it needs no
+      # more than the read-only token this job already holds. The screenshots a
+      # reviewer looks at are attached by the author; these exist so that claim
+      # can be checked against a run of the PR's own code.
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: puzzle-screenshots
+          path: .art/shots/
+          if-no-files-found: warn
+          retention-days: 7

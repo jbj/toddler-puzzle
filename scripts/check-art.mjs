@@ -17,10 +17,13 @@
  *
  * Needs rsvg-convert and ImageMagick, same as `npm run art`.
  */
-import { execFileSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { magick, requireArtTools, rsvg } from "./tools.mjs";
+
+requireArtTools();
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const animalsDir = join(root, "src/assets/animals");
@@ -50,10 +53,10 @@ function mask(svg, css, name) {
   const svgPath = join(scratch, `${name}.svg`);
   const pngPath = join(scratch, `${name}.png`);
   writeFileSync(svgPath, patched);
-  execFileSync("rsvg-convert", ["-w", String(SAMPLE), "-h", String(SAMPLE), svgPath, "-o", pngPath]);
+  rsvg(["-w", String(SAMPLE), "-h", String(SAMPLE), svgPath, "-o", pngPath]);
   // Anything at least half opaque counts as covered; this keeps antialiased
   // edges from reading as stray marks.
-  execFileSync("magick", [pngPath, "-alpha", "extract", "-threshold", "50%", pngPath]);
+  magick([pngPath, "-alpha", "extract", "-threshold", "50%", pngPath]);
   return pngPath;
 }
 
@@ -74,14 +77,21 @@ const FILL_ONLY = `${HIDE_DETAIL}#silhouette{stroke-width:0}`;
 const OVERHANG_BUDGET = 0.03;
 
 function opaquePixels(png) {
-  const out = execFileSync("magick", [png, "-format", "%[fx:mean*w*h]", "info:"]).toString();
+  const out = magick([png, "-format", "%[fx:mean*w*h]", "info:"]).toString();
   return Math.round(Number(out));
 }
 
 /** Bounding box of a mask, in art units. */
 function bounds(png) {
-  const geometry = execFileSync("magick", [
-    png, "-bordercolor", "black", "-border", "1", "-format", "%@", "info:",
+  const geometry = magick([
+    png,
+    "-bordercolor",
+    "black",
+    "-border",
+    "1",
+    "-format",
+    "%@",
+    "info:",
   ]).toString();
   const [w, h, x, y] = geometry.match(/\d+/g).map(Number);
   // The border added for trimming shifts the origin by one pixel.
@@ -115,7 +125,9 @@ function declaredFootLevels() {
 
 // --- checks ---------------------------------------------------------------
 
-const files = readdirSync(animalsDir).filter((f) => f.endsWith(".svg")).sort();
+const files = readdirSync(animalsDir)
+  .filter((f) => f.endsWith(".svg"))
+  .sort();
 if (files.length === 0) {
   console.error("No animal SVGs found in", animalsDir);
   process.exit(1);
@@ -130,11 +142,15 @@ for (const file of files) {
   console.log(`\n${id}`);
 
   const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1];
-  check("uses the shared art box", viewBox === `0 0 ${ART_BOX} ${ART_BOX}`, `viewBox is "${viewBox}"`);
+  check(
+    "uses the shared art box",
+    viewBox === `0 0 ${ART_BOX} ${ART_BOX}`,
+    `viewBox is "${viewBox}"`,
+  );
 
   const silhouetteTag = svg.match(/<path\b[^>]*\bid="silhouette"[^>]*>/)?.[0];
   const hasSilhouette = Boolean(silhouetteTag && /\bd="[^"]/.test(silhouetteTag));
-  check("has a <path id=\"silhouette\"> with a d attribute", hasSilhouette);
+  check('has a <path id="silhouette"> with a d attribute', hasSilhouette);
   if (!hasSilhouette) continue;
 
   check("is registered in ANIMAL_IDS", registered.includes(id), "add it to src/assets.ts");
@@ -157,12 +173,18 @@ for (const file of files) {
   // multiply against the inverted silhouette rather than an alpha operation.
   const silhouette = mask(svg, HIDE_DETAIL, `${id}-silhouette`);
   const outside = join(scratch, `${id}-outside.png`);
-  execFileSync("magick", [silhouette, "-negate", outside]);
+  magick([silhouette, "-negate", outside]);
 
   const strayOf = (css, name) => {
     const png = join(scratch, `${id}-${name}.png`);
-    execFileSync("magick", [mask(svg, css, `${id}-${name}-marks`), outside,
-      "-compose", "Multiply", "-composite", png]);
+    magick([
+      mask(svg, css, `${id}-${name}-marks`),
+      outside,
+      "-compose",
+      "Multiply",
+      "-composite",
+      png,
+    ]);
     return { pixels: opaquePixels(png), png };
   };
 
@@ -200,7 +222,11 @@ for (const file of files) {
 
 const orphans = registered.filter((id) => !files.includes(`${id}.svg`));
 console.log("");
-check("every registered animal has artwork", orphans.length === 0, `missing: ${orphans.join(", ")}`);
+check(
+  "every registered animal has artwork",
+  orphans.length === 0,
+  `missing: ${orphans.join(", ")}`,
+);
 
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed.`);

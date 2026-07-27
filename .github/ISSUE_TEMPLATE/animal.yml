@@ -1,0 +1,54 @@
+name: Add an animal
+description: Request a new hand-authored SVG animal for the puzzle.
+labels:
+  - art
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Animals are hand-authored SVGs in `src/assets/animals/*.svg`. Each file must have one closed `#silhouette` path and one `#detail` group. The same silhouette cuts the hole and draws the piece, so the outline has to be clear and distinct.
+  - type: input
+    id: animal-id
+    attributes:
+      label: Animal name / id
+      description: Use a lowercase single word, for example `hedgehog`.
+      placeholder: hedgehog
+    validations:
+      required: true
+  - type: textarea
+    id: distinct-silhouette
+    attributes:
+      label: Why this animal — how is its silhouette distinct from duck, turtle, giraffe, elephant, butterfly, rabbit?
+      description: Toddlers match the outline before the detail, so explain what makes this profile easy to tell apart.
+      placeholder: It has a low rounded body with small spikes, unlike the tall giraffe, wide butterfly, or long-necked duck.
+    validations:
+      required: true
+  - type: textarea
+    id: overhangs
+    attributes:
+      label: Expected overhangs
+      description: Detail should stay inside the silhouette. If a detail is meant to break the outline, tag it with data-overhang="tail" or a similar reason; all tagged overhangs together have a 3% animal-area budget.
+      placeholder: A small tail may overhang the silhouette because it reads better outside the body outline.
+    validations:
+      required: false
+  - type: textarea
+    id: pose-notes
+    attributes:
+      label: Reference/pose notes
+      description: Add any pose, proportion, or toddler-recognition notes that should guide the drawing.
+      placeholder: Side view, head facing left, feet on one clear ground line.
+    validations:
+      required: false
+  - type: checkboxes
+    id: acceptance
+    attributes:
+      label: Acceptance checklist from the README
+      description: The PR is done when these README steps have been followed.
+      options:
+        - label: Draw `src/assets/animals/<name>.svg` with the required `viewBox`, one closed `#silhouette` path, and a `#detail` group.
+        - label: Run `npm run art` and review `.art/contact-sheet.png` in colour and as a bare silhouette.
+        - label: Review the animal close up with `npm run art -- <name>`.
+        - label: Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
+        - label: Add `FOOT_LEVEL` in `src/layout.ts` using the value reported by `npm run art:check`.
+        - label: Run `npm run art:check` and fix any structure, clipping, containment, overhang, or foot-level failures.
+        - label: Confirm every animal in `ANIMAL_IDS` is still drawn at random, and only change stage sizes with matching layout updates.

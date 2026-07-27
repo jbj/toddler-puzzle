@@ -12,10 +12,13 @@
  * The contact sheet is too small to see whether details line up with the
  * outline; review a single animal large before calling its art finished.
  */
-import { execFileSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { magick, requireArtTools, rsvg } from "./tools.mjs";
+
+requireArtTools();
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const animalsDir = join(root, "src/assets/animals");
@@ -38,13 +41,7 @@ function silhouetteOnly(svg) {
 function render(svgText, outPath, background) {
   const tmp = join(outDir, "_tmp.svg");
   writeFileSync(tmp, svgText);
-  execFileSync("rsvg-convert", [
-    "-w", String(CELL),
-    "-h", String(CELL),
-    "-b", background,
-    tmp,
-    "-o", outPath,
-  ]);
+  rsvg(["-w", String(CELL), "-h", String(CELL), "-b", background, tmp, "-o", outPath]);
 }
 
 const files = readdirSync(animalsDir)
@@ -72,14 +69,16 @@ for (const file of files) {
   // A single animal is laid out side by side instead: it is being inspected,
   // not compared, and a 900px column would not fit on screen.
   const column = join(outDir, `${name}-column.png`);
-  execFileSync(
-    "magick",
+  magick(
     only
       ? [colourPng, silPng, "+append", column]
       : [
-          "-background", "white",
-          "-fill", "#333",
-          "-pointsize", "22",
+          "-background",
+          "white",
+          "-fill",
+          "#333",
+          "-pointsize",
+          "22",
           "label:" + name,
           colourPng,
           silPng,
@@ -91,5 +90,5 @@ for (const file of files) {
 }
 
 const sheet = join(outDir, only ? `${only}-large.png` : "contact-sheet.png");
-execFileSync("magick", [...columns, "+append", "-bordercolor", "white", "-border", "8", sheet]);
+magick([...columns, "+append", "-bordercolor", "white", "-border", "8", sheet]);
 console.log(sheet);

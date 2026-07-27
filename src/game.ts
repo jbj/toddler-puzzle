@@ -68,8 +68,7 @@ export function createGame(root: HTMLElement, random: () => number = Math.random
 
   const pieceEl = (animal: AnimalId): SVGGElement => elementFor(board.pieces, animal);
 
-  const homeOf = (animal: AnimalId): Point =>
-    layout.traySlots[stateOf(animal).slot] as Point;
+  const homeOf = (animal: AnimalId): Point => layout.traySlots[stateOf(animal).slot] as Point;
 
   function moveTo(animal: AnimalId, position: Point, animated: boolean): void {
     const element = pieceEl(animal);
@@ -136,7 +135,10 @@ export function createGame(root: HTMLElement, random: () => number = Math.random
     layout = chooseLayout(viewport(), stage, cast);
     board = mount(layout);
     state.clear();
-    const slots = shuffle(layout.traySlots.map((_, index) => index), random);
+    const slots = shuffle(
+      layout.traySlots.map((_, index) => index),
+      random,
+    );
     layout.animals.forEach((animal, index) => {
       state.set(animal, { slot: slots[index] as number, position: { x: 0, y: 0 }, placed: false });
     });

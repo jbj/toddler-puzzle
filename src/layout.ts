@@ -350,5 +350,9 @@ export function nextStage(stage: number): number {
 
 /** Portrait reflow kicks in once the viewport is taller than it is wide. */
 export function chooseLayout(viewport: Size, stage: number, animals: readonly AnimalId[]): Layout {
-  return buildStageLayout(viewport.height > viewport.width ? "portrait" : "landscape", stage, animals);
+  return buildStageLayout(
+    viewport.height > viewport.width ? "portrait" : "landscape",
+    stage,
+    animals,
+  );
 }

@@ -1,0 +1,69 @@
+name: Bug report
+description: Report something that went wrong while playing Animal Puzzle.
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The deal is random. Please include a seed so the same puzzle can be replayed while debugging.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: Say what you saw or what the child tried to do.
+      placeholder: The rabbit slid back even though it was dropped over the rabbit-shaped hole.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Say what should have happened instead.
+      placeholder: The rabbit should have snapped into the rabbit hole and the stage should have continued.
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: Seed
+      description: The deal is random. Add `?seed=123` to the URL and give the seed here, otherwise the bug may be impossible to reproduce.
+      placeholder: "123"
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Stage
+      options:
+        - stage 1 (3 animals)
+        - stage 2 (4 animals)
+        - stage 3 (6 animals)
+        - not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: orientation
+    attributes:
+      label: Orientation
+      options:
+        - landscape
+        - portrait
+        - both
+        - not sure
+    validations:
+      required: true
+  - type: input
+    id: device-browser
+    attributes:
+      label: Device and browser
+      placeholder: iPad Safari, Android Chrome, desktop Firefox
+    validations:
+      required: false
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshot or video
+      description: Drag a screenshot or video here if it helps show the problem.
+    validations:
+      required: false
