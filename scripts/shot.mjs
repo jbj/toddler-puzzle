@@ -16,6 +16,8 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import { buildSheet } from "./shot-sheet.mjs";
+
 const root = fileURLToPath(new URL("..", import.meta.url));
 const dist = join(root, "dist");
 const shotsDir = join(root, ".art/shots");
@@ -33,6 +35,7 @@ const MIME = {
   ".svg": "image/svg+xml",
 };
 
+rmSync(shotsDir, { recursive: true, force: true });
 mkdirSync(shotsDir, { recursive: true });
 
 // --- static server --------------------------------------------------------
@@ -367,6 +370,20 @@ try {
   socket.close();
   chrome.kill();
   server.close();
+}
+
+// Built even when checks fail: a failed run is exactly when someone wants to
+// look at the pictures. A sheet is a convenience, so losing it must not turn a
+// reporting problem into a failed verification.
+try {
+  const sheet = buildSheet();
+  if (sheet) console.log(`\nContact sheet: ${sheet}`);
+  else console.log(`\nNo contact sheet (ImageMagick not installed). Screenshots: ${shotsDir}`);
+} catch (error) {
+  console.warn(
+    `\nCould not build the contact sheet (${error.message}).\n` +
+      `Attach the individual screenshots from ${shotsDir} instead.`,
+  );
 }
 
 if (failures > 0) {

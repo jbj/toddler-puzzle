@@ -16,7 +16,9 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { magick, rsvg } from "./tools.mjs";
+import { magick, requireArtTools, rsvg } from "./tools.mjs";
+
+requireArtTools();
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const animalsDir = join(root, "src/assets/animals");

@@ -110,4 +110,24 @@ Routine version bumps of actions are Dependabot's job, not yours.
 - Prefer one issue per pull request.
 - Keep evidence stronger than assertion: name the command you ran and the result.
 - Leave checks intact and explain any separate check change in its own right.
-- Expect CI to run the full verification and post screenshots automatically.
+- CI runs the full verification, but it will not show anyone what the change
+  looks like. Attaching that is your job.
+
+## Attaching screenshots
+
+`npm run verify` leaves eleven screenshots and a combined
+`.art/shots/contact-sheet.png` in `.art/shots/`. Attach the contact sheet to the
+pull request body, and an individual shot as well when one detail deserves a
+closer look.
+
+Nothing verifies that the images match the branch. CI once published them
+itself, and that turned out to cost more than it was worth (docs/decisions/0006);
+a reviewer now takes them on trust. So:
+
+- Attach images from a run of the branch as it stands, after your last commit.
+  Never a run from an earlier state, and never one hand-edited to look better.
+- If the run would not complete, say that instead of attaching nothing and
+  hoping the omission passes unnoticed.
+
+`.art/` is ignored by git. Do not commit the images to get around the upload -
+that is the pipeline this project deliberately removed, rebuilt by hand.

@@ -30,18 +30,39 @@ function missing(what, packages) {
   process.exit(1);
 }
 
-const imagemagick =
-  process.env.IMAGEMAGICK_BIN ??
-  ["magick", "convert"].find(have) ??
-  missing("ImageMagick", "imagemagick");
+// Resolved on first use rather than on import, so that merely importing this
+// module cannot end the process. `npm run shot` pulls it in only to build a
+// contact sheet at the end, and a missing tool there must not fail a run whose
+// screenshots and checks are already done.
+const once = (resolve) => {
+  let value;
+  return () => (value ??= resolve());
+};
 
-if (!have("rsvg-convert")) missing("rsvg-convert", "librsvg2-bin");
+const imagemagick = once(
+  () => process.env.IMAGEMAGICK_BIN ?? ["magick", "convert"].find(have) ?? null,
+);
+const rsvgConvert = once(() => (have("rsvg-convert") ? "rsvg-convert" : null));
+
+/** Whether ImageMagick is installed, without exiting if it is not. */
+export const haveImageMagick = () => imagemagick() !== null;
+
+/**
+ * Fail now, with the package name, rather than part-way through a run. For
+ * scripts that cannot do anything useful without both rasterisers.
+ */
+export function requireArtTools() {
+  if (rsvgConvert() === null) missing("rsvg-convert", "librsvg2-bin");
+  if (imagemagick() === null) missing("ImageMagick", "imagemagick");
+}
 
 /** Rasterise an SVG. Arguments are passed straight to rsvg-convert. */
-export const rsvg = (args) => execFileSync("rsvg-convert", args);
+export const rsvg = (args) =>
+  execFileSync(rsvgConvert() ?? missing("rsvg-convert", "librsvg2-bin"), args);
 
 /**
  * Run ImageMagick. Arguments must be in `<inputs> <operations> <output>` order,
  * which is what ImageMagick 6's `convert` and 7's `magick` both understand.
  */
-export const magick = (args) => execFileSync(imagemagick, args);
+export const magick = (args) =>
+  execFileSync(imagemagick() ?? missing("ImageMagick", "imagemagick"), args);

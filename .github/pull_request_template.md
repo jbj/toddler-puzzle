@@ -12,6 +12,16 @@ Closes #
 
 - [ ] `npm run verify` passes
 - [ ] Design invariants were not changed, or issue #___ explicitly authorised the change
-- [ ] CI screenshots were reviewed in the PR comment
+- [ ] The screenshots below come from this branch
 
-CI posts the screenshots automatically; you do not need to attach them.
+## Screenshots
+
+<!--
+Run `npm run verify` (or just `npm run shot`), then drag
+.art/shots/contact-sheet.png into this box. Individual shots are in the same
+folder if a change needs a closer look at one of them.
+
+Nothing checks that these came from your branch, so they are worth only as much
+as your word. Say so if you could not produce them.
+-->
+

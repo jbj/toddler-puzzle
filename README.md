@@ -35,6 +35,7 @@ npm run dev
 | `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large |
 | `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level) |
 | `npm run shot` | Drives real drags in headless Chromium and screenshots the result (run `npm run build` first) |
+| `npm run shot:sheet` | Rebuilds `.art/shots/contact-sheet.png` from the last run's screenshots |
 
 ## Design notes
 
@@ -175,11 +176,13 @@ piece of art.
 | `scripts/preview.mjs` | Renders the art for review, as a contact sheet or one animal large |
 | `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG |
 | `scripts/shot.mjs` | End-to-end drag test in headless Chromium |
+| `scripts/shot-sheet.mjs` | Packs the run's screenshots into one image to attach to a pull request |
 
 ## Testing
 
-CI runs the whole of `npm run verify` on every pull request and posts the
-screenshots automatically.
+CI runs the whole of `npm run verify` on every pull request. It does not post
+the screenshots: the author attaches them, having run the same command. Why that
+way round is [decision 0006](docs/decisions/0006-screenshots-come-from-the-author.md).
 
 `npm run test` covers the coordinate mapping (including letterboxing in both
 orientations), snap tolerance, clamping, the random deal, and every stage layout
@@ -193,7 +196,9 @@ pointer drags over the Chrome DevTools Protocol, and plays all three stages
 through - asserting that pieces snap, that a bad drop does *not* stick, that each
 stage hands over to the next, that rotating to portrait preserves progress, that
 the last stage loops back to the first, and that different seeds deal different
-puzzles while one seed always deals the same. Screenshots land in `.art/shots/`.
+puzzles while one seed always deals the same. Screenshots land in `.art/shots/`,
+alongside a `contact-sheet.png` that collects them into one image to drag into a
+pull request.
 
 `npm run art:check` covers the artwork itself, which the unit tests can't see:
 it rasterises each animal and checks that nothing is clipped by the art box,

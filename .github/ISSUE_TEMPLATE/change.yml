@@ -28,7 +28,7 @@ body:
     attributes:
       label: How do we check it worked?
       description: Prefer a mechanical check where possible, such as a unit test, an art:check assertion, or something visible in the npm run shot screenshots.
-      placeholder: Add a test for the new snap timing, and confirm the miss animation is visible in the CI screenshots from npm run shot.
+      placeholder: Add a test for the new snap timing, and confirm the miss animation is visible in the screenshots from npm run shot.
     validations:
       required: true
   - type: textarea
