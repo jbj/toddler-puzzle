@@ -1,6 +1,6 @@
 ---
 name: "Artwork"
-description: "The animal SVG contract, the overhang budget, foot levels, and how to add or review an animal."
+description: "The animal SVG contract, the overhang budget, foot levels, reviewing the render, and how to add an animal."
 applyTo: "src/assets/animals/*.svg,src/assets.ts,scripts/check-art.mjs,scripts/preview.mjs"
 ---
 
@@ -8,8 +8,62 @@ applyTo: "src/assets/animals/*.svg,src/assets.ts,scripts/check-art.mjs,scripts/p
 
 Every animal is one hand-authored SVG. `npm run art:check` is the mechanised
 form of everything below, so run it; but it checks that the art obeys the
-contract, not that the art is any good, which is why the steps here end with
-looking at it.
+contract, not that the art is any good, which is why the steps here begin and
+end with looking at it.
+
+## You have to look at the render
+
+An SVG is not a picture until something rasterises it. Coordinates that read
+sensibly in the file routinely come out as a leg growing from a shoulder, an eye
+floating off the head, or a curve that doubles back through the body. Nobody
+authors this well in the blind, and no amount of care over a `d` attribute
+substitutes for looking at the result.
+
+So, whenever you add or redraw an animal:
+
+- **Render it and open the image.** `npm run art -- <name>` writes
+  `.art/<name>-large.png`, showing the animal in colour beside its bare
+  silhouette. View that file. `npm run art:check` passing tells you the art is
+  *legal*, not that it is *good*: it measures containment, clipping and foot
+  level, and has no opinion on whether the thing looks like a duck.
+- **Expect several rounds.** Being right first time is the exception, not the
+  standard to hold yourself to. The normal path is draw, render, look, fix,
+  render again - four or five passes is ordinary, and each one should be aimed at
+  a specific thing you saw and disliked. Do not ship the first version that
+  survives the check; ship the first version you would be happy to see in the
+  tray.
+- **If you cannot see the image, do not add the animal.** An agent with no way to
+  view a PNG is authoring blind, and blind SVG authoring is what produces the bad
+  art this section exists to prevent. Say that you cannot review the render, and
+  stop there; do not commit a plausible-looking path unseen and leave a human to
+  find out. New art is one of the few jobs in this repository that genuinely
+  cannot be done without eyes. Editing an existing animal is the same job: if the
+  change moves a coordinate, it needs the same look.
+
+## Common ways hand-drawn animals go wrong
+
+These all pass `npm run art:check` - it cannot see any of them - and all of them
+are obvious the moment you look at the render. They are worth checking for
+deliberately, because they are the ones that keep arriving.
+
+- **An impossible mix of side view and front view.** Decide which way the animal
+  faces before drawing a single path, then hold it. The usual failure is a body
+  drawn cleanly side-on wearing two forward-facing eyes, or a head in profile
+  with both ears splayed as if seen head-on, or all four legs drawn out flat
+  beside a side view. Ask of every detail whether it would really be visible from
+  where the viewer is standing; if the answer is no, cut it. One eye on a profile
+  is not a missing eye, it is a profile.
+- **Detail that should reach the silhouette but stops short.** A wing edge, a
+  shell rim, a belly patch, the line where an ear meets the head: if a mark is
+  meant to run to the outline, a hairline of background left showing between them
+  reads as a slip rather than a style. Do not eyeball a fresh curve close to the
+  outline - copy the silhouette's own coordinates for that stretch so the two
+  edges are the same edge. Nudging outward instead is not the fix; it makes an
+  undeclared overhang, which does fail the check.
+- **A margin that should be even but isn't.** A stripe, a hem or a patch that
+  runs parallel to the outline and drifts from a thin gap to a fat one along its
+  length looks like a mistake, because it is one. Keep the distance constant, or
+  make the mark obviously not parallel so there is no gap to compare.
 
 ## The contract
 
@@ -82,18 +136,23 @@ merely looks close.
    outline before the detail, so two similar profiles make the puzzle frustrating.
    A new animal must be distinct in outline from duck, turtle, giraffe, elephant,
    butterfly, and rabbit.
-2. Check it renders: `npm run art`, then look at `.art/contact-sheet.png`. It
-   shows every animal in colour **and** as a bare silhouette; if you can't tell
-   what the silhouette is, neither can a two-year-old.
-3. Review it close up with `npm run art -- <name>`. The contact sheet is too
-   small to judge whether details line up with the outline, which is exactly
-   where hand-drawn art goes wrong.
+2. Render it and look: `npm run art -- <name>`, then open `.art/<name>-large.png`.
+   Expect the first render to be wrong somewhere. Fix what you saw, render again,
+   and keep going until you would be happy to see it in the tray - several rounds
+   is normal, not a sign the animal is beyond saving. If you have no way to view
+   the image, stop here and say so rather than carrying on blind.
+3. Check it against the others: `npm run art`, then look at
+   `.art/contact-sheet.png`. It shows every animal in colour **and** as a bare
+   silhouette; if you can't tell what the silhouette is, neither can a
+   two-year-old, and if it reads as one of the existing six, draw something else.
 4. Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
 5. Add its foot level to `FOOT_LEVEL` in `src/assets.ts`, from the value
    `npm run art:check` reports.
 6. Run `npm run art:check`. It verifies the structure, that the art is not
    clipped by the art box, that nothing hangs outside the silhouette except
    declared overhangs, and that the declared foot level matches the artwork.
+   Passing it is the floor, not the finish line: it cannot see any of the
+   pitfalls above.
 7. That's it - every animal in `ANIMAL_IDS` is in the draw, so the new one will
    start turning up on its own. To make a stage *bigger*, see
    [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); that is a
@@ -102,8 +161,15 @@ merely looks close.
 ## Before calling art finished
 
 - run `npm run art:check`;
-- run `npm run art -- <name>` and actually look at the large render;
-- use `npm run art` if the contact sheet helps compare silhouettes.
+- run `npm run art -- <name>` and actually look at the large render - the current
+  one, from after your last edit;
+- read it against the pitfalls above: one consistent viewpoint, marks that meet
+  the outline where they are meant to, even margins where they are meant to be
+  even;
+- use `npm run art` if the contact sheet helps compare silhouettes;
+- say in the pull request that you looked, and at what. "The check passes" is a
+  different claim from "I have seen it", and only the second one is about the
+  art.
 
 `npm run art:check` covers the artwork itself, which the unit tests can't see:
 it rasterises each animal and checks that nothing is clipped by the art box,
