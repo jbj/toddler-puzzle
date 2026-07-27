@@ -72,11 +72,19 @@ function parseSvg(source: string, label: string): SVGSVGElement {
   return root;
 }
 
+/** Escaped for use inside a double-quoted attribute in the markup we build. */
+const attributeValue = (value: string): string =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
 /** The silhouette's styling, minus the two attributes the artwork supplies. */
 function bodyAttributes(silhouette: SVGPathElement): string {
   return [...silhouette.attributes]
     .filter((attribute) => attribute.name !== "d" && attribute.name !== "id")
-    .map((attribute) => `${attribute.name}="${attribute.value.replaceAll('"', "&quot;")}"`)
+    .map((attribute) => `${attribute.name}="${attributeValue(attribute.value)}"`)
     .join(" ");
 }
 
@@ -91,6 +99,11 @@ function parseAnimal(id: AnimalId): PieceShape {
   const outline = silhouette.getAttribute("d");
   if (!outline) {
     throw new Error(`Animal "${id}" has a silhouette with no "d" attribute.`);
+  }
+  // The outline is interpolated straight into markup, both here and when the
+  // hole is cut, so anything that could close the attribute is a broken asset.
+  if (/["<>]/.test(outline)) {
+    throw new Error(`Animal "${id}" has a silhouette whose "d" is not path data.`);
   }
 
   const viewBox = root.getAttribute("viewBox");
