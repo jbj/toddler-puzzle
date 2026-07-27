@@ -6,17 +6,19 @@ UI where a change leaves no trace.
 
 What it says:
 
-- changes reach `main` through a pull request with one approving review;
-- an approval is dismissed when new commits are pushed, so an agent cannot add
-  code after the fact to an approved branch;
+- changes reach `main` through a pull request, never a direct push;
+- no approving review is required, because there is nobody who can give one;
+  see `docs/decisions/0007-no-required-approving-review.md`;
+- an approval, if one is given, is dismissed when new commits are pushed, so an
+  agent cannot add code after the fact to an approved branch;
 - the `Verify` check must pass - that is `npm run verify` running in CI;
 - Copilot reviews every pull request, drafts included, and again on each push;
 - `main` cannot be deleted or force-pushed.
 
-The repository admin can bypass. That is deliberate: a solo maintainer cannot
-approve their own pull request, so without a bypass the first hand-written fix
-would be unmergeable. Agent-authored pull requests are a different author, so
-they still need a real approval.
+The repository admin can bypass, which covers the case where a rule itself is
+what needs fixing. With no approval to wait for, ordinary pull requests should
+not need it: the pull request, the `Verify` check and the Copilot review still
+apply, and merging without them is still a deliberate, logged override.
 
 ## Applying it
 
