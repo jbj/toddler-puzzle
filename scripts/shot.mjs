@@ -191,10 +191,10 @@ const centreOf = (selector) =>
   })()
 `);
 
-async function dragAnimal(animal, { pauseAtHalfway } = {}) {
-  const from = await centreOf(`.piece[data-piece="${animal}"]`);
-  const to = await centreOf(`.hole[data-piece="${animal}"]`);
-  if (!from || !to) throw new Error(`Could not locate piece or hole for "${animal}".`);
+async function dragAnimal(pieceId, { pauseAtHalfway } = {}) {
+  const from = await centreOf(`.piece[data-piece="${pieceId}"]`);
+  const to = await centreOf(`.hole[data-piece="${pieceId}"]`);
+  if (!from || !to) throw new Error(`Could not locate piece or hole for "${pieceId}".`);
 
   await mouse("mousePressed", from.x, from.y);
   const steps = 12;
