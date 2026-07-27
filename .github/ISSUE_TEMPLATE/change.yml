@@ -1,0 +1,50 @@
+name: Change request
+description: Describe a change clearly enough that an AI agent can make it without a follow-up conversation.
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please be concrete. Say what should feel different for the child, why the current behaviour gets in the way, and how we can check the change mechanically.
+  - type: textarea
+    id: child-change
+    attributes:
+      label: What should be different for the child playing?
+      description: Describe the visible or playable change in plain terms.
+      placeholder: The animal should drift back more slowly after a miss so the child can see what happened.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why — what's wrong with how it is now?
+      description: Explain the problem this change solves.
+      placeholder: Right now the piece returns so quickly that it looks like it disappeared under the finger.
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: How do we check it worked?
+      description: Prefer a mechanical check where possible, such as a unit test, an art:check assertion, or something visible in the npm run shot screenshots.
+      placeholder: Add a test for the new snap timing, and confirm the miss animation is visible in the CI screenshots from npm run shot.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope / what must not change
+      description: Name any design invariants that must survive, such as only snapping into the matching hole, moving only forward, no binary assets, no runtime dependencies, or the generous snap radius.
+      placeholder: Do not add a menu or difficulty picker. Pieces must still only snap into their own holes.
+    validations:
+      required: false
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Before the agent opens a PR
+      options:
+        - label: The agent must run npm run verify and treat it as the single definition of done.
+          required: true
+        - label: Any change to a design invariant needs explicit human sign-off in this issue before it is implemented.
+          required: true

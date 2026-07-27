@@ -62,10 +62,17 @@ export function enableDragging(
     };
 
     callbacks.onPickUp(animal, element);
-    callbacks.onMove(animal, clampToCanvas({
-      x: pointer.x + active.offset.x,
-      y: pointer.y + active.offset.y,
-    }, layout.pieceSize, layout.canvas));
+    callbacks.onMove(
+      animal,
+      clampToCanvas(
+        {
+          x: pointer.x + active.offset.x,
+          y: pointer.y + active.offset.y,
+        },
+        layout.pieceSize,
+        layout.canvas,
+      ),
+    );
   });
 
   stage.addEventListener("pointermove", (event: PointerEvent) => {

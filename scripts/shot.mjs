@@ -39,7 +39,10 @@ mkdirSync(shotsDir, { recursive: true });
 
 const server = createServer((req, res) => {
   const requested = decodeURIComponent((req.url ?? "/").split("?")[0]);
-  const relative = normalize(requested === "/" ? "/index.html" : requested).replace(/^(\.\.[/\\])+/, "");
+  const relative = normalize(requested === "/" ? "/index.html" : requested).replace(
+    /^(\.\.[/\\])+/,
+    "",
+  );
   try {
     const body = readFileSync(join(dist, relative));
     res.writeHead(200, { "content-type": MIME[extname(relative)] ?? "application/octet-stream" });
@@ -53,17 +56,35 @@ await new Promise((resolve) => server.listen(PORT, resolve));
 // --- browser --------------------------------------------------------------
 
 rmSync(profileDir, { recursive: true, force: true });
-const chrome = spawn("chromium", [
-  "--headless=new",
-  `--remote-debugging-port=${DEBUG_PORT}`,
-  `--user-data-dir=${profileDir}`,
-  "--no-sandbox",
-  "--disable-gpu",
-  "--hide-scrollbars",
-  "--force-device-scale-factor=1",
-  "--window-size=1280,800",
-  "about:blank",
-], { stdio: "ignore" });
+// Which Chrome is on PATH depends on the machine: `chromium` on a Debian
+// desktop, `google-chrome` on a GitHub Actions runner. CHROME_BIN lets the
+// caller say, so CI does not need a different script.
+const CHROME = process.env.CHROME_BIN || "chromium";
+const chrome = spawn(
+  CHROME,
+  [
+    "--headless=new",
+    `--remote-debugging-port=${DEBUG_PORT}`,
+    `--user-data-dir=${profileDir}`,
+    "--no-sandbox",
+    "--disable-gpu",
+    "--hide-scrollbars",
+    "--force-device-scale-factor=1",
+    "--window-size=1280,800",
+    "about:blank",
+  ],
+  { stdio: "ignore" },
+);
+
+chrome.on("error", (error) => {
+  const why = error.code === "ENOENT" ? `no such program: ${CHROME}` : error.message;
+  console.error(
+    `Could not start Chrome (${why}).\n` +
+      "Install Chromium, or point CHROME_BIN at the browser to use:\n" +
+      "  CHROME_BIN=google-chrome npm run shot",
+  );
+  process.exit(1);
+});
 
 async function findTarget() {
   for (let attempt = 0; attempt < 60; attempt++) {
@@ -77,7 +98,7 @@ async function findTarget() {
     }
     await sleep(250);
   }
-  throw new Error("Chromium did not expose a debuggable page.");
+  throw new Error(`${CHROME} did not expose a debuggable page.`);
 }
 
 const target = await findTarget();
@@ -149,7 +170,8 @@ async function mouse(type, x, y) {
 }
 
 /** Centre of a `.piece` / `.hole` element in CSS pixels. */
-const centreOf = (selector) => evaluate(`
+const centreOf = (selector) =>
+  evaluate(`
   (() => {
     const el = document.querySelector(${JSON.stringify(selector)});
     if (!el) return null;
@@ -175,27 +197,23 @@ async function dragAnimal(animal, { pauseAtHalfway } = {}) {
   await sleep(420);
 }
 
-const placedCount = () => evaluate(
-  `document.querySelectorAll('.piece.is-placed').length`,
-);
+const placedCount = () => evaluate(`document.querySelectorAll('.piece.is-placed').length`);
 
 const pieceCount = () => evaluate(`document.querySelectorAll('.piece').length`);
 const holeCount = () => evaluate(`document.querySelectorAll('.hole').length`);
 const stageNumber = () => evaluate(`Number(document.querySelector('#stage').dataset.stage)`);
 const layoutName = () => evaluate(`document.querySelector('#stage').dataset.layout`);
-const animalsOnBoard = () => evaluate(
-  `[...document.querySelectorAll('.piece')].map((p) => p.dataset.animal)`,
-);
+const animalsOnBoard = () =>
+  evaluate(`[...document.querySelectorAll('.piece')].map((p) => p.dataset.animal)`);
 /** The cast is random, so the script asks the board who is on it. */
-const unplacedAnimals = () => evaluate(
-  `[...document.querySelectorAll('.piece:not(.is-placed)')].map((p) => p.dataset.animal)`,
-);
-const finishButtons = () => evaluate(
-  `document.querySelectorAll('#stage .fx [role="button"]').length`,
-);
-const finishLabel = () => evaluate(
-  `document.querySelector('#stage .fx [role="button"]')?.getAttribute('aria-label') ?? ''`,
-);
+const unplacedAnimals = () =>
+  evaluate(`[...document.querySelectorAll('.piece:not(.is-placed)')].map((p) => p.dataset.animal)`);
+const finishButtons = () =>
+  evaluate(`document.querySelectorAll('#stage .fx [role="button"]').length`);
+const finishLabel = () =>
+  evaluate(
+    `document.querySelector('#stage .fx [role="button"]')?.getAttribute('aria-label') ?? ''`,
+  );
 
 /** Press the big button that ends a stage, then wait for the next board. */
 async function pressFinishButton() {

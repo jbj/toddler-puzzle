@@ -1,0 +1,65 @@
+name: Copilot Setup Steps
+
+# Without these setup steps, the Copilot cloud agent cannot run art:check or shot,
+# which are precisely the checks that catch the mistakes an agent makes on this project.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job MUST be named copilot-setup-steps or the Copilot cloud agent ignores it.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install art tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends librsvg2-bin imagemagick
+
+      - name: Resolve Chrome
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROME_BIN=google-chrome" >> "$GITHUB_ENV"
+            google-chrome --version
+          elif command -v chromium >/dev/null 2>&1; then
+            echo "CHROME_BIN=chromium" >> "$GITHUB_ENV"
+            chromium --version
+          else
+            echo "::error::Neither google-chrome nor chromium is available; npm run shot needs a headless Chrome binary."
+            exit 1
+          fi
+
+      - name: Print tool versions
+        run: |
+          set -euo pipefail
+          node --version
+          rsvg-convert --version
+          if command -v magick >/dev/null 2>&1; then
+            magick --version | head -n 1
+          else
+            convert --version | head -n 1
+          fi
+          "$CHROME_BIN" --version

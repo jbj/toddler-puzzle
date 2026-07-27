@@ -12,7 +12,13 @@ const prefersReducedMotion = (): boolean =>
   typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
-function sparkle(center: Point, colour: string, distance: number, angle: number, delay: number): SVGGElement {
+function sparkle(
+  center: Point,
+  colour: string,
+  distance: number,
+  angle: number,
+  delay: number,
+): SVGGElement {
   const anchor = document.createElementNS(SVG_NS, "g");
   anchor.setAttribute("transform", `translate(${center.x} ${center.y})`);
   anchor.style.pointerEvents = "none";
@@ -31,7 +37,12 @@ function sparkle(center: Point, colour: string, distance: number, angle: number,
       { transform: "translate(0px, 0px) scale(0.3)", opacity: 1 },
       { transform: `translate(${dx}px, ${dy}px) scale(1.1)`, opacity: 0 },
     ],
-    { duration: prefersReducedMotion() ? 1 : 700, delay, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)", fill: "forwards" },
+    {
+      duration: prefersReducedMotion() ? 1 : 700,
+      delay,
+      easing: "cubic-bezier(0.2, 0.7, 0.3, 1)",
+      fill: "forwards",
+    },
   );
   animation.addEventListener("finish", () => anchor.remove());
   return anchor;
@@ -55,7 +66,9 @@ export function celebrationBurst(fxLayer: SVGGElement, layout: Layout): void {
       y: Math.random() * layout.trayTop,
     };
     const colour = SPARKLE_COLOURS[i % SPARKLE_COLOURS.length] as string;
-    fxLayer.append(sparkle(center, colour, 60 + Math.random() * 80, Math.random() * Math.PI * 2, i * 25));
+    fxLayer.append(
+      sparkle(center, colour, 60 + Math.random() * 80, Math.random() * Math.PI * 2, i * 25),
+    );
   }
 }
 

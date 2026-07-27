@@ -13,6 +13,12 @@ particular deal - the screenshot run uses it to keep its shots comparable.
 
 Works with a finger or a mouse, in landscape or portrait.
 
+Contributors and agents should also read `AGENTS.md` before changing the
+project. It is the working agreement: what must be checked, which invariants
+must not be weakened, and when a human decision is needed. The lightweight
+records in `docs/decisions/` explain choices that are easy to mistake for
+oversights.
+
 ```
 npm install
 npm run dev
@@ -21,6 +27,9 @@ npm run dev
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Vite dev server |
+| `npm run verify` | Single check that has to pass before a pull request: lint, format check, build, tests, art check, and screenshot run |
+| `npm run lint` | ESLint |
+| `npm run format` | Formats with Prettier |
 | `npm run build` | Type-check, then production build into `dist/` |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large |
@@ -168,6 +177,9 @@ piece of art.
 | `scripts/shot.mjs` | End-to-end drag test in headless Chromium |
 
 ## Testing
+
+CI runs the whole of `npm run verify` on every pull request and posts the
+screenshots automatically.
 
 `npm run test` covers the coordinate mapping (including letterboxing in both
 orientations), snap tolerance, clamping, the random deal, and every stage layout

@@ -1,0 +1,234 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install art check tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends librsvg2-bin imagemagick
+
+      - name: Resolve Chrome
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROME_BIN=google-chrome" >> "$GITHUB_ENV"
+            google-chrome --version
+          elif command -v chromium >/dev/null 2>&1; then
+            echo "CHROME_BIN=chromium" >> "$GITHUB_ENV"
+            chromium --version
+          else
+            echo "::error::Neither google-chrome nor chromium is available; npm run shot needs a headless Chrome binary."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: puzzle-screenshots
+          path: .art/shots/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # The art-shots orphan branch exists only to host generated screenshots at stable raw URLs.
+  # GitHub comments cannot render artifact zips inline, so the branch holds only images and
+  # must never be merged into main.
+  publish-screenshots:
+    name: Publish screenshots
+    needs: verify
+    if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Download screenshot artifact
+        id: download
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: puzzle-screenshots
+          path: downloaded-shots
+
+      - name: Check for screenshots
+        id: shots
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d downloaded-shots ] && find downloaded-shots -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) -print -quit | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish screenshots to art-shots branch
+        if: ${{ steps.shots.outputs.present == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPOSITORY}.git"
+
+          destination="pr-${PR_NUMBER}"
+
+          # Two pull requests finishing at once both push to art-shots, so a
+          # rejected push is expected rather than exceptional. Re-clone and
+          # reapply rather than forcing, which would drop the other PR's shots.
+          publish() {
+            rm -rf art-shots-work
+            if git ls-remote --exit-code --heads "$repo_url" art-shots >/dev/null 2>&1; then
+              git clone --depth=1 --branch art-shots "$repo_url" art-shots-work
+              cd art-shots-work
+            else
+              git clone --depth=1 "$repo_url" art-shots-work
+              cd art-shots-work
+              git switch --orphan art-shots
+              git rm -rf . >/dev/null 2>&1 || true
+            fi
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            rm -rf "$destination"
+            mkdir -p "$destination"
+
+            while IFS= read -r -d '' file; do
+              relative_path="${file#../downloaded-shots/}"
+              mkdir -p "$destination/$(dirname "$relative_path")"
+              cp "$file" "$destination/$relative_path"
+            done < <(find ../downloaded-shots -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) -print0)
+
+            git add -A "$destination"
+            if git diff --cached --quiet; then
+              echo "No screenshot changes to publish."
+              cd ..
+              return 0
+            fi
+            git commit -m "Update art shots for PR ${PR_NUMBER}"
+            git push origin art-shots
+            cd ..
+          }
+
+          for attempt in 1 2 3; do
+            if publish; then
+              exit 0
+            fi
+            echo "Push attempt ${attempt} failed; another run probably got there first. Retrying."
+            cd "$GITHUB_WORKSPACE"
+            sleep $((attempt * 5))
+          done
+          echo "::error::Could not publish screenshots to the art-shots branch after three attempts."
+          exit 1
+
+      - name: Comment on pull request
+        uses: actions/github-script@v7
+        env:
+          ART_SHOTS_PRESENT: ${{ steps.shots.outputs.present }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const marker = '<!-- art-shots -->';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = context.payload.pull_request.number;
+            const sha = process.env.HEAD_SHA;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            function screenshotFiles(root) {
+              if (!fs.existsSync(root)) return [];
+              const files = [];
+              function walk(directory) {
+                for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+                  const fullPath = path.join(directory, entry.name);
+                  if (entry.isDirectory()) {
+                    walk(fullPath);
+                  } else if (/\.(png|jpe?g|webp)$/i.test(entry.name)) {
+                    files.push(path.relative(root, fullPath));
+                  }
+                }
+              }
+              walk(root);
+              return files.sort((a, b) => a.localeCompare(b));
+            }
+
+            let body = `${marker}\n### Puzzle screenshots\n\nCommit: \`${sha}\`\n\n`;
+            const files = process.env.ART_SHOTS_PRESENT === 'true' ? screenshotFiles('downloaded-shots') : [];
+
+            if (files.length === 0) {
+              body += `This run failed before screenshots were produced. See the [workflow run](${runUrl}) for details.\n`;
+            } else {
+              body += `The images below are published from the \`art-shots\` orphan branch, which holds only generated images and must never be merged into \`main\`.\n\n`;
+              for (const file of files) {
+                const encodedPath = file.split(path.sep).map(encodeURIComponent).join('/');
+                const url = `https://raw.githubusercontent.com/${owner}/${repo}/art-shots/pr-${prNumber}/${encodedPath}?v=${sha}`;
+                body += `#### ${file}\n\n![${file}](${url})\n\n`;
+              }
+              body += `[Workflow run](${runUrl})\n`;
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.login === 'github-actions[bot]' && comment.body?.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body,
+              });
+            }

@@ -8,7 +8,9 @@ let context: AudioContext | null = null;
 
 function getContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
-  const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const Ctor =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return null;
   context ??= new Ctor();
   return context;
@@ -34,7 +36,13 @@ interface ToneOptions {
   type?: OscillatorType;
 }
 
-function tone({ frequency, delay = 0, duration = 0.18, gain = 0.16, type = "sine" }: ToneOptions): void {
+function tone({
+  frequency,
+  delay = 0,
+  duration = 0.18,
+  gain = 0.16,
+  type = "sine",
+}: ToneOptions): void {
   const ctx = getContext();
   if (!ctx || ctx.state !== "running") return;
 
