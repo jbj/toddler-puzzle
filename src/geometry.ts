@@ -43,14 +43,20 @@ export function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-/** Centre of a square box whose top-left corner is `topLeft`. */
-export function boxCenter(topLeft: Point, size: number): Point {
-  return { x: topLeft.x + size / 2, y: topLeft.y + size / 2 };
+/** `size` scaled by `scale`, e.g. an authored box in logical units. */
+export function scaleSize(size: Size, scale: number): Size {
+  return { width: size.width * scale, height: size.height * scale };
+}
+
+/** Centre of a box of `size` whose top-left corner is `topLeft`. */
+export function boxCenter(topLeft: Point, size: Size): Point {
+  return { x: topLeft.x + size.width / 2, y: topLeft.y + size.height / 2 };
 }
 
 /**
  * Deliberately forgiving hit test: a piece counts as "in" its hole if the two
- * centres are within `radius`, which is roughly two thirds of a piece width.
+ * centres are within `radius`, which is roughly two thirds of the piece - see
+ * `pieceBox` in layout.ts for what that means for a piece that is not square.
  */
 export function isWithinSnapRadius(a: Point, b: Point, radius: number): boolean {
   return distance(a, b) <= radius;
@@ -58,11 +64,14 @@ export function isWithinSnapRadius(a: Point, b: Point, radius: number): boolean 
 
 /**
  * Keep a piece fully on the canvas so it can never be dragged out of reach.
+ * Each axis is clamped against that piece's own extent: clamping a wide piece
+ * as though it were as tall as it is wide would let it hang off the bottom and
+ * lock it out of reach at the side.
  */
-export function clampToCanvas(topLeft: Point, size: number, logical: Size): Point {
+export function clampToCanvas(topLeft: Point, size: Size, logical: Size): Point {
   return {
-    x: Math.min(Math.max(topLeft.x, 0), logical.width - size),
-    y: Math.min(Math.max(topLeft.y, 0), logical.height - size),
+    x: Math.min(Math.max(topLeft.x, 0), logical.width - size.width),
+    y: Math.min(Math.max(topLeft.y, 0), logical.height - size.height),
   };
 }
 

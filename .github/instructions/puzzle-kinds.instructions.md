@@ -46,10 +46,10 @@ kind cannot opt out of that, and should not try to: see
 both the cast and the order they are laid out in. Everything else about a stage - two
 layouts, one per orientation - is generated from a small arrangement table: how
 many animals stand on each ground line, how many wait in each tray row, and how
-big a piece is.
+big a slot a piece is drawn to fit inside.
 
 ```ts
-{ pieceSize: 145, sceneRows: [{ groundY: 428, count: 6 }], trayRows: [{ top: 505, count: 6 }], ... }
+{ slotSize: 145, sceneRows: [{ groundY: 428, count: 6 }], trayRows: [{ top: 505, count: 6 }], ... }
 ```
 
 Layouts are therefore built when a puzzle starts rather than up front: a hole's
@@ -58,16 +58,25 @@ this deal-dependent shape in mind when changing arrangements. Generating the
 layouts rather than declaring them is
 [decision 0004](../../docs/decisions/0004-generated-layouts.md).
 
-`spreadX` then spaces each row evenly across the canvas, and the snap radius
-follows the piece size, so a busier stage automatically gets tighter, more
-accurate snapping instead of overlapping snap zones. Pieces shrink as the board
-fills up (210 → 190 → 145 units in landscape), which is what lets six animals
-share a single row and still leaves every piece well over a tenth of the canvas
-wide - the size a small hand needs.
+`slotSize` is a square, but a piece need not be. Each piece in play gets its own
+`PieceBox` - `boxOf(layout, piece)` - holding the scale from its authored box to
+logical units, the bounds that produces, and its own snap radius. A piece is
+scaled by its *longer* side, so a plank or a pole still fits the slot the
+arrangement laid out, and is then centred across it. Measure a piece with its
+`PieceBox`, never with `slotSize`: clamping a wide piece as though it were square
+would let it hang off the canvas on one axis and lock it out of reach on the
+other.
 
-The snap radius stays deliberately generous, about two thirds of a piece;
-[decision 0001](../../docs/decisions/0001-generous-snap-radius.md) explains why
-tightening it is not a cleanup.
+`spreadX` then spaces each row evenly across the canvas, and each snap radius
+follows that piece's own smaller side, so a busier stage automatically gets
+tighter, more accurate snapping instead of overlapping snap zones. Pieces shrink
+as the board fills up (210 → 190 → 145 units in landscape), which is what lets
+six animals share a single row and still leaves every piece well over a tenth of
+the canvas wide - the size a small hand needs.
+
+The snap radius stays deliberately generous, about two thirds of the piece it
+belongs to; [decision 0001](../../docs/decisions/0001-generous-snap-radius.md)
+explains why tightening it is not a cleanup.
 
 ## Orientation
 
@@ -102,6 +111,7 @@ The layout tests check that:
 - snap zones never overlap;
 - tray slots never collide;
 - pieces stay grabbable;
+- every piece fits the slot it was dealt into, whatever its proportions;
 - each orientation fills at least 75% of its viewport.
 
 If a layout change weakens one of those properties, treat that as a design change

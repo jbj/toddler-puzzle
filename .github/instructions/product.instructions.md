@@ -37,8 +37,9 @@ oversights until you know it, so the reason is written next to the rule.
 - Let a piece snap only into its own hole. Make it impossible to place an animal
   wrongly; a wrong drop drifts back to the tray with a soft warm tone, never a
   buzzer. Why: the game should correct imprecision without scolding.
-- Keep the snap radius deliberately generous, about two thirds of a piece. Do not
-  tighten it as a cleanup. Why: near misses should count for a toddler.
+- Keep the snap radius deliberately generous, about two thirds of the piece being
+  dropped. Do not tighten it as a cleanup. Why: near misses should count for a
+  toddler.
 - Let the game move only forward: no menu, no difficulty picker, no settings, no
   failure state, and no score. The three dots are an indicator for a grown-up,
   not a control. Why: a two-year-old cannot read or configure a toy.
@@ -52,9 +53,10 @@ oversights until you know it, so the reason is written next to the rule.
 
 **Everything is forgiving.** A piece only ever snaps into its *own* hole, so it
 is impossible to place an animal "wrongly". The snap radius is deliberately
-large - about two thirds of a piece - and any other drop drifts gently back to
-the tray. Pieces are clamped to the canvas, so one can never be dragged out of
-reach. A wrong drop plays a soft, warm tone rather than a buzzer. The
+large - about two thirds of the piece being dropped, measured per piece rather
+than from one shared square - and any other drop drifts gently back to the tray.
+Pieces are clamped to the canvas by their own bounds, so one can never be dragged
+out of reach. A wrong drop plays a soft, warm tone rather than a buzzer. The
 mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
 [decision 0001](../../docs/decisions/0001-generous-snap-radius.md).

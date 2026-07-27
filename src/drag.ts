@@ -5,8 +5,8 @@
  * the same path, and so a fast-moving finger that outruns the piece still keeps
  * control of it.
  */
-import { clampToCanvas, screenToLogical, type Point } from "./geometry";
-import { FINGER_LIFT, type Layout } from "./layout";
+import { clampToCanvas, screenToLogical, type Point, type Size } from "./geometry";
+import { FINGER_LIFT, boxOf, type Layout } from "./layout";
 import type { PieceId } from "./piece";
 
 export interface DragCallbacks {
@@ -22,6 +22,8 @@ interface ActiveDrag {
   piece: PieceId;
   /** Piece top-left minus pointer position, so the grab point is preserved. */
   offset: Point;
+  /** This piece's own bounds, which is what it is clamped by. */
+  size: Size;
   position: Point;
 }
 
@@ -53,11 +55,13 @@ export function enableDragging(
 
     const pointer = logicalPointer(event, stage, layout);
     const current = callbacks.getPosition(piece);
+    const { size } = boxOf(layout, piece);
     active = {
       pointerId: event.pointerId,
       piece,
       // Lifting the piece above the finger keeps it visible under a small hand.
       offset: { x: current.x - pointer.x, y: current.y - pointer.y - FINGER_LIFT },
+      size,
       position: current,
     };
 
@@ -69,7 +73,7 @@ export function enableDragging(
           x: pointer.x + active.offset.x,
           y: pointer.y + active.offset.y,
         },
-        layout.pieceSize,
+        size,
         layout.canvas,
       ),
     );
@@ -81,7 +85,7 @@ export function enableDragging(
     const pointer = logicalPointer(event, stage, layout);
     active.position = clampToCanvas(
       { x: pointer.x + active.offset.x, y: pointer.y + active.offset.y },
-      layout.pieceSize,
+      active.size,
       layout.canvas,
     );
     callbacks.onMove(active.piece, active.position);

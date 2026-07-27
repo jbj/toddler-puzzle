@@ -13,6 +13,7 @@ import {
 import {
   STAGE_COUNT,
   STAGE_SIZES,
+  boxOf,
   buildStageLayout,
   chooseLayout,
   holeOf,
@@ -24,7 +25,7 @@ import {
 import { pieceId, type PieceShape } from "../src/piece";
 
 const CANVAS = { width: 1000, height: 700 };
-const PIECE = 190;
+const PIECE = { width: 190, height: 190 };
 
 const ORIENTATIONS = ["landscape", "portrait"] as const;
 
@@ -64,12 +65,8 @@ for (let stage = 1; stage <= STAGE_COUNT; stage++) {
 }
 
 /** Where a piece's anchor lands once it is standing in its hole. */
-const groundOf = (layout: Layout, shape: PieceShape): number => {
-  // The board scales authored boxes from width, so the anchor must climb back
-  // to the ground line with that same factor.
-  const scale = layout.pieceSize / shape.box.width;
-  return holeOf(layout, shape.id).y + shape.anchor.y * scale;
-};
+const groundOf = (layout: Layout, shape: PieceShape): number =>
+  holeOf(layout, shape.id).y + shape.anchor.y * boxOf(layout, shape.id).scale;
 
 describe("anchors", () => {
   it("stands every piece on one ground line, whatever its anchor", () => {
@@ -141,31 +138,49 @@ describe("clampToCanvas", () => {
   it("keeps a piece fully on screen so it can never be lost", () => {
     expect(clampToCanvas({ x: -500, y: -500 }, PIECE, CANVAS)).toEqual({ x: 0, y: 0 });
     expect(clampToCanvas({ x: 9999, y: 9999 }, PIECE, CANVAS)).toEqual({
-      x: CANVAS.width - PIECE,
-      y: CANVAS.height - PIECE,
+      x: CANVAS.width - PIECE.width,
+      y: CANVAS.height - PIECE.height,
     });
   });
 
   it("leaves in-bounds positions untouched", () => {
     expect(clampToCanvas({ x: 300, y: 200 }, PIECE, CANVAS)).toEqual({ x: 300, y: 200 });
   });
+
+  it("clamps each axis by the piece's own extent, not by one square", () => {
+    // A wide piece treated as a square would stop 300 units short of the bottom
+    // and hang 200 off the right - out of reach on one axis, off canvas on the
+    // other. Its own bounds put it flush against both edges instead.
+    const wide = { width: 300, height: 100 };
+    expect(clampToCanvas({ x: 9999, y: 9999 }, wide, CANVAS)).toEqual({ x: 700, y: 600 });
+    const tall = { width: 100, height: 300 };
+    expect(clampToCanvas({ x: 9999, y: 9999 }, tall, CANVAS)).toEqual({ x: 900, y: 400 });
+  });
+});
+
+describe("boxCenter", () => {
+  it("halves each side separately, so the centre is inside the piece", () => {
+    expect(boxCenter({ x: 10, y: 20 }, { width: 300, height: 100 })).toEqual({ x: 160, y: 70 });
+    expect(boxCenter({ x: 10, y: 20 }, { width: 100, height: 300 })).toEqual({ x: 60, y: 170 });
+  });
 });
 
 describe("snapping", () => {
   const layout = LAYOUTS[0]!;
   const piece = layout.pieces[0]!.id;
+  const { size, snapRadius } = boxOf(layout, piece);
 
   it("accepts a drop that is close but not exact", () => {
-    const hole = boxCenter(holeOf(layout, piece), layout.pieceSize);
+    const hole = boxCenter(holeOf(layout, piece), size);
     const sloppy = { x: hole.x + 80, y: hole.y - 60 };
-    expect(distance(sloppy, hole)).toBeLessThan(layout.snapRadius);
-    expect(isWithinSnapRadius(sloppy, hole, layout.snapRadius)).toBe(true);
+    expect(distance(sloppy, hole)).toBeLessThan(snapRadius);
+    expect(isWithinSnapRadius(sloppy, hole, snapRadius)).toBe(true);
   });
 
   it("rejects a drop that is clearly somewhere else", () => {
-    const hole = boxCenter(holeOf(layout, piece), layout.pieceSize);
-    const tray = boxCenter(layout.traySlots[0]!, layout.pieceSize);
-    expect(isWithinSnapRadius(tray, hole, layout.snapRadius)).toBe(false);
+    const hole = boxCenter(holeOf(layout, piece), size);
+    const tray = boxCenter(layout.traySlots[0]!, size);
+    expect(isWithinSnapRadius(tray, hole, snapRadius)).toBe(false);
   });
 });
 
@@ -274,39 +289,68 @@ const CASES = LAYOUTS.map((layout) => ({
 
 describe.each(CASES)("stage $layout.stage, $layout.id layout of $cast", ({ layout }) => {
   const { width, height } = layout.canvas;
-  const { pieceSize, snapRadius } = layout;
-  const holes = layout.pieces.map((shape) => holeOf(layout, shape.id));
+  const { slotSize } = layout;
+  /** Each piece with the hole it stands in and the bounds it stands there at. */
+  const placed = layout.pieces.map((shape) => ({
+    shape,
+    hole: holeOf(layout, shape.id),
+    box: boxOf(layout, shape.id),
+  }));
 
   it("gives exactly this stage's pieces a hole", () => {
     expect(layout.pieces).toHaveLength(stageSize(layout.stage));
     expect([...layout.holes.keys()].sort()).toEqual(layout.pieces.map((s) => s.id).sort());
   });
 
+  it("measures exactly this stage's pieces, each inside the stage's slot", () => {
+    expect([...layout.boxes.keys()].sort()).toEqual(layout.pieces.map((s) => s.id).sort());
+    for (const { shape, box } of placed) {
+      // Fitting every piece inside one slot is what keeps the checks below true
+      // for a piece of any proportions, not just for a square animal.
+      expect(box.size.width).toBeLessThanOrEqual(slotSize);
+      expect(box.size.height).toBeLessThanOrEqual(slotSize);
+      expect(Math.max(box.size.width, box.size.height)).toBeCloseTo(slotSize);
+      expect(box.size).toEqual({
+        width: shape.box.width * box.scale,
+        height: shape.box.height * box.scale,
+      });
+    }
+  });
+
   it("keeps every hole inside the scenery, above the tray", () => {
-    for (const hole of holes) {
+    for (const { hole, box } of placed) {
       expect(hole.x).toBeGreaterThanOrEqual(0);
-      expect(hole.x + pieceSize).toBeLessThanOrEqual(width);
+      expect(hole.x + box.size.width).toBeLessThanOrEqual(width);
       expect(hole.y).toBeGreaterThanOrEqual(0);
-      expect(hole.y + pieceSize).toBeLessThanOrEqual(layout.trayTop + pieceSize);
+      expect(hole.y + box.size.height).toBeLessThanOrEqual(layout.trayTop + box.size.height);
     }
   });
 
   it("keeps snap zones from overlapping each other", () => {
-    const centers = holes.map((hole) => boxCenter(hole, pieceSize));
-    for (let i = 0; i < centers.length; i++) {
-      for (let j = i + 1; j < centers.length; j++) {
-        expect(distance(centers[i]!, centers[j]!)).toBeGreaterThan(snapRadius);
+    const zones = placed.map(({ hole, box }) => ({
+      center: boxCenter(hole, box.size),
+      radius: box.snapRadius,
+    }));
+    for (let i = 0; i < zones.length; i++) {
+      for (let j = i + 1; j < zones.length; j++) {
+        const a = zones[i]!;
+        const b = zones[j]!;
+        // Neither centre may sit inside the other's zone, whichever of the two
+        // pieces is the more forgiving one.
+        expect(distance(a.center, b.center)).toBeGreaterThan(Math.max(a.radius, b.radius));
       }
     }
   });
 
   it("provides one tray slot per animal, all on canvas and below the tray line", () => {
-    expect(layout.traySlots).toHaveLength(holes.length);
+    expect(layout.traySlots).toHaveLength(placed.length);
     for (const slot of layout.traySlots) {
+      // A slot holds whichever piece is shuffled into it, so it is checked at
+      // the full slot size rather than at any one piece's bounds.
       expect(slot.x).toBeGreaterThanOrEqual(0);
-      expect(slot.x + pieceSize).toBeLessThanOrEqual(width);
+      expect(slot.x + slotSize).toBeLessThanOrEqual(width);
       expect(slot.y).toBeGreaterThanOrEqual(layout.trayTop);
-      expect(slot.y + pieceSize).toBeLessThanOrEqual(height);
+      expect(slot.y + slotSize).toBeLessThanOrEqual(height);
     }
   });
 
@@ -316,7 +360,7 @@ describe.each(CASES)("stage $layout.stage, $layout.id layout of $cast", ({ layou
       for (let j = i + 1; j < slots.length; j++) {
         const a = slots[i]!;
         const b = slots[j]!;
-        const overlaps = Math.abs(a.x - b.x) < pieceSize && Math.abs(a.y - b.y) < pieceSize;
+        const overlaps = Math.abs(a.x - b.x) < slotSize && Math.abs(a.y - b.y) < slotSize;
         expect(overlaps).toBe(false);
       }
     }
@@ -324,9 +368,11 @@ describe.each(CASES)("stage $layout.stage, $layout.id layout of $cast", ({ layou
 
   it("does not let a tray slot sit inside a hole's snap zone", () => {
     for (const slot of layout.traySlots) {
-      for (const hole of holes) {
-        const gap = distance(boxCenter(slot, pieceSize), boxCenter(hole, pieceSize));
-        expect(gap).toBeGreaterThan(snapRadius);
+      for (const { hole, box } of placed) {
+        // Measured with the piece's own bounds at both ends: this is where that
+        // piece would sit if it were left in that slot.
+        const gap = distance(boxCenter(slot, box.size), boxCenter(hole, box.size));
+        expect(gap).toBeGreaterThan(box.snapRadius);
       }
     }
   });
@@ -334,8 +380,96 @@ describe.each(CASES)("stage $layout.stage, $layout.id layout of $cast", ({ layou
   it("keeps pieces big enough for a toddler to grab", () => {
     // A piece narrower than a tenth of the canvas would be a fiddly target on a
     // small screen, however many animals the stage has.
-    expect(pieceSize / width).toBeGreaterThan(0.1);
+    expect(slotSize / width).toBeGreaterThan(0.1);
   });
+});
+
+/**
+ * Every animal is authored square, so the layout would happily go on assuming
+ * one square piece size until the first jigsaw piece or triangle arrived. These
+ * stand-ins are deliberately not square, in both directions.
+ */
+const PLANK: PieceShape = {
+  id: pieceId("test:plank"),
+  outline: "",
+  artwork: "",
+  box: { width: 300, height: 100 },
+  anchor: { x: 150, y: 100 },
+  label: "plank",
+};
+
+const POLE: PieceShape = {
+  id: pieceId("test:pole"),
+  outline: "",
+  artwork: "",
+  box: { width: 100, height: 300 },
+  anchor: { x: 50, y: 300 },
+  label: "pole",
+};
+
+describe("pieces that are not square", () => {
+  const cast = [PLANK, POLE, SHAPES[0]!];
+
+  it("stands them on the same ground line as a square piece", () => {
+    // Landscape puts a stage's whole cast on one ground line, so a piece that
+    // is not square floating or sinking shows up as a difference here.
+    const layout = buildStageLayout("landscape", 1, cast);
+    const grounds = cast.map((shape) => groundOf(layout, shape));
+    for (const ground of grounds) expect(ground).toBeCloseTo(grounds[0]!);
+  });
+
+  for (const id of ORIENTATIONS) {
+    const layout = buildStageLayout(id, 1, cast);
+    const boxes = cast.map((shape) => boxOf(layout, shape.id));
+
+    describe(`${id} layout`, () => {
+      it("keeps each piece's own proportions", () => {
+        for (const [index, shape] of cast.entries()) {
+          const box = boxes[index]!;
+          expect(box.size.width / box.size.height).toBeCloseTo(shape.box.width / shape.box.height);
+        }
+        expect(boxes[0]!.size.width).toBeCloseTo(layout.slotSize);
+        expect(boxes[0]!.size.height).toBeCloseTo(layout.slotSize / 3);
+        expect(boxes[1]!.size.width).toBeCloseTo(layout.slotSize / 3);
+        expect(boxes[1]!.size.height).toBeCloseTo(layout.slotSize);
+      });
+
+      it("keeps every hole on canvas on both axes", () => {
+        for (const [index, shape] of cast.entries()) {
+          const hole = holeOf(layout, shape.id);
+          const { size } = boxes[index]!;
+          expect(hole.x).toBeGreaterThanOrEqual(0);
+          expect(hole.y).toBeGreaterThanOrEqual(0);
+          expect(hole.x + size.width).toBeLessThanOrEqual(layout.canvas.width);
+          expect(hole.y + size.height).toBeLessThanOrEqual(layout.canvas.height);
+        }
+      });
+
+      it("gives a thin piece a tighter radius than a square one", () => {
+        // Two thirds of the piece, per piece: a radius taken from the plank's
+        // width would reach three times further than the plank is tall, so a
+        // drop nowhere near it vertically would still count as in.
+        for (const box of boxes) {
+          expect(box.snapRadius).toBe(Math.round(Math.min(box.size.width, box.size.height) * 0.68));
+        }
+        expect(boxes[0]!.snapRadius).toBeLessThan(boxes[2]!.snapRadius);
+        expect(boxes[1]!.snapRadius).toBeLessThan(boxes[2]!.snapRadius);
+      });
+
+      it("clamps a thin piece to the canvas by its own bounds", () => {
+        for (const box of boxes) {
+          const corner = clampToCanvas({ x: 9999, y: 9999 }, box.size, layout.canvas);
+          expect(corner).toEqual({
+            x: layout.canvas.width - box.size.width,
+            y: layout.canvas.height - box.size.height,
+          });
+          // Reachable: the far corner of the canvas is still inside the piece.
+          expect(corner.x + box.size.width).toBe(layout.canvas.width);
+          expect(corner.y + box.size.height).toBe(layout.canvas.height);
+        }
+      });
+    });
+  }
 });
 
 describe("chooseLayout", () => {
