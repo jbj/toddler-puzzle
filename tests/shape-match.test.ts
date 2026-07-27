@@ -9,13 +9,14 @@ import type { Puzzle } from "../src/puzzle";
 const ORIENTATIONS = ["landscape", "portrait"] as const;
 
 /**
- * Shapes standing in for the animals. The outlines are fake but distinct, which
- * is what lets the backdrop test check that a hole is cut from the very path its
- * piece is drawn from.
+ * Shapes standing in for the animals. Each outline is fake but unique - names
+ * alone would not be, since "rabbit" and "turtle" are the same length - which is
+ * what lets the backdrop test check that a hole is cut from the very path its
+ * own piece is drawn from, rather than from some other piece's.
  */
-const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
+const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id, index) => ({
   id: pieceId(id),
-  outline: `M0 0 h${id.length} v10 z`,
+  outline: `M0 0 h${index + 1} v10 z`,
   artwork: "",
   box: ANIMAL_BOX,
   anchor: animalAnchor(id),
@@ -132,19 +133,30 @@ describe("shape-match rules", () => {
 });
 
 describe("shape-match backdrop", () => {
-  const holesIn = (markup: string): string[] =>
-    [...markup.matchAll(/<g class="hole" data-piece="([^"]+)"/g)].map(
-      (match) => match[1] as string,
+  /** Each hole's own markup, keyed by the piece it was cut for. */
+  const holeBlocks = (markup: string): Map<string, string> =>
+    new Map(
+      [...markup.matchAll(/<g class="hole" data-piece="([^"]+)"[\s\S]*?<\/g>/g)].map((match) => [
+        match[1] as string,
+        match[0],
+      ]),
     );
 
   it("cuts one hole per piece, from the piece's own outline", () => {
     for (const { puzzle, layout } of CASES) {
-      const markup = shapeMatch.backdrop(puzzle, layout);
-      expect(holesIn(markup).sort()).toEqual(puzzle.pieces.map((shape) => shape.id).sort());
+      const blocks = holeBlocks(shapeMatch.backdrop(puzzle, layout));
+      expect([...blocks.keys()].sort()).toEqual(puzzle.pieces.map((shape) => shape.id).sort());
       for (const shape of puzzle.pieces) {
-        expect(markup).toContain(`d="${shape.outline}"`);
+        // Checked against this piece's own hole, not the markup at large, so a
+        // hole cut from the wrong outline or standing in the wrong place fails.
+        const block = blocks.get(shape.id) as string;
         const hole = holeOf(layout, shape.id);
-        expect(markup).toContain(`translate(${hole.x} ${hole.y})`);
+        const paths = [...block.matchAll(/ d="([^"]*)"/g)].map((match) => match[1]);
+        // Every path in a hole is the piece's own outline: that is the
+        // invariant that stops a piece drifting out of the hole it drops into.
+        expect(paths.length).toBeGreaterThan(0);
+        for (const path of paths) expect(path).toBe(shape.outline);
+        expect(block).toContain(`translate(${hole.x} ${hole.y})`);
       }
     }
   });
@@ -154,14 +166,10 @@ describe("shape-match backdrop", () => {
       const filled = puzzleOf(puzzle.stage, puzzle.pieces);
       const first = filled.pieces[0]!;
       filled.placed.add(first.id);
-      const holes = [
-        ...shapeMatch
-          .backdrop(filled, layout)
-          .matchAll(/data-piece="([^"]+)"\s+[^>]*opacity: (\d)/g),
-      ];
-      expect(holes).toHaveLength(filled.pieces.length);
-      for (const [, id, opacity] of holes) {
-        expect(opacity).toBe(id === first.id ? "0" : "1");
+      const blocks = holeBlocks(shapeMatch.backdrop(filled, layout));
+      expect(blocks.size).toBe(filled.pieces.length);
+      for (const [id, block] of blocks) {
+        expect(block).toContain(`opacity: ${id === first.id ? 0 : 1}`);
       }
     }
   });
