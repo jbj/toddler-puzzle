@@ -64,7 +64,9 @@ Use the README's Source map table as the full map. This is only the quick route:
   counts in both `LANDSCAPE` and `PORTRAIT`. Layout tests enforce agreement.
 - Changing layout constants: start in `src/layout.ts`; all tunables belong there.
 - Reviewing art: run `npm run art:check`, then actually look at `npm run art`
-  or `npm run art -- <name>` before calling the art finished.
+  or `npm run art -- <name>` before calling the art finished. Where the image
+  cannot be opened, `npm run art -- <name> --ascii` prints the same render as
+  text; say which of the two you looked at.
 - Running locally: `npm run dev` starts Vite. `npm run art` and
   `npm run art:check` need `rsvg-convert` and ImageMagick.
 - Debugging screenshots: `npm run shot` honours `CHROME_BIN`.
