@@ -10,12 +10,13 @@
 import type { Point, Size } from "./geometry";
 
 /**
- * An opaque piece identity. Opaque so that two providers cannot accidentally
- * agree on a string and end up sharing a hole.
+ * An opaque piece identity at the type level. Providers still need to choose
+ * runtime strings that cannot collide - for example by namespacing them - so
+ * two providers do not end up sharing a hole.
  */
 export type PieceId = string & { readonly __piece: unique symbol };
 
-/** Mint a piece identity. Only a shape provider should need this. */
+/** Mint a piece identity from a provider-owned runtime string. */
 export const pieceId = (value: string): PieceId => value as PieceId;
 
 export interface PieceShape {

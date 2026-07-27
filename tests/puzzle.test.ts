@@ -65,7 +65,7 @@ for (let stage = 1; stage <= STAGE_COUNT; stage++) {
 
 /** Where a piece's anchor lands once it is standing in its hole. */
 const groundOf = (layout: Layout, shape: PieceShape): number =>
-  holeOf(layout, shape.id).y + (shape.anchor.y / shape.box.height) * layout.pieceSize;
+  holeOf(layout, shape.id).y + (shape.anchor.y / shape.box.width) * layout.pieceSize;
 
 describe("anchors", () => {
   it("stands every piece on one ground line, whatever its anchor", () => {
@@ -199,10 +199,15 @@ describe("pickStagePieces", () => {
     for (let stage = 1; stage <= STAGE_COUNT; stage++) {
       for (let run = 0; run < 50; run++) {
         const cast = pickStagePieces(stage, SHAPES);
-        expect(new Set(cast).size).toBe(cast.length);
+        expect(new Set(idsOf(cast)).size).toBe(cast.length);
         for (const shape of cast) expect(SHAPES).toContain(shape);
       }
     }
+  });
+
+  it("rejects shapes whose piece ids are not unique", () => {
+    const duplicateIds = [SHAPES[0]!, { ...SHAPES[1]!, id: SHAPES[0]!.id }];
+    expect(() => pickStagePieces(1, duplicateIds, seededRandom(7))).toThrow(/duplicate/i);
   });
 
   it("uses every piece in the final stage", () => {

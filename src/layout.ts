@@ -64,11 +64,22 @@ export function pickStagePieces(
   shapes: readonly PieceShape[],
   random: () => number = Math.random,
 ): readonly PieceShape[] {
+  assertUniquePieceIds(shapes, "pickStagePieces()");
   const size = stageSize(stage);
   if (size > shapes.length) {
     throw new Error(`Stage ${stage} needs ${size} pieces but only ${shapes.length} exist.`);
   }
   return shuffle(shapes, random).slice(0, size);
+}
+
+function assertUniquePieceIds(shapes: readonly PieceShape[], context: string): void {
+  const seen = new Set<PieceId>();
+  for (const shape of shapes) {
+    if (seen.has(shape.id)) {
+      throw new Error(`${context} needs unique piece ids; found duplicate "${shape.id}".`);
+    }
+    seen.add(shape.id);
+  }
 }
 
 export interface GroundBand {
@@ -144,7 +155,7 @@ function spreadX(count: number, size: number, width: number, margin: number): nu
 
 /** Top-left of a piece's box such that its anchor lands on `groundY`. */
 function standing(shape: PieceShape, x: number, groundY: number, pieceSize: number): Point {
-  return { x, y: groundY - (shape.anchor.y / shape.box.height) * pieceSize };
+  return { x, y: groundY - (shape.anchor.y / shape.box.width) * pieceSize };
 }
 
 const total = (rows: readonly { readonly count: number }[]): number =>
@@ -156,6 +167,7 @@ function buildLayout(
   pieces: readonly PieceShape[],
   arrangement: Arrangement,
 ): Layout {
+  assertUniquePieceIds(pieces, `buildStageLayout(${JSON.stringify(id)}, ${stage}, pieces)`);
   const { canvas, pieceSize, sceneRows, trayRows } = arrangement;
   if (total(sceneRows) !== pieces.length || total(trayRows) !== pieces.length) {
     throw new Error(
