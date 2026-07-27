@@ -5,21 +5,21 @@
  * the same path, and so a fast-moving finger that outruns the piece still keeps
  * control of it.
  */
-import type { AnimalId } from "./assets";
 import { clampToCanvas, screenToLogical, type Point } from "./geometry";
 import { FINGER_LIFT, type Layout } from "./layout";
+import type { PieceId } from "./piece";
 
 export interface DragCallbacks {
-  isDraggable(animal: AnimalId): boolean;
-  getPosition(animal: AnimalId): Point;
-  onPickUp(animal: AnimalId, element: SVGGElement): void;
-  onMove(animal: AnimalId, position: Point): void;
-  onDrop(animal: AnimalId, position: Point): void;
+  isDraggable(piece: PieceId): boolean;
+  getPosition(piece: PieceId): Point;
+  onPickUp(piece: PieceId, element: SVGGElement): void;
+  onMove(piece: PieceId, position: Point): void;
+  onDrop(piece: PieceId, position: Point): void;
 }
 
 interface ActiveDrag {
   pointerId: number;
-  animal: AnimalId;
+  piece: PieceId;
   /** Piece top-left minus pointer position, so the grab point is preserved. */
   offset: Point;
   position: Point;
@@ -45,25 +45,25 @@ export function enableDragging(
     const element = target.closest(".piece");
     if (!(element instanceof SVGGElement)) return;
 
-    const animal = element.dataset["animal"] as AnimalId | undefined;
-    if (!animal || !callbacks.isDraggable(animal)) return;
+    const piece = element.dataset["piece"] as PieceId | undefined;
+    if (!piece || !callbacks.isDraggable(piece)) return;
 
     event.preventDefault();
     stage.setPointerCapture(event.pointerId);
 
     const pointer = logicalPointer(event, stage, layout);
-    const current = callbacks.getPosition(animal);
+    const current = callbacks.getPosition(piece);
     active = {
       pointerId: event.pointerId,
-      animal,
+      piece,
       // Lifting the piece above the finger keeps it visible under a small hand.
       offset: { x: current.x - pointer.x, y: current.y - pointer.y - FINGER_LIFT },
       position: current,
     };
 
-    callbacks.onPickUp(animal, element);
+    callbacks.onPickUp(piece, element);
     callbacks.onMove(
-      animal,
+      piece,
       clampToCanvas(
         {
           x: pointer.x + active.offset.x,
@@ -84,17 +84,17 @@ export function enableDragging(
       layout.pieceSize,
       layout.canvas,
     );
-    callbacks.onMove(active.animal, active.position);
+    callbacks.onMove(active.piece, active.position);
   });
 
   const finish = (event: PointerEvent): void => {
     if (!active || event.pointerId !== active.pointerId) return;
-    const { animal, position } = active;
+    const { piece, position } = active;
     active = null;
     if (stage.hasPointerCapture(event.pointerId)) {
       stage.releasePointerCapture(event.pointerId);
     }
-    callbacks.onDrop(animal, position);
+    callbacks.onDrop(piece, position);
   };
 
   stage.addEventListener("pointerup", finish);

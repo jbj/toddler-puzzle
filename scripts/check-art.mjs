@@ -10,7 +10,7 @@
  *   - every mark in `#detail` stays inside `#silhouette`, because that one path
  *     draws both the piece and its hole - anything poking out makes the piece
  *     overhang the hole it is supposed to fill;
- *   - `FOOT_LEVEL` in `src/layout.ts` matches where the animal's feet actually
+ *   - `FOOT_LEVEL` in `src/assets.ts` matches where the animal's feet actually
  *     are, so it stands on the ground line instead of floating or sinking.
  *
  *   npm run art:check
@@ -113,11 +113,11 @@ function registeredIds() {
 }
 
 function declaredFootLevels() {
-  const source = readFileSync(join(root, "src/layout.ts"), "utf8");
+  const source = readFileSync(join(root, "src/assets.ts"), "utf8");
   const table = source.match(/FOOT_LEVEL[^=]*=\s*\{([^}]*)\}/);
-  if (!table) throw new Error("could not find FOOT_LEVEL in src/layout.ts");
+  if (!table) throw new Error("could not find FOOT_LEVEL in src/assets.ts");
   const levels = {};
-  for (const [, id, value] of table[1].matchAll(/(\w+)\s*:\s*([\d.]+)\s*\/\s*ART_BOX/g)) {
+  for (const [, id, value] of table[1].matchAll(/(\w+)\s*:\s*([\d.]+)/g)) {
     levels[id] = Number(value);
   }
   return levels;
@@ -210,12 +210,12 @@ for (const file of files) {
   const suggested = Math.round(measured);
   const declared = footLevels[id];
   if (declared === undefined) {
-    check("has a FOOT_LEVEL", false, `add \`${id}: ${suggested} / ART_BOX\` to src/layout.ts`);
+    check("has a FOOT_LEVEL", false, `add \`${id}: ${suggested}\` to src/assets.ts`);
   } else {
     check(
       "FOOT_LEVEL matches the artwork",
       Math.abs(declared - measured) <= 0.5,
-      `declared ${declared}, measured ${measured.toFixed(1)} - use ${suggested} / ART_BOX`,
+      `declared ${declared}, measured ${measured.toFixed(1)} - use ${suggested}`,
     );
   }
 }

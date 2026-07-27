@@ -192,8 +192,8 @@ const centreOf = (selector) =>
 `);
 
 async function dragAnimal(animal, { pauseAtHalfway } = {}) {
-  const from = await centreOf(`.piece[data-animal="${animal}"]`);
-  const to = await centreOf(`.hole[data-animal="${animal}"]`);
+  const from = await centreOf(`.piece[data-piece="${animal}"]`);
+  const to = await centreOf(`.hole[data-piece="${animal}"]`);
   if (!from || !to) throw new Error(`Could not locate piece or hole for "${animal}".`);
 
   await mouse("mousePressed", from.x, from.y);
@@ -215,10 +215,10 @@ const holeCount = () => evaluate(`document.querySelectorAll('.hole').length`);
 const stageNumber = () => evaluate(`Number(document.querySelector('#stage').dataset.stage)`);
 const layoutName = () => evaluate(`document.querySelector('#stage').dataset.layout`);
 const animalsOnBoard = () =>
-  evaluate(`[...document.querySelectorAll('.piece')].map((p) => p.dataset.animal)`);
+  evaluate(`[...document.querySelectorAll('.piece')].map((p) => p.dataset.piece)`);
 /** The cast is random, so the script asks the board who is on it. */
 const unplacedAnimals = () =>
-  evaluate(`[...document.querySelectorAll('.piece:not(.is-placed)')].map((p) => p.dataset.animal)`);
+  evaluate(`[...document.querySelectorAll('.piece:not(.is-placed)')].map((p) => p.dataset.piece)`);
 const finishButtons = () =>
   evaluate(`document.querySelectorAll('#stage .fx [role="button"]').length`);
 const finishLabel = () =>
@@ -273,7 +273,7 @@ try {
   check("dragged piece snapped into its hole", (await placedCount()) === 1);
 
   // A deliberately bad drop must not stick.
-  const stray = await centreOf(`.piece[data-animal="${stage1Cast[1]}"]`);
+  const stray = await centreOf(`.piece[data-piece="${stage1Cast[1]}"]`);
   await mouse("mousePressed", stray.x, stray.y);
   await mouse("mouseMoved", 640, 120);
   await mouse("mouseReleased", 640, 120);
