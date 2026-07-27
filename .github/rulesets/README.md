@@ -8,7 +8,7 @@ What it says:
 
 - changes reach `main` through a pull request, never a direct push;
 - no approving review is required, because there is nobody who can give one;
-  see `docs/decisions/0007`;
+  see `docs/decisions/0007-no-required-approving-review.md`;
 - an approval, if one is given, is dismissed when new commits are pushed, so an
   agent cannot add code after the fact to an approved branch;
 - the `Verify` check must pass - that is `npm run verify` running in CI;

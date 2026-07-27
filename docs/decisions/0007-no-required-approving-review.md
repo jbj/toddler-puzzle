@@ -45,5 +45,8 @@ author attaches (0006). If a second maintainer ever joins, restore the count to
 1 - at that point the rule would mean what it says.
 
 Editing this file does not change the repository. The ruleset has to be applied
-with `gh api --method PUT repos/jbj/toddler-puzzle/rulesets/<id> --input
-.github/rulesets/main.json`, as `.github/rulesets/README.md` describes.
+with the command below, as `.github/rulesets/README.md` describes.
+
+```
+gh api --method PUT repos/jbj/toddler-puzzle/rulesets/<id> --input .github/rulesets/main.json
+```
