@@ -18,7 +18,7 @@ body:
   - type: textarea
     id: distinct-silhouette
     attributes:
-      label: Why this animal — how is its silhouette distinct from duck, turtle, giraffe, elephant, butterfly, rabbit?
+      label: Why this animal — how is its silhouette distinct from duck, turtle, giraffe, elephant, butterfly, rabbit, fish, frog, penguin, crab?
       description: Toddlers match the outline before the detail, so explain what makes this profile easy to tell apart.
       placeholder: It has a low rounded body with small spikes, unlike the tall giraffe, wide butterfly, or long-necked duck.
     validations:
