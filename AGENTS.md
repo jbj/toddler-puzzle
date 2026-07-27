@@ -89,6 +89,22 @@ one of these decisions silently inside the PR:
 - changing the visual style;
 - changing what a check enforces.
 
+## Files you cannot change
+
+Nothing you can do will get a change to `.github/workflows/` accepted. GitHub
+refuses a push that touches a workflow file unless the credential carries the
+`workflow` scope, and neither the CLI's token nor the cloud agent's is given it.
+This is deliberate: a workflow file is the thing that decides whether every other
+change is trustworthy, so it is not something an agent gets to edit on its own
+say-so.
+
+If a task appears to need a workflow change, stop and say so on the issue,
+naming the change you would make and why. Do not work around it by moving the
+logic into a script the workflow calls — that is the same change wearing a
+disguise, and it moves privileged behaviour somewhere nobody is reviewing it.
+
+Routine version bumps of actions are Dependabot's job, not yours.
+
 ## Pull request expectations
 
 - Prefer one issue per pull request.
