@@ -60,6 +60,37 @@ doesn't cover it.
 synthesised with the Web Audio API, so there is nothing to download and nothing
 to fail to load. The whole bundle is around 24 kB.
 
+## The host and the kind
+
+`src/game.ts` holds no rules. It is a host: it owns picking a piece up,
+following the finger, settling it back down, the sounds, the sparkles and the
+three-stage lifecycle. Everything that could differ between one sort of level
+and another comes from a `PuzzleKind` (`src/puzzle.ts`):
+
+```ts
+interface PuzzleKind {
+  readonly id: string;
+  deal(level: LevelSpec, random: () => number): Puzzle;
+  backdrop(puzzle: Puzzle, layout: Layout): string;
+  target(puzzle: Puzzle, layout: Layout, piece: PieceId): Point;
+  accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean;
+  isComplete(puzzle: Puzzle): boolean;
+}
+```
+
+The animal game is one such kind, `src/kinds/shape-match.ts`, and the host
+cannot tell it from any other: it deals a random cast, draws the landscape with
+a hole cut for each piece, accepts a drop near a piece's *own* hole, and is done
+when every piece is standing in one.
+
+`isComplete` is part of the contract rather than assumed, because not every kind
+ends with an empty tray - a cause-and-effect level ends when enough things have
+been touched. `backdrop` is redrawn whenever the puzzle moves on, which is how a
+filled hole hides itself under the piece now covering it.
+
+What the host does insist on is that the game stays forgiving: a drop the kind
+refuses drifts gently back to the tray with a soft tone, never off screen.
+
 ## How pieces and holes stay in sync
 
 Each animal is one SVG file with a strict structure:
@@ -168,12 +199,14 @@ piece of art.
 | --- | --- |
 | `src/geometry.ts` | Pure maths: screen↔logical mapping, snapping, clamping |
 | `src/piece.ts` | What a piece is: `PieceId` and `PieceShape`, independent of any provider |
+| `src/puzzle.ts` | What a kind of puzzle is: the `PuzzleKind` contract the host plugs into |
+| `src/kinds/shape-match.ts` | The animal-and-hole game, as one `PuzzleKind` |
 | `src/layout.ts` | The stages, their layouts, and all tunable constants |
 | `src/scenery.ts` | Generates the background for a layout |
 | `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |
 | `src/board.ts` | Builds the SVG scene graph for one stage |
 | `src/drag.ts` | Pointer-event drag engine |
-| `src/game.ts` | Rules, state, and the stage lifecycle |
+| `src/game.ts` | The host: drag state, settling, sound, sparkles, stage lifecycle |
 | `src/audio.ts` | Web Audio sound synthesis |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `scripts/preview.mjs` | Renders the art for review, as a contact sheet or one animal large |
@@ -188,7 +221,9 @@ the screenshots: the author attaches them, having run the same command. Why that
 way round is [decision 0006](docs/decisions/0006-screenshots-come-from-the-author.md).
 
 `npm run test` covers the coordinate mapping (including letterboxing in both
-orientations), snap tolerance, clamping, the random deal, and every stage layout
+orientations), snap tolerance, clamping, the random deal, the shape-match kind's
+rules - it accepts a sloppy drop on a piece's own hole, never accepts anybody
+else's, and only finishes when the last piece is in - and every stage layout
 in both orientations - holes stay on canvas, snap zones never overlap, tray slots
 never collide, pieces stay big enough to grab, and each orientation fills at
 least 75% of its viewport. Because the cast is random, the layout checks run

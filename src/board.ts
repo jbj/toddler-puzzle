@@ -1,21 +1,21 @@
 /**
- * Builds the SVG scene graph: background, holes cut into it, the draggable
- * pieces, and the stage indicator. Rendering only - all decisions live in
- * game.ts. Only the current stage's pieces are built.
+ * Builds the SVG scene graph: the backdrop the kind draws, the draggable
+ * pieces, and the chrome around them. Rendering only - all decisions live in
+ * game.ts and in the puzzle kind. Only the current stage's pieces are built.
  */
 import type { Point } from "./geometry";
-import { STAGE_COUNT, holeOf, type Layout } from "./layout";
+import { STAGE_COUNT, type Layout } from "./layout";
 import type { PieceId, PieceShape } from "./piece";
-import { renderScenery } from "./scenery";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 export interface Board {
   readonly stage: SVGSVGElement;
+  /** Everything behind the pieces; the kind decides what goes in it. */
+  readonly backdropLayer: SVGGElement;
   readonly piecesLayer: SVGGElement;
   readonly fxLayer: SVGGElement;
   readonly pieces: ReadonlyMap<PieceId, SVGGElement>;
-  readonly holes: ReadonlyMap<PieceId, SVGGElement>;
   readonly resetButton: SVGGElement;
 }
 
@@ -39,20 +39,6 @@ export function setPiecePosition(piece: SVGGElement, position: Point): void {
   // Set via CSS rather than the `transform` attribute so the settle animation
   // in style.css can transition it.
   piece.style.transform = `translate(${position.x}px, ${position.y}px)`;
-}
-
-function buildHole(shape: PieceShape, layout: Layout, scale: number): SVGGElement {
-  const hole = group("hole");
-  hole.dataset["piece"] = shape.id;
-  const origin = holeOf(layout, shape.id);
-  hole.setAttribute("transform", `translate(${origin.x} ${origin.y}) scale(${scale})`);
-  // A soft dark fill plus a light rim reads as a recess against both the sky
-  // and the grass, so one treatment works everywhere in the scene.
-  hole.innerHTML = `
-    <path d="${shape.outline}" fill="#1f3b34" opacity="0.24" />
-    <path d="${shape.outline}" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="5" />
-  `;
-  return hole;
 }
 
 function buildPiece(shape: PieceShape, scale: number): SVGGElement {
@@ -108,29 +94,21 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
   stage.dataset["layout"] = layout.id;
   stage.dataset["stage"] = String(layout.stage);
 
-  const sceneLayer = group("scene");
-  sceneLayer.innerHTML = renderScenery(layout);
-
-  const holesLayer = group("holes");
+  const backdropLayer = group("backdrop");
   const piecesLayer = group("pieces");
   const fxLayer = group("fx");
 
   const pieces = new Map<PieceId, SVGGElement>();
-  const holes = new Map<PieceId, SVGGElement>();
   for (const shape of layout.pieces) {
     // Authored units -> logical units, at this stage's piece size.
-    const scale = layout.pieceSize / shape.box.width;
-    const hole = buildHole(shape, layout, scale);
-    holes.set(shape.id, hole);
-    holesLayer.append(hole);
-    const piece = buildPiece(shape, scale);
+    const piece = buildPiece(shape, layout.pieceSize / shape.box.width);
     pieces.set(shape.id, piece);
     piecesLayer.append(piece);
   }
 
   const resetButton = buildResetButton();
-  stage.append(sceneLayer, holesLayer, piecesLayer, fxLayer, resetButton, buildStageDots(layout));
+  stage.append(backdropLayer, piecesLayer, fxLayer, resetButton, buildStageDots(layout));
 
   root.replaceChildren(stage);
-  return { stage, piecesLayer, fxLayer, pieces, holes, resetButton };
+  return { stage, backdropLayer, piecesLayer, fxLayer, pieces, resetButton };
 }
