@@ -12,6 +12,9 @@
  * both accept, so picking the binary once is enough.
  */
 import { execFileSync } from "node:child_process";
+import { rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 function have(binary) {
   try {
@@ -66,3 +69,26 @@ export const rsvg = (args) =>
  */
 export const magick = (args) =>
   execFileSync(imagemagick() ?? missing("ImageMagick", "imagemagick"), args);
+
+/**
+ * Whether ImageMagick can render text. Ubuntu's imagemagick package installed
+ * without recommends has no font, and `label:` then fails with "unable to read
+ * font (null)" - which is how the GitHub runner and the Copilot cloud agent are
+ * set up. Probing once beats naming a font, since which fonts exist is exactly
+ * what varies. Callers fall back to an unlabelled image: the pictures are the
+ * point, and a missing caption must not cost a review its artwork.
+ */
+const labelsWork = once(() => {
+  const probe = join(tmpdir(), `toddler-puzzle-label-probe-${process.pid}.png`);
+  try {
+    magick(["-pointsize", "18", "label:probe", probe]);
+    return true;
+  } catch {
+    console.warn("ImageMagick has no font available; images will not be labelled.");
+    return false;
+  } finally {
+    rmSync(probe, { force: true });
+  }
+});
+
+export const canLabel = () => labelsWork();

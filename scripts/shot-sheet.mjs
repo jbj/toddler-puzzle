@@ -16,7 +16,7 @@ import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { magick, haveImageMagick } from "./tools.mjs";
+import { canLabel, magick, haveImageMagick } from "./tools.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const shotsDir = join(root, ".art/shots");
@@ -24,28 +24,6 @@ const shotsDir = join(root, ".art/shots");
 const SHEET = "contact-sheet.png";
 const CELL_HEIGHT = 300;
 const COLUMNS = 4;
-
-/**
- * Whether ImageMagick can render text. Ubuntu's imagemagick package installed
- * without recommends has no font, and `label:` then fails with "unable to read
- * font (null)" - which is how the GitHub runner is set up. Probing once beats
- * naming a font, since which fonts exist is exactly what varies.
- */
-let labelsWork;
-function canLabel() {
-  if (labelsWork === undefined) {
-    const probe = join(shotsDir, "_probe.png");
-    try {
-      magick(["-pointsize", "18", "label:probe", probe]);
-      labelsWork = true;
-    } catch {
-      labelsWork = false;
-      console.warn("ImageMagick has no font available; the contact sheet will not be labelled.");
-    }
-    rmSync(probe, { force: true });
-  }
-  return labelsWork;
-}
 
 /**
  * Builds the sheet and returns its path, or null if there was nothing to pack
