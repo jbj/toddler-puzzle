@@ -217,6 +217,14 @@ describe("pickStagePieces", () => {
     );
   });
 
+  it("rejects building a layout from duplicate piece ids", () => {
+    const duplicateId = SHAPES[0]!.id;
+    const duplicateIds = [SHAPES[0]!, { ...SHAPES[1]!, id: duplicateId }, SHAPES[2]!];
+    expect(() => buildStageLayout("landscape", 1, duplicateIds)).toThrow(
+      new RegExp(`duplicate .*"${duplicateId}"`, "i"),
+    );
+  });
+
   it("uses every piece in the final stage", () => {
     for (let run = 0; run < 20; run++) {
       expect(new Set(idsOf(pickStagePieces(STAGE_COUNT, SHAPES)))).toEqual(new Set(idsOf(SHAPES)));

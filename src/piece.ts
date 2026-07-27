@@ -13,7 +13,7 @@ import type { Point, Size } from "./geometry";
  * An opaque piece identity at the type level. Providers still need to choose
  * runtime strings that cannot collide - for example by namespacing them - so
  * two providers do not end up sharing a hole. This type cannot enforce that at
- * runtime.
+ * runtime; e.g. `animal:duck` and `jigsaw:piece-1`.
  */
 export type PieceId = string & { readonly __piece: unique symbol };
 

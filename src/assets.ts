@@ -49,7 +49,11 @@ const FOOT_LEVEL: Record<AnimalId, number> = {
 };
 
 /** Where an animal stands within its art box: on its feet, centred. */
-export const animalAnchor = (id: AnimalId): Point => ({ x: ART_BOX / 2, y: FOOT_LEVEL[id] });
+export const animalAnchor = (id: AnimalId): Point => {
+  const y = FOOT_LEVEL[id];
+  if (y === undefined) throw new Error(`Animal "${id}" has no FOOT_LEVEL.`);
+  return { x: ART_BOX / 2, y };
+};
 
 const SOURCES: Record<AnimalId, { name: string; svg: string }> = {
   duck: { name: "Duck", svg: duckSvg },
@@ -101,8 +105,9 @@ function parseAnimal(id: AnimalId): PieceShape {
     throw new Error(`Animal "${id}" has a silhouette with no "d" attribute.`);
   }
   // The outline is interpolated straight into markup, both here and when the
-  // hole is cut, so anything that could close the attribute is a broken asset.
-  if (/["<>]/.test(outline)) {
+  // hole is cut, so anything that could break a quoted attribute is a broken
+  // asset rather than something the runtime should try to recover from.
+  if (/[&"<>]/.test(outline)) {
     throw new Error(`Animal "${id}" has a silhouette whose "d" is not path data.`);
   }
 
