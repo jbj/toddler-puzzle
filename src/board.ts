@@ -67,7 +67,7 @@ function buildPiece(shape: PieceShape, scale: number): SVGGElement {
  * are dead space that swallows the press and moves nothing.
  *
  * Do not delete this as unused markup - nothing else makes those places
- * grabbable. The reasoning is decision 0008.
+ * grabbable. The reasoning is decision 0009.
  *
  * Three details are load-bearing:
  *

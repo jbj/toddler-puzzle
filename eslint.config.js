@@ -25,6 +25,18 @@ export default tseslint.config(
     },
   },
 
+  // The build configuration. Not part of the bundle and not type-checked
+  // against the game's tsconfig, so it is linted without type information -
+  // the same treatment the Node scripts get, for the same reason.
+  {
+    files: ["vite.config.ts"],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+    },
+  },
+
   // The review and check harnesses are plain Node scripts, not part of the
   // bundle, so they are linted without type information.
   {
