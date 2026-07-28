@@ -467,6 +467,7 @@ const PROMISES = {
         if (hole.x < 0 || right > layout.canvas.width) {
           return `${shape.id} runs off the side of the canvas`;
         }
+        if (hole.y < 0) return `${shape.id} runs off the top of the canvas`;
         // Box and all, not just the anchor: a target the tray covers is a
         // target a piece cannot be dropped into.
         if (hole.y < layout.sceneTop) return `${shape.id} reaches into the tray`;

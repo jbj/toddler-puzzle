@@ -78,9 +78,9 @@ export function renderScenery(layout: Layout): string {
     </defs>
 
     <rect x="0" y="0" width="${width}" height="${sceneTop}" fill="#f6ead0" />
-    <rect x="0" y="${sceneTop}" width="${width}" height="10" fill="#d9c398" />
 
     <rect x="0" y="${sceneTop}" width="${width}" height="${height - sceneTop}" fill="url(#sky)" />
+    <rect x="0" y="${sceneTop}" width="${width}" height="10" fill="#d9c398" />
 
     <g transform="translate(${width - 108} ${sceneTop + 74})">
       <circle r="46" fill="#ffd23f" />
