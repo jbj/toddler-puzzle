@@ -4,6 +4,7 @@
  * game.ts and in the puzzle kind. Only the current stage's pieces are built.
  */
 import type { Point } from "./geometry";
+import { replayArrow } from "./icons";
 import { STAGE_COUNT, type Layout } from "./layout";
 import type { PieceId, PieceShape } from "./piece";
 
@@ -61,8 +62,7 @@ function buildResetButton(): SVGGElement {
   button.setAttribute("aria-label", "Start a fresh puzzle");
   button.innerHTML = `
     <circle r="32" fill="#ffffff" fill-opacity="0.82" stroke="#4f7d8c" stroke-width="4" />
-    <path d="M-13 3 A13 13 0 1 1 0 16" fill="none" stroke="#4f7d8c" stroke-width="6" stroke-linecap="round" />
-    <path d="M-13 -6 L-13 4 L-4 4 Z" fill="#4f7d8c" />
+    ${replayArrow(13, 6, "#4f7d8c")}
   `;
   return button;
 }
