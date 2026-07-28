@@ -1,4 +1,4 @@
-# 0009. Grab a piece anywhere in the box around its artwork
+# 0010. Grab a piece anywhere in the box around its artwork
 
 ## Context
 

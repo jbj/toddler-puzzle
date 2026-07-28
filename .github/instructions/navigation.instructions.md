@@ -64,7 +64,7 @@ means. Between them:
   it was laid out in, and slots never overlap - so one piece's grab area can
   never reach into the next one's. Do not delete the rectangle as dead markup;
   the reasoning is
-  [decision 0009](../../docs/decisions/0009-grab-anywhere-in-the-piece-box.md).
+  [decision 0010](../../docs/decisions/0010-grab-anywhere-in-the-piece-box.md).
 - Pieces are clamped to the canvas by their own bounds (`boxOf(layout, piece)`),
   so one can never be dragged out of reach whatever shape it is.
 - A piece settles back with a short animation (`SETTLE_MS`), whether it was
