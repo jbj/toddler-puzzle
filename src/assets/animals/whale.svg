@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Whale, facing left, spouting. The spout is part of the silhouette rather
+    than a mark inside it: a plume on the back is what tells a whale from a fish
+    at a glance, and the hole is cut from the outline, so it has to be in there.
+    The flukes are short and swept, and the body is the biggest in the cast,
+    which does the rest of that work.
+  -->
+  <path
+    id="silhouette"
+    fill="#4f7fc4"
+    stroke="#2f5387"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M18 150
+       C18 110 40 86 76 82
+       C75 76 74 68 72 62
+       C56 62 44 54 46 40
+       C48 26 66 22 74 30
+       C76 16 100 14 106 28
+       C122 28 126 48 112 54
+       C108 62 102 64 98 62
+       C96 70 95 76 94 82
+       C128 84 158 98 172 120
+       C182 106 194 96 202 90
+       C212 82 222 94 214 106
+       C206 116 198 124 192 130
+       C202 138 212 150 216 160
+       C222 172 210 178 200 168
+       C192 160 184 148 178 138
+       C168 174 140 190 104 190
+       C64 190 26 174 18 150 Z"
+  />
+  <g id="detail">
+    <!-- the water, so the plume reads as spray and not as more whale -->
+    <g fill="#d3e6fb">
+      <circle cx="62" cy="43" r="12" />
+      <circle cx="85" cy="34" r="14" />
+      <circle cx="105" cy="43" r="11" />
+      <path
+        d="M84 78 L84 58"
+        fill="none"
+        stroke="#d3e6fb"
+        stroke-width="14"
+        stroke-linecap="round"
+      />
+    </g>
+    <!-- eye -->
+    <circle cx="48" cy="132" r="7" fill="#2b3440" />
+    <!-- mouth, running back along the head the way a whale's does -->
+    <path
+      d="M21 156 C44 172 80 172 104 160"
+      fill="none"
+      stroke="#2f5387"
+      stroke-width="4.5"
+      stroke-linecap="round"
+    />
+    <!-- flipper -->
+    <path
+      d="M100 148 C120 143 137 155 139 169 C125 179 105 177 97 163 C95 156 96 151 100 148 Z"
+      fill="#3f6cab"
+      stroke="#2f5387"
+      stroke-width="4"
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>

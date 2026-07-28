@@ -129,6 +129,39 @@ Take the value from `npm run art:check`, which measures where the animal
 actually stands. Do not estimate it by eye, and do not nudge it until the animal
 merely looks close.
 
+## Reading differently from the animal next to it
+
+Two animals that a level can deal together have to be *told apart* at a glance,
+because a toddler matches the outline before the detail. That used to be advice;
+`npm run art:check` now measures it.
+
+The measure: shrink each silhouette - stroke included, detail hidden - to 48x48,
+the size a tray piece really is, and score a pair by how much of the ink they
+share (intersection over union). Anything at or over **70%** fails, naming both
+animals and the score. Nothing is re-centred or re-scaled first: every animal is
+drawn in the same 240 box, a level draws every piece at one scale, and a tray
+slot holds that box, so the box *is* the frame a child compares them in.
+
+It runs **per theme** (`src/themes.ts`), because a theme is what a level deals
+from, so a farm animal and a sea animal never have to be told apart. An animal in
+two themes has to be distinct in both.
+
+When it fails, the fix is the silhouette, not the number:
+
+- **Change the mass, not the marks.** The score cannot see an eye, a stripe or a
+  colour. Longer legs, a raised head, a wider stance, a tail in the outline: those
+  move it. A better face does not.
+- **Size is a legitimate lever.** Making a big animal big and a small animal small
+  is honest as well as useful - a whale that dwarfs the fish beside it scores
+  lower *and* is more true.
+- **Or move it to another theme,** if it belongs there anyway.
+
+The measure and where the 70% came from are in
+[decision 20260729T004500](../../docs/decisions/20260729T004500-silhouettes-checked-at-a-glance.md).
+`ART_SIMILARITY_REPORT=1 npm run art:check` prints every pair in the cast, most
+alike first, which is how a new animal's headroom is judged before it is too late
+to change it.
+
 ## What else the drawing decides
 
 The extent of the artwork is also the area a piece can be picked up by: each one
@@ -141,11 +174,13 @@ overhang stays inside its budget. The rule lives in
 
 ## Adding an animal
 
-1. Draw `src/assets/animals/<name>.svg` following the contract above. Silhouettes
+1. Decide which theme it joins, and draw
+   `src/assets/animals/<name>.svg` following the contract above. Silhouettes
    should be as *distinct* from each other as possible - toddlers match the
    outline before the detail, so two similar profiles make the puzzle frustrating.
-   A new animal must be distinct in outline from duck, turtle, giraffe, elephant,
-   butterfly, rabbit, fish, frog, penguin, and crab.
+   Within a theme that is enforced, not hoped for: see
+   [reading differently from the animal next to it](#reading-differently-from-the-animal-next-to-it)
+   above, and look at what its theme already holds before choosing a pose.
 2. Render it and look: `npm run art -- <name>`, then open `.art/<name>-large.png`.
    Expect the first render to be wrong somewhere. Fix what you saw, render again,
    and keep going until you would be happy to see it in the tray - several rounds
@@ -156,12 +191,14 @@ overhang stays inside its budget. The rule lives in
    silhouette; if you can't tell what the silhouette is, neither can a
    two-year-old, and if it reads as one of the animals already there, draw
    something else.
-4. Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
+4. Register the id in `ANIMAL_IDS`, `SOURCES` and `ANIMAL_THEMES` in
+   `src/assets.ts`. Every animal belongs to at least one theme; the check says so.
 5. Add its foot level to `FOOT_LEVEL` in `src/assets.ts`, from the value
    `npm run art:check` reports.
 6. Run `npm run art:check`. It verifies the structure, that the art is not
    clipped by the art box, that nothing hangs outside the silhouette except
-   declared overhangs, and that the declared foot level matches the artwork.
+   declared overhangs, that the declared foot level matches the artwork, and that
+   the new silhouette reads differently from every other one in its theme.
    Passing it is the floor, not the finish line: it cannot see any of the
    pitfalls above.
 7. That's it - every animal in `ANIMAL_IDS` is in the draw, so the new one will
@@ -184,5 +221,6 @@ overhang stays inside its budget. The rule lives in
 `npm run art:check` covers the artwork itself, which the unit tests can't see:
 it rasterises each animal and checks that nothing is clipped by the art box,
 that no undeclared detail strays outside the silhouette and declared overhangs
-stay within budget, and that `FOOT_LEVEL` matches where the feet actually are.
+stay within budget, that `FOOT_LEVEL` matches where the feet actually are, and
+that no two animals in one theme read the same at a glance.
 It needs `rsvg-convert` and ImageMagick, the same tools `npm run art` uses.

@@ -55,6 +55,15 @@ dealt at random from the shapes on offer when the puzzle starts (`dealPieces`),
 which is what keeps `?seed=` replaying a level exactly while two plays of it are
 otherwise different.
 
+A level's `theme` narrows what it deals *from*: name one and the level draws only
+animals in that cast (`src/themes.ts`, and `ANIMAL_THEMES` in `src/assets.ts`),
+so a whole puzzle can be the farm or the sea. A theme with too few animals for
+the level is topped up from the rest of the cast and the whole selection
+reshuffled, rather than throwing - a level that will not start is worse for a
+child than a level with a stray penguin in it. Two animals in one theme have to
+read differently at a glance, which `npm run art:check` enforces; see
+[`art.instructions.md`](art.instructions.md).
+
 Retuning the ramp is a table edit and nothing else. Adding a level means adding a
 record; the layout follows, because nothing downstream knows a level count.
 

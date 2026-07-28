@@ -11,7 +11,10 @@
  *     draws both the piece and its hole - anything poking out makes the piece
  *     overhang the hole it is supposed to fill;
  *   - `FOOT_LEVEL` in `src/assets.ts` matches where the animal's feet actually
- *     are, so it stands on the ground line instead of floating or sinking.
+ *     are, so it stands on the ground line instead of floating or sinking;
+ *   - no two animals a themed level could deal together read the same at a
+ *     glance, because a toddler matches the outline before the detail and a
+ *     cast this size is past being judged by eye.
  *
  *   npm run art:check
  *
@@ -69,6 +72,27 @@ const DETAIL_ALL = "#silhouette{display:none}";
 const FILL_ONLY = `${HIDE_DETAIL}#silhouette{stroke-width:0}`;
 
 /**
+ * The size two silhouettes are compared at: a coarse square, far smaller than
+ * a tray piece is drawn. A two-year-old matches the outline before the detail
+ * and does it at a glance, so the comparison is deliberately made at a size
+ * where only the gross shape survives - a tail, an ear tip or a notch is gone
+ * by 48 pixels, and what is left is what a glance had to go on.
+ */
+const GLANCE = 48;
+
+/**
+ * How alike two silhouettes in one theme may look. Above this the pair is
+ * judged too close to deal together.
+ *
+ * Tuned against the cast the game shipped with, whose ten animals a human had
+ * already judged distinct: the closest pair of those ten is the frog and the
+ * penguin at 68%, so 70% is the first score no accepted pair reaches. The
+ * measure, why it is scoped to a theme, and how to react to a failure are in
+ * [decision 20260729T004500](../docs/decisions/20260729T004500-silhouettes-checked-at-a-glance.md).
+ */
+const SIMILARITY_LIMIT = 0.7;
+
+/**
  * How much of an animal may hang past its outline, as a share of the animal's
  * own area. A little is good - a tail or an ear reads better loose than tucked
  * in - but every bit of it overhangs the hole the piece drops into, so it stays
@@ -123,6 +147,47 @@ function declaredFootLevels() {
   return levels;
 }
 
+function declaredThemes() {
+  const source = readFileSync(join(root, "src/assets.ts"), "utf8");
+  const table = source.match(/ANIMAL_THEMES[^=]*=\s*\{([^}]*)\}/);
+  if (!table) throw new Error("could not find ANIMAL_THEMES in src/assets.ts");
+  const themes = {};
+  for (const [, id, list] of table[1].matchAll(/(\w+)\s*:\s*\[([^\]]*)\]/g)) {
+    themes[id] = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  }
+  return themes;
+}
+
+// --- distinctness ---------------------------------------------------------
+
+/** The silhouette as a glance sees it: square, coarse, and black and white. */
+function glance(id, silhouettePng) {
+  const png = join(scratch, `${id}-glance.png`);
+  magick([silhouettePng, "-resize", `${GLANCE}x${GLANCE}!`, "-threshold", "50%", png]);
+  return png;
+}
+
+/**
+ * How alike two silhouettes are, from 0 (nothing in common) to 1 (identical):
+ * the shared area over the area either one covers.
+ *
+ * They are compared where the game puts them - both animals are authored in
+ * the same 240x240 box, every piece of a level is drawn at one scale, and a
+ * tray slot holds that box - so no alignment or rescaling is done here. Two
+ * animals overlap in this measure exactly as much as they overlap in the tray.
+ */
+function similarity(a, b, name) {
+  const shared = join(scratch, `${name}-shared.png`);
+  const either = join(scratch, `${name}-either.png`);
+  magick([a, b, "-compose", "Multiply", "-composite", shared]);
+  magick([a, b, "-compose", "Lighten", "-composite", either]);
+  const union = opaquePixels(either);
+  return union === 0 ? 0 : opaquePixels(shared) / union;
+}
+
+/** A similarity, as the whole percent a human can act on. */
+const percent = (share) => `${(share * 100).toFixed(0)}%`;
+
 // --- checks ---------------------------------------------------------------
 
 const files = readdirSync(animalsDir)
@@ -135,6 +200,9 @@ if (files.length === 0) {
 
 const registered = registeredIds();
 const footLevels = declaredFootLevels();
+const themes = declaredThemes();
+/** Each animal's silhouette as a glance sees it, for the distinctness check. */
+const glances = new Map();
 
 for (const file of files) {
   const id = basename(file, ".svg");
@@ -154,6 +222,11 @@ for (const file of files) {
   if (!hasSilhouette) continue;
 
   check("is registered in ANIMAL_IDS", registered.includes(id), "add it to src/assets.ts");
+  check(
+    "belongs to at least one theme",
+    (themes[id] ?? []).length > 0,
+    "add it to ANIMAL_THEMES in src/assets.ts",
+  );
 
   // Drawn extent, stroke included: this is what gets clipped by the art box.
   const drawn = bounds(mask(svg, "", `${id}-drawn`));
@@ -172,6 +245,7 @@ for (const file of files) {
   // Masks are plain black/white by this point, so "outside" is an ordinary
   // multiply against the inverted silhouette rather than an alpha operation.
   const silhouette = mask(svg, HIDE_DETAIL, `${id}-silhouette`);
+  glances.set(id, glance(id, silhouette));
   const outside = join(scratch, `${id}-outside.png`);
   magick([silhouette, "-negate", outside]);
 
@@ -227,6 +301,58 @@ check(
   orphans.length === 0,
   `missing: ${orphans.join(", ")}`,
 );
+
+// Two animals a level can deal together have to be told apart at a glance. The
+// pairs that matter are the ones inside one theme, because that is what a
+// themed level deals from; two animals in different themes never share a board.
+const themeNames = [...new Set(Object.values(themes).flat())].sort();
+for (const theme of themeNames) {
+  const cast = [...glances.keys()].filter((id) => (themes[id] ?? []).includes(theme)).sort();
+  const scored = [];
+  for (let i = 0; i < cast.length; i++) {
+    for (let j = i + 1; j < cast.length; j++) {
+      const [a, b] = [cast[i], cast[j]];
+      scored.push({ a, b, score: similarity(glances.get(a), glances.get(b), `${a}-${b}`) });
+    }
+  }
+  scored.sort((one, other) => other.score - one.score);
+  console.log(`\n${theme} (${cast.length}: ${cast.join(", ")})`);
+  const tooAlike = scored.filter((pair) => pair.score > SIMILARITY_LIMIT);
+  for (const { a, b, score } of tooAlike) {
+    check(
+      `${a} and ${b} read differently`,
+      false,
+      `silhouettes are ${percent(score)} alike at ${GLANCE}px, over the ` +
+        `${percent(SIMILARITY_LIMIT)} limit - redraw one of them, or move it to another theme`,
+    );
+  }
+  const closest = scored[0];
+  if (tooAlike.length === 0) {
+    check(
+      closest
+        ? `every pair reads differently (closest: ${closest.a}/${closest.b} at ` +
+            `${percent(closest.score)})`
+        : "reads differently (nothing to compare it with yet)",
+      true,
+    );
+  }
+}
+
+if (process.env.ART_SIMILARITY_REPORT) {
+  const ids = [...glances.keys()].sort();
+  const all = [];
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      all.push({
+        pair: `${ids[i]}/${ids[j]}`,
+        score: similarity(glances.get(ids[i]), glances.get(ids[j]), `${ids[i]}-${ids[j]}`),
+      });
+    }
+  }
+  all.sort((one, other) => other.score - one.score);
+  console.log("\nevery pair, most alike first");
+  for (const { pair, score } of all) console.log(`  ${percent(score).padStart(4)}  ${pair}`);
+}
 
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed.`);

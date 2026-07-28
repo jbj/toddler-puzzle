@@ -36,7 +36,7 @@ expecting the formatter to.
 | `npm run test` | Unit tests (Vitest) |
 | `npm run docs:check` | Checks that every cross-reference between Markdown files still resolves |
 | `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large |
-| `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level) |
+| `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level) and that no two in one theme read alike |
 | `npm run shot` | Drives real drags in headless Chromium and screenshots the result (run `npm run build` first) |
 | `npm run shot:sheet` | Rebuilds `.art/shots/contact-sheet.png` from the last run's screenshots |
 
@@ -54,7 +54,8 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/geometry.ts` | Pure maths: screen↔logical mapping, snapping, clamping |
 | `src/piece.ts` | What a piece is: `PieceId` and `PieceShape`, independent of any provider |
 | `src/puzzle.ts` | What a kind of puzzle is: the `PuzzleKind` contract the host plugs into |
-| `src/levels.ts` | The thirty levels: the whole difficulty ramp, in one table |
+| `src/levels.ts` | The thirty levels: the whole difficulty ramp, in one table, and the deal |
+| `src/themes.ts` | The themed casts a level can deal from: farm, sea, jungle, vehicles |
 | `src/progress.ts` | What is remembered between sittings: the level, and the grown-up settings |
 | `src/kinds/registry.ts` | Resolves a level's kind, standing in for the kinds not built yet |
 | `src/kinds/shape-match.ts` | The animal-and-hole game, as one `PuzzleKind` |

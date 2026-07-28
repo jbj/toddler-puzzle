@@ -32,3 +32,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260728T205627-unbuilt-kinds-play-as-stand-ins](20260728T205627-unbuilt-kinds-play-as-stand-ins.md) | Play an unbuilt kind as a stand-in |
 | [20260728T212500-remember-where-the-child-stopped](20260728T212500-remember-where-the-child-stopped.md) | Remember the level, and lose it safely |
 | [20260729T000652-a-door-for-grown-ups](20260729T000652-a-door-for-grown-ups.md) | Put the settings behind a two-second hold |
+| [20260729T004500-silhouettes-checked-at-a-glance](20260729T004500-silhouettes-checked-at-a-glance.md) | Check silhouettes for distinctness at a glance |

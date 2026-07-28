@@ -54,6 +54,15 @@ composing is *for*: the same cast composes twice the same, a fuller board never
 gets bigger pieces, portrait stacks more rows than landscape spreads, and a cast
 too big to compose above the grabbable size is refused rather than shrunk away.
 
+`tests/levels.test.ts` sweeps the whole table: every level resolves to a
+buildable spec, and the deal is drawn fresh but always the right size. It also
+covers themed dealing, which is where the interesting failures are: a themed
+level draws only from its own theme, every animal of a theme is reachable, and a
+theme too short for the level's piece count is topped up from the rest of the
+cast and reshuffled rather than throwing. That last one is checked with a
+deliberately starved provider, because the fallback exists for a cast that
+changes under the table, not for the cast as it stands today.
+
 `tests/progress.test.ts` covers what is remembered between sittings, and is
 mostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level

@@ -16,6 +16,16 @@ particular deal - the screenshot run uses it to keep its shots comparable - and
 `?level=17` to start partway along the ramp, which is for working on the game
 rather than for playing it.
 
+**Later levels are themed.** Sixteen animals are grouped into casts - the farm,
+the sea, the jungle - and a level that names a theme deals only from that cast,
+so a whole puzzle can be one place. A theme that is short of animals is topped up
+from the rest of the cast rather than failing, because a child must never meet a
+level that will not start. Two animals in the same theme have to be told apart at
+a glance, which `npm run art:check` measures rather than trusts: it shrinks each
+silhouette to 48 pixels, the size a tray piece really is, and fails any pair that
+overlaps too much. See
+[decision 20260729T004500](docs/decisions/20260729T004500-silhouettes-checked-at-a-glance.md).
+
 **It picks up where it left off.** Thirty levels is more than one sitting, so
 the level being played is kept in `localStorage` and the next visit resumes
 there. A browser that will not store anything - private browsing on an iPad

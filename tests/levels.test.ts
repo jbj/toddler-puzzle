@@ -12,7 +12,7 @@
  * level it was - its number, its chapter, its forgiveness.
  */
 import { describe, expect, it, vi } from "vitest";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalThemes } from "../src/assets";
 import { seededRandom } from "../src/geometry";
 import { MAX_STAND_IN_PIECES, isKindRegistered, resolveLevel } from "../src/kinds/registry";
 import { shapeMatch } from "../src/kinds/shape-match";
@@ -23,6 +23,7 @@ import {
   LEVEL_COUNT,
   MAX_SNAP_FORGIVENESS,
   MIN_SNAP_FORGIVENESS,
+  castOf,
   chapterNumber,
   dealPieces,
   isVouchedLevel,
@@ -32,6 +33,7 @@ import {
   type PuzzleKindId,
 } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
+import { THEMES, type ThemeId } from "../src/themes";
 
 const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   id: pieceId(id),
@@ -40,7 +42,19 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   box: ANIMAL_BOX,
   anchor: animalAnchor(id),
   label: id,
+  themes: animalThemes(id),
 }));
+
+/** A piece of no particular shape, in whichever themes the test needs. */
+const shapeIn = (id: string, ...themes: ThemeId[]): PieceShape => ({
+  id: pieceId(id),
+  outline: "",
+  artwork: "",
+  box: ANIMAL_BOX,
+  anchor: { x: 120, y: 200 },
+  label: id,
+  ...(themes.length > 0 ? { themes } : {}),
+});
 
 /** The levels of one chapter, in play order. */
 const inChapter = (chapter: (typeof CHAPTERS)[number]): readonly LevelSpec[] =>
@@ -225,6 +239,121 @@ describe("dealPieces", () => {
 
   it("rejects a level that wants more pieces than exist", () => {
     expect(() => dealPieces(levelSpec(10), SHAPES.slice(0, 2))).toThrow(/only 2 exist/i);
+  });
+});
+
+describe("themed casts", () => {
+  /** How many animals a level needs from its theme, as it is played today. */
+  const themedLevels = LEVELS.map((level) => resolveLevel(level, SHAPES.length).spec).filter(
+    (spec) => spec.theme !== undefined,
+  );
+
+  it("names a theme every animal can be grouped under", () => {
+    for (const level of LEVELS) {
+      if (level.theme) expect(THEMES, `level ${level.level}`).toContain(level.theme);
+    }
+    for (const id of ANIMAL_IDS) {
+      expect(animalThemes(id).length, id).toBeGreaterThan(0);
+      for (const theme of animalThemes(id)) expect(THEMES, id).toContain(theme);
+    }
+  });
+
+  it("gives every themed level a cast of its own theme to fill it", () => {
+    // The whole point of a theme is that the board is coherent. `dealPieces`
+    // will top a short theme up from the rest of the cast rather than break,
+    // but that is a safety net: no level of the thirty may actually need it.
+    for (const spec of themedLevels) {
+      const cast = castOf(spec.theme as ThemeId, SHAPES);
+      expect(cast.length, `level ${spec.level} (${spec.theme})`).toBeGreaterThanOrEqual(
+        spec.pieces,
+      );
+    }
+  });
+
+  it("deals a themed level from that theme and nothing else", () => {
+    for (const spec of themedLevels) {
+      for (let run = 0; run < 20; run++) {
+        for (const shape of dealPieces(spec, SHAPES)) {
+          expect(shape.themes, `level ${spec.level}`).toContain(spec.theme);
+        }
+      }
+    }
+  });
+
+  it("can deal every animal of a theme, and never one from outside it", () => {
+    // A theme with more animals than the board holds still has to reach all of
+    // them over enough deals, or an animal drawn for a theme never turns up.
+    for (const spec of themedLevels) {
+      const cast = castOf(spec.theme as ThemeId, SHAPES);
+      const seen = new Set<string>();
+      for (let run = 0; run < 300; run++) {
+        for (const shape of dealPieces(spec, SHAPES)) seen.add(shape.id);
+      }
+      expect(seen.size, `level ${spec.level} (${spec.theme})`).toBe(cast.length);
+    }
+  });
+
+  it("deals from the whole cast when a level names no theme", () => {
+    const open = LEVELS.filter((level) => level.theme === undefined && level.pieces === 3);
+    expect(open.length).toBeGreaterThan(0);
+    const seen = new Set<string>();
+    for (const level of open) {
+      for (let run = 0; run < 200; run++) {
+        for (const shape of dealPieces(level, SHAPES)) seen.add(shape.id);
+      }
+    }
+    expect(seen.size).toBe(SHAPES.length);
+  });
+
+  it("tops a short theme up from the rest of the cast rather than breaking", () => {
+    // A half-drawn theme, or a kind asking for a busier board than the theme
+    // has animals: the child gets a full, playable, mostly-themed board.
+    const cast = [
+      shapeIn("cow", "farm"),
+      shapeIn("whale", "sea"),
+      shapeIn("crab", "sea"),
+      shapeIn("fish", "sea"),
+    ];
+    const level: LevelSpec = { ...levelSpec(6), theme: "farm", targets: 3, pieces: 3 };
+    for (let run = 0; run < 50; run++) {
+      const dealt = dealPieces(level, cast, seededRandom(run));
+      expect(dealt).toHaveLength(3);
+      expect(new Set(dealt.map((shape) => shape.id)).size).toBe(3);
+      // The one animal the theme does have is always in.
+      expect(dealt.map((shape) => shape.id)).toContain("cow");
+    }
+  });
+
+  it("puts the animals that filled a short theme up anywhere in the order", () => {
+    // Topping up must not always park the off-theme animals at the end of the
+    // row, or the same hole would take an off-theme piece every time.
+    const cast = [shapeIn("cow", "farm"), shapeIn("whale", "sea"), shapeIn("crab", "sea")];
+    const level: LevelSpec = { ...levelSpec(6), theme: "farm", targets: 3, pieces: 3 };
+    const positions = new Set<number>();
+    for (let run = 0; run < 100; run++) {
+      positions.add(dealPieces(level, cast, seededRandom(run)).findIndex((s) => s.id === "cow"));
+    }
+    expect(positions.size).toBeGreaterThan(1);
+  });
+
+  it("deals a full board from pieces that have no themes at all", () => {
+    // A provider that does not group its pieces - a jigsaw cutter, say - is
+    // not thereby unable to play a level the table gave a theme to.
+    const cast = [shapeIn("a"), shapeIn("b"), shapeIn("c"), shapeIn("d")];
+    const level: LevelSpec = { ...levelSpec(6), theme: "jungle", targets: 3, pieces: 3 };
+    expect(dealPieces(level, cast, seededRandom(2))).toHaveLength(3);
+  });
+
+  it("still refuses a themed level with nowhere near enough pieces", () => {
+    const cast = [shapeIn("cow", "farm"), shapeIn("pig", "farm")];
+    expect(() => dealPieces(levelSpec(10), cast)).toThrow(/only 2 exist/i);
+  });
+
+  it("repeats a themed deal exactly when given the same seed", () => {
+    const level = levelSpec(7);
+    expect(dealPieces(level, SHAPES, seededRandom(4))).toEqual(
+      dealPieces(level, SHAPES, seededRandom(4)),
+    );
   });
 });
 

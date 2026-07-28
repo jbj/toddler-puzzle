@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Monkey, sitting and facing forward. The two round ears are cut into the
+    outline rather than drawn on top of it, so the head still says "monkey" at
+    the size a tray piece is seen at, next to the jungle's elephant and giraffe.
+  -->
+  <path
+    id="silhouette"
+    fill="#a97a52"
+    stroke="#7a5333"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M120 36
+       C142 36 160 50 164 68
+       C176 58 192 66 192 82
+       C192 98 176 104 166 96
+       C162 108 152 116 142 120
+       C160 128 172 146 174 168
+       C176 190 168 204 152 208
+       C144 211 136 206 132 198
+       C126 202 114 202 108 198
+       C104 206 96 211 88 208
+       C72 204 64 190 66 168
+       C68 146 80 128 98 120
+       C88 116 78 108 74 96
+       C64 104 48 98 48 82
+       C48 66 64 58 76 68
+       C80 50 98 36 120 36 Z"
+  />
+  <g id="detail">
+    <!-- inner ears -->
+    <circle cx="176" cy="82" r="9" fill="#e8c9a0" />
+    <circle cx="64" cy="82" r="9" fill="#e8c9a0" />
+    <!-- face -->
+    <ellipse cx="120" cy="86" rx="34" ry="27" fill="#e8c9a0" />
+    <circle cx="106" cy="74" r="6.5" fill="#2b3440" />
+    <circle cx="134" cy="74" r="6.5" fill="#2b3440" />
+    <circle cx="114" cy="92" r="3.5" fill="#a97a52" />
+    <circle cx="126" cy="92" r="3.5" fill="#a97a52" />
+    <path
+      d="M108 100 C114 106 126 106 132 100"
+      fill="none"
+      stroke="#a97a52"
+      stroke-width="4"
+      stroke-linecap="round"
+    />
+    <!-- tummy -->
+    <ellipse cx="120" cy="164" rx="30" ry="27" fill="#e8c9a0" />
+    <!-- curling tail, budgeted overhang -->
+    <path
+      d="M172 172 C196 176 208 164 204 150 C201 140 190 140 188 150"
+      fill="none"
+      stroke="#7a5333"
+      stroke-width="6"
+      stroke-linecap="round"
+      data-overhang="tail"
+    />
+  </g>
+</svg>

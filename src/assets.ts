@@ -17,17 +17,24 @@
  */
 import type { Point, Size } from "./geometry";
 import { pieceId, type PieceShape } from "./piece";
+import type { ThemeId } from "./themes";
 
 import butterflySvg from "./assets/animals/butterfly.svg?raw";
+import cowSvg from "./assets/animals/cow.svg?raw";
 import crabSvg from "./assets/animals/crab.svg?raw";
 import duckSvg from "./assets/animals/duck.svg?raw";
 import elephantSvg from "./assets/animals/elephant.svg?raw";
 import fishSvg from "./assets/animals/fish.svg?raw";
 import frogSvg from "./assets/animals/frog.svg?raw";
 import giraffeSvg from "./assets/animals/giraffe.svg?raw";
+import monkeySvg from "./assets/animals/monkey.svg?raw";
+import octopusSvg from "./assets/animals/octopus.svg?raw";
+import parrotSvg from "./assets/animals/parrot.svg?raw";
 import penguinSvg from "./assets/animals/penguin.svg?raw";
+import pigSvg from "./assets/animals/pig.svg?raw";
 import rabbitSvg from "./assets/animals/rabbit.svg?raw";
 import turtleSvg from "./assets/animals/turtle.svg?raw";
+import whaleSvg from "./assets/animals/whale.svg?raw";
 
 export const ANIMAL_IDS = [
   "duck",
@@ -40,6 +47,12 @@ export const ANIMAL_IDS = [
   "frog",
   "penguin",
   "crab",
+  "cow",
+  "pig",
+  "whale",
+  "octopus",
+  "monkey",
+  "parrot",
 ] as const;
 export type AnimalId = (typeof ANIMAL_IDS)[number];
 
@@ -65,6 +78,12 @@ const FOOT_LEVEL: Record<AnimalId, number> = {
   frog: 207,
   penguin: 216,
   crab: 212,
+  cow: 212,
+  pig: 198,
+  whale: 190,
+  octopus: 202,
+  monkey: 209,
+  parrot: 206,
 };
 
 /** Where an animal stands within its art box: on its feet, centred. */
@@ -72,6 +91,41 @@ export const animalAnchor = (id: AnimalId): Point => {
   const y = FOOT_LEVEL[id];
   if (y === undefined) throw new Error(`Animal "${id}" has no FOOT_LEVEL.`);
   return { x: ART_BOX / 2, y };
+};
+
+/**
+ * Which themed casts each animal belongs to (`themes.ts`). An animal joins
+ * every theme a child would expect to find it in, so a butterfly is over the
+ * meadow as well as under the canopy - and pays for the second membership by
+ * having to read distinctly from the rest of both. `npm run art:check` enforces
+ * that, one theme at a time; nothing here may be widened without running it.
+ *
+ * No animal is a vehicle, so nothing lists that theme yet.
+ */
+const ANIMAL_THEMES: Record<AnimalId, readonly ThemeId[]> = {
+  duck: ["farm"],
+  elephant: ["jungle"],
+  giraffe: ["jungle"],
+  turtle: ["sea"],
+  rabbit: ["farm"],
+  butterfly: ["farm", "jungle"],
+  fish: ["sea"],
+  frog: ["jungle"],
+  penguin: ["sea"],
+  crab: ["sea"],
+  cow: ["farm"],
+  pig: ["farm"],
+  whale: ["sea"],
+  octopus: ["sea"],
+  monkey: ["jungle"],
+  parrot: ["jungle"],
+};
+
+/** The themes this animal belongs to. */
+export const animalThemes = (id: AnimalId): readonly ThemeId[] => {
+  const themes = ANIMAL_THEMES[id];
+  if (themes === undefined) throw new Error(`Animal "${id}" has no themes.`);
+  return themes;
 };
 
 const SOURCES: Record<AnimalId, { name: string; svg: string }> = {
@@ -85,6 +139,12 @@ const SOURCES: Record<AnimalId, { name: string; svg: string }> = {
   frog: { name: "Frog", svg: frogSvg },
   penguin: { name: "Penguin", svg: penguinSvg },
   crab: { name: "Crab", svg: crabSvg },
+  cow: { name: "Cow", svg: cowSvg },
+  pig: { name: "Pig", svg: pigSvg },
+  whale: { name: "Whale", svg: whaleSvg },
+  octopus: { name: "Octopus", svg: octopusSvg },
+  monkey: { name: "Monkey", svg: monkeySvg },
+  parrot: { name: "Parrot", svg: parrotSvg },
 };
 
 function parseSvg(source: string, label: string): SVGSVGElement {
@@ -154,6 +214,7 @@ function parseAnimal(id: AnimalId): PieceShape {
     box: ANIMAL_BOX,
     anchor: animalAnchor(id),
     label: name,
+    themes: animalThemes(id),
   };
 }
 

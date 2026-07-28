@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Octopus, seen from the front and symmetric about the middle. A domed head
+    over five tentacles that splay out as they hang, so the outline is round on
+    top and scalloped along the bottom - nothing else in the cast has a wavy
+    foot.
+  -->
+  <path
+    id="silhouette"
+    fill="#e07aa8"
+    stroke="#a94b7c"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M124.9 54.0
+       C169.2 54.0 201.2 84.9 203.6 127.8
+       C218.4 146.7 225.8 174.1 218.4 198.1
+       C211.0 206.7 195.0 205.0 195.0 157.0
+       C195.0 175.8 188.9 196.4 171.7 198.1
+       C154.4 199.9 148.3 179.3 148.3 157.0
+       C148.3 175.8 142.1 196.4 124.9 198.1
+       C107.7 199.9 101.5 179.3 101.5 157.0
+       C101.5 175.8 95.4 196.4 78.2 198.1
+       C61.0 199.9 54.8 179.3 54.8 157.0
+       C54.8 175.8 48.7 196.4 31.4 198.1
+       C14.2 199.9 24.1 146.7 46.2 127.8
+       C48.7 84.9 80.6 54.0 124.9 54.0 Z"
+  />
+  <g id="detail">
+    <!-- eyes -->
+    <circle cx="100.3" cy="102.0" r="11.6" fill="#2b3440" />
+    <circle cx="149.5" cy="102.0" r="11.6" fill="#2b3440" />
+    <!-- smile -->
+    <path
+      d="M105.2 126.1 C115.1 134.7 134.8 134.7 144.6 126.1"
+      fill="none"
+      stroke="#a94b7c"
+      stroke-width="4.5"
+      stroke-linecap="round"
+    />
+    <!-- suckers, two down each of the three tentacles facing us -->
+    <g fill="#f7c2d8">
+      <circle cx="78.2" cy="170.7" r="5.8" />
+      <circle cx="78.2" cy="186.1" r="5.2" />
+      <circle cx="124.9" cy="170.7" r="5.8" />
+      <circle cx="124.9" cy="186.1" r="5.2" />
+      <circle cx="171.7" cy="170.7" r="5.8" />
+      <circle cx="171.7" cy="186.1" r="5.2" />
+    </g>
+  </g>
+</svg>

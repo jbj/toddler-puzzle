@@ -19,10 +19,11 @@
  * | 21-25 | Pictures | Jigsaw, 2x2 growing to 3x3 |
  * | 26-30 | Mastery | 4x3 jigsaw, irregular partitions, mixed kinds |
  *
- * **The table says what kind and how many; never which pieces.** Which animals
- * turn up and the order they stand in are dealt fresh every time a level starts
- * (`dealPieces`), which is what keeps the game from going stale after three
- * plays. `?seed=` replays a deal exactly by handing the same `random` in.
+ * **The table says what kind, how many, and which cast; never which pieces.**
+ * Which animals turn up and the order they stand in are dealt fresh every time
+ * a level starts (`dealPieces`), narrowed to the level's `theme` where it names
+ * one, which is what keeps the game from going stale after three plays.
+ * `?seed=` replays a deal exactly by handing the same `random` in.
  *
  * Most of the kinds this table names are not built yet. A level whose kind is
  * missing is played as a shape-match stand-in rather than being skipped; see
@@ -30,6 +31,7 @@
  */
 import { shuffle } from "./geometry";
 import { assertUniquePieceIds, type PieceShape } from "./piece";
+import type { ThemeId } from "./themes";
 
 /** A run of five levels. Chapters are what a celebration is hung on later. */
 export type ChapterId =
@@ -57,12 +59,12 @@ export const CHAPTERS: readonly ChapterId[] = [
 export type PuzzleKindId = "play" | "shape-match" | "sliced" | "polygon" | "jigsaw" | "shatter";
 
 /**
- * A themed cast. Nothing reads this yet: the animals are one undifferentiated
- * cast of ten until themed casts arrive, at which point a kind narrows its deal
- * by the theme its level asked for. It is declared here now because the theme
- * is part of the curve's design rather than of any one kind's implementation.
+ * A themed cast. A level naming one is dealt from the pieces that belong to it
+ * (`dealPieces`); a level naming none is dealt from everything. The names live
+ * in `themes.ts`, because a piece has to speak them too, and are re-exported
+ * here so the level table reads as one thing.
  */
-export type ThemeId = "farm" | "sea" | "jungle" | "vehicles";
+export type { ThemeId } from "./themes";
 
 /**
  * Per-kind hints. A kind reads the ones it understands and ignores the rest,
@@ -449,10 +451,27 @@ export function chapterNumber(spec: LevelSpec): number {
 }
 
 /**
+ * The pieces of a themed cast, in the order they were given. A piece joins a
+ * theme by listing it (`piece.ts`); a piece with no themes at all is in none of
+ * them, which is what makes a provider that does not group its pieces simply
+ * fall through to the whole cast below.
+ */
+export function castOf(theme: ThemeId, shapes: readonly PieceShape[]): readonly PieceShape[] {
+  return shapes.filter((shape) => shape.themes?.includes(theme));
+}
+
+/**
  * Deal this level's pieces: a random subset of the shapes on offer, in a random
  * order. Both matter - which pieces turn up keeps the puzzle fresh, and their
  * order decides which target each one belongs to, so the same piece isn't
  * always on the left.
+ *
+ * A level with a `theme` is dealt from that theme's cast first. If the theme is
+ * too small for the level - a cast half-drawn, or a stand-in asking for a
+ * busier board than the theme has animals - the rest of the level is topped up
+ * from everything else rather than throwing or dealing a short board. **A
+ * mostly-themed level is a far better failure than a broken one**, and the
+ * child cannot read the theme's name anywhere on screen to notice.
  *
  * `random` is injectable so a run can be replayed: the same seed deals the same
  * level, which is what `?seed=` and the screenshot run rely on.
@@ -468,5 +487,18 @@ export function dealPieces(
       `Level ${level.level} needs ${level.pieces} pieces but only ${shapes.length} exist.`,
     );
   }
-  return shuffle(shapes, random).slice(0, level.pieces);
+  if (level.theme === undefined) return shuffle(shapes, random).slice(0, level.pieces);
+
+  const themed = shuffle(castOf(level.theme, shapes), random);
+  if (themed.length >= level.pieces) return themed.slice(0, level.pieces);
+
+  // Short of a full board: take the whole theme and make the number up from
+  // the rest, then shuffle the two together so the animals that came in to
+  // fill the gap are not always the ones at the end of the row.
+  const inTheme = new Set(themed);
+  const spare = shuffle(
+    shapes.filter((shape) => !inTheme.has(shape)),
+    random,
+  );
+  return shuffle([...themed, ...spare].slice(0, level.pieces), random);
 }

@@ -8,6 +8,7 @@
  * anything downstream having to learn about them.
  */
 import type { Point, Size } from "./geometry";
+import type { ThemeId } from "./themes";
 
 /**
  * An opaque piece identity at the type level. Providers still need to choose
@@ -42,6 +43,13 @@ export interface PieceShape {
   readonly anchor: Point;
   /** Spoken description, used for `aria-label`. */
   readonly label: string;
+  /**
+   * The themed casts this piece belongs to, if its provider groups its pieces
+   * that way (`themes.ts`). A level naming a theme deals from the pieces that
+   * joined it; a piece with none simply never turns up first for a themed
+   * level. Optional because a jigsaw slice or a triangle has no theme to be in.
+   */
+  readonly themes?: readonly ThemeId[];
 }
 
 /**
