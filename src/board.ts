@@ -102,9 +102,9 @@ function fitGrabBox(piece: SVGGElement, shape: PieceShape): void {
   art.prepend(rect);
 }
 
-function buildResetButton(): SVGGElement {
+function buildResetButton(canvasHeight: number): SVGGElement {
   const button = group("reset-button");
-  button.setAttribute("transform", "translate(58 58)");
+  button.setAttribute("transform", `translate(58 ${canvasHeight - 58})`);
   button.setAttribute("role", "button");
   button.setAttribute("aria-label", "Start a fresh puzzle");
   button.innerHTML = `
@@ -121,7 +121,7 @@ function buildResetButton(): SVGGElement {
  */
 function buildStageDots(layout: Layout): SVGGElement {
   const dots = group("stage-dots");
-  dots.setAttribute("transform", "translate(122 58)");
+  dots.setAttribute("transform", `translate(122 ${layout.canvas.height - 58})`);
   dots.setAttribute("aria-label", `Puzzle ${layout.stage} of ${STAGE_COUNT}`);
   dots.style.pointerEvents = "none";
   dots.innerHTML = Array.from({ length: STAGE_COUNT }, (_, index) => {
@@ -153,7 +153,7 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
     piecesLayer.append(piece);
   }
 
-  const resetButton = buildResetButton();
+  const resetButton = buildResetButton(layout.canvas.height);
   stage.append(backdropLayer, piecesLayer, fxLayer, resetButton, buildStageDots(layout));
 
   root.replaceChildren(stage);

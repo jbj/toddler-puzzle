@@ -467,10 +467,10 @@ const PROMISES = {
         if (hole.x < 0 || right > layout.canvas.width) {
           return `${shape.id} runs off the side of the canvas`;
         }
-        if (hole.y < 0) return `${shape.id} runs off the top of the canvas`;
         // Box and all, not just the anchor: a target the tray covers is a
         // target a piece cannot be dropped into.
-        if (bottom > layout.trayTop) return `${shape.id} reaches into the tray`;
+        if (hole.y < layout.sceneTop) return `${shape.id} reaches into the tray`;
+        if (bottom > layout.canvas.height) return `${shape.id} runs off the bottom of the canvas`;
         return null;
       }),
     ),
@@ -506,14 +506,14 @@ const PROMISES = {
     return null;
   },
 
-  "keeps every tray slot on canvas, below the tray line": (layout) => {
+  "keeps every tray slot on canvas, within the tray": (layout) => {
     // A slot holds whichever piece is shuffled into it, so it is measured at
     // the full slot size rather than at any one piece's bounds.
     for (const slot of layout.traySlots) {
       if (slot.x < 0 || slot.x + layout.slotSize > layout.canvas.width) {
         return `a tray slot at ${Math.round(slot.x)} runs off the side`;
       }
-      if (slot.y < layout.trayTop || slot.y + layout.slotSize > layout.canvas.height) {
+      if (slot.y < 0 || slot.y + layout.slotSize > layout.sceneTop) {
         return `a tray slot at ${Math.round(slot.y)} is outside the tray`;
       }
     }

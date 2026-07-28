@@ -64,7 +64,7 @@ export function celebrationBurst(fxLayer: SVGGElement, layout: Layout): void {
   for (let i = 0; i < 28; i++) {
     const center = {
       x: Math.random() * layout.canvas.width,
-      y: Math.random() * layout.trayTop,
+      y: layout.sceneTop + Math.random() * (layout.canvas.height - layout.sceneTop),
     };
     const colour = SPARKLE_COLOURS[i % SPARKLE_COLOURS.length] as string;
     fxLayer.append(
@@ -96,7 +96,7 @@ export function showFinishButton(
   onPress: () => void,
 ): void {
   const anchor = document.createElementNS(SVG_NS, "g");
-  const centerY = (layout.trayTop + layout.canvas.height) / 2;
+  const centerY = layout.sceneTop / 2;
   anchor.setAttribute("transform", `translate(${layout.canvas.width / 2} ${centerY})`);
 
   // The pulse animates CSS `transform`, which would clobber a `transform`
