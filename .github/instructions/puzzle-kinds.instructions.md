@@ -145,6 +145,6 @@ pieces of no particular shape:
 - pieces stay grabbable - over a tenth of the canvas wide;
 - each orientation fills at least 75% of its viewport.
 
-A layout change must leave every one of those properties standing. They are what
-keeps a piece grabbable, reachable and unambiguous, so a change that weakens one
-is a change to the game rather than to the layout.
+A layout change must leave every one of those properties standing. Between them
+they keep a piece grabbable, reachable and unambiguous, so weakening one is a
+change to the game rather than to the layout.

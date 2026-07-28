@@ -11,8 +11,7 @@ Closes #
 ## Checklist
 
 - [ ] `npm run verify` passes
-- [ ] Any design invariants this changes are documented in the relevant Markdown
-      files and highlighted in the description above
+- [ ] Any design invariant this changes is documented in its Markdown file and called out above
 - [ ] The screenshots below come from this branch
 
 ## Screenshots
