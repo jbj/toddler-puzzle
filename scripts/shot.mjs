@@ -361,6 +361,38 @@ async function pressInPanel(selector) {
   await sleep(300);
 }
 
+/**
+ * Watch the long timers the page arms from now on. The prompt that answers a
+ * tap is taken down on a timer of its own, and a toddler taps far faster than
+ * it expires, so the interesting question is whether the tenth tap leaves ten
+ * timers pending or one. Only long timers are counted, which leaves the
+ * two-second one that arms the opening out of it.
+ */
+const watchLongTimers = () =>
+  evaluate(`
+  (() => {
+    const armed = new Set();
+    const setLater = window.setTimeout.bind(window);
+    const clearLater = window.clearTimeout.bind(window);
+    window.setTimeout = (fn, ms, ...rest) => {
+      let id;
+      id = setLater((...args) => { armed.delete(id); fn(...args); }, ms, ...rest);
+      if (ms > 3000) armed.add(id);
+      return id;
+    };
+    window.clearTimeout = (id) => { armed.delete(id); clearLater(id); };
+    window.__longTimers = () => armed.size;
+    window.__stopWatchingTimers = () => {
+      window.setTimeout = setLater;
+      window.clearTimeout = clearLater;
+    };
+    return true;
+  })()
+`);
+
+const longTimersPending = () => evaluate(`window.__longTimers()`);
+const stopWatchingTimers = () => evaluate(`window.__stopWatchingTimers()`);
+
 /** Press and release the grown-ups button, the way a small hand would. */
 async function tapGrownUps() {
   const at = await centreOf(".grownups-key");
@@ -537,9 +569,13 @@ try {
   check("a grown-up button says what it is", (await grownUpsLabel()) === "Grown-ups");
   check("the panel starts closed", (await panelIsOpen()) === false);
 
-  for (let tap = 0; tap < 6; tap++) await tapGrownUps();
+  await watchLongTimers();
+  for (let tap = 0; tap < 10; tap++) await tapGrownUps();
   check("tapping the button never opens the panel", (await panelIsOpen()) === false);
   check("tapping it answers with 'Hold to open'", (await holdPromptShown()) === true);
+  const pending = await longTimersPending();
+  check(`ten taps leave one timer behind, not ten (${pending})`, pending === 1);
+  await stopWatchingTimers();
 
   await holdGrownUps({ pauseAtHalfway: () => shot("06-grownups-hold") });
   check("holding the button opens the panel", (await panelIsOpen()) === true);

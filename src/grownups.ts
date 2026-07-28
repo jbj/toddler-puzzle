@@ -402,6 +402,7 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
 
   function open(): void {
     gate.reset();
+    forgetPrompt();
     paint();
     stopConfirming();
     refresh();
@@ -434,12 +435,19 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
 
   let frame = 0;
   let openTimer = 0;
+  let promptTimer = 0;
 
   /** Show the gate's current state: the ring, and the "Hold to open" line. */
   function paint(): void {
     const state = gate.state(now());
     key.style.setProperty("--fill", String(state.fill));
     key.classList.toggle("is-prompting", state.prompt);
+  }
+
+  /** Drop any pending "the prompt has expired" repaint. */
+  function forgetPrompt(): void {
+    window.clearTimeout(promptTimer);
+    promptTimer = 0;
   }
 
   function stopWatching(): void {
@@ -491,8 +499,14 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
     stopWatching();
     paint();
     // The prompt outlives the press, so it has to be taken down on a timer
-    // rather than by the next pointer event.
-    window.setTimeout(paint, PROMPT_MS + 50);
+    // rather than by the next pointer event. A toddler will tap this button
+    // over and over, so each release replaces the pending timer instead of
+    // adding to it: one press, one timer, however fast the tapping.
+    forgetPrompt();
+    promptTimer = window.setTimeout(() => {
+      promptTimer = 0;
+      paint();
+    }, PROMPT_MS + 50);
   };
 
   key.addEventListener("pointerup", letGo);
