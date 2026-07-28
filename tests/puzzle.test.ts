@@ -6,11 +6,13 @@ import {
   distance,
   fitScale,
   isWithinSnapRadius,
+  padWithin,
   screenToLogical,
   seededRandom,
   shuffle,
 } from "../src/geometry";
 import {
+  GRAB_PADDING,
   STAGE_COUNT,
   STAGE_SIZES,
   boxOf,
@@ -162,6 +164,52 @@ describe("boxCenter", () => {
   it("halves each side separately, so the centre is inside the piece", () => {
     expect(boxCenter({ x: 10, y: 20 }, { width: 300, height: 100 })).toEqual({ x: 160, y: 70 });
     expect(boxCenter({ x: 10, y: 20 }, { width: 100, height: 300 })).toEqual({ x: 60, y: 170 });
+  });
+});
+
+describe("padWithin", () => {
+  // The animals' box; a grab area is measured in these units before it is
+  // scaled into a slot.
+  const BOX = { width: 240, height: 240 };
+  const padding = GRAB_PADDING * BOX.width;
+
+  it("gives a measured drawing a margin on every side", () => {
+    expect(padWithin({ x: 60, y: 50, width: 100, height: 120 }, 10, BOX)).toEqual({
+      x: 50,
+      y: 40,
+      width: 120,
+      height: 140,
+    });
+  });
+
+  it("never reaches outside the box, however big the padding", () => {
+    const grown = padWithin({ x: 4, y: 8, width: 232, height: 200 }, 999, BOX);
+    expect(grown).toEqual({ x: 0, y: 0, width: BOX.width, height: BOX.height });
+  });
+
+  /**
+   * The reason grab areas cannot become ambiguous: a piece's box is exactly the
+   * slot it was laid out in, and no two slots overlap (see the layout suite),
+   * so an area held inside the box cannot reach into the next piece's.
+   */
+  it("keeps a padded drawing inside the piece's own box", () => {
+    for (const drawn of [
+      { x: 0, y: 0, width: 240, height: 240 },
+      { x: 2, y: 220, width: 236, height: 20 },
+      { x: 200, y: 0, width: 40, height: 240 },
+    ]) {
+      const grab = padWithin(drawn, padding, BOX);
+      expect(grab.x).toBeGreaterThanOrEqual(0);
+      expect(grab.y).toBeGreaterThanOrEqual(0);
+      expect(grab.x + grab.width).toBeLessThanOrEqual(BOX.width);
+      expect(grab.y + grab.height).toBeLessThanOrEqual(BOX.height);
+    }
+  });
+
+  it("stays harmless when there is nothing to measure", () => {
+    const grab = padWithin({ x: 0, y: 0, width: 0, height: 0 }, padding, BOX);
+    expect(grab.width).toBeCloseTo(padding);
+    expect(grab.height).toBeCloseTo(padding);
   });
 });
 

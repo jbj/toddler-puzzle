@@ -56,6 +56,15 @@ means. Between them:
 
 - The piece is held slightly above the finger, so a small hand does not cover
   the thing it is moving.
+- A piece is picked up anywhere inside the box around its artwork, not only
+  where a finger lands on paint. Every piece carries an invisible rectangle over
+  its drawing (`fitGrabBox` in `src/board.ts`), which is what makes the gap
+  between a giraffe's legs part of the giraffe. It is measured from the artwork
+  at mount and clamped to the piece's authored box - which is exactly the slot
+  it was laid out in, and slots never overlap - so one piece's grab area can
+  never reach into the next one's. Do not delete the rectangle as dead markup;
+  the reasoning is
+  [decision 0008](../../docs/decisions/0008-grab-anywhere-in-the-piece-box.md).
 - Pieces are clamped to the canvas by their own bounds (`boxOf(layout, piece)`),
   so one can never be dragged out of reach whatever shape it is.
 - A piece settles back with a short animation (`SETTLE_MS`), whether it was
