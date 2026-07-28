@@ -3,6 +3,7 @@
  * big button in the now-empty tray that leads on to the next puzzle.
  */
 import type { Point } from "./geometry";
+import { replayArrow } from "./icons";
 import type { Layout } from "./layout";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -85,10 +86,7 @@ const BUTTON_ICON: Record<FinishButton, string> = {
     <path d="M-40 0 H10" fill="none" stroke="#7a5200" stroke-width="15" stroke-linecap="round" />
     <path d="M2 -32 L44 0 L2 32 Z" fill="#7a5200" />
   `,
-  again: `
-    <path d="M-34 8 A34 34 0 1 1 0 42" fill="none" stroke="#7a5200" stroke-width="15" stroke-linecap="round" />
-    <path d="M-34 -14 L-34 12 L-11 12 Z" fill="#7a5200" />
-  `,
+  again: replayArrow(34, 15, "#7a5200"),
 };
 
 export function showFinishButton(
