@@ -5,7 +5,8 @@
  * toddler starts with an easy win and the board fills up as they go. Each stage
  * has its own layout in each orientation, because the puzzle reflows rather than
  * just shrinking: a landscape screen gets rows of pieces with the tray
- * underneath, a portrait screen gets narrower rows and a taller tray.
+ * at the top, a portrait screen gets narrower rows and a taller tray.
+ * Pieces start in the tray so toddlers can drag them down to their holes.
  * Letterboxing a landscape canvas into a phone held upright would leave the
  * pieces far too small to grab.
  *
@@ -151,8 +152,8 @@ export interface Layout {
   readonly slotSize: number;
   /** What each of this stage's pieces measures, and how forgiving it is. */
   readonly boxes: ReadonlyMap<PieceId, PieceBox>;
-  /** Top of the piece tray; scenery fills everything above it. */
-  readonly trayTop: number;
+  /** Top of the scene; the tray occupies everything above it. */
+  readonly sceneTop: number;
   /** Where the ground starts, i.e. the horizon. */
   readonly horizon: number;
   readonly bands: readonly GroundBand[];
@@ -207,7 +208,7 @@ interface Arrangement {
   readonly canvas: Size;
   /** The square a piece of any proportions is drawn to fit inside. */
   readonly slotSize: number;
-  readonly trayTop: number;
+  readonly sceneTop: number;
   readonly horizon: number;
   readonly bands: readonly GroundBand[];
   readonly sceneRows: readonly SceneRow[];
@@ -293,7 +294,7 @@ function fromArrangement(
     canvas,
     slotSize,
     boxes,
-    trayTop: arrangement.trayTop,
+    sceneTop: arrangement.sceneTop,
     horizon: arrangement.horizon,
     bands: arrangement.bands,
     holes,
@@ -352,16 +353,14 @@ const COMPOSITION = {
    */
   horizonClearance: 0.5,
   /**
-   * Sky kept above the scene, as a fraction of the canvas height. A floor
-   * rather than a share: an uncrowded board has height to spare and spends it
-   * on sky anyway, and this is what a crowded one may not take.
+   * Sky between the tray and the scene, as a fraction of the canvas height. A
+   * floor rather than a share: an uncrowded board has height to spare and
+   * spends it on sky anyway, and this is what a crowded one may not take.
    */
   skyShare: 0.15,
   /**
-   * The most sky worth having, as a fraction of the canvas height. Past this a
-   * taller sky is just emptiness, so the height goes under the tray line
-   * instead - which is what keeps the tray a comfortable strip rather than a
-   * sliver when the pieces are small.
+   * The most sky worth having, as a fraction of the canvas height. Past this
+   * extra height goes to the row gaps rather than a larger sky gap.
    */
   skyMax: 0.42,
   /** The tray's nominal share of the canvas height, used to judge its shape. */
@@ -459,10 +458,10 @@ function planFor(
 }
 
 /**
- * Lay a plan out on the canvas. The tray is packed up from the bottom edge, the
- * ground bands are stacked above it, and the height left over is shared out
- * between the sky and the gaps between rows - which is what stops a two-row
- * scene from bunching up against the tray with an empty sky above it.
+ * Lay a plan out on the canvas. The tray sits at the top, the ground bands are
+ * stacked below it, and the height left over is shared out between the sky gap
+ * and the gaps between rows - which is what stops a two-row scene from
+ * bunching up at the bottom with an empty band of sky above it.
  */
 function compose(view: View, plan: Plan): Arrangement {
   const { canvas } = view;
@@ -474,29 +473,30 @@ function compose(view: View, plan: Plan): Arrangement {
   const rowGap = scaled(COMPOSITION.rowGap);
   const trayRowCount = plan.trayCounts.length;
 
+  // Tray sits at the top, sized to fit its rows with padding.
   const trayNeed = trayRowCount * slotSize + (trayRowCount + 1) * scaled(COMPOSITION.trayPad);
+  const sceneTop = Math.round(trayNeed);
+  const trayPad = (sceneTop - trayRowCount * slotSize) / (trayRowCount + 1);
+  const trayRows = plan.trayCounts.map((count, index) => ({
+    top: Math.round(trayPad + index * (slotSize + trayPad)),
+    count,
+  }));
+
   const sceneNeed =
     depths.reduce((sum, depth) => sum + depth, 0) +
     (depths.length - 1) * rowGap +
     scaled(COMPOSITION.footRoom);
   const skyNeed = COMPOSITION.skyShare * canvas.height;
 
-  // Whatever the canvas has over what the composition needs is shared out one
-  // way per gap between rows and one for the sky, so a single row stands near
-  // the bottom of the scene and more rows spread themselves up it. The sky
-  // stops taking its share at `skyMax`; the rest falls to the tray.
-  const spare = Math.max(0, canvas.height - trayNeed - sceneNeed - skyNeed) / depths.length;
+  // Whatever the canvas has below the tray over what scene and sky need is
+  // shared out: one share per row gap and one for the sky, so a single row
+  // stands near the bottom and more rows spread themselves up. The sky stops
+  // taking its share at `skyMax`.
+  const spare = Math.max(0, canvas.height - sceneTop - sceneNeed - skyNeed) / depths.length;
   const sky = Math.min(skyNeed + spare, COMPOSITION.skyMax * canvas.height);
-  const trayDepth = canvas.height - sky - sceneNeed - (depths.length - 1) * spare;
-  const trayTop = Math.round(canvas.height - trayDepth);
-  const trayPad = (trayDepth - trayRowCount * slotSize) / (trayRowCount + 1);
-  const trayRows = plan.trayCounts.map((count, index) => ({
-    top: Math.round(trayTop + trayPad + index * (slotSize + trayPad)),
-    count,
-  }));
 
   const sceneRows: SceneRow[] = [];
-  let top = sky;
+  let top = sceneTop + sky;
   for (const [index, depth] of depths.entries()) {
     sceneRows.push({
       groundY: Math.round(top + (plan.rises[index] as number) * slotSize),
@@ -506,13 +506,14 @@ function compose(view: View, plan: Plan): Arrangement {
   }
 
   // The horizon is a constant of the orientation until a crowded board pushes
-  // the first row up to meet it. An animal may stand against the sky; none may
-  // stand on it.
+  // the first row up to meet it. Expressed as a fraction of the scene height
+  // below the tray, so it stays proportionally placed. An animal may stand
+  // against the sky; none may stand on it.
   const horizon = Math.max(
-    0,
+    sceneTop,
     Math.round(
       Math.min(
-        view.horizonShare * canvas.height,
+        sceneTop + view.horizonShare * (canvas.height - sceneTop),
         (sceneRows[0] as SceneRow).groundY - scaled(COMPOSITION.horizonClearance),
       ),
     ),
@@ -522,12 +523,12 @@ function compose(view: View, plan: Plan): Arrangement {
   return {
     canvas,
     slotSize,
-    trayTop,
+    sceneTop,
     horizon,
     bands: [
       { top: horizon, fill: "#8ed76f" },
       {
-        top: Math.round(horizon + COMPOSITION.grassShare * (trayTop - horizon)),
+        top: Math.round(horizon + COMPOSITION.grassShare * (canvas.height - horizon)),
         fill: "url(#grass)",
       },
     ],

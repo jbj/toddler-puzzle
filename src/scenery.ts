@@ -38,14 +38,13 @@ function flowers(width: number, groundY: number): string {
 }
 
 export function renderScenery(layout: Layout): string {
-  const { width } = layout.canvas;
-  const { trayTop, horizon, bands } = layout;
-  const trayHeight = layout.canvas.height - trayTop;
+  const { width, height } = layout.canvas;
+  const { sceneTop, horizon, bands } = layout;
 
   const bandMarkup = bands
     .map((band, index) => {
       const next = bands[index + 1];
-      const bottom = next ? next.top : trayTop;
+      const bottom = next ? next.top : height;
       return `<rect x="0" y="${band.top}" width="${width}" height="${bottom - band.top}" fill="${band.fill}" />`;
     })
     .join("");
@@ -78,19 +77,22 @@ export function renderScenery(layout: Layout): string {
       </linearGradient>
     </defs>
 
-    <rect x="0" y="0" width="${width}" height="${trayTop}" fill="url(#sky)" />
+    <rect x="0" y="0" width="${width}" height="${sceneTop}" fill="#f6ead0" />
 
-    <g transform="translate(${width - 108} 74)">
+    <rect x="0" y="${sceneTop}" width="${width}" height="${height - sceneTop}" fill="url(#sky)" />
+    <rect x="0" y="${sceneTop}" width="${width}" height="10" fill="#d9c398" />
+
+    <g transform="translate(${width - 108} ${sceneTop + 74})">
       <circle r="46" fill="#ffd23f" />
       <circle r="46" fill="none" stroke="#f6b820" stroke-width="5" />
     </g>
 
     <g fill="#ffffff" opacity="0.92">
-      <g transform="translate(${width * 0.16} ${horizon * 0.29})">
+      <g transform="translate(${width * 0.16} ${Math.round(sceneTop + (horizon - sceneTop) * 0.29)})">
         <circle cx="0" cy="0" r="30" /><circle cx="34" cy="8" r="24" /><circle cx="-32" cy="10" r="22" />
         <rect x="-32" y="0" width="66" height="22" rx="11" />
       </g>
-      <g transform="translate(${width * 0.55} ${horizon * 0.19})">
+      <g transform="translate(${width * 0.55} ${Math.round(sceneTop + (horizon - sceneTop) * 0.19)})">
         <circle cx="0" cy="0" r="24" /><circle cx="28" cy="6" r="19" /><circle cx="-26" cy="8" r="17" />
         <rect x="-26" y="0" width="54" height="18" rx="9" />
       </g>
@@ -99,8 +101,5 @@ export function renderScenery(layout: Layout): string {
     ${bandMarkup}
     ${crests}
     ${decor}
-
-    <rect x="0" y="${trayTop}" width="${width}" height="${trayHeight}" fill="#f6ead0" />
-    <rect x="0" y="${trayTop}" width="${width}" height="10" fill="#d9c398" />
   `;
 }
