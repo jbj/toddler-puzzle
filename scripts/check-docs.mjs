@@ -117,9 +117,15 @@ function links(text) {
 // --- the checks -----------------------------------------------------------
 
 const decisionNumbers = new Set(
-  paths
-    .map((path) => new RegExp(`^${DECISIONS_DIR}/(\\d{8}T\\d{6})-`).exec(path)?.[1])
-    .filter((number) => number !== undefined),
+  paths.flatMap((path) => {
+    const m = new RegExp(`^${DECISIONS_DIR}/(\\d{8}T\\d{6})(-[\\w-]+)?\\.md$`).exec(path);
+    if (!m) return [];
+    // Accept both the bare timestamp (for short citations) and the full basename
+    // (timestamp + slug), so precise citations are validated unambiguously.
+    const timestamp = m[1];
+    const slug = m[2] ?? "";
+    return slug ? [timestamp, timestamp + slug] : [timestamp];
+  }),
 );
 
 function checkLinks(file, text, problems) {
@@ -176,9 +182,10 @@ function resolvesSomehow(file, mention) {
 
 function checkDecisionNumbers(file, text, problems) {
   const body = withoutFences(text);
+  const DECISION_ID = `\\d{8}T\\d{6}(?:-[\\w-]+)?`;
   const cited = [
-    ...body.matchAll(new RegExp(`${DECISIONS_DIR}/(\\d{8}T\\d{6})`, "g")),
-    ...body.matchAll(/\bdecisions?\s+(\d{8}T\d{6})\b/gi),
+    ...body.matchAll(new RegExp(`${DECISIONS_DIR}/(${DECISION_ID})`, "g")),
+    ...body.matchAll(new RegExp(`\\bdecisions?\\s+(${DECISION_ID})\\b`, "gi")),
   ];
   for (const [, number] of cited) {
     if (!decisionNumbers.has(number)) {

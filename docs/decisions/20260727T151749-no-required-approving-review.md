@@ -41,7 +41,7 @@ there was not a second pair of eyes.
 
 What guards the branch is now mechanical, and that is the part worth keeping
 strict: `npm run verify` in CI, the Copilot review, and the screenshots the
-author attaches (0006). If a second maintainer ever joins, restore the count to
+author attaches ([20260727T105836](20260727T105836-screenshots-come-from-the-author.md)). If a second maintainer ever joins, restore the count to
 1 - at that point the rule would mean what it says.
 
 Editing this file does not change the repository. The ruleset has to be applied

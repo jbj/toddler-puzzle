@@ -124,7 +124,8 @@ pull request body, and an individual shot as well when one detail deserves a
 closer look.
 
 Nothing verifies that the images match the branch. CI once published them
-itself, and that turned out to cost more than it was worth (decision 0006);
+itself, and that turned out to cost more than it was worth
+([decision 20260727T105836](../../docs/decisions/20260727T105836-screenshots-come-from-the-author.md));
 a reviewer now takes them on trust. So:
 
 - Attach images from a run of the branch as it stands, after your last commit.
