@@ -21,7 +21,7 @@ there is never a menu to get lost in.
 
 There is no menu, no difficulty picker, no settings, no failure state and no
 score, and adding one is a change to an invariant, not a feature. The reasoning
-is [decision 0002](../../docs/decisions/0002-no-menu-or-difficulty-picker.md).
+is [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
 
 The three dots by the reset button (`buildStageDots` in `src/board.ts`) are
 filled up to the current stage so a grown-up can see how far along the set is.
@@ -64,7 +64,7 @@ means. Between them:
   it was laid out in, and slots never overlap - so one piece's grab area can
   never reach into the next one's. Do not delete the rectangle as dead markup;
   the reasoning is
-  [decision 0010](../../docs/decisions/0010-grab-anywhere-in-the-piece-box.md).
+  [decision 20260728T120732](../../docs/decisions/20260728T120732-grab-anywhere-in-the-piece-box.md).
 - Pieces are clamped to the canvas by their own bounds (`boxOf(layout, piece)`),
   so one can never be dragged out of reach whatever shape it is.
 - A piece settles back with a short animation (`SETTLE_MS`), whether it was

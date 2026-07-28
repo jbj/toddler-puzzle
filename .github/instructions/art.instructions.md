@@ -116,7 +116,7 @@ intent, not purity:
   starts looking like it doesn't fit its hole.
 
 The check reports the share so it can be judged rather than guessed. The
-reasoning is [decision 0003](../../docs/decisions/0003-budgeted-overhang.md).
+reasoning is [decision 20260727T072917](../../docs/decisions/20260727T072917-budgeted-overhang.md).
 
 ## Foot levels
 

@@ -7,7 +7,7 @@ import { defineConfig } from "vite";
  * `scripts/shot.mjs` serves `dist/` at the root of a local server, and
  * `npm run preview` does the same. A relative base emits `./assets/...`, which
  * is correct in all three, so one build artifact is the one that ships and the
- * one the screenshot run checks. See docs/decisions/0008.
+ * one the screenshot run checks. See docs/decisions/20260728T103610.
  */
 export default defineConfig({
   base: "./",

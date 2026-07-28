@@ -1,4 +1,4 @@
-# 0008. Deploy to GitHub Pages from a verified commit
+# 20260728T103610. Deploy to GitHub Pages from a verified commit
 
 ## Context
 
@@ -47,7 +47,7 @@ both outside git and both on GitHub's own retention.
 
 The deploy job builds again rather than reusing CI's output. Downloading an
 artifact produced by another workflow run and publishing it is the shape of
-problem [decision 0006](0006-screenshots-come-from-the-author.md) is about; a
+problem [decision 20260727T105836](20260727T105836-screenshots-come-from-the-author.md) is about; a
 second `npm ci && npm run build` costs a minute and needs no privilege. It does
 not re-run `npm run verify`: the art check and the shot run need Chrome and
 system packages, and CI has already run all of it on this commit.

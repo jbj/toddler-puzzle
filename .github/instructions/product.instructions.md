@@ -59,14 +59,14 @@ Pieces are clamped to the canvas by their own bounds, so one can never be dragge
 out of reach. A wrong drop plays a soft, warm tone rather than a buzzer. The
 mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
-[decision 0001](../../docs/decisions/0001-generous-snap-radius.md).
+[decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md).
 
 **The game only ever moves forward.** There is no menu and no difficulty picker:
 the three stages are always played in the same order, the button at the end of
 one leads straight into the next, and the button after the last one starts again
 at three animals. Three dots by the reset button show a grown-up how far along
 the set is; they are not a control. See
-[decision 0002](../../docs/decisions/0002-no-menu-or-difficulty-picker.md).
+[decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
 
 **Toddler-proofing.** Pinch-zoom, double-tap zoom, text selection, long-press
 context menus and native image dragging are all disabled. Every target is large.
@@ -76,7 +76,7 @@ doesn't cover it.
 **No binary assets.** The animals are hand-authored SVG and the sounds are
 synthesised with the Web Audio API, so there is nothing to download and nothing
 to fail to load. The whole bundle is around 24 kB. See
-[decision 0005](../../docs/decisions/0005-no-binary-assets-or-runtime-dependencies.md).
+[decision 20260727T072917](../../docs/decisions/20260727T072917-no-binary-assets-or-runtime-dependencies.md).
 
 **Every puzzle is dealt fresh.** Which animals turn up and the order they stand
 in are drawn at random each time a puzzle starts, so the same three animals are

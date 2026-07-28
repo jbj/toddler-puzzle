@@ -70,7 +70,7 @@ Chrome binary and honours `CHROME_BIN`.
 | `scripts/shot.mjs` | End-to-end drag test in headless Chromium |
 | `scripts/shot-sheet.mjs` | Packs the run's screenshots into one image to attach to a pull request |
 | `scripts/tools.mjs` | Resolves the external art tools, with one clear message when they are missing |
-| `vite.config.ts` | Build configuration. `base` is relative, so one bundle works both at a server root and under the Pages path: see [decision 0008](../../docs/decisions/0008-deploy-to-github-pages.md) |
+| `vite.config.ts` | Build configuration. `base` is relative, so one bundle works both at a server root and under the Pages path: see [decision 20260728T103610](../../docs/decisions/20260728T103610-deploy-to-github-pages.md) |
 
 ## Files you cannot change
 
@@ -104,15 +104,15 @@ Routine version bumps of actions are Dependabot's job, not yours.
 CI runs the whole of `npm run verify` on every pull request. It does not post
 the screenshots: the author attaches them, having run the same command. Why that
 way round is
-[decision 0006](../../docs/decisions/0006-screenshots-come-from-the-author.md).
+[decision 20260727T105836](../../docs/decisions/20260727T105836-screenshots-come-from-the-author.md).
 A pull request also does not need an approving review to merge; why is
-[decision 0007](../../docs/decisions/0007-no-required-approving-review.md).
+[decision 20260727T151749](../../docs/decisions/20260727T151749-no-required-approving-review.md).
 
 Once a change is on `main` and its CI run is green, a second workflow builds that
 same commit and publishes it to
 [the live site](https://jbj.github.io/toddler-puzzle/). It waits for CI rather
 than deploying on the push, and it commits nothing to any branch; why is
-[decision 0008](../../docs/decisions/0008-deploy-to-github-pages.md). Breaking
+[decision 20260728T103610](../../docs/decisions/20260728T103610-deploy-to-github-pages.md). Breaking
 `main` therefore leaves the previous site up rather than replacing it with a
 broken one.
 
@@ -124,7 +124,8 @@ pull request body, and an individual shot as well when one detail deserves a
 closer look.
 
 Nothing verifies that the images match the branch. CI once published them
-itself, and that turned out to cost more than it was worth (decision 0006);
+itself, and that turned out to cost more than it was worth
+([decision 20260727T105836](../../docs/decisions/20260727T105836-screenshots-come-from-the-author.md));
 a reviewer now takes them on trust. So:
 
 - Attach images from a run of the branch as it stands, after your last commit.
