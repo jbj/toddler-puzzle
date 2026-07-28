@@ -6,9 +6,9 @@ A two-year-old cannot read a menu, compare difficulty choices, or recover from a
 configuration screen. A grown-up should also be able to hand over the toy without
 setting it up.
 
-The game already has a natural progression: three animals, then four, then six.
-That gives a quick first win and lets the board fill up as the child keeps
-playing.
+The game already has a natural progression: two animals, then three, then four,
+then five, then six. That gives a quick first win and lets the board fill up as
+the child keeps playing.
 
 ## Decision
 

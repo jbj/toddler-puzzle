@@ -6,9 +6,9 @@ description: "What Animal Puzzle is for, the invariants that must not be weakene
 # Product decisions
 
 Animal Puzzle is a drag-and-drop animal shape puzzle for toddlers: a two-year-old
-matches large animal pieces to matching animal-shaped holes. A game is three
-puzzles long and grows as it goes - three animals, then four, then six - so the
-first win comes quickly and the board fills up from there.
+matches large animal pieces to matching animal-shaped holes. A game is five
+puzzles long and grows as it goes - two animals, then three, then four, then
+five, then six - so the first win comes quickly and the board fills up from there.
 
 This file is the one to read before changing what the game *does*. It is not
 attached automatically, because most changes do not need it; read it whenever a
@@ -79,7 +79,7 @@ to fail to load. The whole bundle is around 24 kB. See
 [decision 20260727T072917](../../docs/decisions/20260727T072917-no-binary-assets-or-runtime-dependencies.md).
 
 **Every puzzle is dealt fresh.** Which animals turn up and the order they stand
-in are drawn at random each time a puzzle starts, so the same three animals are
+in are drawn at random each time a puzzle starts, so the same animals are
 never waiting in the same places twice. Add `?seed=123` to the URL to replay a
 particular deal - the screenshot run uses it to keep its shots comparable.
 
