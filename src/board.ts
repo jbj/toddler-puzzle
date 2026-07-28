@@ -2,10 +2,14 @@
  * Builds the SVG scene graph: the backdrop the kind draws, the draggable
  * pieces, and the chrome around them. Rendering only - all decisions live in
  * game.ts and in the puzzle kind. Only the current stage's pieces are built.
+ *
+ * A piece is more than its drawing, though: each one carries an invisible
+ * rectangle over its artwork so it can be picked up anywhere inside that box.
+ * See `fitGrabBox`.
  */
-import type { Point } from "./geometry";
+import { padWithin, type Point } from "./geometry";
 import { replayArrow } from "./icons";
-import { STAGE_COUNT, boxOf, type Layout } from "./layout";
+import { GRAB_PADDING, STAGE_COUNT, boxOf, type Layout } from "./layout";
 import type { PieceId, PieceShape } from "./piece";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -48,11 +52,54 @@ function buildPiece(shape: PieceShape, scale: number): SVGGElement {
   piece.setAttribute("role", "img");
   piece.setAttribute("aria-label", shape.label);
 
-  const scaled = group();
-  scaled.setAttribute("transform", `scale(${scale})`);
-  scaled.innerHTML = shape.artwork;
-  piece.append(scaled);
+  const art = group("art");
+  art.setAttribute("transform", `scale(${scale})`);
+  art.innerHTML = shape.artwork;
+  piece.append(art);
   return piece;
+}
+
+/**
+ * Give a piece an invisible rectangle covering its artwork, so it can be picked
+ * up anywhere inside that box instead of only where a finger happens to land on
+ * paint. The gap between a giraffe's legs and the notch under a duck's tail are
+ * inside the animal as far as a two-year-old is concerned; without this they
+ * are dead space that swallows the press and moves nothing.
+ *
+ * Do not delete this as unused markup - nothing else makes those places
+ * grabbable. The reasoning is decision 0010.
+ *
+ * Three details are load-bearing:
+ *
+ *  - it goes *inside* the artwork group, so it is in authored units and moves
+ *    and scales with the piece;
+ *  - it goes *first*, so it sits behind the artwork rather than over it;
+ *  - `fill="transparent"` is a paint and so is hit-testable, where
+ *    `fill="none"` would not be, and leaving `pointer-events` alone lets
+ *    `.piece.is-placed` in style.css go on switching the whole piece off.
+ */
+function fitGrabBox(piece: SVGGElement, shape: PieceShape): void {
+  const art = piece.querySelector(".art");
+  if (!(art instanceof SVGGElement)) return;
+
+  // In the element's own units, i.e. before its `scale()`. Measured rather than
+  // declared per animal, so redrawing one moves its grab box with it.
+  const drawn = art.getBBox();
+  // An unmeasurable piece keeps the artwork it already had to be grabbed by,
+  // which is no worse than having no grab box at all.
+  if (drawn.width <= 0 || drawn.height <= 0) return;
+
+  const padding = GRAB_PADDING * Math.min(shape.box.width, shape.box.height);
+  const box = padWithin(drawn, padding, shape.box);
+
+  const rect = document.createElementNS(SVG_NS, "rect");
+  rect.setAttribute("class", "grab-box");
+  rect.setAttribute("x", String(box.x));
+  rect.setAttribute("y", String(box.y));
+  rect.setAttribute("width", String(box.width));
+  rect.setAttribute("height", String(box.height));
+  rect.setAttribute("fill", "transparent");
+  art.prepend(rect);
 }
 
 function buildResetButton(): SVGGElement {
@@ -110,5 +157,10 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
   stage.append(backdropLayer, piecesLayer, fxLayer, resetButton, buildStageDots(layout));
 
   root.replaceChildren(stage);
+
+  // Measuring artwork needs it in the document, so the grab boxes are fitted
+  // once the board is mounted rather than while it is being built.
+  for (const shape of layout.pieces) fitGrabBox(elementFor(pieces, shape.id), shape);
+
   return { stage, backdropLayer, piecesLayer, fxLayer, pieces, resetButton };
 }

@@ -191,10 +191,44 @@ const centreOf = (selector) =>
   })()
 `);
 
-async function dragAnimal(pieceId, { pauseAtHalfway } = {}) {
-  const from = await centreOf(`.piece[data-piece="${pieceId}"]`);
-  const to = await centreOf(`.hole[data-piece="${pieceId}"]`);
-  if (!from || !to) throw new Error(`Could not locate piece or hole for "${pieceId}".`);
+/**
+ * A point inside a piece's grab box that is not on its artwork - somewhere the
+ * old hit test, which only ever saw painted shapes, would have missed. Which
+ * element is topmost at a point says which of the two caught it. Corners and
+ * edge midpoints are tried in turn; null means the animal fills its own box,
+ * which none of them do.
+ */
+const emptySpotOn = (pieceId) =>
+  evaluate(`
+  (() => {
+    const piece = document.querySelector(${JSON.stringify(`.piece[data-piece="${pieceId}"]`)});
+    if (!piece) return null;
+    const r = piece.getBoundingClientRect();
+    const inset = 3;
+    const spots = [[0,0],[1,0],[0,1],[1,1],[0.5,0],[0,0.5],[1,0.5],[0.5,1]];
+    for (const [fx, fy] of spots) {
+      const x = r.x + inset + fx * (r.width - 2 * inset);
+      const y = r.y + inset + fy * (r.height - 2 * inset);
+      const hit = document.elementFromPoint(x, y);
+      if (hit && hit.classList.contains('grab-box') && hit.closest('.piece') === piece) {
+        return { x, y };
+      }
+    }
+    return null;
+  })()
+`);
+
+/**
+ * Drag a piece into its hole. `grabAt` picks it up somewhere other than the
+ * middle - the drop moves by the same offset, so where it lands is unchanged.
+ */
+async function dragAnimal(pieceId, { pauseAtHalfway, grabAt } = {}) {
+  const centre = await centreOf(`.piece[data-piece="${pieceId}"]`);
+  const hole = await centreOf(`.hole[data-piece="${pieceId}"]`);
+  if (!centre || !hole) throw new Error(`Could not locate piece or hole for "${pieceId}".`);
+
+  const from = grabAt ?? centre;
+  const to = { x: hole.x + (from.x - centre.x), y: hole.y + (from.y - centre.y) };
 
   await mouse("mousePressed", from.x, from.y);
   const steps = 12;
@@ -211,6 +245,40 @@ async function dragAnimal(pieceId, { pauseAtHalfway } = {}) {
 const placedCount = () => evaluate(`document.querySelectorAll('.piece.is-placed').length`);
 
 const pieceCount = () => evaluate(`document.querySelectorAll('.piece').length`);
+const grabBoxCount = () => evaluate(`document.querySelectorAll('.piece .grab-box').length`);
+
+/**
+ * How far each piece's grab box sits outside the animal it covers, on every
+ * side, as a share of the piece. It has to cover the whole drawing - a box
+ * measured in the wrong units would sit inside it - without ballooning past it
+ * towards the next piece. The drawing is everything in the artwork group except
+ * the grab box itself, so a tail declared as an overhang counts too.
+ */
+const grabBoxMargins = () =>
+  evaluate(`
+  (() => {
+    const margins = [...document.querySelectorAll('.piece')].flatMap((piece) => {
+      const box = piece.getBoundingClientRect();
+      const drawn = [...piece.querySelectorAll('.art > *')]
+        .filter((el) => !el.classList.contains('grab-box'))
+        .map((el) => el.getBoundingClientRect());
+      const edges = {
+        left: Math.min(...drawn.map((r) => r.x)),
+        top: Math.min(...drawn.map((r) => r.y)),
+        right: Math.max(...drawn.map((r) => r.right)),
+        bottom: Math.max(...drawn.map((r) => r.bottom)),
+      };
+      const side = Math.max(box.width, box.height);
+      return [
+        edges.left - box.x,
+        edges.top - box.y,
+        box.right - edges.right,
+        box.bottom - edges.bottom,
+      ].map((margin) => margin / side);
+    });
+    return { smallest: Math.min(...margins), largest: Math.max(...margins) };
+  })()
+`);
 const holeCount = () => evaluate(`document.querySelectorAll('.hole').length`);
 const stageNumber = () => evaluate(`Number(document.querySelector('#stage').dataset.stage)`);
 const layoutName = () => evaluate(`document.querySelector('#stage').dataset.layout`);
@@ -238,6 +306,20 @@ async function pressFinishButton() {
 async function solveRemaining() {
   for (const animal of await unplacedAnimals()) await dragAnimal(animal);
   await sleep(700);
+}
+
+/**
+ * Every piece on the board carries a grab box that covers its drawing. The
+ * bounds are loose on purpose: they are here to catch a box measured in the
+ * wrong units - which would be out by tens of percent - not to pin down the
+ * padding, which `GRAB_PADDING` owns.
+ */
+async function checkGrabBoxes(expected) {
+  check("every piece carries a grab box", (await grabBoxCount()) === expected);
+  const { smallest, largest } = await grabBoxMargins();
+  const share = (value) => `${(value * 100).toFixed(1)}% of a piece`;
+  check(`grab boxes cover the artwork (${share(smallest)} at the tightest)`, smallest >= -0.005);
+  check(`grab boxes hug the artwork (${share(largest)} at the loosest)`, largest <= 0.07);
 }
 
 // --- run ------------------------------------------------------------------
@@ -281,6 +363,18 @@ try {
   check("wrong drop does not stick", (await placedCount()) === 1);
   await shot("03-after-wrong-drop");
 
+  // A piece is picked up by the box around its artwork, not only where a finger
+  // lands on paint, so the gap between a giraffe's legs works as well as the
+  // giraffe does. Grab one somewhere the artwork is not, and it should still
+  // come along and snap in.
+  await checkGrabBoxes(3);
+  const offPaint = await emptySpotOn(stage1Cast[2]);
+  check("a piece has grabbable space off its artwork", offPaint !== null);
+  if (offPaint) {
+    await dragAnimal(stage1Cast[2], { grabAt: offPaint });
+    check("a piece picked up off its artwork snaps in", (await placedCount()) === 2);
+  }
+
   await solveRemaining();
   check("all three pieces placed", (await placedCount()) === 3);
   check("finish button appears when complete", (await finishButtons()) === 1);
@@ -304,6 +398,9 @@ try {
   check("stage 3 has six pieces", (await pieceCount()) === 6);
   const cast = await animalsOnBoard();
   check("the last stage deals six different animals", new Set(cast).size === 6);
+  // Six smaller pieces: the grab boxes have to hold their shape at this size
+  // too, where the tray leaves least room between them.
+  await checkGrabBoxes(6);
   await shot("06-stage3-start");
 
   await dragAnimal(cast[0]);

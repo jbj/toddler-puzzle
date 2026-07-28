@@ -63,6 +63,28 @@ export function isWithinSnapRadius(a: Point, b: Point, radius: number): boolean 
 }
 
 /**
+ * Grow a measured rectangle by `padding` on every side, then keep it inside
+ * `bounds`. Used for the area a piece can be grabbed by: the artwork is
+ * measured, given a little margin, and held inside the piece's authored box.
+ *
+ * The clamp is the load-bearing half. A piece's authored box is exactly the
+ * slot it was laid out in, and no two slots overlap, so a grab area that stays
+ * inside the box cannot reach into a neighbour's and make a press ambiguous.
+ */
+export function padWithin(rect: Rect, padding: number, bounds: Size): Rect {
+  const left = Math.max(rect.x - padding, 0);
+  const top = Math.max(rect.y - padding, 0);
+  const right = Math.min(rect.x + rect.width + padding, bounds.width);
+  const bottom = Math.min(rect.y + rect.height + padding, bounds.height);
+  return {
+    x: left,
+    y: top,
+    width: Math.max(right - left, 0),
+    height: Math.max(bottom - top, 0),
+  };
+}
+
+/**
  * Keep a piece fully on the canvas so it can never be dragged out of reach.
  * Each axis is clamped against that piece's own extent: clamping a wide piece
  * as though it were as tall as it is wide would let it hang off the bottom and

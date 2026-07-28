@@ -27,3 +27,4 @@ and an argument nobody can see having changed is worth nothing.
 | [0007](0007-no-required-approving-review.md) | Require no approving review on `main` |
 | [0008](0008-deploy-to-github-pages.md) | Deploy to Pages from a verified commit |
 | [0009](0009-composed-layouts.md) | Compose layouts for any cast |
+| [0010](0010-grab-anywhere-in-the-piece-box.md) | Grab a piece by the box around its artwork |

@@ -41,9 +41,11 @@ one cast.
 ## What `npm run test` covers
 
 Vitest covers the coordinate mapping (including letterboxing in both
-orientations), snap tolerance, clamping, the random deal, the shape-match kind's
-rules - it accepts a sloppy drop on a piece's own hole, never accepts anybody
-else's, and only finishes when the last piece is in - and the composed layouts:
+orientations), snap tolerance, clamping, the grab-box geometry - a measured
+drawing grown by its margin and held inside the piece's own box - the random
+deal, the shape-match kind's rules - it accepts a sloppy drop on a piece's own
+hole, never accepts anybody else's, and only finishes when the last piece is in
+- and the composed layouts:
 targets stay on canvas and clear of the tray, every piece stands on one of the
 layout's ground lines, snap zones never reach each other, tray slots never
 collide or sit in a target's snap zone, pieces stay big enough to grab, and each
@@ -69,6 +71,13 @@ the last stage loops back to the first, and that different seeds deal different
 puzzles while one seed always deals the same. Screenshots land in `.art/shots/`,
 alongside a `contact-sheet.png` that collects them into one image to drag into a
 pull request.
+
+It is also the only place the grab boxes can be checked, since they are measured
+from rendered artwork: every piece has one, it covers the drawing without
+ballooning past it, and a piece picked up somewhere its artwork is *not* still
+comes along and snaps in. The last of those looks for a point inside a piece
+where the topmost element is the grab box rather than paint, so it would go
+green for the wrong reason if the box were ever moved in front of the artwork.
 
 Run `npm run build` first; the shot run serves `dist/`. It honours `CHROME_BIN`.
 

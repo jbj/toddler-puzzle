@@ -129,6 +129,16 @@ Take the value from `npm run art:check`, which measures where the animal
 actually stands. Do not estimate it by eye, and do not nudge it until the animal
 merely looks close.
 
+## What else the drawing decides
+
+The extent of the artwork is also the area a piece can be picked up by: each one
+gets an invisible rectangle around its drawing so a toddler can grab the gap
+between a giraffe's legs as well as the legs. It is measured at runtime, so
+there is nothing to declare and nothing to keep in step - but it does mean a
+deliberate overhang enlarges the grab area a little, which is harmless while the
+overhang stays inside its budget. The rule lives in
+[`navigation.instructions.md`](navigation.instructions.md).
+
 ## Adding an animal
 
 1. Draw `src/assets/animals/<name>.svg` following the contract above. Silhouettes

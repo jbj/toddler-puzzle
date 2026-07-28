@@ -43,6 +43,17 @@ const SNAP_FRACTION = 0.68;
 export const FINGER_LIFT = 34;
 
 /**
+ * How far a piece's grab area reaches past its artwork, as a fraction of the
+ * shorter side of the authored box. A piece is picked up anywhere inside the
+ * box around its drawing, not just where a finger lands on paint, and this is
+ * the margin around that drawing: enough to cover the outline's stroke, which
+ * measuring the geometry leaves out, plus a little for a toddler aiming at an
+ * edge. `padWithin` holds the result inside the authored box, which is what
+ * keeps one piece's grab area out of the next one's.
+ */
+export const GRAB_PADDING = 0.04;
+
+/**
  * How many pieces each stage holds. The cast itself is drawn at random from the
  * available shapes every time a puzzle starts, so no two runs are quite the
  * same; only the *number* of pieces is fixed, and the layout is composed around
