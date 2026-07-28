@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Fish, facing left. A pointed snout, one triangular sail on the back, and a
+    forked tail whose trailing edge is notched back towards the body. The gill
+    starts and ends on the silhouette's own curves, so it meets the outline
+    rather than stopping a hair short of it.
+  -->
+  <path
+    id="silhouette"
+    fill="#4fa8d8"
+    stroke="#20638f"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M26 130
+       C44 98 76 78 112 78
+       L134 46
+       L154 86
+       C164 90 172 98 178 108
+       L214 72
+       C202 102 202 158 214 190
+       L178 152
+       C172 170 148 188 116 188
+       C82 188 42 166 26 130 Z"
+  />
+  <g id="detail">
+    <!-- gill, from the back curve to the belly curve -->
+    <path
+      d="M82.9 82.5 C94 112 94 150 78.3 179.8"
+      fill="none"
+      stroke="#20638f"
+      stroke-width="4"
+      stroke-linecap="round"
+    />
+    <!-- eye -->
+    <circle cx="58" cy="120" r="8" fill="#2b3440" />
+    <!-- mouth -->
+    <path d="M29 133 C38 142 48 143 56 139" fill="none" stroke="#20638f" stroke-width="4" stroke-linecap="round" />
+    <!-- pectoral fin -->
+    <path
+      d="M102 126 C128 128 152 146 152 166 C152 176 138 178 126 172 C112 164 100 144 102 126 Z"
+      fill="#8fd0ef"
+      stroke="#20638f"
+      stroke-width="4"
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>

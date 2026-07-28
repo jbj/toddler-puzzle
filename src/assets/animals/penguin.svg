@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Penguin, seen from the front and symmetric about the middle. A rounded head
+    running straight into the body, a flipper down each side, and two feet
+    turned outwards at the bottom.
+  -->
+  <path
+    id="silhouette"
+    fill="#3d4d63"
+    stroke="#232f40"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M120 20
+       C152 20 170 42 170 74
+       C184 84 196 104 200 132
+       C204 152 200 168 190 172
+       C184 162 178 152 174 140
+       C178 158 180 176 168 190
+       C178 194 186 202 184 210
+       Q182 218 172 216
+       L132 208
+       C128 206 124 205 120 205
+       C116 205 112 206 108 208
+       L68 216 Q58 218 56 210
+       C54 202 62 194 72 190
+       C60 176 62 158 66 140
+       C62 152 56 162 50 172
+       C40 168 36 152 40 132
+       C44 104 56 84 70 74
+       C70 42 88 20 120 20 Z"
+  />
+  <g id="detail">
+    <!-- white front, from the face down over the belly -->
+    <path
+      d="M120 56
+         C100 56 88 74 84 104
+         C80 134 84 172 100 188
+         C112 198 128 198 140 188
+         C156 172 160 134 156 104
+         C152 74 140 56 120 56 Z"
+      fill="#fdfcf7"
+    />
+    <!-- eyes -->
+    <circle cx="104" cy="86" r="8" fill="#2b3440" />
+    <circle cx="136" cy="86" r="8" fill="#2b3440" />
+    <!-- beak -->
+    <path d="M104 102 L136 102 L120 122 Z" fill="#f5a623" stroke="#c87d0d" stroke-width="4" stroke-linejoin="round" />
+    <!-- feet, following the silhouette's own toes -->
+    <path d="M168 190 C178 194 186 202 184 210 Q182 218 172 216 L132 208 Z" fill="#f5a623" />
+    <path d="M72 190 C62 194 54 202 56 210 Q58 218 68 216 L108 208 Z" fill="#f5a623" />
+  </g>
+</svg>

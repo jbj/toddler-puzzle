@@ -135,7 +135,7 @@ merely looks close.
    should be as *distinct* from each other as possible - toddlers match the
    outline before the detail, so two similar profiles make the puzzle frustrating.
    A new animal must be distinct in outline from duck, turtle, giraffe, elephant,
-   butterfly, and rabbit.
+   butterfly, rabbit, fish, frog, penguin, and crab.
 2. Render it and look: `npm run art -- <name>`, then open `.art/<name>-large.png`.
    Expect the first render to be wrong somewhere. Fix what you saw, render again,
    and keep going until you would be happy to see it in the tray - several rounds
@@ -144,7 +144,8 @@ merely looks close.
 3. Check it against the others: `npm run art`, then look at
    `.art/contact-sheet.png`. It shows every animal in colour **and** as a bare
    silhouette; if you can't tell what the silhouette is, neither can a
-   two-year-old, and if it reads as one of the existing six, draw something else.
+   two-year-old, and if it reads as one of the animals already there, draw
+   something else.
 4. Register the id in `ANIMAL_IDS` and `SOURCES` in `src/assets.ts`.
 5. Add its foot level to `FOOT_LEVEL` in `src/assets.ts`, from the value
    `npm run art:check` reports.
