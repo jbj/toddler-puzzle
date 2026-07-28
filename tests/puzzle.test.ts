@@ -240,10 +240,15 @@ describe("pickStagePieces", () => {
     );
   });
 
-  it("uses every piece in the final stage", () => {
-    for (let run = 0; run < 20; run++) {
-      expect(new Set(idsOf(pickStagePieces(STAGE_COUNT, SHAPES)))).toEqual(new Set(idsOf(SHAPES)));
+  it("can deal any piece into the final stage", () => {
+    // There are more animals than the biggest stage holds, so a single deal is
+    // a sample rather than the whole list; over enough deals none may be shut
+    // out of the last stage.
+    const seen = new Set<string>();
+    for (let run = 0; run < 200; run++) {
+      for (const shape of pickStagePieces(STAGE_COUNT, SHAPES)) seen.add(shape.id);
     }
+    expect(seen.size).toBe(SHAPES.length);
   });
 
   it("varies which pieces turn up in the shorter stages", () => {
@@ -251,7 +256,7 @@ describe("pickStagePieces", () => {
     for (let run = 0; run < 200; run++) {
       for (const shape of pickStagePieces(1, SHAPES)) seen.add(shape.id);
     }
-    // Given enough deals a three-piece stage should have shown all six.
+    // Given enough deals a three-piece stage should have shown every animal.
     expect(seen.size).toBe(SHAPES.length);
   });
 

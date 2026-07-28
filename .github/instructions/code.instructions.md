@@ -59,6 +59,7 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/scenery.ts` | Generates the background for a layout |
 | `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |
 | `src/board.ts` | Builds the SVG scene graph for one stage |
+| `src/icons.ts` | The hand-drawn SVG icons used by the chrome around the puzzle |
 | `src/drag.ts` | Pointer-event drag engine |
 | `src/game.ts` | The host: drag state, settling, sound, sparkles, stage lifecycle |
 | `src/audio.ts` | Web Audio sound synthesis |

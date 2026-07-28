@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Crab, seen from the front and symmetric about the middle. A shell wider than
+    it is tall, a fat pincer held up on each side with the V of the claw open,
+    and three legs a side beneath.
+  -->
+  <path
+    id="silhouette"
+    fill="#e5533d"
+    stroke="#9c2f1c"
+    stroke-width="5"
+    stroke-linejoin="round"
+    d="M120 96
+       C144 96 160 100 168 110
+       C172 100 178 94 186 88
+       C190 66 206 40 224 44
+       Q234 46 232 56
+       L204 68
+       L230 84 Q236 92 226 98
+       C214 106 196 106 190 98
+       C186 108 182 118 180 128
+       C184 134 184 138 184 142
+       L216 162 Q219 177 204 180
+       L172 160
+       L194 188 Q192 202 176 198
+       L154 170
+       L166 204 Q161 217 148 210
+       L136 176
+       L120 178
+       L104 176
+       L92 210 Q79 217 74 204
+       L86 170
+       L64 198 Q48 202 46 188
+       L68 160
+       L36 180 Q21 177 24 162
+       L56 142
+       C56 138 56 134 60 128
+       C58 118 54 108 50 98
+       C44 106 26 106 14 98
+       Q4 92 10 84
+       L36 68
+       L8 56 Q6 46 16 44
+       C34 40 50 66 54 88
+       C62 94 68 100 72 110
+       C80 100 96 96 120 96 Z"
+  />
+  <g id="detail">
+    <!-- eyes -->
+    <circle cx="100" cy="124" r="9" fill="#2b3440" />
+    <circle cx="140" cy="124" r="9" fill="#2b3440" />
+    <!-- mouth -->
+    <path
+      d="M102 148 C110 158 130 158 138 148"
+      fill="none"
+      stroke="#9c2f1c"
+      stroke-width="4"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>
