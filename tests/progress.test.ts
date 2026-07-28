@@ -20,6 +20,7 @@ import {
   NEW_PLAYER,
   STORAGE_KEY,
   STORAGE_VERSION,
+  browserStorage,
   createProgressStore,
   readProgress,
   type StorageLike,
@@ -136,6 +137,53 @@ describe("reading a stored record", () => {
   });
 });
 
+describe("finding the browser's storage", () => {
+  /** Put something in `globalThis.localStorage` for the length of one test. */
+  function withLocalStorage(define: () => PropertyDescriptor, run: () => void): void {
+    const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, ...define() });
+    try {
+      run();
+    } finally {
+      if (original) Object.defineProperty(globalThis, "localStorage", original);
+      else delete (globalThis as { localStorage?: unknown }).localStorage;
+    }
+  }
+
+  it("gives up on a browser that throws at the mention of it", () => {
+    withLocalStorage(
+      () => ({
+        get() {
+          throw new DOMException("The operation is insecure.", "SecurityError");
+        },
+      }),
+      () => expect(browserStorage()).toBeNull(),
+    );
+  });
+
+  it("gives up where there is no localStorage at all", () => {
+    withLocalStorage(
+      () => ({ value: undefined }),
+      () => expect(browserStorage()).toBeNull(),
+    );
+  });
+
+  it("hands back storage that can be read but not written", () => {
+    // The record from yesterday is still in there. Refusing the whole thing
+    // because tomorrow's write will fail would lose a place that was never
+    // actually lost.
+    const readOnly = fullStorage(stored({ level: 17, furthest: 17 }));
+    withLocalStorage(
+      () => ({ value: readOnly }),
+      () => {
+        const storage = browserStorage();
+        expect(storage).toBe(readOnly);
+        expect(createProgressStore({ storage }).read().level).toBe(17);
+      },
+    );
+  });
+});
+
 describe("the store", () => {
   it("remembers each level as it is reached", () => {
     const storage = fakeStorage();
@@ -201,6 +249,40 @@ describe("the store", () => {
     expect(store.read().level).toBe(11);
     store.reachLevel(12);
     expect(store.read().level).toBe(12);
+    expect(store.persists).toBe(false);
+  });
+
+  it("resumes from storage it can read but not write to", () => {
+    // A device out of quota is still holding yesterday's record, and reading it
+    // is the whole point: the child's place is right there. Only `persists`
+    // knows the difference, and it knows before anything has been written.
+    const store = createProgressStore({
+      storage: fullStorage(stored({ level: 13, furthest: 13 })),
+    });
+    expect(store.read()).toMatchObject({ level: 13, furthest: 13 });
+    expect(store.persists).toBe(false);
+  });
+
+  it("never promises to remember again once a write has been lost", () => {
+    let refuse = true;
+    const flaky: StorageLike = {
+      getItem: () => null,
+      setItem() {
+        if (refuse) throw new DOMException("QuotaExceededError", "QuotaExceededError");
+      },
+      removeItem() {
+        if (refuse) throw new DOMException("QuotaExceededError", "QuotaExceededError");
+      },
+    };
+    const store = createProgressStore({ storage: flaky });
+    expect(store.persists).toBe(false);
+
+    refuse = false;
+    store.reachLevel(3);
+    // This write landed, but a device that has already dropped a record cannot
+    // be promised to keep the next one, and the grown-up panel would rather say
+    // so plainly than take it back.
+    expect(store.read().level).toBe(3);
     expect(store.persists).toBe(false);
   });
 

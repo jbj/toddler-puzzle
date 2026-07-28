@@ -58,9 +58,10 @@ too big to compose above the grabbable size is refused rather than shrunk away.
 mostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level
 number the table no longer has, a browser that throws on every call, and one
-that accepts a write and loses it. All of them have to end with a playable game
-on a real level, and none of them may throw. The storage object is injected, so
-none of it needs a browser; the DOM-facing ends are covered by
+that reads back yesterday's record but refuses every write - which resumes on it
+all the same, and only says so through `persists`. All of them have to end with
+a playable game on a real level, and none of them may throw. The storage object
+is injected, so none of it needs a browser; the DOM-facing ends are covered by
 `npm run shot`, which reloads the page and checks the game comes back where it
 was.
 

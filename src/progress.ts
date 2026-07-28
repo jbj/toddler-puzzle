@@ -13,7 +13,10 @@
  * write; another tab can leave anything at all under the key. Every one of
  * those paths ends the same way: the store keeps the record in memory, the game
  * plays exactly as it always did, and nothing is reported to a two-year-old who
- * could not act on it anyway. Nothing in this file throws.
+ * could not act on it anyway. Nothing in this file throws. Reading and writing
+ * fail separately, though: storage that refuses every write is still read, so a
+ * device out of quota resumes on the record it is holding rather than losing a
+ * place that was never actually lost.
  *
  * **A stored level is a suggestion, not an instruction.** The record carries
  * `STORAGE_VERSION`, and every field is checked against the game as it is now.
@@ -94,23 +97,43 @@ export interface StorageLike {
 }
 
 /**
- * The browser's `localStorage`, or null where there isn't one that works.
+ * The browser's `localStorage`, or null where reaching for it throws - which is
+ * what private browsing on iOS does, before any call is made.
  *
- * Both steps are load-bearing. Reaching for the property throws outright in
- * private browsing on iOS, and where it is merely disabled it exists and fails
- * only on the write - so the probe is what tells the difference between storage
- * and something shaped like storage.
+ * Anything that survives that is handed back, including storage that will
+ * refuse every write. A browser can be out of quota and still hold the record
+ * from yesterday, and reading that is the whole point: throwing it away because
+ * tomorrow's write will fail would send the child back to level 1 while their
+ * place was sitting right there. Whether writes land is `canWrite`'s question,
+ * and it decides `persists` rather than whether there is any storage at all.
+ *
+ * The type says `localStorage` is always there; older and stranger browsers
+ * disagree, which is what the `?? null` is for.
  */
 export function browserStorage(): StorageLike | null {
   try {
-    const storage = globalThis.localStorage as StorageLike | undefined;
-    if (!storage) return null;
-    const probe = `${STORAGE_KEY}:probe`;
-    storage.setItem(probe, "1");
-    storage.removeItem(probe);
-    return storage;
+    const storage: StorageLike | undefined = globalThis.localStorage;
+    return storage ?? null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Whether this storage will actually keep anything, asked before the game has
+ * anything to write. Storage that is merely disabled rather than absent exists,
+ * reads, and fails only when written to, so a probe is the only way to tell it
+ * from the real thing.
+ */
+function canWrite(storage: StorageLike | null): boolean {
+  if (!storage) return false;
+  const probe = `${STORAGE_KEY}:probe`;
+  try {
+    storage.setItem(probe, "1");
+    storage.removeItem(probe);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -223,10 +246,12 @@ export interface ProgressStore {
    */
   clearProgress(): Progress;
   /**
-   * Whether writes are reaching storage: false when there is none to write to,
-   * and false from the moment one fails. Nothing in the game changes either
-   * way; it is here so the grown-up panel can be honest, and so a test can tell
-   * a silent failure from a silent success.
+   * Whether this device will remember anything: false when there is no storage
+   * to write to, false when a probe write is refused, and false from the first
+   * write that fails. It never goes back to true - a device that has dropped
+   * one record cannot be promised to keep the next one, and the grown-up panel
+   * wants to be able to say "this will not be remembered" without qualifying
+   * it. Nothing in the game changes either way.
    */
   readonly persists: boolean;
 }
@@ -236,11 +261,12 @@ export function createProgressStore(options: ProgressStoreOptions = {}): Progres
   const trackLevel = options.trackLevel ?? true;
 
   let progress = readProgress(storage);
-  let persists = storage !== null;
+  let persists = canWrite(storage);
 
   const save = (next: Progress): Progress => {
     progress = next;
-    persists = writeProgress(storage, progress);
+    // Sticky downwards, never back up: see `persists` on ProgressStore.
+    if (!writeProgress(storage, progress)) persists = false;
     return progress;
   };
 

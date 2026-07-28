@@ -22,12 +22,22 @@ storage object is injected, so every path through it is exercised in Vitest
 without a browser.
 
 **Nothing in it throws, and nothing in it is reported.** Reaching for
-`localStorage` is wrapped, as is a probe write, because a browser where storage
-is merely disabled has the property and fails only when written to. A read that
-throws, a parse that fails, a version this build does not know, a write refused
-for quota: each of them ends with the record in memory and a game that plays.
-There is no message, because the person holding the iPad cannot read one and the
-game is not diminished by forgetting.
+`localStorage` is wrapped, because private browsing throws before any call is
+made. A read that throws, a parse that fails, a version this build does not
+know, a write refused for quota: each of them ends with the record in memory and
+a game that plays. There is no message, because the person holding the iPad
+cannot read one and the game is not diminished by forgetting.
+
+**Reading and writing fail separately.** Storage that is merely disabled, or out
+of quota, still has the property and still hands back yesterday's record; it
+fails only when written to. So a storage that cannot be written is handed back
+rather than thrown away, and the child resumes where they were - refusing the
+record because the *next* write will fail would lose a place that was never
+actually lost. A probe write at startup, and any write that is refused after it,
+set `persists` to false, and it never goes back to true: a device that has
+dropped one record cannot be promised to keep the next, and the grown-up panel
+would rather say "this will not be remembered" than take it back. Nothing in the
+game reads `persists`; it is there so the panel can be honest.
 
 **A stored level is checked against the game as it is now.** An unknown version
 drops the whole record. Within a version, each field stands on its own: a level

@@ -59,7 +59,10 @@ Three things about it are load-bearing:
   the mere mention of `localStorage`. Every failure - throwing, disabled, full,
   corrupt, a version this build does not know - falls back to an in-memory
   record and level 1, silently. Never surface it: the player cannot read, and
-  the game is not diminished by forgetting.
+  the game is not diminished by forgetting. A storage that can be read but not
+  written is still read, though, so a device out of quota resumes where the
+  child was; `persists` is how the panel tells that apart, and once it is false
+  it stays false.
 - **A stored level is checked against the table.** A level number the thirty no
   longer has sends the child back to level 1, not to the last level.
 - **Progress is cleared from the grown-up panel and nowhere else** (#8, via
