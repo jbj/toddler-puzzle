@@ -17,6 +17,6 @@ same order, and the last stage loops back to the first.
 
 ## Consequence
 
-The only way through the game is forward. The three dots are an indicator for a
+The only way through the game is forward. The five dots are an indicator for a
 grown-up, not a control, and new features should not add settings, scores, or a
 failure state.

@@ -7,7 +7,7 @@
  * `npm run shot` calls this at the end, so the sheet is already waiting at
  * .art/shots/contact-sheet.png by the time the run finishes.
  *
- * One file rather than eleven, because the cost of attaching evidence decides
+ * One file rather than thirteen, because the cost of attaching evidence decides
  * whether it gets attached at all. Reviewing a puzzle means looking at it, and
  * nothing in CI can do that looking on the reviewer's behalf - see
  * docs/decisions/20260727T105836.

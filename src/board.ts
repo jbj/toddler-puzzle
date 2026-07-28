@@ -116,7 +116,7 @@ function buildResetButton(canvasHeight: number): SVGGElement {
 
 /**
  * One dot per stage, filled up to the current one, so a grown-up can see how
- * far along the three puzzles are. Deliberately not interactive: every target a
+ * far along the five puzzles are. Deliberately not interactive: every target a
  * toddler can hit should do something they meant to do.
  */
 function buildStageDots(layout: Layout): SVGGElement {

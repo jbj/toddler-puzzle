@@ -35,8 +35,8 @@ Delete the publishing pipeline. CI verifies and stops there; it holds
 costs no extra privilege.
 
 The author runs `npm run verify` and drags `.art/shots/contact-sheet.png` into
-the pull request. `scripts/shot-sheet.mjs` packs the eleven screenshots into
-that one image, because attaching eleven files is enough friction to make people
+the pull request. `scripts/shot-sheet.mjs` packs the thirteen screenshots into
+that one image, because attaching thirteen files is enough friction to make people
 attach none.
 
 ## Consequences
