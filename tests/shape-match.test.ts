@@ -83,7 +83,7 @@ for (let stage = 1; stage <= STAGE_COUNT; stage++) {
 // The same rules, against a cast that is not square: every rule below holds for
 // a piece of any proportions or it does not hold at all.
 for (const id of ORIENTATIONS) {
-  CASES.push({ puzzle: puzzleOf(1, MIXED), layout: buildStageLayout(id, 1, MIXED) });
+  CASES.push({ puzzle: puzzleOf(2, MIXED), layout: buildStageLayout(id, 2, MIXED) });
 }
 
 describe("shape-match deal", () => {
@@ -172,8 +172,8 @@ describe("shape-match rules", () => {
 
 describe("shape-match with pieces that are not square", () => {
   for (const id of ORIENTATIONS) {
-    const layout = buildStageLayout(id, 1, MIXED);
-    const puzzle = puzzleOf(1, MIXED);
+    const layout = buildStageLayout(id, 2, MIXED);
+    const puzzle = puzzleOf(2, MIXED);
 
     describe(`${id} layout`, () => {
       it("is just as forgiving sideways as it is up and down", () => {

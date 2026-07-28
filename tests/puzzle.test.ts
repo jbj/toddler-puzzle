@@ -321,9 +321,9 @@ describe("snapping", () => {
 });
 
 describe("stages", () => {
-  it("grows from three animals to four to six", () => {
-    expect([...STAGE_SIZES]).toEqual([3, 4, 6]);
-    expect(STAGE_COUNT).toBe(3);
+  it("grows from two animals to three, four, five and six", () => {
+    expect([...STAGE_SIZES]).toEqual([2, 3, 4, 5, 6]);
+    expect(STAGE_COUNT).toBe(5);
   });
 
   it("loops back to the first stage after the last", () => {
@@ -370,7 +370,7 @@ describe("pickStagePieces", () => {
 
   it("rejects building a layout from duplicate piece ids", () => {
     const duplicateId = SHAPES[0]!.id;
-    const duplicateIds = [SHAPES[0]!, { ...SHAPES[1]!, id: duplicateId }, SHAPES[2]!];
+    const duplicateIds = [SHAPES[0]!, { ...SHAPES[1]!, id: duplicateId }];
     expect(() => buildStageLayout("landscape", 1, duplicateIds)).toThrow(
       new RegExp(`duplicate .*"${duplicateId}"`, "i"),
     );
@@ -658,13 +658,13 @@ describe("pieces that are not square", () => {
   it("stands them on the same ground line as a square piece", () => {
     // Landscape puts a stage's whole cast on one ground line, so a piece that
     // is not square floating or sinking shows up as a difference here.
-    const layout = buildStageLayout("landscape", 1, cast);
+    const layout = buildStageLayout("landscape", 2, cast);
     const grounds = cast.map((shape) => groundOf(layout, shape));
     for (const ground of grounds) expect(ground).toBeCloseTo(grounds[0]!);
   });
 
   for (const id of ORIENTATIONS) {
-    const layout = buildStageLayout(id, 1, cast);
+    const layout = buildStageLayout(id, 2, cast);
     const boxes = cast.map((shape) => boxOf(layout, shape.id));
 
     describe(`${id} layout`, () => {

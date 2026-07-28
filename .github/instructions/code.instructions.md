@@ -118,7 +118,7 @@ broken one.
 
 ## Attaching screenshots
 
-`npm run verify` leaves eleven screenshots and a combined
+`npm run verify` leaves thirteen screenshots and a combined
 `.art/shots/contact-sheet.png` in `.art/shots/`. Attach the contact sheet to the
 pull request body, and an individual shot as well when one detail deserves a
 closer look.

@@ -342,12 +342,12 @@ try {
   const bootError = await evaluate(`document.querySelector('#stage') ? '' : 'stage missing'`);
   check("app boots and renders the stage", bootError === "");
 
-  // --- stage 1: three animals ---------------------------------------------
+  // --- stage 1: two animals -----------------------------------------------
   check("starts on stage 1", (await stageNumber()) === 1);
-  check("three pieces rendered", (await pieceCount()) === 3);
-  check("three holes rendered", (await holeCount()) === 3);
+  check("two pieces rendered", (await pieceCount()) === 2);
+  check("two holes rendered", (await holeCount()) === 2);
   const stage1Cast = await animalsOnBoard();
-  check("stage 1 deals three different animals", new Set(stage1Cast).size === 3);
+  check("stage 1 deals two different animals", new Set(stage1Cast).size === 2);
   await shot("01-stage1-start");
 
   // Drag one animal in, pausing mid-flight to capture the piece in hand.
@@ -367,54 +367,74 @@ try {
   // lands on paint, so the gap between a giraffe's legs works as well as the
   // giraffe does. Grab one somewhere the artwork is not, and it should still
   // come along and snap in.
-  await checkGrabBoxes(3);
-  const offPaint = await emptySpotOn(stage1Cast[2]);
+  await checkGrabBoxes(2);
+  const offPaint = await emptySpotOn(stage1Cast[1]);
   check("a piece has grabbable space off its artwork", offPaint !== null);
   if (offPaint) {
-    await dragAnimal(stage1Cast[2], { grabAt: offPaint });
+    await dragAnimal(stage1Cast[1], { grabAt: offPaint });
     check("a piece picked up off its artwork snaps in", (await placedCount()) === 2);
   }
 
   await solveRemaining();
-  check("all three pieces placed", (await placedCount()) === 3);
+  check("all two pieces placed", (await placedCount()) === 2);
   check("finish button appears when complete", (await finishButtons()) === 1);
   check("stage 1 offers the next puzzle", (await finishLabel()) === "Next puzzle");
   await shot("04-stage1-complete");
 
-  // --- stage 2: four animals ----------------------------------------------
+  // --- stage 2: three animals ---------------------------------------------
   await pressFinishButton();
   check("moves on to stage 2", (await stageNumber()) === 2);
-  check("stage 2 has four pieces", (await pieceCount()) === 4);
+  check("stage 2 has three pieces", (await pieceCount()) === 3);
   check("stage 2 starts empty", (await placedCount()) === 0);
-  check("stage 2 deals four different animals", new Set(await animalsOnBoard()).size === 4);
+  check("stage 2 deals three different animals", new Set(await animalsOnBoard()).size === 3);
   await shot("05-stage2-start");
 
   await solveRemaining();
-  check("stage 2 can be completed", (await placedCount()) === 4);
+  check("stage 2 can be completed", (await placedCount()) === 3);
 
-  // --- stage 3: six animals -----------------------------------------------
+  // --- stage 3: four animals ----------------------------------------------
   await pressFinishButton();
   check("moves on to stage 3", (await stageNumber()) === 3);
-  check("stage 3 has six pieces", (await pieceCount()) === 6);
+  check("stage 3 has four pieces", (await pieceCount()) === 4);
+  check("stage 3 deals four different animals", new Set(await animalsOnBoard()).size === 4);
+  await shot("06-stage3-start");
+
+  await solveRemaining();
+  check("stage 3 can be completed", (await placedCount()) === 4);
+
+  // --- stage 4: five animals ----------------------------------------------
+  await pressFinishButton();
+  check("moves on to stage 4", (await stageNumber()) === 4);
+  check("stage 4 has five pieces", (await pieceCount()) === 5);
+  check("stage 4 deals five different animals", new Set(await animalsOnBoard()).size === 5);
+  await shot("07-stage4-start");
+
+  await solveRemaining();
+  check("stage 4 can be completed", (await placedCount()) === 5);
+
+  // --- stage 5: six animals -----------------------------------------------
+  await pressFinishButton();
+  check("moves on to stage 5", (await stageNumber()) === 5);
+  check("stage 5 has six pieces", (await pieceCount()) === 6);
   const cast = await animalsOnBoard();
   check("the last stage deals six different animals", new Set(cast).size === 6);
   // Six smaller pieces: the grab boxes have to hold their shape at this size
   // too, where the tray leaves least room between them.
   await checkGrabBoxes(6);
-  await shot("06-stage3-start");
+  await shot("08-stage5-start");
 
   await dragAnimal(cast[0]);
   await dragAnimal(cast[1]);
   check("the pieces snap into their holes", (await placedCount()) === 2);
-  await shot("07-stage3-two-placed");
+  await shot("09-stage5-two-placed");
 
   // Rotating mid-puzzle must reflow and keep progress.
   await setViewport(480, 900);
   await sleep(600);
   check("switches to the portrait layout", (await layoutName()) === "portrait");
   check("rotation preserves placed pieces", (await placedCount()) === 2);
-  check("rotation stays on the same stage", (await stageNumber()) === 3);
-  await shot("08-portrait-stage3");
+  check("rotation stays on the same stage", (await stageNumber()) === 5);
+  await shot("10-portrait-stage5");
 
   const fits = await evaluate(`
     (() => {
@@ -436,20 +456,20 @@ try {
   await solveRemaining();
   check("dragging works in the portrait layout", (await placedCount()) === 6);
   check("the last stage offers a replay", (await finishLabel()) === "Play again");
-  await shot("09-portrait-complete");
+  await shot("11-portrait-complete");
 
   await pressFinishButton();
   check("play again loops back to stage 1", (await stageNumber()) === 1);
-  check("looping back deals three fresh pieces", (await pieceCount()) === 3);
+  check("looping back deals two fresh pieces", (await pieceCount()) === 2);
   check("looping back clears the board", (await placedCount()) === 0);
-  await shot("10-looped-back");
+  await shot("12-looped-back");
 
   // --- a fresh deal every time ---------------------------------------------
   await evaluate(`document.querySelector('.reset-button').dispatchEvent(
     new PointerEvent('pointerdown', { bubbles: true })
   )`);
   await sleep(600);
-  check("reset deals a fresh puzzle", (await pieceCount()) === 3 && (await placedCount()) === 0);
+  check("reset deals a fresh puzzle", (await pieceCount()) === 2 && (await placedCount()) === 0);
   check("reset keeps the stage", (await stageNumber()) === 1);
 
   await setViewport(1280, 800);
@@ -462,7 +482,7 @@ try {
   const deals = new Set();
   for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
-  await shot("11-another-deal");
+  await shot("13-another-deal");
 } finally {
   socket.close();
   chrome.kill();

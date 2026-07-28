@@ -1,7 +1,8 @@
 /**
  * Stages and layouts.
  *
- * The game is three stages long - three pieces, then four, then six - so a
+ * The game is five stages long - two pieces, then three, then four, then five,
+ * then six - so a
  * toddler starts with an easy win and the board fills up as they go. Each stage
  * has its own layout in each orientation, because the puzzle reflows rather than
  * just shrinking: a landscape screen gets rows of pieces with the tray
@@ -60,7 +61,7 @@ export const GRAB_PADDING = 0.04;
  * same; only the *number* of pieces is fixed, and the layout is composed around
  * whatever number that is.
  */
-export const STAGE_SIZES: readonly number[] = [3, 4, 6];
+export const STAGE_SIZES: readonly number[] = [2, 3, 4, 5, 6];
 
 export const STAGE_COUNT = STAGE_SIZES.length;
 

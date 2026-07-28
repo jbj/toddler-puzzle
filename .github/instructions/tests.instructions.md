@@ -64,7 +64,7 @@ square.
 ## What `npm run shot` covers
 
 `npm run shot` is an end-to-end check: it serves the built app, drives real
-pointer drags over the Chrome DevTools Protocol, and plays all three stages
+pointer drags over the Chrome DevTools Protocol, and plays all five stages
 through - asserting that pieces snap, that a bad drop does *not* stick, that each
 stage hands over to the next, that rotating to portrait preserves progress, that
 the last stage loops back to the first, and that different seeds deal different

@@ -12,7 +12,8 @@
  * kind refuses drifts gently back to the tray with a soft tone, never off
  * screen and never a buzzer.
  *
- * A game is three stages long: three pieces, then four, then six. Every stage
+ * A game is five stages long: two pieces, then three, then four, then five,
+ * then six. Every stage
  * is dealt fresh, so it never plays out quite the same way twice. Finishing a
  * stage shows one big button that leads to the next one, and the button after
  * the last stage starts the whole game over - so the only way to go is forward
