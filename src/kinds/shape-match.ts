@@ -13,7 +13,7 @@
  *  - the level ends when every piece is standing in its hole.
  */
 import { boxCenter, isWithinSnapRadius, type Point } from "../geometry";
-import { holeOf, pickStagePieces, type Layout } from "../layout";
+import { holeOf, boxOf, pickStagePieces, type Layout } from "../layout";
 import type { PieceId, PieceShape } from "../piece";
 import type { LevelSpec, Puzzle, PuzzleKind } from "../puzzle";
 import { renderScenery } from "../scenery";
@@ -29,8 +29,8 @@ const ID = "shape-match";
  * and hiding it stops the rim peeking out from underneath.
  */
 function hole(shape: PieceShape, layout: Layout, filled: boolean): string {
-  // Authored units -> logical units, at this stage's piece size.
-  const scale = layout.pieceSize / shape.box.width;
+  // Authored units -> logical units, at this piece's own scale.
+  const { scale } = boxOf(layout, shape.id);
   const origin = holeOf(layout, shape.id);
   return `
     <g class="hole" data-piece="${shape.id}"
@@ -67,8 +67,11 @@ export const shapeMatch: PuzzleKind = {
   },
 
   accepts(_puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean {
-    const center = boxCenter(holeOf(layout, piece), layout.pieceSize);
-    return isWithinSnapRadius(boxCenter(at, layout.pieceSize), center, layout.snapRadius);
+    // Both centres are measured with this piece's own bounds, so the snap point
+    // stays inside the piece however wide or thin it happens to be.
+    const { size, snapRadius } = boxOf(layout, piece);
+    const center = boxCenter(holeOf(layout, piece), size);
+    return isWithinSnapRadius(boxCenter(at, size), center, snapRadius);
   },
 
   isComplete(puzzle: Puzzle): boolean {

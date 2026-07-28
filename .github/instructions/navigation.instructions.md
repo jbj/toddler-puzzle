@@ -56,7 +56,8 @@ means. Between them:
 
 - The piece is held slightly above the finger, so a small hand does not cover
   the thing it is moving.
-- Pieces are clamped to the canvas, so one can never be dragged out of reach.
+- Pieces are clamped to the canvas by their own bounds (`boxOf(layout, piece)`),
+  so one can never be dragged out of reach whatever shape it is.
 - A piece settles back with a short animation (`SETTLE_MS`), whether it was
   accepted or refused - the difference is where it settles, not how abruptly.
 - Which tray slot each piece belongs to is remembered in the host and survives a

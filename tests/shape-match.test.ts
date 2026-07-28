@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
 import { seededRandom } from "../src/geometry";
-import { STAGE_COUNT, buildStageLayout, holeOf, stageSize, type Layout } from "../src/layout";
+import {
+  STAGE_COUNT,
+  boxOf,
+  buildStageLayout,
+  holeOf,
+  stageSize,
+  type Layout,
+} from "../src/layout";
 import { shapeMatch } from "../src/kinds/shape-match";
 import { pieceId, type PieceShape } from "../src/piece";
 import type { Puzzle } from "../src/puzzle";
@@ -39,6 +46,31 @@ function puzzleOf(stage: number, cast: readonly PieceShape[]): Puzzle {
   return { kind: shapeMatch.id, stage, pieces: cast, placed: new Set() };
 }
 
+/**
+ * Pieces that are not square, in both directions. Every animal is authored
+ * square, so without these the rules below could go on measuring a drop against
+ * one square piece size and nobody would notice.
+ */
+const PLANK: PieceShape = {
+  id: pieceId("test:plank"),
+  outline: "M0 0 h300 v100 z",
+  artwork: "",
+  box: { width: 300, height: 100 },
+  anchor: { x: 150, y: 100 },
+  label: "plank",
+};
+
+const POLE: PieceShape = {
+  id: pieceId("test:pole"),
+  outline: "M0 0 h100 v300 z",
+  artwork: "",
+  box: { width: 100, height: 300 },
+  anchor: { x: 50, y: 300 },
+  label: "pole",
+};
+
+const MIXED: readonly PieceShape[] = [PLANK, POLE, SHAPES[0]!];
+
 /** Every stage, both orientations, across a representative spread of casts. */
 const CASES: { puzzle: Puzzle; layout: Layout }[] = [];
 for (let stage = 1; stage <= STAGE_COUNT; stage++) {
@@ -47,6 +79,11 @@ for (let stage = 1; stage <= STAGE_COUNT; stage++) {
       CASES.push({ puzzle: puzzleOf(stage, cast), layout: buildStageLayout(id, stage, cast) });
     }
   }
+}
+// The same rules, against a cast that is not square: every rule below holds for
+// a piece of any proportions or it does not hold at all.
+for (const id of ORIENTATIONS) {
+  CASES.push({ puzzle: puzzleOf(1, MIXED), layout: buildStageLayout(id, 1, MIXED) });
 }
 
 describe("shape-match deal", () => {
@@ -86,8 +123,9 @@ describe("shape-match rules", () => {
     for (const { puzzle, layout } of CASES) {
       for (const shape of puzzle.pieces) {
         const hole = holeOf(layout, shape.id);
-        // Well short of the snap radius, but nowhere near exact.
-        const sloppy = { x: hole.x + layout.snapRadius * 0.6, y: hole.y };
+        // Well short of this piece's own snap radius, but nowhere near exact.
+        const reach = boxOf(layout, shape.id).snapRadius * 0.6;
+        const sloppy = { x: hole.x + reach, y: hole.y };
         expect(shapeMatch.accepts(puzzle, layout, shape.id, sloppy)).toBe(true);
       }
     }
@@ -130,6 +168,53 @@ describe("shape-match rules", () => {
       );
     }
   });
+});
+
+describe("shape-match with pieces that are not square", () => {
+  for (const id of ORIENTATIONS) {
+    const layout = buildStageLayout(id, 1, MIXED);
+    const puzzle = puzzleOf(1, MIXED);
+
+    describe(`${id} layout`, () => {
+      it("is just as forgiving sideways as it is up and down", () => {
+        for (const shape of MIXED) {
+          const hole = holeOf(layout, shape.id);
+          const reach = boxOf(layout, shape.id).snapRadius * 0.6;
+          for (const drop of [
+            { x: hole.x + reach, y: hole.y },
+            { x: hole.x - reach, y: hole.y },
+            { x: hole.x, y: hole.y + reach },
+            { x: hole.x, y: hole.y - reach },
+          ]) {
+            expect(shapeMatch.accepts(puzzle, layout, shape.id, drop)).toBe(true);
+          }
+        }
+      });
+
+      it("turns down a drop past the piece's own radius on either axis", () => {
+        for (const shape of MIXED) {
+          const hole = holeOf(layout, shape.id);
+          const beyond = boxOf(layout, shape.id).snapRadius * 1.2;
+          for (const drop of [
+            { x: hole.x + beyond, y: hole.y },
+            { x: hole.x, y: hole.y + beyond },
+          ]) {
+            expect(shapeMatch.accepts(puzzle, layout, shape.id, drop)).toBe(false);
+          }
+        }
+      });
+
+      it("does not stretch a wide piece's forgiveness over its short axis", () => {
+        // A radius taken from the plank's width would reach three times further
+        // than the plank is tall, so a drop a whole plank clear of the hole
+        // would still snap in. Measured against its own height, it does not.
+        const hole = holeOf(layout, PLANK.id);
+        const { size } = boxOf(layout, PLANK.id);
+        const drop = { x: hole.x, y: hole.y + size.width * 0.68 };
+        expect(shapeMatch.accepts(puzzle, layout, PLANK.id, drop)).toBe(false);
+      });
+    });
+  }
 });
 
 describe("shape-match backdrop", () => {

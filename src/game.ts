@@ -26,7 +26,7 @@ import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
 import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
 import { enableDragging } from "./drag";
 import { boxCenter, shuffle, type Point, type Size } from "./geometry";
-import { STAGE_COUNT, chooseLayout, nextStage, type Layout } from "./layout";
+import { STAGE_COUNT, boxOf, chooseLayout, nextStage, type Layout } from "./layout";
 import type { PieceId, PieceShape } from "./piece";
 import type { Puzzle, PuzzleKind } from "./puzzle";
 
@@ -131,7 +131,7 @@ export function createGame(
     renderBackdrop();
 
     playSnap();
-    sparkleBurst(board.fxLayer, boxCenter(target, layout.pieceSize));
+    sparkleBurst(board.fxLayer, boxCenter(target, boxOf(layout, piece).size));
     checkComplete();
   }
 

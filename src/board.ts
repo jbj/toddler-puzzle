@@ -5,7 +5,7 @@
  */
 import type { Point } from "./geometry";
 import { replayArrow } from "./icons";
-import { STAGE_COUNT, type Layout } from "./layout";
+import { STAGE_COUNT, boxOf, type Layout } from "./layout";
 import type { PieceId, PieceShape } from "./piece";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -100,8 +100,8 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
 
   const pieces = new Map<PieceId, SVGGElement>();
   for (const shape of layout.pieces) {
-    // Authored units -> logical units, at this stage's piece size.
-    const piece = buildPiece(shape, layout.pieceSize / shape.box.width);
+    // Authored units -> logical units, at this piece's own scale.
+    const piece = buildPiece(shape, boxOf(layout, shape.id).scale);
     pieces.set(shape.id, piece);
     piecesLayer.append(piece);
   }

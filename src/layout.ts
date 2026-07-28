@@ -19,7 +19,7 @@
  *
  * All values are in logical canvas units; geometry.ts maps them to pixels.
  */
-import { shuffle, type Point, type Size } from "./geometry";
+import { fitScale, scaleSize, shuffle, type Point, type Size } from "./geometry";
 import type { PieceId, PieceShape } from "./piece";
 
 /**
@@ -87,6 +87,42 @@ export interface GroundBand {
   readonly fill: string;
 }
 
+/**
+ * What one piece measures in this layout: how far its authored box is scaled,
+ * the bounds that produces, and how forgiving a drop of it is. Every piece gets
+ * its own, because a wide piece, a thin one and a tall one share nothing but
+ * the slot they are drawn to fit inside.
+ */
+export interface PieceBox {
+  /** Authored box units -> logical units. */
+  readonly scale: number;
+  /** The piece's rendered bounds, as a piece and as its hole alike. */
+  readonly size: Size;
+  /**
+   * How near this piece's centre must get to its target's centre to count as
+   * in. `SNAP_FRACTION` of the piece's *smaller* side, so the circle is
+   * generous for a big piece and correspondingly tighter for a small one, and
+   * never reaches further than the piece does on its narrow axis.
+   */
+  readonly snapRadius: number;
+}
+
+/**
+ * Fit a shape into this stage's square slot. Scaling by the longer side is what
+ * keeps a piece of any proportions inside the slot the arrangement laid out, so
+ * the layout invariants - holes on canvas, tray slots apart - hold whatever
+ * shape turns up.
+ */
+function pieceBox(shape: PieceShape, slotSize: number): PieceBox {
+  const scale = fitScale({ width: slotSize, height: slotSize }, shape.box);
+  const size = scaleSize(shape.box, scale);
+  return {
+    scale,
+    size,
+    snapRadius: Math.round(Math.min(size.width, size.height) * SNAP_FRACTION),
+  };
+}
+
 export interface Layout {
   readonly id: "landscape" | "portrait";
   /** 1-based stage this layout belongs to. */
@@ -94,9 +130,10 @@ export interface Layout {
   /** The stage's pieces, in layout order. */
   readonly pieces: readonly PieceShape[];
   readonly canvas: Size;
-  /** Rendered width/height of every piece, both as a piece and as a hole. */
-  readonly pieceSize: number;
-  readonly snapRadius: number;
+  /** The square every piece is drawn to fit inside, hole and tray slot alike. */
+  readonly slotSize: number;
+  /** What each of this stage's pieces measures, and how forgiving it is. */
+  readonly boxes: ReadonlyMap<PieceId, PieceBox>;
   /** Top of the piece tray; scenery fills everything above it. */
   readonly trayTop: number;
   /** Where the ground starts, i.e. the horizon. */
@@ -120,6 +157,17 @@ export function holeOf(layout: Layout, piece: PieceId): Point {
   return hole;
 }
 
+/** What a piece measures here. Throws rather than guessing at a square. */
+export function boxOf(layout: Layout, piece: PieceId): PieceBox {
+  const box = layout.boxes.get(piece);
+  if (!box) {
+    throw new Error(
+      `Piece "${piece}" has no box in the stage ${layout.stage} ${layout.id} layout.`,
+    );
+  }
+  return box;
+}
+
 /** A line of pieces standing on the ground at `groundY`. */
 interface SceneRow {
   readonly groundY: number;
@@ -134,7 +182,8 @@ interface TrayRow {
 
 interface Arrangement {
   readonly canvas: Size;
-  readonly pieceSize: number;
+  /** The square a piece of any proportions is drawn to fit inside. */
+  readonly slotSize: number;
   readonly trayTop: number;
   readonly horizon: number;
   readonly bands: readonly GroundBand[];
@@ -153,12 +202,23 @@ function spreadX(count: number, size: number, width: number, margin: number): nu
   return Array.from({ length: count }, (_, index) => margin + index * step);
 }
 
-/** Top-left of a piece's box such that its anchor lands on `groundY`. */
-function standing(shape: PieceShape, x: number, groundY: number, pieceSize: number): Point {
-  // Board rendering scales an authored box from its width, so the anchor must
-  // use that same factor to keep the piece standing on its ground line.
-  const scale = pieceSize / shape.box.width;
-  return { x, y: groundY - shape.anchor.y * scale };
+/**
+ * Top-left of a piece's box: centred across the slot at `slotX`, and lifted so
+ * its anchor lands on `groundY`. Centring rather than aligning the box keeps a
+ * piece narrower than its slot from leaning against one side of it, and keeps
+ * every hole inside a slot the arrangement already placed on canvas.
+ */
+function standing(
+  shape: PieceShape,
+  box: PieceBox,
+  slotX: number,
+  slotSize: number,
+  groundY: number,
+): Point {
+  return {
+    x: slotX + (slotSize - box.size.width) / 2,
+    y: groundY - shape.anchor.y * box.scale,
+  };
 }
 
 const total = (rows: readonly { readonly count: number }[]): number =>
@@ -171,7 +231,7 @@ function buildLayout(
   arrangement: Arrangement,
 ): Layout {
   assertUniquePieceIds(pieces, `buildStageLayout(${JSON.stringify(id)}, ${stage}, pieces)`);
-  const { canvas, pieceSize, sceneRows, trayRows } = arrangement;
+  const { canvas, slotSize, sceneRows, trayRows } = arrangement;
   if (total(sceneRows) !== pieces.length || total(trayRows) !== pieces.length) {
     throw new Error(
       `Stage ${stage} ${id} layout must hold ${pieces.length} pieces, but has ` +
@@ -179,17 +239,25 @@ function buildLayout(
     );
   }
 
+  const boxes = new Map<PieceId, PieceBox>(
+    pieces.map((shape) => [shape.id, pieceBox(shape, slotSize)]),
+  );
+
   const holes = new Map<PieceId, Point>();
   let next = 0;
   for (const row of sceneRows) {
-    for (const x of spreadX(row.count, pieceSize, canvas.width, arrangement.sceneMargin)) {
+    for (const x of spreadX(row.count, slotSize, canvas.width, arrangement.sceneMargin)) {
       const shape = pieces[next++] as PieceShape;
-      holes.set(shape.id, standing(shape, x, row.groundY, pieceSize));
+      const box = boxes.get(shape.id) as PieceBox;
+      holes.set(shape.id, standing(shape, box, x, slotSize, row.groundY));
     }
   }
 
+  // Tray slots are nominal squares rather than per-piece boxes: which piece
+  // waits in which slot is shuffled when the puzzle starts, so a slot has to
+  // hold whatever turns up. Every piece fits inside one by construction.
   const traySlots = trayRows.flatMap((row) =>
-    spreadX(row.count, pieceSize, canvas.width, arrangement.trayMargin).map((x) => ({
+    spreadX(row.count, slotSize, canvas.width, arrangement.trayMargin).map((x) => ({
       x,
       y: row.top,
     })),
@@ -200,8 +268,8 @@ function buildLayout(
     stage,
     pieces,
     canvas,
-    pieceSize,
-    snapRadius: Math.round(pieceSize * SNAP_FRACTION),
+    slotSize,
+    boxes,
     trayTop: arrangement.trayTop,
     horizon: arrangement.horizon,
     bands: arrangement.bands,
@@ -227,7 +295,7 @@ const LANDSCAPE_BANDS: readonly GroundBand[] = [
 const LANDSCAPE: readonly Arrangement[] = [
   {
     canvas: LANDSCAPE_CANVAS,
-    pieceSize: 210,
+    slotSize: 210,
     trayTop: 465,
     horizon: 320,
     bands: LANDSCAPE_BANDS,
@@ -239,7 +307,7 @@ const LANDSCAPE: readonly Arrangement[] = [
   },
   {
     canvas: LANDSCAPE_CANVAS,
-    pieceSize: 190,
+    slotSize: 190,
     trayTop: 480,
     horizon: 320,
     bands: LANDSCAPE_BANDS,
@@ -251,7 +319,7 @@ const LANDSCAPE: readonly Arrangement[] = [
   },
   {
     canvas: LANDSCAPE_CANVAS,
-    pieceSize: 145,
+    slotSize: 145,
     trayTop: 480,
     horizon: 320,
     bands: LANDSCAPE_BANDS,
@@ -270,7 +338,7 @@ const LANDSCAPE: readonly Arrangement[] = [
 const PORTRAIT: readonly Arrangement[] = [
   {
     canvas: PORTRAIT_CANVAS,
-    pieceSize: 200,
+    slotSize: 200,
     trayTop: 900,
     horizon: 300,
     bands: [
@@ -288,7 +356,7 @@ const PORTRAIT: readonly Arrangement[] = [
   },
   {
     canvas: PORTRAIT_CANVAS,
-    pieceSize: 190,
+    slotSize: 190,
     trayTop: 770,
     horizon: 300,
     bands: [
@@ -309,7 +377,7 @@ const PORTRAIT: readonly Arrangement[] = [
   },
   {
     canvas: PORTRAIT_CANVAS,
-    pieceSize: 170,
+    slotSize: 170,
     trayTop: 800,
     horizon: 300,
     bands: [

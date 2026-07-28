@@ -34,6 +34,13 @@ never collide, pieces stay big enough to grab, and each orientation fills at
 least 75% of its viewport. Because the cast is random, the layout checks run
 against a rotation of the animal list that puts every animal in every place.
 
+Every animal is square, so both suites also carry a plank and a pole - pieces
+that are deliberately not square, in both directions. They keep the engine
+honest about per-piece bounds: each is clamped and snapped by its own box, so a
+wide piece cannot borrow its width's forgiveness for its short axis. Add such a
+case whenever a check would otherwise pass only because a piece happens to be
+square.
+
 ## What `npm run shot` covers
 
 `npm run shot` is an end-to-end check: it serves the built app, drives real
