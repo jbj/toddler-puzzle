@@ -29,6 +29,7 @@
  */
 import {
   chapterNumber,
+  derivedFrom,
   MAX_SNAP_FORGIVENESS,
   MIN_SNAP_FORGIVENESS,
   type LevelSpec,
@@ -99,7 +100,8 @@ export function resolveLevel(spec: LevelSpec, available: number): ResolvedLevel 
     // Written out field by field rather than spread over: a stand-in is a
     // different level, and this is the list of what it keeps. Options are not
     // among them - shape-match has neither a grid nor a picture to cut up.
-    spec: {
+    // `derivedFrom` is what tells the layout this came from the table.
+    spec: derivedFrom(spec, {
       level: spec.level,
       chapter: spec.chapter,
       kind: FALLBACK.id,
@@ -112,7 +114,7 @@ export function resolveLevel(spec: LevelSpec, available: number): ResolvedLevel 
         Math.max(spec.snapForgiveness, MIN_SNAP_FORGIVENESS),
         MAX_SNAP_FORGIVENESS,
       ),
-    },
+    }),
     standIn: true,
   };
 }

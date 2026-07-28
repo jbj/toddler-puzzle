@@ -82,8 +82,13 @@ Everything about a board is *composed* for the cast that was dealt:
 many stand on each ground line, how many wait in each tray row, and how big a
 slot they are all drawn to fit inside. There is no table of coordinates to keep
 in step with anything, and nothing to add when a level wants a piece count no
-level has asked for before. `buildLevelLayout` is the same thing with the level's
-own numbers checked against the cast first.
+level has asked for before. `buildLevelLayout` is the same thing for a level of
+the thirty: it checks the cast is the size the level deals, and that the level is
+one the table vouches for (`isVouchedLevel`) rather than a record written out by
+hand - otherwise a board's difficulty could come from somewhere other than the
+table, which is the one thing the table is for. A kind that needs a level with
+different numbers, as the stand-in does, derives it through `derivedFrom` rather
+than inventing one.
 
 The composition is expressed as fractions of a slot rather than as positions
 (`COMPOSITION` in `src/layout.ts`), so the whole board scales together: a busier

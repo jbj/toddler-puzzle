@@ -27,7 +27,7 @@
  * All values are in logical canvas units; geometry.ts maps them to pixels.
  */
 import { fitScale, scaleSize, type Point, type Size } from "./geometry";
-import { levelSpec, type LevelSpec } from "./levels";
+import { isVouchedLevel, type LevelSpec } from "./levels";
 import { assertUniquePieceIds, type PieceId, type PieceShape } from "./piece";
 
 /**
@@ -591,9 +591,15 @@ export function buildLevelLayout(
   level: LevelSpec,
   pieces: readonly PieceShape[],
 ): Layout {
-  // Levels are looked up rather than trusted, so a spec invented out of thin
-  // air cannot put a board on screen that no level in the table describes.
-  levelSpec(level.level);
+  // Levels are vouched for rather than trusted, so a spec invented out of thin
+  // air cannot put a board on screen that no level in the table describes -
+  // including one that borrows a real level's number and changes its numbers.
+  if (!isVouchedLevel(level)) {
+    throw new Error(
+      `Level ${level.level} is not one of the thirty, nor derived from one; ` +
+        `see LEVELS in levels.ts.`,
+    );
+  }
   if (pieces.length !== level.pieces) {
     throw new Error(
       `Level ${level.level} deals ${level.pieces} pieces, but was given ${pieces.length}.`,

@@ -10,8 +10,26 @@ import type { Puzzle } from "../src/puzzle";
 /** The levels shape-match plays in its own right, rather than as a stand-in. */
 const ANIMAL_LEVELS = LEVELS.filter((level) => level.kind === shapeMatch.id);
 
+/**
+ * The shape-match level that deals this many pieces. Several checks below
+ * assemble a cast by hand rather than dealing one, so they need a level of a
+ * particular size to hang it on. Retuning the table can take that size away -
+ * which is fine, but it has to say so here rather than handing on `undefined`
+ * and failing somewhere else entirely.
+ */
+function animalLevelOf(pieces: number): LevelSpec {
+  const level = ANIMAL_LEVELS.find((one) => one.pieces === pieces);
+  if (!level) {
+    throw new Error(
+      `No shape-match level deals ${pieces} pieces. These tests need one; ` +
+        `pick a count LEVELS still has, or add a level that deals ${pieces}.`,
+    );
+  }
+  return level;
+}
+
 /** A level of three pieces, for the casts assembled here rather than dealt. */
-const THREE_PIECE_LEVEL = ANIMAL_LEVELS.find((level) => level.pieces === 3) as LevelSpec;
+const THREE_PIECE_LEVEL = animalLevelOf(3);
 
 const ORIENTATIONS = ["landscape", "portrait"] as const;
 

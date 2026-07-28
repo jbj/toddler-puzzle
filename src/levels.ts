@@ -403,6 +403,39 @@ export function levelSpec(level: number): LevelSpec {
   return spec;
 }
 
+/**
+ * Every level this module vouches for: the thirty, and anything a kind derived
+ * from one of them. A `LevelSpec` is a plain record, so nothing stops code
+ * elsewhere writing one out - and a board composed from an invented level is a
+ * board whose difficulty came from somewhere other than the table, which is the
+ * one thing the table is for. Membership rather than equality, because a
+ * stand-in genuinely has different numbers from the record it stands in for.
+ */
+const VOUCHED = new WeakSet<LevelSpec>(LEVELS);
+
+/** Is this a level of the thirty, or one derived from one of them? */
+export function isVouchedLevel(spec: LevelSpec): boolean {
+  return VOUCHED.has(spec);
+}
+
+/**
+ * Vouch for a level built from one of the thirty. The kind registry's stand-in
+ * is the only caller: it plays a level with different numbers from the table's,
+ * and the board that puts up is still a board the table describes. Going
+ * through here is what lets `buildLevelLayout` tell that from a spec somebody
+ * invented, without the layout having to know what a stand-in is.
+ */
+export function derivedFrom(original: LevelSpec, derived: LevelSpec): LevelSpec {
+  if (!VOUCHED.has(original)) {
+    throw new Error(`Level ${original.level} is not one of the ${LEVEL_COUNT}.`);
+  }
+  if (derived.level !== original.level) {
+    throw new Error(`Level ${original.level} cannot derive level ${derived.level}.`);
+  }
+  VOUCHED.add(derived);
+  return derived;
+}
+
 /** Levels are numbered from 1; the level after the last one is the first again. */
 export function nextLevel(level: number): number {
   return (level % LEVEL_COUNT) + 1;

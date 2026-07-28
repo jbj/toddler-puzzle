@@ -602,8 +602,26 @@ const POLE: PieceShape = {
   label: "pole",
 };
 
+/**
+ * The shape-match level that deals this many pieces. Several checks below
+ * assemble a cast by hand rather than dealing one, so they need a level of a
+ * particular size to hang it on. Retuning the table can take that size away -
+ * which is fine, but it has to say so here rather than handing on `undefined`
+ * and failing somewhere else entirely.
+ */
+function animalLevelOf(pieces: number): LevelSpec {
+  const level = ANIMAL_LEVELS.find((one) => one.pieces === pieces);
+  if (!level) {
+    throw new Error(
+      `No shape-match level deals ${pieces} pieces. These tests need one; ` +
+        `pick a count LEVELS still has, or add a level that deals ${pieces}.`,
+    );
+  }
+  return level;
+}
+
 /** A level of three pieces, for casts assembled here rather than dealt. */
-const THREE_PIECE_LEVEL = ANIMAL_LEVELS.find((level) => level.pieces === 3) as LevelSpec;
+const THREE_PIECE_LEVEL = animalLevelOf(3);
 
 describe("pieces that are not square", () => {
   const cast = [PLANK, POLE, SHAPES[0]!];
@@ -676,7 +694,11 @@ describe("pieces that are not square", () => {
 
 describe("chooseLayout", () => {
   const cast = (level: LevelSpec) => dealPieces(level, SHAPES);
-  const [one, two, three] = ANIMAL_LEVELS as unknown as [LevelSpec, LevelSpec, LevelSpec];
+  // Three sizes, so a cast dealt for one of them cannot accidentally fit
+  // another - which is what the "does not fill the level" check rests on.
+  const one = animalLevelOf(1);
+  const two = animalLevelOf(2);
+  const three = animalLevelOf(3);
 
   it("uses the portrait reflow only when taller than wide", () => {
     expect(chooseLayout({ width: 1280, height: 800 }, one, cast(one)).id).toBe("landscape");
@@ -684,12 +706,18 @@ describe("chooseLayout", () => {
     expect(chooseLayout({ width: 390, height: 844 }, three, cast(three)).id).toBe("portrait");
   });
 
-  it("rejects a level that does not exist rather than showing an empty board", () => {
+  it("rejects a level the table does not describe rather than showing it", () => {
+    // Both halves matter. A number outside the thirty is the obvious one; a
+    // copy of a real level with its difficulty edited is the one worth
+    // catching, because it would otherwise put a board on screen whose
+    // forgiveness came from somewhere other than the table.
     const viewport = { width: 1280, height: 800 };
     for (const number of [0, LEVEL_COUNT + 1]) {
       const invented = { ...one, level: number };
       expect(() => chooseLayout(viewport, invented, cast(one))).toThrow();
     }
+    const forged = { ...one, snapForgiveness: 9 };
+    expect(() => chooseLayout(viewport, forged, cast(one))).toThrow(/not one of the thirty/);
   });
 
   it("rejects a cast that does not fill the level rather than leaving a gap", () => {

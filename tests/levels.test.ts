@@ -16,7 +16,7 @@ import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
 import { seededRandom } from "../src/geometry";
 import { MAX_STAND_IN_PIECES, isKindRegistered, resolveLevel } from "../src/kinds/registry";
 import { shapeMatch } from "../src/kinds/shape-match";
-import { buildLayout } from "../src/layout";
+import { buildLevelLayout } from "../src/layout";
 import {
   CHAPTERS,
   LEVELS,
@@ -25,6 +25,7 @@ import {
   MIN_SNAP_FORGIVENESS,
   chapterNumber,
   dealPieces,
+  isVouchedLevel,
   levelSpec,
   nextLevel,
   type LevelSpec,
@@ -119,7 +120,7 @@ describe("the level table", () => {
   it("eases the forgiveness off level by level, never back up", () => {
     for (const [index, level] of LEVELS.entries()) {
       if (index === 0) continue;
-      const before = LEVELS[index - 1] as LevelSpec;
+      const before = LEVELS[index - 1]!;
       expect(level.snapForgiveness, `level ${level.level}`).toBeLessThanOrEqual(
         before.snapForgiveness,
       );
@@ -299,10 +300,25 @@ describe("the kind registry", () => {
       const puzzle = kind.deal({ level: spec, shapes: SHAPES }, seededRandom(spec.level));
       expect(puzzle.pieces).toHaveLength(spec.pieces);
       for (const id of ["landscape", "portrait"] as const) {
-        const layout = buildLayout(id, spec, puzzle.pieces);
+        // `buildLevelLayout` rather than `buildLayout`: it refuses a level the
+        // table does not vouch for, so this also proves a stand-in's spec is
+        // still a level of the thirty rather than one invented in passing.
+        const layout = buildLevelLayout(id, spec, puzzle.pieces);
         expect(layout.holes.size).toBe(spec.pieces);
       }
     }
+  });
+
+  it("vouches for a stand-in's level, and for nothing invented", () => {
+    // A `LevelSpec` is a plain record, so the only thing separating a level of
+    // the thirty from one written out by hand is that the table vouches for it.
+    // A stand-in has to be on the right side of that line; an edited copy of a
+    // real level has to be on the wrong one, however plausible it looks.
+    for (const level of LEVELS) {
+      expect(isVouchedLevel(level)).toBe(true);
+      expect(isVouchedLevel(resolveLevel(level, SHAPES.length).spec)).toBe(true);
+    }
+    expect(isVouchedLevel({ ...levelSpec(1), snapForgiveness: 9 })).toBe(false);
   });
 
   it("retires a stand-in the moment the real kind is registered", async () => {
@@ -310,8 +326,16 @@ describe("the kind registry", () => {
     // level goes back to being played by its own kind. Done against a freshly
     // imported registry so the rest of the suite still sees the real one.
     vi.resetModules();
+    // The table comes from the fresh graph too: it is the module that vouches
+    // for a level, and the fresh one has never seen the levels imported above.
     const fresh = await import("../src/kinds/registry");
-    const missing = LEVELS.find((level) => !fresh.isKindRegistered(level.kind)) as LevelSpec;
+    const table = await import("../src/levels");
+    const missing = table.LEVELS.find((level) => !fresh.isKindRegistered(level.kind));
+    if (!missing) {
+      // Not a failure: it means every kind in the table has been built, and
+      // this test - along with the stand-in itself - can go.
+      throw new Error("Every kind is registered; delete the stand-in and its tests.");
+    }
 
     expect(fresh.resolveLevel(missing, SHAPES.length).standIn).toBe(true);
     const built = { ...shapeMatch, id: missing.kind };
