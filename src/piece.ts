@@ -43,3 +43,18 @@ export interface PieceShape {
   /** Spoken description, used for `aria-label`. */
   readonly label: string;
 }
+
+/**
+ * Insist that no two shapes share an identity. Two pieces with one id would
+ * quietly share a target and a tray slot, which looks like a layout bug a long
+ * way from the deal that caused it, so it is caught where the shapes arrive.
+ */
+export function assertUniquePieceIds(shapes: readonly PieceShape[], context: string): void {
+  const seen = new Set<PieceId>();
+  for (const shape of shapes) {
+    if (seen.has(shape.id)) {
+      throw new Error(`${context} needs unique piece ids; found duplicate "${shape.id}".`);
+    }
+    seen.add(shape.id);
+  }
+}

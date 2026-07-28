@@ -28,3 +28,5 @@ and an argument nobody can see having changed is worth nothing.
 | [20260728T103610-deploy-to-github-pages](20260728T103610-deploy-to-github-pages.md) | Deploy to Pages from a verified commit |
 | [20260728T115938-composed-layouts](20260728T115938-composed-layouts.md) | Compose layouts for any cast |
 | [20260728T120732-grab-anywhere-in-the-piece-box](20260728T120732-grab-anywhere-in-the-piece-box.md) | Grab a piece by the box around its artwork |
+| [20260728T205626-declarative-level-table](20260728T205626-declarative-level-table.md) | Put the whole difficulty ramp in one table |
+| [20260728T205627-unbuilt-kinds-play-as-stand-ins](20260728T205627-unbuilt-kinds-play-as-stand-ins.md) | Play an unbuilt kind as a stand-in |

@@ -13,18 +13,15 @@ import {
 } from "../src/geometry";
 import {
   GRAB_PADDING,
-  STAGE_COUNT,
-  STAGE_SIZES,
   boxOf,
   buildLayout,
-  buildStageLayout,
+  buildLevelLayout,
   chooseLayout,
   holeOf,
-  nextStage,
-  pickStagePieces,
-  stageSize,
   type Layout,
 } from "../src/layout";
+import { resolveLevel } from "../src/kinds/registry";
+import { LEVELS, LEVEL_COUNT, dealPieces, levelSpec, type LevelSpec } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
 
 const CANVAS = { width: 1000, height: 700 };
@@ -47,20 +44,34 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
 }));
 
 /**
- * Every cast a stage could be dealt is a subset of the shapes in some order,
+ * Every cast a level could be dealt is a subset of the shapes in some order,
  * which is far too many to enumerate. Rotating the list puts each shape in each
  * position at least once, which is what the layout actually depends on: a hole's
  * height comes from the anchor of whichever piece stands there.
  */
-function castsFor(stage: number): PieceShape[][] {
-  const size = stageSize(stage);
+function castsFor(level: LevelSpec): PieceShape[][] {
   return SHAPES.map((_, offset) =>
-    Array.from({ length: size }, (_, index) => SHAPES[(offset + index) % SHAPES.length]!),
+    Array.from({ length: level.pieces }, (_, index) => SHAPES[(offset + index) % SHAPES.length]!),
   );
 }
 
+/** The levels shape-match itself plays, which are the ones a cast of animals fills. */
+const ANIMAL_LEVELS = LEVELS.filter((level) => level.kind === "shape-match");
+
+/**
+ * The most forgiving level in the table. Snapping is the one promise a level
+ * can stretch - `snapForgiveness` multiplies the radius - so the composition is
+ * swept at the widest radius any level asks for rather than at a middling one.
+ */
+const MOST_FORGIVING = LEVELS.reduce((widest, level) =>
+  level.snapForgiveness > widest.snapForgiveness ? level : widest,
+);
+
 /** The most pieces any of the thirty levels asks a layout to hold. */
-const MAX_PIECES = 12;
+const MAX_PIECES = Math.max(...LEVELS.map((level) => level.pieces));
+
+/** The most pieces a level stands on the ground at once. */
+const MAX_SCENE_PIECES = 6;
 
 const COUNTS = Array.from({ length: MAX_PIECES }, (_, index) => index + 1);
 
@@ -119,7 +130,7 @@ const castFor = (count: number, run: number): PieceShape[] => {
  */
 const COMPOSED: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
   COUNTS.flatMap((count) =>
-    Array.from({ length: RUNS }, (_, run) => buildLayout(id, 1, castFor(count, run))),
+    Array.from({ length: RUNS }, (_, run) => buildLayout(id, MOST_FORGIVING, castFor(count, run))),
   ),
 );
 
@@ -159,13 +170,13 @@ const groundOf = (layout: Layout, shape: PieceShape): number =>
 
 describe("anchors", () => {
   it("stands every piece on one ground line, whatever its anchor", () => {
-    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-      for (const cast of castsFor(stage)) {
-        // Landscape spreads a stage's whole cast along one ground line, so any
+    for (const level of ANIMAL_LEVELS) {
+      for (const cast of castsFor(level)) {
+        // Landscape spreads a level's whole cast along one ground line, so any
         // difference here is a piece floating or sinking rather than standing.
-        const layout = buildStageLayout("landscape", stage, cast);
+        const layout = buildLevelLayout("landscape", level, cast);
         expect(layout.groundLines).toHaveLength(1);
-        const grounds = layout.pieces.map((shape) => groundOf(layout, shape));
+        const grounds = layout.pieces.map((shape: PieceShape) => groundOf(layout, shape));
         for (const ground of grounds) expect(ground).toBeCloseTo(grounds[0]!);
       }
     }
@@ -320,106 +331,21 @@ describe("snapping", () => {
   });
 });
 
-describe("stages", () => {
-  it("grows from two animals to three, four, five and six", () => {
-    expect([...STAGE_SIZES]).toEqual([2, 3, 4, 5, 6]);
-    expect(STAGE_COUNT).toBe(5);
-  });
-
-  it("loops back to the first stage after the last", () => {
-    expect(nextStage(1)).toBe(2);
-    expect(nextStage(2)).toBe(3);
-    expect(nextStage(STAGE_COUNT)).toBe(1);
-  });
-
-  it("has a landscape and a portrait layout for every stage", () => {
-    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-      const cast = pickStagePieces(stage, SHAPES);
-      expect(chooseLayout({ width: 1280, height: 800 }, stage, cast).stage).toBe(stage);
-      expect(chooseLayout({ width: 390, height: 844 }, stage, cast).stage).toBe(stage);
+describe("buildLevelLayout", () => {
+  it("composes a landscape and a portrait layout for every level", () => {
+    for (const level of ANIMAL_LEVELS) {
+      const cast = dealPieces(level, SHAPES);
+      expect(chooseLayout({ width: 1280, height: 800 }, level, cast).level).toBe(level);
+      expect(chooseLayout({ width: 390, height: 844 }, level, cast).level).toBe(level);
     }
-  });
-});
-
-describe("pickStagePieces", () => {
-  const idsOf = (cast: readonly PieceShape[]): string[] => cast.map((shape) => shape.id);
-
-  it("deals the right number of pieces for each stage", () => {
-    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-      expect(pickStagePieces(stage, SHAPES)).toHaveLength(stageSize(stage));
-    }
-  });
-
-  it("only uses pieces that actually exist, with no repeats in a stage", () => {
-    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-      for (let run = 0; run < 50; run++) {
-        const cast = pickStagePieces(stage, SHAPES);
-        expect(new Set(idsOf(cast)).size).toBe(cast.length);
-        for (const shape of cast) expect(SHAPES).toContain(shape);
-      }
-    }
-  });
-
-  it("rejects shapes whose piece ids are not unique", () => {
-    const duplicateId = SHAPES[0]!.id;
-    const duplicateIds = [SHAPES[0]!, { ...SHAPES[1]!, id: duplicateId }];
-    expect(() => pickStagePieces(1, duplicateIds, seededRandom(7))).toThrow(
-      new RegExp(`duplicate .*"${duplicateId}"`, "i"),
-    );
   });
 
   it("rejects building a layout from duplicate piece ids", () => {
     const duplicateId = SHAPES[0]!.id;
     const duplicateIds = [SHAPES[0]!, { ...SHAPES[1]!, id: duplicateId }];
-    expect(() => buildStageLayout("landscape", 1, duplicateIds)).toThrow(
+    expect(() => buildLayout("landscape", levelSpec(1), duplicateIds)).toThrow(
       new RegExp(`duplicate .*"${duplicateId}"`, "i"),
     );
-  });
-
-  it("can deal any piece into the final stage", () => {
-    // There are more animals than the biggest stage holds, so a single deal is
-    // a sample rather than the whole list; over enough deals none may be shut
-    // out of the last stage.
-    const seen = new Set<string>();
-    for (let run = 0; run < 200; run++) {
-      for (const shape of pickStagePieces(STAGE_COUNT, SHAPES)) seen.add(shape.id);
-    }
-    expect(seen.size).toBe(SHAPES.length);
-  });
-
-  it("varies which pieces turn up in the shorter stages", () => {
-    const seen = new Set<string>();
-    for (let run = 0; run < 200; run++) {
-      for (const shape of pickStagePieces(1, SHAPES)) seen.add(shape.id);
-    }
-    // Given enough deals a three-piece stage should have shown every animal.
-    expect(seen.size).toBe(SHAPES.length);
-  });
-
-  it("varies the order the pieces are laid out in", () => {
-    const orders = new Set<string>();
-    for (let run = 0; run < 200; run++) {
-      orders.add(idsOf(pickStagePieces(STAGE_COUNT, SHAPES)).join());
-    }
-    expect(orders.size).toBeGreaterThan(1);
-  });
-
-  it("repeats exactly when given the same seed, so a run can be replayed", () => {
-    expect(pickStagePieces(2, SHAPES, seededRandom(7))).toEqual(
-      pickStagePieces(2, SHAPES, seededRandom(7)),
-    );
-    expect(pickStagePieces(2, SHAPES, seededRandom(7))).not.toEqual(
-      pickStagePieces(2, SHAPES, seededRandom(8)),
-    );
-  });
-
-  it("rejects a stage that does not exist", () => {
-    expect(() => pickStagePieces(0, SHAPES)).toThrow();
-    expect(() => pickStagePieces(STAGE_COUNT + 1, SHAPES)).toThrow();
-  });
-
-  it("rejects a stage bigger than the shapes on offer", () => {
-    expect(() => pickStagePieces(STAGE_COUNT, SHAPES.slice(0, 2))).toThrow();
   });
 });
 
@@ -572,14 +498,32 @@ describe("composed layouts", () => {
     // wants two slots of height. Checked at the counts a scene plays, because
     // twelve of those do not fit a landscape canvas at a size worth having.
     const hanging = ORIENTATIONS.flatMap((id) =>
-      COUNTS.filter((count) => count <= stageSize(STAGE_COUNT)).flatMap((count) =>
+      COUNTS.filter((count) => count <= MAX_SCENE_PIECES).flatMap((count) =>
         Array.from({ length: RUNS }, (_, run) =>
-          buildLayout(id, 1, oddCast(count, seededRandom(count * 31 + run), 0)),
+          buildLayout(id, MOST_FORGIVING, oddCast(count, seededRandom(count * 31 + run), 0)),
         ),
       ),
     );
     for (const [name, promise] of PROMISED) {
       expect(complaintsFrom(hanging, promise), name).toEqual([]);
+    }
+  });
+
+  it("keeps every promise for every level of the thirty, as it is played", () => {
+    // The sweep above uses the widest snap radius in the table at every count.
+    // This is the other way round: each level exactly as a child meets it, at
+    // its own forgiveness, over a spread of casts. A level whose numbers the
+    // composition cannot honour is a level that must not be in the table.
+    const levels = ORIENTATIONS.flatMap((id) =>
+      LEVELS.flatMap((level) => {
+        const { spec } = resolveLevel(level, SHAPES.length);
+        return Array.from({ length: RUNS }, (_, run) =>
+          buildLayout(id, spec, castFor(spec.pieces, run)),
+        );
+      }),
+    );
+    for (const [name, promise] of PROMISED) {
+      expect(complaintsFrom(levels, promise), name).toEqual([]);
     }
   });
 
@@ -590,7 +534,9 @@ describe("composed layouts", () => {
     for (const id of ORIENTATIONS) {
       for (let run = 0; run < RUNS; run++) {
         const cast = castFor(MAX_PIECES, run);
-        const slots = COUNTS.map((count) => buildLayout(id, 1, cast.slice(0, count)).slotSize);
+        const slots = COUNTS.map(
+          (count) => buildLayout(id, MOST_FORGIVING, cast.slice(0, count)).slotSize,
+        );
         for (const count of COUNTS) {
           const doubled = slots[count * 2 - 1];
           if (doubled !== undefined) expect(doubled).toBeLessThanOrEqual(slots[count - 1]!);
@@ -605,8 +551,8 @@ describe("composed layouts", () => {
     for (const count of COUNTS.filter((one) => one >= 3)) {
       for (let run = 0; run < RUNS; run++) {
         const cast = castFor(count, run);
-        const landscape = buildLayout("landscape", 1, cast);
-        const portrait = buildLayout("portrait", 1, cast);
+        const landscape = buildLayout("landscape", MOST_FORGIVING, cast);
+        const portrait = buildLayout("portrait", MOST_FORGIVING, cast);
         expect(portrait.groundLines.length).toBeGreaterThan(landscape.groundLines.length);
       }
     }
@@ -615,7 +561,9 @@ describe("composed layouts", () => {
   it("composes the same layout twice for the same cast", () => {
     for (const count of COUNTS) {
       const cast = castFor(count, 0);
-      expect(buildLayout("portrait", 1, cast)).toEqual(buildLayout("portrait", 1, cast));
+      expect(buildLayout("portrait", MOST_FORGIVING, cast)).toEqual(
+        buildLayout("portrait", MOST_FORGIVING, cast),
+      );
     }
   });
 
@@ -623,8 +571,10 @@ describe("composed layouts", () => {
     // Nothing stops a level asking for sixty pieces. What the composition must
     // not do is answer with pieces no toddler could pick up.
     for (const id of ORIENTATIONS) {
-      expect(() => buildLayout(id, 1, animalCast(60, seededRandom(3)))).toThrow(/too small/i);
-      expect(() => buildLayout(id, 1, [])).toThrow(/at least one piece/i);
+      expect(() => buildLayout(id, MOST_FORGIVING, animalCast(60, seededRandom(3)))).toThrow(
+        /too small/i,
+      );
+      expect(() => buildLayout(id, MOST_FORGIVING, [])).toThrow(/at least one piece/i);
     }
   });
 });
@@ -652,19 +602,22 @@ const POLE: PieceShape = {
   label: "pole",
 };
 
+/** A level of three pieces, for casts assembled here rather than dealt. */
+const THREE_PIECE_LEVEL = ANIMAL_LEVELS.find((level) => level.pieces === 3) as LevelSpec;
+
 describe("pieces that are not square", () => {
   const cast = [PLANK, POLE, SHAPES[0]!];
 
   it("stands them on the same ground line as a square piece", () => {
-    // Landscape puts a stage's whole cast on one ground line, so a piece that
+    // Landscape puts a level's whole cast on one ground line, so a piece that
     // is not square floating or sinking shows up as a difference here.
-    const layout = buildStageLayout("landscape", 2, cast);
+    const layout = buildLevelLayout("landscape", THREE_PIECE_LEVEL, cast);
     const grounds = cast.map((shape) => groundOf(layout, shape));
     for (const ground of grounds) expect(ground).toBeCloseTo(grounds[0]!);
   });
 
   for (const id of ORIENTATIONS) {
-    const layout = buildStageLayout(id, 2, cast);
+    const layout = buildLevelLayout(id, THREE_PIECE_LEVEL, cast);
     const boxes = cast.map((shape) => boxOf(layout, shape.id));
 
     describe(`${id} layout`, () => {
@@ -695,7 +648,11 @@ describe("pieces that are not square", () => {
         // width would reach three times further than the plank is tall, so a
         // drop nowhere near it vertically would still count as in.
         for (const box of boxes) {
-          expect(box.snapRadius).toBe(Math.round(Math.min(box.size.width, box.size.height) * 0.68));
+          expect(box.snapRadius).toBe(
+            Math.round(
+              Math.min(box.size.width, box.size.height) * 0.68 * THREE_PIECE_LEVEL.snapForgiveness,
+            ),
+          );
         }
         expect(boxes[0]!.snapRadius).toBeLessThan(boxes[2]!.snapRadius);
         expect(boxes[1]!.snapRadius).toBeLessThan(boxes[2]!.snapRadius);
@@ -718,22 +675,26 @@ describe("pieces that are not square", () => {
 });
 
 describe("chooseLayout", () => {
-  const cast = (stage: number) => pickStagePieces(stage, SHAPES);
+  const cast = (level: LevelSpec) => dealPieces(level, SHAPES);
+  const [one, two, three] = ANIMAL_LEVELS as unknown as [LevelSpec, LevelSpec, LevelSpec];
 
   it("uses the portrait reflow only when taller than wide", () => {
-    expect(chooseLayout({ width: 1280, height: 800 }, 1, cast(1)).id).toBe("landscape");
-    expect(chooseLayout({ width: 1024, height: 1024 }, 2, cast(2)).id).toBe("landscape");
-    expect(chooseLayout({ width: 390, height: 844 }, 3, cast(3)).id).toBe("portrait");
+    expect(chooseLayout({ width: 1280, height: 800 }, one, cast(one)).id).toBe("landscape");
+    expect(chooseLayout({ width: 1024, height: 1024 }, two, cast(two)).id).toBe("landscape");
+    expect(chooseLayout({ width: 390, height: 844 }, three, cast(three)).id).toBe("portrait");
   });
 
-  it("rejects a stage that does not exist rather than showing an empty board", () => {
-    expect(() => chooseLayout({ width: 1280, height: 800 }, 0, cast(1))).toThrow();
-    expect(() => chooseLayout({ width: 1280, height: 800 }, STAGE_COUNT + 1, cast(1))).toThrow();
+  it("rejects a level that does not exist rather than showing an empty board", () => {
+    const viewport = { width: 1280, height: 800 };
+    for (const number of [0, LEVEL_COUNT + 1]) {
+      const invented = { ...one, level: number };
+      expect(() => chooseLayout(viewport, invented, cast(one))).toThrow();
+    }
   });
 
-  it("rejects a cast that does not fill the stage rather than leaving a gap", () => {
-    expect(() => chooseLayout({ width: 1280, height: 800 }, 2, cast(1))).toThrow();
-    expect(() => chooseLayout({ width: 390, height: 844 }, 1, cast(3))).toThrow();
+  it("rejects a cast that does not fill the level rather than leaving a gap", () => {
+    expect(() => chooseLayout({ width: 1280, height: 800 }, two, cast(one))).toThrow();
+    expect(() => chooseLayout({ width: 390, height: 844 }, one, cast(three))).toThrow();
   });
 
   it("fills a decent share of the viewport in both orientations", () => {
@@ -742,9 +703,9 @@ describe("chooseLayout", () => {
       { width: 390, height: 844 },
       { width: 820, height: 1180 },
     ];
-    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
+    for (const level of ANIMAL_LEVELS) {
       for (const viewport of cases) {
-        const layout = chooseLayout(viewport, stage, cast(stage));
+        const layout = chooseLayout(viewport, level, cast(level));
         const scale = fitScale(viewport, layout.canvas);
         const used =
           (layout.canvas.width * scale * layout.canvas.height * scale) /

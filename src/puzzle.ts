@@ -2,22 +2,29 @@
  * What a kind of puzzle is.
  *
  * `game.ts` is a host, not a rulebook: it owns dragging, settling, sound,
- * sparkles and the stage lifecycle, and asks a `PuzzleKind` for everything that
+ * sparkles and the level lifecycle, and asks a `PuzzleKind` for everything that
  * differs between one sort of level and another - which pieces are dealt, what
  * sits behind them, whether a drop counts, and when the level is over.
  *
- * Shape-match (`kinds/shape-match.ts`) is the first implementation. A jigsaw
- * cutter, a tangram or a cause-and-effect level can be another without the host
- * learning anything about them.
+ * Which kind plays a given level comes from the level table (`levels.ts`) by
+ * way of the registry (`kinds/registry.ts`). Shape-match
+ * (`kinds/shape-match.ts`) is the first implementation and, until the others
+ * are built, the stand-in for all of them. A jigsaw cutter, a tangram or a
+ * cause-and-effect level can be another without the host learning anything
+ * about them.
  */
 import type { Point } from "./geometry";
 import type { Layout } from "./layout";
+import type { LevelSpec, PuzzleKindId } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
 
 /** What the host asks for when it wants a level dealt. */
-export interface LevelSpec {
-  /** 1-based stage, which is what decides how many pieces are in play. */
-  readonly stage: number;
+export interface Deal {
+  /**
+   * The level as it will be played - the table's record, or the stand-in the
+   * registry substituted for it. `level.pieces` is how many to deal.
+   */
+  readonly level: LevelSpec;
   /** The shapes on offer. A kind may deal from these or cut its own. */
   readonly shapes: readonly PieceShape[];
 }
@@ -29,8 +36,9 @@ export interface LevelSpec {
  */
 export interface Puzzle {
   /** The `id` of the kind that dealt this. */
-  readonly kind: string;
-  readonly stage: number;
+  readonly kind: PuzzleKindId;
+  /** The level this was dealt for, as played. */
+  readonly level: LevelSpec;
   /** The pieces in play, in layout order. */
   readonly pieces: readonly PieceShape[];
   /**
@@ -41,10 +49,11 @@ export interface Puzzle {
 }
 
 export interface PuzzleKind {
-  readonly id: string;
+  /** The id the level table names this kind by. */
+  readonly id: PuzzleKindId;
 
   /** Deal a level: the pieces, and where each one belongs. */
-  deal(level: LevelSpec, random: () => number): Puzzle;
+  deal(deal: Deal, random: () => number): Puzzle;
 
   /**
    * Markup for everything that sits behind the pieces - the scene and whatever

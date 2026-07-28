@@ -82,7 +82,7 @@ export function playReturn(): void {
   tone({ frequency: 320, duration: 0.14, gain: 0.07, type: "triangle" });
 }
 
-/** Rising arpeggio when a puzzle is finished; longer for the final stage. */
+/** Rising arpeggio when a puzzle is finished; longer for the last level. */
 export function playFanfare(grand = false): void {
   const notes = grand
     ? [523.25, 659.25, 783.99, 1046.5, 1318.51, 1567.98]

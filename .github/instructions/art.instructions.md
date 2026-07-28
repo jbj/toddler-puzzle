@@ -165,7 +165,7 @@ overhang stays inside its budget. The rule lives in
    Passing it is the floor, not the finish line: it cannot see any of the
    pitfalls above.
 7. That's it - every animal in `ANIMAL_IDS` is in the draw, so the new one will
-   start turning up on its own. To make a stage *bigger*, see
+   start turning up on its own. To change what a level holds, see
    [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 
 ## Before calling art finished

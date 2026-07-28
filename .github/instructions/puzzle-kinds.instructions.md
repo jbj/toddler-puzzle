@@ -1,6 +1,6 @@
 ---
 name: "Puzzle kinds and layout"
-description: "The PuzzleKind contract the host plugs into, the animal-and-hole kind, and how a stage's layout is generated."
+description: "The PuzzleKind contract the host plugs into, the thirty-level table and the kind registry, and how a level's layout is generated."
 applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/scenery.ts,src/board.ts"
 ---
 
@@ -10,13 +10,13 @@ applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/scenery.ts,src/board.ts"
 
 `src/game.ts` holds no rules. It is a host: it owns picking a piece up,
 following the finger, settling it back down, the sounds, the sparkles and the
-three-stage lifecycle. Everything that could differ between one sort of level
+level lifecycle. Everything that could differ between one sort of level
 and another comes from a `PuzzleKind` (`src/puzzle.ts`):
 
 ```ts
 interface PuzzleKind {
-  readonly id: string;
-  deal(level: LevelSpec, random: () => number): Puzzle;
+  readonly id: PuzzleKindId;
+  deal(deal: Deal, random: () => number): Puzzle;
   backdrop(puzzle: Puzzle, layout: Layout): string;
   target(puzzle: Puzzle, layout: Layout, piece: PieceId): Point;
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean;
@@ -39,20 +39,55 @@ refuses drifts gently back to the tray with a soft tone, never off screen. A
 kind cannot opt out of that, and should not try to: see
 [`product.instructions.md`](product.instructions.md).
 
-## Stages and layout
+## The level table
 
-`STAGE_SIZES` in `src/layout.ts` says how many pieces each stage holds;
-`pickStagePieces` deals that many at random from the shapes on offer, which fixes
-both the cast and the order they are laid out in. Everything else is *composed*
-for that cast: `buildLayout(id, stage, pieces)` takes any number of pieces and
-works out how many stand on each ground line, how many wait in each tray row, and
-how big a slot they are all drawn to fit inside. There is no table of
-coordinates to keep in step with anything, and nothing to add when a level wants
-a piece count no level has asked for before.
+`LEVELS` in `src/levels.ts` is the whole difficulty ramp: thirty records in six
+chapters of five, one per level, and the only place in the codebase that decides
+how hard anything is. A record says which `kind` of puzzle the level is, how many
+`targets` there are to fill and how many `pieces` fill them (the same number
+except where one animal is cut into slices), how forgiving the snapping is, and
+optionally a `theme` and `options` its kind understands.
+
+Tuning the game is editing that one file, so treat it as the interface it is:
+[decision 20260728T205626](../../docs/decisions/20260728T205626-declarative-level-table.md).
+The table says *what* a level is and never *which* pieces - the cast is still
+dealt at random from the shapes on offer when the puzzle starts (`dealPieces`),
+which is what keeps `?seed=` replaying a level exactly while two plays of it are
+otherwise different.
+
+Retuning the ramp is a table edit and nothing else. Adding a level means adding a
+record; the layout follows, because nothing downstream knows a level count.
+
+## The kind registry
+
+A level names the kind it wants by id. `resolveLevel` in `src/kinds/registry.ts`
+looks that id up, and most of them are not there yet: sliced animals, jigsaws,
+polygon shapes, shatter and cause-and-effect play are each still to be built. A
+level whose kind is missing is played by **shape-match** instead, at a piece
+count that follows its chapter rather than the missing kind's own numbers, so the
+ramp keeps climbing and the level is a real, finishable level. The stand-in is
+deliberately visible: `resolveLevel` returns `standIn: true` and the board's
+`data-kind` says which kind is actually playing. See
+[decision 20260728T205627](../../docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md).
+
+Building a kind is one call - `registerKind(myKind)` at the bottom of the kind's
+own module - and the levels that named it start playing it. Do not edit `LEVELS`
+to switch a kind on, and do not remove the stand-in until every id in
+`PuzzleKindId` is registered.
+
+## Layout
+
+Everything about a board is *composed* for the cast that was dealt:
+`buildLayout(id, level, pieces)` takes any number of pieces and works out how
+many stand on each ground line, how many wait in each tray row, and how big a
+slot they are all drawn to fit inside. There is no table of coordinates to keep
+in step with anything, and nothing to add when a level wants a piece count no
+level has asked for before. `buildLevelLayout` is the same thing with the level's
+own numbers checked against the cast first.
 
 The composition is expressed as fractions of a slot rather than as positions
 (`COMPOSITION` in `src/layout.ts`), so the whole board scales together: a busier
-stage gets smaller pieces, and its margins, gaps and tufts shrink with them
+level gets smaller pieces, and its margins, gaps and tufts shrink with them
 instead of crowding the pieces out. It runs in four steps:
 
 1. split the cast into scene rows and tray rows, every way worth trying, and for
@@ -89,15 +124,21 @@ would let it hang off the canvas on one axis and lock it out of reach on the
 other.
 
 `spreadX` spaces each row evenly across the canvas, and each snap radius follows
-that piece's own smaller side, so a busier stage automatically gets tighter, more
+that piece's own smaller side, so a busier level automatically gets tighter, more
 accurate snapping instead of overlapping snap zones. Pieces shrink as the board
-fills up across the five stages, which is
+fills up along the ramp, which is
 what lets six animals share a single row and still leaves every piece well over a
 tenth of the canvas wide - the size a small hand needs.
 
 The snap radius stays deliberately generous, about two thirds of the piece it
 belongs to; [decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md)
-explains why tightening it is not a cleanup.
+explains why tightening it is not a cleanup. A level's `snapForgiveness`
+multiplies it, between `MIN_SNAP_FORGIVENESS` and `MAX_SNAP_FORGIVENESS`, so the
+earliest levels are wildly generous and the last ones merely generous. It is a
+multiplier rather than a radius so that no level can be less forgiving than the
+floor `SNAP_FRACTION` sets, and the layout tests sweep every count at the most
+forgiving value in the table - which is what keeps two snap zones apart at the
+top of the range.
 
 ## Orientation
 
@@ -108,7 +149,7 @@ would leave the pieces too small to grab, so `chooseLayout()` picks by aspect
 ratio. Rotating the device mid-puzzle rebuilds the board but keeps progress.
 
 The background landscape is generated from the layout (`src/scenery.ts`) rather
-than being a fixed-size image, so every stage and both orientations share one
+than being a fixed-size image, so every level and both orientations share one
 piece of art.
 
 ## Rules for changing layout
@@ -118,9 +159,6 @@ or of the canvas, and several of them are load-bearing: `columnGap` and `rowGap`
 are what hold two snap zones apart, `footRoom` is what keeps a hole clear of the
 tray, and `minSlot` is what keeps a piece grabbable. Reaching past them to nudge
 a coordinate would move a piece without moving the room left for it.
-
-Adding a stage means adding a number to `STAGE_SIZES` and nothing else; the
-layout follows.
 
 All layout tunables belong in `src/layout.ts`. Start there rather than
 scattering a constant into whichever file happened to need it.

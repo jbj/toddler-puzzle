@@ -3,21 +3,21 @@
  *
  * This file owns everything that is the same whatever sort of level is being
  * played: picking a piece up, following the finger, settling it back down,
- * sound, sparkles, and the stage lifecycle. It owns no rules. Which pieces are
+ * sound, sparkles, and the level lifecycle. It owns no rules. Which pieces are
  * dealt, what sits behind them, whether a drop counts and when a level is over
- * all come from the `PuzzleKind` (see `puzzle.ts`); shape-match is one such
- * kind, and the host cannot tell it from any other.
+ * all come from the `PuzzleKind` (see `puzzle.ts`), and which kind plays a
+ * given level comes from the level table by way of the registry. The host
+ * cannot tell one kind from another.
  *
  * What the host does insist on is that the game stays forgiving: a drop the
  * kind refuses drifts gently back to the tray with a soft tone, never off
  * screen and never a buzzer.
  *
- * A game is five stages long: two pieces, then three, then four, then five,
- * then six. Every stage
- * is dealt fresh, so it never plays out quite the same way twice. Finishing a
- * stage shows one big button that leads to the next one, and the button after
- * the last stage starts the whole game over - so the only way to go is forward
- * and there is never a menu to get lost in.
+ * A game is thirty levels long, in six chapters of five (`levels.ts`). Every
+ * level is dealt fresh, so it never plays out quite the same way twice.
+ * Finishing a level shows one big button that leads to the next one, and the
+ * button after the last level starts the whole game over - so the only way to
+ * go is forward and there is never a menu to get lost in.
  *
  * Which tray slot each piece belongs to lives here and survives a re-layout, so
  * rotating the device mid-puzzle does not lose progress.
@@ -27,7 +27,9 @@ import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
 import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
 import { enableDragging } from "./drag";
 import { boxCenter, shuffle, type Point, type Size } from "./geometry";
-import { STAGE_COUNT, boxOf, chooseLayout, nextStage, type Layout } from "./layout";
+import { resolveLevel } from "./kinds/registry";
+import { boxOf, chooseLayout, type Layout } from "./layout";
+import { LEVEL_COUNT, levelSpec, nextLevel, type LevelSpec } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
 import type { Puzzle, PuzzleKind } from "./puzzle";
 
@@ -42,25 +44,31 @@ interface PieceState {
 const viewport = (): Size => ({ width: window.innerWidth, height: window.innerHeight });
 
 /**
- * `kind` supplies the rules; `shapes` are the pieces it may deal from; `random`
- * is injectable so a run can be made repeatable - `?seed=` in main.ts uses it.
- * Left alone, every puzzle deals a fresh cast.
+ * `shapes` are the pieces a kind may deal from; `random` is injectable so a run
+ * can be made repeatable - `?seed=` in main.ts uses it - and left alone every
+ * puzzle deals a fresh cast. `startLevel` is where the game begins, which is
+ * level 1 for a player and anything for `?level=`.
  */
 export function createGame(
   root: HTMLElement,
-  kind: PuzzleKind,
   shapes: readonly PieceShape[],
   random: () => number = Math.random,
+  startLevel = 1,
 ): void {
   const state = new Map<PieceId, PieceState>();
 
-  let stage = 1;
+  let levelNumber = startLevel;
   // Assigned by the startPuzzle() call at the end of this function, which is
-  // what deals the first level and mounts the first board.
+  // what resolves the first level, deals it and mounts the first board.
+  let kind!: PuzzleKind;
+  let level!: LevelSpec;
   let puzzle!: Puzzle;
   let layout!: Layout;
   let board!: Board;
   let complete = false;
+
+  /** The last level of the set gets the fanfare and the replay arrow. */
+  const isLastLevel = (): boolean => levelNumber === LEVEL_COUNT;
 
   function stateOf(piece: PieceId): PieceState {
     const found = state.get(piece);
@@ -112,13 +120,13 @@ export function createGame(
     if (complete || !kind.isComplete(puzzle)) return;
 
     complete = true;
-    const last = stage === STAGE_COUNT;
+    const last = isLastLevel();
     // Let the last snap chime land before the fanfare starts.
     window.setTimeout(() => {
       playFanfare(last);
       celebrationBurst(board.fxLayer, layout);
       showFinishButton(board.fxLayer, layout, last ? "again" : "next", () =>
-        goToStage(nextStage(stage)),
+        goToLevel(nextLevel(levelNumber)),
       );
     }, 260);
   }
@@ -137,14 +145,22 @@ export function createGame(
   }
 
   /**
-   * Deal a fresh level for the current stage: new pieces, new board, shuffled
-   * tray slots. Both the reset button and moving between stages come through
-   * here, so a toddler never sees the same line-up twice in a row for long.
+   * Deal the current level afresh: whoever plays it, new pieces, new board,
+   * shuffled tray slots. Both the reset button and moving between levels come
+   * through here, so a toddler never sees the same line-up twice in a row for
+   * long.
+   *
+   * The level is resolved every time rather than once, because a level whose
+   * kind is not built yet is played by a stand-in, and the stand-in has a piece
+   * count of its own; see `kinds/registry.ts`.
    */
   function startPuzzle(): void {
     complete = false;
-    puzzle = kind.deal({ stage, shapes }, random);
-    layout = chooseLayout(viewport(), stage, puzzle.pieces);
+    const resolved = resolveLevel(levelSpec(levelNumber), shapes.length);
+    kind = resolved.kind;
+    level = resolved.spec;
+    puzzle = kind.deal({ level, shapes }, random);
+    layout = chooseLayout(viewport(), level, puzzle.pieces);
     board = mount(layout);
     state.clear();
     const slots = shuffle(
@@ -157,9 +173,9 @@ export function createGame(
     render();
   }
 
-  /** Move on to a different stage: new level, new layout, fresh board. */
-  function goToStage(next: number): void {
-    stage = next;
+  /** Move on to a different level: new deal, new layout, fresh board. */
+  function goToLevel(next: number): void {
+    levelNumber = next;
     startPuzzle();
   }
 
@@ -200,16 +216,16 @@ export function createGame(
 
   /** Rebuild for a new orientation, keeping progress intact. */
   function relayout(): void {
-    const next = chooseLayout(viewport(), stage, puzzle.pieces);
+    const next = chooseLayout(viewport(), level, puzzle.pieces);
     if (next.id === layout.id) return;
     layout = next;
     board = mount(layout);
     render();
     if (complete) {
-      const last = stage === STAGE_COUNT;
+      const last = isLastLevel();
       celebrationBurst(board.fxLayer, layout);
       showFinishButton(board.fxLayer, layout, last ? "again" : "next", () =>
-        goToStage(nextStage(stage)),
+        goToLevel(nextLevel(levelNumber)),
       );
     }
   }

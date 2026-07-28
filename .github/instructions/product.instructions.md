@@ -6,9 +6,10 @@ description: "What Animal Puzzle is for, the invariants that must not be weakene
 # Product decisions
 
 Animal Puzzle is a drag-and-drop animal shape puzzle for toddlers: a two-year-old
-matches large animal pieces to matching animal-shaped holes. A game is five
-puzzles long and grows as it goes - two animals, then three, then four, then
-five, then six - so the first win comes quickly and the board fills up from there.
+matches large animal pieces to matching animal-shaped holes. A game is thirty
+levels long, in six chapters of five, and it grows as it goes - one animal to
+begin with, so the first win comes quickly, then more pieces, more kinds of
+puzzle, and a little less forgiveness as it climbs.
 
 This file is the one to read before changing what the game *does*. It is not
 attached automatically, because most changes do not need it; read it whenever a
@@ -41,8 +42,9 @@ oversights until you know it, so the reason is written next to the rule.
   dropped. Do not tighten it as a cleanup. Why: near misses should count for a
   toddler.
 - Let the game move only forward: no menu, no difficulty picker, no settings, no
-  failure state, and no score. The five dots are an indicator for a grown-up,
-  not a control. Why: a two-year-old cannot read or configure a toy.
+  failure state, and no score. The chapter dots are an indicator for a grown-up,
+  not a control, and `?level=` in the URL is a tool for working on the game, not
+  a way in. Why: a two-year-old cannot read or configure a toy.
 - Keep the project free of binary assets, runtime dependencies, and network
   requests. Art is hand-authored SVG; sound is synthesised with the Web Audio
   API. Why: there is nothing to download and nothing to fail to load.
@@ -62,10 +64,10 @@ mechanics are in
 [decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md).
 
 **The game only ever moves forward.** There is no menu and no difficulty picker:
-the five stages are always played in the same order, the button at the end of
+the thirty levels are always played in the same order, the button at the end of
 one leads straight into the next, and the button after the last one starts again
-at two animals. Five dots by the reset button show a grown-up how far along
-the set is; they are not a control. See
+at level 1. Six dots by the reset button, one per chapter, show a grown-up how
+far along the set is; they are not a control. See
 [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
 
 **Toddler-proofing.** Pinch-zoom, double-tap zoom, text selection, long-press

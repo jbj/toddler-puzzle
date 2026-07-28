@@ -163,7 +163,7 @@ let cachedShapes: readonly PieceShape[] | null = null;
 export function loadAnimalShapes(): readonly PieceShape[] {
   if (!cachedShapes) {
     // Every animal is parsed up front: a malformed asset should fail loudly at
-    // startup, not on the stage that happens to use it.
+    // startup, not on the level that happens to use it.
     cachedShapes = ANIMAL_IDS.map(parseAnimal);
   }
   return cachedShapes;

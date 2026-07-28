@@ -75,7 +75,7 @@ export function celebrationBurst(fxLayer: SVGGElement, layout: Layout): void {
 
 /**
  * Large, unmissable button shown when a puzzle is finished: an arrow onwards to
- * the next stage, or a replay arrow after the last one. It lives in the tray,
+ * the next level, or a replay arrow after the last one. It lives in the tray,
  * which is empty by the time the puzzle is complete, and is far bigger than any
  * adult UI control because it is meant to be hit by a toddler.
  */

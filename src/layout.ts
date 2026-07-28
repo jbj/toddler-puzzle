@@ -1,15 +1,14 @@
 /**
- * Stages and layouts.
+ * Layouts, and every tunable constant behind them.
  *
- * The game is five stages long - two pieces, then three, then four, then five,
- * then six - so a
- * toddler starts with an easy win and the board fills up as they go. Each stage
- * has its own layout in each orientation, because the puzzle reflows rather than
- * just shrinking: a landscape screen gets rows of pieces with the tray
- * at the top, a portrait screen gets narrower rows and a taller tray.
- * Pieces start in the tray so toddlers can drag them down to their holes.
- * Letterboxing a landscape canvas into a phone held upright would leave the
- * pieces far too small to grab.
+ * The game is thirty levels long and the board fills up as it goes, so a layout
+ * has to hold whatever the level table asks for - see `levels.ts`, which is
+ * where the curve itself is tuned. Each level is composed afresh in each
+ * orientation, because the puzzle reflows rather than just shrinking: a
+ * landscape screen gets rows of pieces with the tray at the top, a portrait
+ * screen gets narrower rows and a taller tray. Pieces start in the tray so
+ * toddlers can drag them down to their holes. Letterboxing a landscape canvas
+ * into a phone held upright would leave the pieces far too small to grab.
  *
  * Nothing here is placed by hand. A layout is composed for whatever cast it is
  * given: the pieces are split into rows of ground and rows of tray, the biggest
@@ -27,16 +26,21 @@
  *
  * All values are in logical canvas units; geometry.ts maps them to pixels.
  */
-import { fitScale, scaleSize, shuffle, type Point, type Size } from "./geometry";
-import type { PieceId, PieceShape } from "./piece";
+import { fitScale, scaleSize, type Point, type Size } from "./geometry";
+import { levelSpec, type LevelSpec } from "./levels";
+import { assertUniquePieceIds, type PieceId, type PieceShape } from "./piece";
 
 /**
  * How close a piece's centre must get to its hole's centre to snap in, as a
  * fraction of the piece. Deliberately large - about two thirds of a piece -
  * because toddlers have poor fine motor control and near-misses should still
  * feel like a win.
+ *
+ * This is the floor. A level may be *more* forgiving than this through its
+ * `snapForgiveness`, which is what carries a one-year-old through the first
+ * chapter; nothing may be less.
  */
-const SNAP_FRACTION = 0.68;
+export const SNAP_FRACTION = 0.68;
 
 /**
  * While dragging, the piece is held slightly above the finger so a small hand
@@ -54,52 +58,6 @@ export const FINGER_LIFT = 34;
  * keeps one piece's grab area out of the next one's.
  */
 export const GRAB_PADDING = 0.04;
-
-/**
- * How many pieces each stage holds. The cast itself is drawn at random from the
- * available shapes every time a puzzle starts, so no two runs are quite the
- * same; only the *number* of pieces is fixed, and the layout is composed around
- * whatever number that is.
- */
-export const STAGE_SIZES: readonly number[] = [2, 3, 4, 5, 6];
-
-export const STAGE_COUNT = STAGE_SIZES.length;
-
-/** How many pieces stage `stage` (1-based) shows. */
-export function stageSize(stage: number): number {
-  const size = STAGE_SIZES[stage - 1];
-  if (size === undefined) throw new Error(`No stage ${stage}.`);
-  return size;
-}
-
-/**
- * Deal a stage's pieces: a random subset of the shapes on offer, in a random
- * order. Both matter - which pieces turn up keeps the puzzle fresh, and their
- * order decides which hole each one stands in, so the same piece isn't always
- * on the left.
- */
-export function pickStagePieces(
-  stage: number,
-  shapes: readonly PieceShape[],
-  random: () => number = Math.random,
-): readonly PieceShape[] {
-  assertUniquePieceIds(shapes, "pickStagePieces()");
-  const size = stageSize(stage);
-  if (size > shapes.length) {
-    throw new Error(`Stage ${stage} needs ${size} pieces but only ${shapes.length} exist.`);
-  }
-  return shuffle(shapes, random).slice(0, size);
-}
-
-function assertUniquePieceIds(shapes: readonly PieceShape[], context: string): void {
-  const seen = new Set<PieceId>();
-  for (const shape of shapes) {
-    if (seen.has(shape.id)) {
-      throw new Error(`${context} needs unique piece ids; found duplicate "${shape.id}".`);
-    }
-    seen.add(shape.id);
-  }
-}
 
 export interface GroundBand {
   readonly top: number;
@@ -119,46 +77,51 @@ export interface PieceBox {
   readonly size: Size;
   /**
    * How near this piece's centre must get to its target's centre to count as
-   * in. `SNAP_FRACTION` of the piece's *smaller* side, so the circle is
-   * generous for a big piece and correspondingly tighter for a small one, and
-   * never reaches further than the piece does on its narrow axis.
+   * in. `SNAP_FRACTION` of the piece's *smaller* side, times the level's
+   * `snapForgiveness`, so the circle is generous for a big piece and
+   * correspondingly tighter for a small one, and never reaches further than the
+   * piece does on its narrow axis.
    */
   readonly snapRadius: number;
 }
 
 /**
- * Fit a shape into this stage's square slot. Scaling by the longer side is what
+ * Fit a shape into this level's square slot. Scaling by the longer side is what
  * keeps a piece of any proportions inside the slot the arrangement laid out, so
  * the layout invariants - holes on canvas, tray slots apart - hold whatever
  * shape turns up.
+ *
+ * `forgiveness` is the level's own multiplier on the snap radius. It is never
+ * below 1, so the two-thirds floor holds everywhere and an early level is only
+ * ever kinder than that.
  */
-function pieceBox(shape: PieceShape, slotSize: number): PieceBox {
+function pieceBox(shape: PieceShape, slotSize: number, forgiveness: number): PieceBox {
   const scale = fitScale({ width: slotSize, height: slotSize }, shape.box);
   const size = scaleSize(shape.box, scale);
   return {
     scale,
     size,
-    snapRadius: Math.round(Math.min(size.width, size.height) * SNAP_FRACTION),
+    snapRadius: Math.round(Math.min(size.width, size.height) * SNAP_FRACTION * forgiveness),
   };
 }
 
 export interface Layout {
   readonly id: "landscape" | "portrait";
-  /** 1-based stage this layout belongs to. */
-  readonly stage: number;
-  /** The stage's pieces, in layout order. */
+  /** The level this was composed for, as it is being played. */
+  readonly level: LevelSpec;
+  /** The level's pieces, in layout order. */
   readonly pieces: readonly PieceShape[];
   readonly canvas: Size;
   /** The square every piece is drawn to fit inside, hole and tray slot alike. */
   readonly slotSize: number;
-  /** What each of this stage's pieces measures, and how forgiving it is. */
+  /** What each of this level's pieces measures, and how forgiving it is. */
   readonly boxes: ReadonlyMap<PieceId, PieceBox>;
   /** Top of the scene; the tray occupies everything above it. */
   readonly sceneTop: number;
   /** Where the ground starts, i.e. the horizon. */
   readonly horizon: number;
   readonly bands: readonly GroundBand[];
-  /** Only the pieces of this stage have holes. */
+  /** Only the pieces of this level have holes. */
   readonly holes: ReadonlyMap<PieceId, Point>;
   readonly traySlots: readonly Point[];
   /**
@@ -176,7 +139,7 @@ export function holeOf(layout: Layout, piece: PieceId): Point {
   const hole = layout.holes.get(piece);
   if (!hole) {
     throw new Error(
-      `Piece "${piece}" has no hole in the stage ${layout.stage} ${layout.id} layout.`,
+      `Piece "${piece}" has no hole in the level ${layout.level.level} ${layout.id} layout.`,
     );
   }
   return hole;
@@ -187,7 +150,7 @@ export function boxOf(layout: Layout, piece: PieceId): PieceBox {
   const box = layout.boxes.get(piece);
   if (!box) {
     throw new Error(
-      `Piece "${piece}" has no box in the stage ${layout.stage} ${layout.id} layout.`,
+      `Piece "${piece}" has no box in the level ${layout.level.level} ${layout.id} layout.`,
     );
   }
   return box;
@@ -251,21 +214,21 @@ const total = (rows: readonly { readonly count: number }[]): number =>
 
 function fromArrangement(
   id: Layout["id"],
-  stage: number,
+  level: LevelSpec,
   pieces: readonly PieceShape[],
   arrangement: Arrangement,
 ): Layout {
-  assertUniquePieceIds(pieces, `buildLayout(${JSON.stringify(id)}, ${stage}, pieces)`);
+  assertUniquePieceIds(pieces, `buildLayout(${JSON.stringify(id)}, level ${level.level}, pieces)`);
   const { canvas, slotSize, sceneRows, trayRows } = arrangement;
   if (total(sceneRows) !== pieces.length || total(trayRows) !== pieces.length) {
     throw new Error(
-      `Stage ${stage} ${id} layout must hold ${pieces.length} pieces, but has ` +
+      `Level ${level.level} ${id} layout must hold ${pieces.length} pieces, but has ` +
         `${total(sceneRows)} holes and ${total(trayRows)} tray slots.`,
     );
   }
 
   const boxes = new Map<PieceId, PieceBox>(
-    pieces.map((shape) => [shape.id, pieceBox(shape, slotSize)]),
+    pieces.map((shape) => [shape.id, pieceBox(shape, slotSize, level.snapForgiveness)]),
   );
 
   const holes = new Map<PieceId, Point>();
@@ -290,7 +253,7 @@ function fromArrangement(
 
   return {
     id,
-    stage,
+    level,
     pieces,
     canvas,
     slotSize,
@@ -326,7 +289,7 @@ const VIEWS: Record<Layout["id"], View> = {
 /**
  * The composition, as fractions rather than as a table of coordinates. Each of
  * these is a share of the slot size unless it says otherwise, so the whole
- * board scales together: a busier stage gets smaller pieces, and its margins,
+ * board scales together: a busier level gets smaller pieces, and its margins,
  * gaps and tufts shrink with them instead of crowding the pieces out.
  *
  * The gaps are not decoration. `columnGap` and `rowGap` are what hold two snap
@@ -604,43 +567,50 @@ function arrange(view: View, pieces: readonly PieceShape[]): Arrangement {
  * pieces that cast holds. Layouts are built when a puzzle starts rather than up
  * front because the cast is random and the ground lines follow it: each shape's
  * anchor sits at a different height inside its box.
+ *
+ * The level is passed whole rather than by number: the composition reads its
+ * `snapForgiveness`, and everything downstream - the board, the dots, an error
+ * message - wants to know which level and chapter it is looking at.
  */
 export function buildLayout(
   id: Layout["id"],
-  stage: number,
+  level: LevelSpec,
   pieces: readonly PieceShape[],
 ): Layout {
-  return fromArrangement(id, stage, pieces, arrange(VIEWS[id], pieces));
+  return fromArrangement(id, level, pieces, arrange(VIEWS[id], pieces));
 }
 
 /**
- * The same, for a numbered stage of the three-stage game, where the cast has to
- * be the size that stage deals - a stage showing the wrong number of pieces is
- * a bug in the deal, not a layout to be composed around. The composition itself
- * does not care: `buildLayout` takes any count.
+ * The same, for a level of the thirty, where the cast has to be the size that
+ * level deals - a level showing the wrong number of pieces is a bug in the
+ * deal, not a layout to be composed around. The composition itself does not
+ * care: `buildLayout` takes any count.
  */
-export function buildStageLayout(
+export function buildLevelLayout(
   id: Layout["id"],
-  stage: number,
+  level: LevelSpec,
   pieces: readonly PieceShape[],
 ): Layout {
-  const size = stageSize(stage);
-  if (pieces.length !== size) {
-    throw new Error(`Stage ${stage} deals ${size} pieces, but was given ${pieces.length}.`);
+  // Levels are looked up rather than trusted, so a spec invented out of thin
+  // air cannot put a board on screen that no level in the table describes.
+  levelSpec(level.level);
+  if (pieces.length !== level.pieces) {
+    throw new Error(
+      `Level ${level.level} deals ${level.pieces} pieces, but was given ${pieces.length}.`,
+    );
   }
-  return buildLayout(id, stage, pieces);
-}
-
-/** Stages are numbered from 1; the stage after the last one is the first again. */
-export function nextStage(stage: number): number {
-  return (stage % STAGE_COUNT) + 1;
+  return buildLayout(id, level, pieces);
 }
 
 /** Portrait reflow kicks in once the viewport is taller than it is wide. */
-export function chooseLayout(viewport: Size, stage: number, pieces: readonly PieceShape[]): Layout {
-  return buildStageLayout(
+export function chooseLayout(
+  viewport: Size,
+  level: LevelSpec,
+  pieces: readonly PieceShape[],
+): Layout {
+  return buildLevelLayout(
     viewport.height > viewport.width ? "portrait" : "landscape",
-    stage,
+    level,
     pieces,
   );
 }

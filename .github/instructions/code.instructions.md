@@ -54,14 +54,16 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/geometry.ts` | Pure maths: screen↔logical mapping, snapping, clamping |
 | `src/piece.ts` | What a piece is: `PieceId` and `PieceShape`, independent of any provider |
 | `src/puzzle.ts` | What a kind of puzzle is: the `PuzzleKind` contract the host plugs into |
+| `src/levels.ts` | The thirty levels: the whole difficulty ramp, in one table |
+| `src/kinds/registry.ts` | Resolves a level's kind, standing in for the kinds not built yet |
 | `src/kinds/shape-match.ts` | The animal-and-hole game, as one `PuzzleKind` |
-| `src/layout.ts` | The stages, their layouts, and all tunable constants |
+| `src/layout.ts` | Composes a level's layout from its cast, and all tunable constants |
 | `src/scenery.ts` | Generates the background for a layout |
 | `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |
-| `src/board.ts` | Builds the SVG scene graph for one stage |
+| `src/board.ts` | Builds the SVG scene graph for one level |
 | `src/icons.ts` | The hand-drawn SVG icons used by the chrome around the puzzle |
 | `src/drag.ts` | Pointer-event drag engine |
-| `src/game.ts` | The host: drag state, settling, sound, sparkles, stage lifecycle |
+| `src/game.ts` | The host: drag state, settling, sound, sparkles, level lifecycle |
 | `src/audio.ts` | Web Audio sound synthesis |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `scripts/preview.mjs` | Renders the art for review, as a contact sheet or one animal large |

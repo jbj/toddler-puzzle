@@ -1,36 +1,44 @@
 ---
 name: "Navigation and feel"
-description: "How the game moves between stages, what the buttons and dots are for, and the feedback and toddler-proofing around a drag."
+description: "How the game moves between levels, what the buttons and dots are for, and the feedback and toddler-proofing around a drag."
 applyTo: "src/game.ts,src/celebrate.ts,src/drag.ts,src/audio.ts,src/main.ts,src/style.css,index.html"
 ---
 
 # Navigation and feel
 
-This is the shell around the puzzle: getting from one stage to the next, what
+This is the shell around the puzzle: getting from one level to the next, what
 happens when a piece lands, and everything that keeps a two-year-old from
 falling out of the game by accident. The rules of a level live elsewhere - see
 [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 
 ## Forward only
 
-A game is five stages long: two pieces, then three, then four, then five, then
-six. Finishing a
-stage clears the tray and puts one big button in it, which leads to the next
-stage; the button after the last stage starts the whole game over
-(`nextStage` in `src/layout.ts` wraps). So the only way to go is forward and
+A game is thirty levels long, in six chapters of five, and it starts on level 1
+with a single huge animal. What each level holds is the table in `src/levels.ts`,
+not anything here; see
+[`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md). Finishing a
+level clears the tray and puts one big button in it, which leads to the next
+level; the button after the last level starts the whole game over
+(`nextLevel` in `src/levels.ts` wraps). So the only way to go is forward and
 there is never a menu to get lost in.
 
 There is no menu, no difficulty picker, no settings, no failure state and no
 score, and adding one is a change to an invariant, not a feature. The reasoning
 is [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
 
-The five dots by the reset button (`buildStageDots` in `src/board.ts`) are
-filled up to the current stage so a grown-up can see how far along the set is.
-They are an indicator, not a control: they carry `pointer-events: none` on
-purpose. Do not make them tappable.
+The six dots by the reset button (`buildChapterDots` in `src/board.ts`) are one
+per chapter, filled up to the chapter being played, so a grown-up can see how far
+along the set is without thirty dots of clutter. They are an indicator, not a
+control: they carry `pointer-events: none` on purpose. Do not make them tappable.
 
-The reset button re-deals the current stage. It goes through the same path as
-moving between stages (`startPuzzle` in `src/game.ts`), so a board is rebuilt
+`?level=` in the URL (`src/main.ts`) starts partway along the ramp. It exists for
+the screenshot run and for whoever is working on the game - playing to level 30
+to look at level 30 takes minutes - and is emphatically not a difficulty picker:
+nothing in the game offers it, and the player cannot read a URL. Do not surface
+it, and do not persist it.
+
+The reset button re-deals the current level. It goes through the same path as
+moving between levels (`startPuzzle` in `src/game.ts`), so a board is rebuilt
 one way rather than two, and a toddler never sees the same line-up twice in a
 row for long.
 
@@ -41,7 +49,7 @@ row for long.
   invariant in [`product.instructions.md`](product.instructions.md).
 - A refused drop plays `playReturn` - a soft, warm tone - and the piece drifts
   back to the tray. Never a buzzer, and never leaving the piece where it fell.
-- A piece that lands gets a sparkle burst; finishing a stage gets a bigger one
+- A piece that lands gets a sparkle burst; finishing a level gets a bigger one
   (`src/celebrate.ts`).
 - `prefers-reduced-motion` is honoured throughout: the settle transition and
   the sparkles collapse to 1ms rather than being removed, so the same code path

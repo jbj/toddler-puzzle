@@ -13,12 +13,13 @@
  *  - the level ends when every piece is standing in its hole.
  */
 import { boxCenter, isWithinSnapRadius, type Point } from "../geometry";
-import { holeOf, boxOf, pickStagePieces, type Layout } from "../layout";
+import { holeOf, boxOf, type Layout } from "../layout";
+import { dealPieces } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
-import type { LevelSpec, Puzzle, PuzzleKind } from "../puzzle";
+import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
 import { renderScenery } from "../scenery";
 
-const ID = "shape-match";
+const ID = "shape-match" as const;
 
 /**
  * One hole cut into the scene. Drawn from the shape's own `outline`, the very
@@ -45,11 +46,11 @@ function hole(shape: PieceShape, layout: Layout, filled: boolean): string {
 export const shapeMatch: PuzzleKind = {
   id: ID,
 
-  deal(level: LevelSpec, random: () => number): Puzzle {
+  deal({ level, shapes }: Deal, random: () => number): Puzzle {
     return {
       kind: ID,
-      stage: level.stage,
-      pieces: pickStagePieces(level.stage, level.shapes, random),
+      level,
+      pieces: dealPieces(level, shapes, random),
       placed: new Set<PieceId>(),
     };
   },

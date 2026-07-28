@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
 import { seededRandom } from "../src/geometry";
-import {
-  STAGE_COUNT,
-  boxOf,
-  buildStageLayout,
-  holeOf,
-  stageSize,
-  type Layout,
-} from "../src/layout";
+import { boxOf, buildLevelLayout, holeOf, type Layout } from "../src/layout";
+import { LEVELS, type LevelSpec } from "../src/levels";
 import { shapeMatch } from "../src/kinds/shape-match";
 import { pieceId, type PieceShape } from "../src/piece";
 import type { Puzzle } from "../src/puzzle";
+
+/** The levels shape-match plays in its own right, rather than as a stand-in. */
+const ANIMAL_LEVELS = LEVELS.filter((level) => level.kind === shapeMatch.id);
+
+/** A level of three pieces, for the casts assembled here rather than dealt. */
+const THREE_PIECE_LEVEL = ANIMAL_LEVELS.find((level) => level.pieces === 3) as LevelSpec;
 
 const ORIENTATIONS = ["landscape", "portrait"] as const;
 
@@ -34,16 +34,15 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id, index) => ({
  * The deal is random, so every check below runs against a rotation of the list
  * that puts each shape in each place at least once.
  */
-function castsFor(stage: number): PieceShape[][] {
-  const size = stageSize(stage);
+function castsFor(level: LevelSpec): PieceShape[][] {
   return SHAPES.map((_, offset) =>
-    Array.from({ length: size }, (_, index) => SHAPES[(offset + index) % SHAPES.length]!),
+    Array.from({ length: level.pieces }, (_, index) => SHAPES[(offset + index) % SHAPES.length]!),
   );
 }
 
 /** A puzzle standing on a given cast, as if the kind had dealt exactly that. */
-function puzzleOf(stage: number, cast: readonly PieceShape[]): Puzzle {
-  return { kind: shapeMatch.id, stage, pieces: cast, placed: new Set() };
+function puzzleOf(level: LevelSpec, cast: readonly PieceShape[]): Puzzle {
+  return { kind: shapeMatch.id, level, pieces: cast, placed: new Set() };
 }
 
 /**
@@ -71,28 +70,31 @@ const POLE: PieceShape = {
 
 const MIXED: readonly PieceShape[] = [PLANK, POLE, SHAPES[0]!];
 
-/** Every stage, both orientations, across a representative spread of casts. */
+/** Every level, both orientations, across a representative spread of casts. */
 const CASES: { puzzle: Puzzle; layout: Layout }[] = [];
-for (let stage = 1; stage <= STAGE_COUNT; stage++) {
+for (const level of ANIMAL_LEVELS) {
   for (const id of ORIENTATIONS) {
-    for (const cast of castsFor(stage)) {
-      CASES.push({ puzzle: puzzleOf(stage, cast), layout: buildStageLayout(id, stage, cast) });
+    for (const cast of castsFor(level)) {
+      CASES.push({ puzzle: puzzleOf(level, cast), layout: buildLevelLayout(id, level, cast) });
     }
   }
 }
 // The same rules, against a cast that is not square: every rule below holds for
 // a piece of any proportions or it does not hold at all.
 for (const id of ORIENTATIONS) {
-  CASES.push({ puzzle: puzzleOf(2, MIXED), layout: buildStageLayout(id, 2, MIXED) });
+  CASES.push({
+    puzzle: puzzleOf(THREE_PIECE_LEVEL, MIXED),
+    layout: buildLevelLayout(id, THREE_PIECE_LEVEL, MIXED),
+  });
 }
 
 describe("shape-match deal", () => {
-  it("deals the stage's pieces, none of them placed yet", () => {
-    for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-      const puzzle = shapeMatch.deal({ stage, shapes: SHAPES }, seededRandom(stage + 1));
+  it("deals the level's pieces, none of them placed yet", () => {
+    for (const level of ANIMAL_LEVELS) {
+      const puzzle = shapeMatch.deal({ level, shapes: SHAPES }, seededRandom(level.level + 1));
       expect(puzzle.kind).toBe(shapeMatch.id);
-      expect(puzzle.stage).toBe(stage);
-      expect(puzzle.pieces).toHaveLength(stageSize(stage));
+      expect(puzzle.level).toBe(level);
+      expect(puzzle.pieces).toHaveLength(level.pieces);
       expect(new Set(puzzle.pieces.map((shape) => shape.id)).size).toBe(puzzle.pieces.length);
       for (const shape of puzzle.pieces) expect(SHAPES).toContain(shape);
       expect(puzzle.placed.size).toBe(0);
@@ -102,7 +104,7 @@ describe("shape-match deal", () => {
   it("repeats exactly for the same seed, so a run can be replayed", () => {
     const deal = (seed: number): string =>
       shapeMatch
-        .deal({ stage: 2, shapes: SHAPES }, seededRandom(seed))
+        .deal({ level: THREE_PIECE_LEVEL, shapes: SHAPES }, seededRandom(seed))
         .pieces.map((shape) => shape.id)
         .join();
     expect(deal(7)).toBe(deal(7));
@@ -156,7 +158,7 @@ describe("shape-match rules", () => {
 
   it("is complete only once every piece is standing in its hole", () => {
     for (const { puzzle, layout } of CASES) {
-      const fresh = puzzleOf(puzzle.stage, puzzle.pieces);
+      const fresh = puzzleOf(puzzle.level, puzzle.pieces);
       for (const shape of fresh.pieces) {
         expect(shapeMatch.isComplete(fresh)).toBe(false);
         fresh.placed.add(shape.id);
@@ -172,8 +174,8 @@ describe("shape-match rules", () => {
 
 describe("shape-match with pieces that are not square", () => {
   for (const id of ORIENTATIONS) {
-    const layout = buildStageLayout(id, 2, MIXED);
-    const puzzle = puzzleOf(2, MIXED);
+    const layout = buildLevelLayout(id, THREE_PIECE_LEVEL, MIXED);
+    const puzzle = puzzleOf(THREE_PIECE_LEVEL, MIXED);
 
     describe(`${id} layout`, () => {
       it("is just as forgiving sideways as it is up and down", () => {
@@ -248,7 +250,7 @@ describe("shape-match backdrop", () => {
 
   it("hides a hole once its piece covers it, and no other", () => {
     for (const { puzzle, layout } of CASES) {
-      const filled = puzzleOf(puzzle.stage, puzzle.pieces);
+      const filled = puzzleOf(puzzle.level, puzzle.pieces);
       const first = filled.pieces[0]!;
       filled.placed.add(first.id);
       const blocks = holeBlocks(shapeMatch.backdrop(filled, layout));

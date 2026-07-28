@@ -64,11 +64,16 @@ square.
 ## What `npm run shot` covers
 
 `npm run shot` is an end-to-end check: it serves the built app, drives real
-pointer drags over the Chrome DevTools Protocol, and plays all five stages
-through - asserting that pieces snap, that a bad drop does *not* stick, that each
-stage hands over to the next, that rotating to portrait preserves progress, that
-the last stage loops back to the first, and that different seeds deal different
-puzzles while one seed always deals the same. Screenshots land in `.art/shots/`,
+pointer drags over the Chrome DevTools Protocol, and plays the whole first
+chapter through, then jumps by `?level=` to the busiest board of animals and to
+the last level - asserting that pieces snap, that a bad drop does *not* stick,
+that each level hands over to the next, that a level whose kind is not built yet
+is still a complete playable level, that the boards grow rather than shrink as a
+chapter goes on, that the chapter dots track the chapter, that rotating to
+portrait preserves progress, that the last level loops back to the first, and
+that different seeds deal different puzzles while one seed always deals the same.
+It plays a sample rather than all thirty because thirty levels of real pointer
+drags would take minutes; the table itself is swept in `tests/levels.test.ts`. Screenshots land in `.art/shots/`,
 alongside a `contact-sheet.png` that collects them into one image to drag into a
 pull request.
 

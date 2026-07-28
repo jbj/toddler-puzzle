@@ -1,7 +1,7 @@
 /**
  * Builds the SVG scene graph: the backdrop the kind draws, the draggable
  * pieces, and the chrome around them. Rendering only - all decisions live in
- * game.ts and in the puzzle kind. Only the current stage's pieces are built.
+ * game.ts and in the puzzle kind. Only the current level's pieces are built.
  *
  * A piece is more than its drawing, though: each one carries an invisible
  * rectangle over its artwork so it can be picked up anywhere inside that box.
@@ -9,7 +9,8 @@
  */
 import { padWithin, type Point } from "./geometry";
 import { replayArrow } from "./icons";
-import { GRAB_PADDING, STAGE_COUNT, boxOf, type Layout } from "./layout";
+import { GRAB_PADDING, boxOf, type Layout } from "./layout";
+import { CHAPTERS, LEVEL_COUNT, chapterNumber } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -24,7 +25,7 @@ export interface Board {
   readonly resetButton: SVGGElement;
 }
 
-/** An element built for the current stage. Throws if the piece isn't in play. */
+/** An element built for the current level. Throws if the piece isn't in play. */
 export function elementFor(
   elements: ReadonlyMap<PieceId, SVGGElement>,
   piece: PieceId,
@@ -115,17 +116,22 @@ function buildResetButton(canvasHeight: number): SVGGElement {
 }
 
 /**
- * One dot per stage, filled up to the current one, so a grown-up can see how
- * far along the five puzzles are. Deliberately not interactive: every target a
- * toddler can hit should do something they meant to do.
+ * One dot per chapter, filled up to the one being played, so a grown-up can see
+ * how far along the thirty levels are. A dot per level would be thirty of them
+ * across the bottom of the board; the chapters are the six milestones worth
+ * showing, and the exact level is in the label for anyone who wants it.
+ *
+ * Deliberately not interactive: every target a toddler can hit should do
+ * something they meant to do.
  */
-function buildStageDots(layout: Layout): SVGGElement {
-  const dots = group("stage-dots");
+function buildChapterDots(layout: Layout): SVGGElement {
+  const chapter = chapterNumber(layout.level);
+  const dots = group("chapter-dots");
   dots.setAttribute("transform", `translate(122 ${layout.canvas.height - 58})`);
-  dots.setAttribute("aria-label", `Puzzle ${layout.stage} of ${STAGE_COUNT}`);
+  dots.setAttribute("aria-label", `Level ${layout.level.level} of ${LEVEL_COUNT}`);
   dots.style.pointerEvents = "none";
-  dots.innerHTML = Array.from({ length: STAGE_COUNT }, (_, index) => {
-    const reached = index < layout.stage;
+  dots.innerHTML = Array.from({ length: CHAPTERS.length }, (_, index) => {
+    const reached = index < chapter;
     return `<circle cx="${index * 32}" cy="0" r="11"
       fill="${reached ? "#ffd23f" : "#ffffff"}" fill-opacity="${reached ? 1 : 0.35}"
       stroke="#4f7d8c" stroke-width="3" stroke-opacity="0.75" />`;
@@ -139,7 +145,11 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
   stage.setAttribute("viewBox", `0 0 ${layout.canvas.width} ${layout.canvas.height}`);
   stage.setAttribute("preserveAspectRatio", "xMidYMid meet");
   stage.dataset["layout"] = layout.id;
-  stage.dataset["stage"] = String(layout.stage);
+  stage.dataset["level"] = String(layout.level.level);
+  stage.dataset["chapter"] = layout.level.chapter;
+  // Which kind is actually playing, which is the level's own until the kind it
+  // asked for is built; see kinds/registry.ts.
+  stage.dataset["kind"] = layout.level.kind;
 
   const backdropLayer = group("backdrop");
   const piecesLayer = group("pieces");
@@ -154,7 +164,7 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
   }
 
   const resetButton = buildResetButton(layout.canvas.height);
-  stage.append(backdropLayer, piecesLayer, fxLayer, resetButton, buildStageDots(layout));
+  stage.append(backdropLayer, piecesLayer, fxLayer, resetButton, buildChapterDots(layout));
 
   root.replaceChildren(stage);
 

@@ -280,8 +280,19 @@ const grabBoxMargins = () =>
   })()
 `);
 const holeCount = () => evaluate(`document.querySelectorAll('.hole').length`);
-const stageNumber = () => evaluate(`Number(document.querySelector('#stage').dataset.stage)`);
+const levelNumber = () => evaluate(`Number(document.querySelector('#stage').dataset.level)`);
+const chapterName = () => evaluate(`document.querySelector('#stage').dataset.chapter`);
+/** Which kind is actually playing: a level's own, or the stand-in for it. */
+const kindName = () => evaluate(`document.querySelector('#stage').dataset.kind`);
 const layoutName = () => evaluate(`document.querySelector('#stage').dataset.layout`);
+/** The chapter dots: how many there are, and how many are filled in. */
+const chapterDots = () =>
+  evaluate(`
+  (() => {
+    const dots = [...document.querySelectorAll('.chapter-dots circle')];
+    return { total: dots.length, filled: dots.filter((d) => d.getAttribute('fill') === '#ffd23f').length };
+  })()
+`);
 const animalsOnBoard = () =>
   evaluate(`[...document.querySelectorAll('.piece')].map((p) => p.dataset.piece)`);
 /** The cast is random, so the script asks the board who is on it. */
@@ -294,12 +305,23 @@ const finishLabel = () =>
     `document.querySelector('#stage .fx [role="button"]')?.getAttribute('aria-label') ?? ''`,
   );
 
-/** Press the big button that ends a stage, then wait for the next board. */
+/** Press the big button that ends a level, then wait for the next board. */
 async function pressFinishButton() {
   await evaluate(`document.querySelector('#stage .fx [role="button"]').dispatchEvent(
     new PointerEvent('pointerdown', { bubbles: true })
   )`);
   await sleep(500);
+}
+
+/**
+ * Start at a given level. `?level=` exists for this script and for whoever is
+ * working on the game - reaching level 30 by playing the twenty-nine before it
+ * would take minutes - and is not a difficulty picker: nothing in the game
+ * offers it, and the player cannot read.
+ */
+async function goToLevel(level) {
+  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?level=${level}&seed=${SEED}` });
+  await sleep(900);
 }
 
 /** Drag every animal still in the tray into its hole. */
@@ -342,99 +364,111 @@ try {
   const bootError = await evaluate(`document.querySelector('#stage') ? '' : 'stage missing'`);
   check("app boots and renders the stage", bootError === "");
 
-  // --- stage 1: two animals -----------------------------------------------
-  check("starts on stage 1", (await stageNumber()) === 1);
-  check("two pieces rendered", (await pieceCount()) === 2);
-  check("two holes rendered", (await holeCount()) === 2);
-  const stage1Cast = await animalsOnBoard();
-  check("stage 1 deals two different animals", new Set(stage1Cast).size === 2);
-  await shot("01-stage1-start");
+  // --- level 1: one huge animal --------------------------------------------
+  // The ramp starts with a single piece so the first win arrives at once; the
+  // level table (src/levels.ts) is where that and the other twenty-nine live.
+  check("starts on level 1", (await levelNumber()) === 1);
+  check("level 1 is in the first chapter", (await chapterName()) === "first-touches");
+  const firstCount = await pieceCount();
+  check(`level 1 is one or two huge pieces (${firstCount})`, firstCount >= 1 && firstCount <= 2);
+  check("every piece has a hole", (await holeCount()) === firstCount);
+  const dots = await chapterDots();
+  check(
+    `six chapter dots, one filled (${dots.filled} of ${dots.total})`,
+    dots.total === 6 && dots.filled === 1,
+  );
+  await shot("01-level1-start");
 
-  // Drag one animal in, pausing mid-flight to capture the piece in hand.
-  await dragAnimal(stage1Cast[0], { pauseAtHalfway: () => shot("02-mid-drag") });
+  // Drag it in, pausing mid-flight to capture the piece in hand.
+  await dragAnimal((await animalsOnBoard())[0], { pauseAtHalfway: () => shot("02-mid-drag") });
   check("dragged piece snapped into its hole", (await placedCount()) === 1);
+  await solveRemaining();
+  check("finish button appears when complete", (await finishButtons()) === 1);
+  check("level 1 offers the next puzzle", (await finishLabel()) === "Next puzzle");
+  await shot("03-level1-complete");
+
+  // --- level 2: a level whose kind is not built yet -------------------------
+  // Cause-and-effect play does not exist, so level 2 is played by the
+  // shape-match stand-in (src/kinds/registry.ts). It has to be a real, complete
+  // level: that is the whole point of standing in rather than skipping.
+  await pressFinishButton();
+  check("moves on to level 2", (await levelNumber()) === 2);
+  check("an unbuilt kind is played by the stand-in", (await kindName()) === "shape-match");
+  const secondCast = await animalsOnBoard();
+  check("level 2 deals two different animals", new Set(secondCast).size === 2);
+  check("level 2 starts empty", (await placedCount()) === 0);
 
   // A deliberately bad drop must not stick.
-  const stray = await centreOf(`.piece[data-piece="${stage1Cast[1]}"]`);
+  const stray = await centreOf(`.piece[data-piece="${secondCast[0]}"]`);
   await mouse("mousePressed", stray.x, stray.y);
   await mouse("mouseMoved", 640, 120);
   await mouse("mouseReleased", 640, 120);
   await sleep(500);
-  check("wrong drop does not stick", (await placedCount()) === 1);
-  await shot("03-after-wrong-drop");
+  check("wrong drop does not stick", (await placedCount()) === 0);
+  await shot("04-after-wrong-drop");
 
   // A piece is picked up by the box around its artwork, not only where a finger
   // lands on paint, so the gap between a giraffe's legs works as well as the
   // giraffe does. Grab one somewhere the artwork is not, and it should still
   // come along and snap in.
   await checkGrabBoxes(2);
-  const offPaint = await emptySpotOn(stage1Cast[1]);
+  const offPaint = await emptySpotOn(secondCast[1]);
   check("a piece has grabbable space off its artwork", offPaint !== null);
   if (offPaint) {
-    await dragAnimal(stage1Cast[1], { grabAt: offPaint });
-    check("a piece picked up off its artwork snaps in", (await placedCount()) === 2);
+    await dragAnimal(secondCast[1], { grabAt: offPaint });
+    check("a piece picked up off its artwork snaps in", (await placedCount()) === 1);
   }
 
   await solveRemaining();
-  check("all two pieces placed", (await placedCount()) === 2);
-  check("finish button appears when complete", (await finishButtons()) === 1);
-  check("stage 1 offers the next puzzle", (await finishLabel()) === "Next puzzle");
-  await shot("04-stage1-complete");
+  check("level 2 can be completed", (await placedCount()) === 2);
 
-  // --- stage 2: three animals ---------------------------------------------
-  await pressFinishButton();
-  check("moves on to stage 2", (await stageNumber()) === 2);
-  check("stage 2 has three pieces", (await pieceCount()) === 3);
-  check("stage 2 starts empty", (await placedCount()) === 0);
-  check("stage 2 deals three different animals", new Set(await animalsOnBoard()).size === 3);
-  await shot("05-stage2-start");
+  // --- the rest of the first chapter ---------------------------------------
+  // Five levels that grow rather than five of the same size: the table says the
+  // board never shrinks as a chapter goes on, and this is that, played.
+  let previousCount = 2;
+  for (const level of [3, 4, 5]) {
+    await pressFinishButton();
+    check(`moves on to level ${level}`, (await levelNumber()) === level);
+    const pieces = await pieceCount();
+    check(`level ${level} does not shrink (${pieces} pieces)`, pieces >= previousCount);
+    check(
+      `level ${level} deals ${pieces} different animals`,
+      new Set(await animalsOnBoard()).size === pieces,
+    );
+    previousCount = pieces;
+    if (level === 5) await shot("05-level5-start");
+    await solveRemaining();
+    check(`level ${level} can be completed`, (await placedCount()) === pieces);
+  }
+  check("the first chapter still offers the next puzzle", (await finishLabel()) === "Next puzzle");
 
-  await solveRemaining();
-  check("stage 2 can be completed", (await placedCount()) === 3);
-
-  // --- stage 3: four animals ----------------------------------------------
-  await pressFinishButton();
-  check("moves on to stage 3", (await stageNumber()) === 3);
-  check("stage 3 has four pieces", (await pieceCount()) === 4);
-  check("stage 3 deals four different animals", new Set(await animalsOnBoard()).size === 4);
-  await shot("06-stage3-start");
-
-  await solveRemaining();
-  check("stage 3 can be completed", (await placedCount()) === 4);
-
-  // --- stage 4: five animals ----------------------------------------------
-  await pressFinishButton();
-  check("moves on to stage 4", (await stageNumber()) === 4);
-  check("stage 4 has five pieces", (await pieceCount()) === 5);
-  check("stage 4 deals five different animals", new Set(await animalsOnBoard()).size === 5);
-  await shot("07-stage4-start");
-
-  await solveRemaining();
-  check("stage 4 can be completed", (await placedCount()) === 5);
-
-  // --- stage 5: six animals -----------------------------------------------
-  await pressFinishButton();
-  check("moves on to stage 5", (await stageNumber()) === 5);
-  check("stage 5 has six pieces", (await pieceCount()) === 6);
-  const cast = await animalsOnBoard();
-  check("the last stage deals six different animals", new Set(cast).size === 6);
+  // --- level 10: the busiest board of animals ------------------------------
+  // `?level=` starts partway along the ramp. It is for this script and for
+  // whoever is working on the game; nothing in the game offers it.
+  await goToLevel(10);
+  check("jumps to level 10", (await levelNumber()) === 10);
+  check("level 10 is in the animals chapter", (await chapterName()) === "animals");
+  const busyCast = await animalsOnBoard();
+  check("level 10 deals six different animals", new Set(busyCast).size === 6);
+  const busyDots = await chapterDots();
+  check(`two chapter dots filled by level 10 (${busyDots.filled})`, busyDots.filled === 2);
   // Six smaller pieces: the grab boxes have to hold their shape at this size
   // too, where the tray leaves least room between them.
   await checkGrabBoxes(6);
-  await shot("08-stage5-start");
+  await shot("06-level10-start");
 
-  await dragAnimal(cast[0]);
-  await dragAnimal(cast[1]);
+  await dragAnimal(busyCast[0]);
+  await dragAnimal(busyCast[1]);
   check("the pieces snap into their holes", (await placedCount()) === 2);
-  await shot("09-stage5-two-placed");
+  await shot("07-level10-two-placed");
 
   // Rotating mid-puzzle must reflow and keep progress.
   await setViewport(480, 900);
   await sleep(600);
   check("switches to the portrait layout", (await layoutName()) === "portrait");
   check("rotation preserves placed pieces", (await placedCount()) === 2);
-  check("rotation stays on the same stage", (await stageNumber()) === 5);
-  await shot("10-portrait-stage5");
+  check("rotation stays on the same level", (await levelNumber()) === 10);
+  await shot("08-portrait-level10");
 
   const fits = await evaluate(`
     (() => {
@@ -452,15 +486,28 @@ try {
   `);
   check(`portrait fills the screen (${(coverage * 100).toFixed(0)}%)`, coverage > 0.75);
 
-  // Finish the last stage in portrait; the button should now loop the game.
   await solveRemaining();
   check("dragging works in the portrait layout", (await placedCount()) === 6);
-  check("the last stage offers a replay", (await finishLabel()) === "Play again");
-  await shot("11-portrait-complete");
+  check("a middle level offers the next puzzle", (await finishLabel()) === "Next puzzle");
+  await shot("09-portrait-complete");
+
+  // --- level 30: the last one, and the loop back ---------------------------
+  await setViewport(1280, 800);
+  await goToLevel(30);
+  check("jumps to the last level", (await levelNumber()) === 30);
+  check("the last level is in the mastery chapter", (await chapterName()) === "mastery");
+  const lastDots = await chapterDots();
+  check(`every chapter dot filled on level 30 (${lastDots.filled})`, lastDots.filled === 6);
+  const lastCount = await pieceCount();
+  await shot("10-level30-start");
+
+  await solveRemaining();
+  check("the last level can be completed", (await placedCount()) === lastCount);
+  check("the last level offers a replay", (await finishLabel()) === "Play again");
+  await shot("11-level30-complete");
 
   await pressFinishButton();
-  check("play again loops back to stage 1", (await stageNumber()) === 1);
-  check("looping back deals two fresh pieces", (await pieceCount()) === 2);
+  check("play again loops back to level 1", (await levelNumber()) === 1);
   check("looping back clears the board", (await placedCount()) === 0);
   await shot("12-looped-back");
 
@@ -469,16 +516,15 @@ try {
     new PointerEvent('pointerdown', { bubbles: true })
   )`);
   await sleep(600);
-  check("reset deals a fresh puzzle", (await pieceCount()) === 2 && (await placedCount()) === 0);
-  check("reset keeps the stage", (await stageNumber()) === 1);
+  check("reset deals a fresh puzzle", (await placedCount()) === 0);
+  check("reset keeps the level", (await levelNumber()) === 1);
 
-  await setViewport(1280, 800);
   const castForSeed = async (seed) => {
-    await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?seed=${seed}` });
+    await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?level=10&seed=${seed}` });
     await sleep(800);
     return (await animalsOnBoard()).join();
   };
-  check("the same seed deals the same puzzle", (await castForSeed(SEED)) === stage1Cast.join());
+  check("the same seed deals the same puzzle", (await castForSeed(SEED)) === busyCast.join());
   const deals = new Set();
   for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
