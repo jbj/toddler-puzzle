@@ -166,8 +166,7 @@ overhang stays inside its budget. The rule lives in
    pitfalls above.
 7. That's it - every animal in `ANIMAL_IDS` is in the draw, so the new one will
    start turning up on its own. To make a stage *bigger*, see
-   [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); that is a
-   change to stage sizes, which needs a human decision first.
+   [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 
 ## Before calling art finished
 
