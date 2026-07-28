@@ -1,6 +1,6 @@
 ---
 name: "Product decisions"
-description: "What Animal Puzzle is for, the invariants that must not be weakened, and which questions need a human before a pull request."
+description: "What Animal Puzzle is for, the invariants that must not be weakened, and the tie-breaker for an open design question."
 ---
 
 # Product decisions
@@ -82,18 +82,3 @@ to fail to load. The whole bundle is around 24 kB. See
 in are drawn at random each time a puzzle starts, so the same animals are
 never waiting in the same places twice. Add `?seed=123` to the URL to replay a
 particular deal - the screenshot run uses it to keep its shots comparable.
-
-## Human decisions before a pull request
-
-Raise these as a comment on the issue before opening a pull request; do not make
-one of these decisions silently inside the PR:
-
-- changing any invariant in this file;
-- adding a dependency, runtime or development;
-- changing stage sizes;
-- changing the visual style;
-- changing what a check enforces.
-
-None of these are forbidden. They are the changes where the reason matters more
-than the diff, and where a reviewer seeing them for the first time in a pull
-request is being asked the wrong question at the wrong moment.

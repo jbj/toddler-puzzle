@@ -120,9 +120,7 @@ tray, and `minSlot` is what keeps a piece grabbable. Reaching past them to nudge
 a coordinate would move a piece without moving the room left for it.
 
 Adding a stage means adding a number to `STAGE_SIZES` and nothing else; the
-layout follows. Changing a stage size is still one of the changes that needs a
-human decision before a pull request, because it changes the game rather than
-the code.
+layout follows.
 
 All layout tunables belong in `src/layout.ts`. Start there rather than
 scattering a constant into whichever file happened to need it.
@@ -147,5 +145,6 @@ pieces of no particular shape:
 - pieces stay grabbable - over a tenth of the canvas wide;
 - each orientation fills at least 75% of its viewport.
 
-If a layout change weakens one of those properties, treat that as a design change
-that needs a human decision before a pull request.
+A layout change must leave every one of those properties standing. They are what
+keeps a piece grabbable, reachable and unambiguous, so a change that weakens one
+is a change to the game rather than to the layout.

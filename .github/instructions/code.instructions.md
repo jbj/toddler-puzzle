@@ -72,27 +72,6 @@ Chrome binary and honours `CHROME_BIN`.
 | `scripts/tools.mjs` | Resolves the external art tools, with one clear message when they are missing |
 | `vite.config.ts` | Build configuration. `base` is relative, so one bundle works both at a server root and under the Pages path: see [decision 20260728T103610](../../docs/decisions/20260728T103610-deploy-to-github-pages.md) |
 
-## Files you cannot change
-
-Nothing you can do will get a change to `.github/workflows/` accepted. GitHub
-refuses a push that touches a workflow file unless the credential carries the
-`workflow` scope, and neither the CLI's token nor the cloud agent's is given it.
-This is deliberate: a workflow file is the thing that decides whether every other
-change is trustworthy, so it is not something an agent gets to edit on its own
-say-so.
-
-If a task appears to need a workflow change, stop and say so on the issue,
-naming the change you would make and why. Do not work around it by moving the
-logic into a script the workflow calls — that is the same change wearing a
-disguise, and it moves privileged behaviour somewhere nobody is reviewing it.
-
-Adding a check to `npm run verify` is not that workaround: the workflow already
-runs `verify` and delegates the choice of checks to the project, so a new check
-lands where a reviewer reads it. Moving a *permission* or a *trust* decision out
-of the workflow would be.
-
-Routine version bumps of actions are Dependabot's job, not yours.
-
 ## Pull request expectations
 
 - Prefer one issue per pull request.
@@ -100,6 +79,7 @@ Routine version bumps of actions are Dependabot's job, not yours.
 - Leave checks intact and explain any separate check change in its own right.
 - CI runs the full verification, but it will not show anyone what the change
   looks like. Attaching that is your job.
+- Routine version bumps of actions are Dependabot's job, not yours.
 
 CI runs the whole of `npm run verify` on every pull request. It does not post
 the screenshots: the author attaches them, having run the same command. Why that

@@ -19,6 +19,3 @@ SVG in the repository and sound generated in the browser.
 
 There is nothing extra to download and nothing external to fail to load. The
 bundle stays small, around 24 kB, and the full game remains easy to inspect.
-
-Adding a dependency or changing this asset policy needs a human decision before a
-pull request.
