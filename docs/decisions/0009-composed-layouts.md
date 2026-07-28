@@ -1,4 +1,4 @@
-# 0008. Compose layouts for any cast, rather than tabulating them
+# 0009. Compose layouts for any cast, rather than tabulating them
 
 Extends [0004](0004-generated-layouts.md).
 

@@ -15,7 +15,7 @@ rather than letterbox a landscape board onto a portrait phone.
 Layouts are generated when a puzzle starts, from the cast that was dealt rather
 than from a fixed set of coordinates. (Arrangement tables described the row
 counts, ground lines, tray rows and piece sizes to generate them into;
-[0008](0008-composed-layouts.md) replaced the tables with a composition that
+[0009](0009-composed-layouts.md) replaced the tables with a composition that
 works for any piece count, and the rest of this record still holds.)
 
 ## Consequence

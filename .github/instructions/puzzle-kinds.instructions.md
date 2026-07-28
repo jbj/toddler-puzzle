@@ -71,7 +71,7 @@ front: a hole's height depends on the anchor of whichever piece was dealt into
 that place. Generating the layouts rather than declaring them is
 [decision 0004](../../docs/decisions/0004-generated-layouts.md); composing them
 for any cast rather than from a table is
-[decision 0008](../../docs/decisions/0008-composed-layouts.md).
+[decision 0009](../../docs/decisions/0009-composed-layouts.md).
 
 Because room is left for each invariant *before* a size is picked, the
 invariants hold by construction rather than by tuning: a hole cannot land off
