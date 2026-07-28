@@ -13,7 +13,8 @@ falling out of the game by accident. The rules of a level live elsewhere - see
 
 ## Forward only
 
-A game is three stages long: three pieces, then four, then six. Finishing a
+A game is five stages long: two pieces, then three, then four, then five, then
+six. Finishing a
 stage clears the tray and puts one big button in it, which leads to the next
 stage; the button after the last stage starts the whole game over
 (`nextStage` in `src/layout.ts` wraps). So the only way to go is forward and
@@ -23,7 +24,7 @@ There is no menu, no difficulty picker, no settings, no failure state and no
 score, and adding one is a change to an invariant, not a feature. The reasoning
 is [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
 
-The three dots by the reset button (`buildStageDots` in `src/board.ts`) are
+The five dots by the reset button (`buildStageDots` in `src/board.ts`) are
 filled up to the current stage so a grown-up can see how far along the set is.
 They are an indicator, not a control: they carry `pointer-events: none` on
 purpose. Do not make them tappable.

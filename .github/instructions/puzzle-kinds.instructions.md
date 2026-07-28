@@ -91,7 +91,7 @@ other.
 `spreadX` spaces each row evenly across the canvas, and each snap radius follows
 that piece's own smaller side, so a busier stage automatically gets tighter, more
 accurate snapping instead of overlapping snap zones. Pieces shrink as the board
-fills up (210 → 210 → 142 units in landscape for three, four and six), which is
+fills up across the five stages, which is
 what lets six animals share a single row and still leaves every piece well over a
 tenth of the canvas wide - the size a small hand needs.
 

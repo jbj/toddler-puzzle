@@ -3,13 +3,13 @@
 **Play it at [jbj.github.io/toddler-puzzle](https://jbj.github.io/toddler-puzzle/).**
 
 A drag-and-drop shape puzzle for toddlers. Animals wait in a tray; each one is
-dragged onto the matching animal-shaped hole in the landscape. The game is three
-puzzles long and grows as it goes - **three animals, then four, then six** - so
-the first win comes quickly and the board fills up from there. Finish one and a
-big arrow leads to the next; finish the last and the arrow starts the game over.
+dragged onto the matching animal-shaped hole in the landscape. The game grows as
+it goes - starting small so the first win comes quickly, then adding more animals
+each stage until the board is full. Finish one stage and a big arrow leads to the
+next; finish the last and the arrow starts the game over.
 
 **Every puzzle is dealt fresh.** Which animals turn up and the order they stand
-in are drawn at random each time a puzzle starts, so the same three animals are
+in are drawn at random each time a puzzle starts, so the same animals are
 never waiting in the same places twice. Add `?seed=123` to the URL to replay a
 particular deal - the screenshot run uses it to keep its shots comparable.
 

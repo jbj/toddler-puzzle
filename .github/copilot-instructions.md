@@ -1,9 +1,9 @@
 # Copilot instructions
 
 Animal Puzzle is a drag-and-drop animal shape puzzle for toddlers: a two-year-old
-matches large animal pieces to matching animal-shaped holes. A game is three
-puzzles long - three animals, then four, then six - and every puzzle is dealt
-fresh.
+matches large animal pieces to matching animal-shaped holes. A game grows as it
+goes - starting small so the first win comes quickly, then adding more animals
+each stage - and every puzzle is dealt fresh.
 
 Three things are true of every change:
 
