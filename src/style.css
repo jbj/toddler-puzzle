@@ -69,3 +69,315 @@ body {
     transition-duration: 1ms;
   }
 }
+
+/* The grown-up panel ---------------------------------------------------- */
+
+/* Deliberately not toddler-styled. The game is enormous, rounded and bright;
+   this is small, square and grey, so a child finds nothing here worth a poke
+   and an adult recognises it on sight as the settings. */
+
+.grownups {
+  --grownups-ink: #24333c;
+  --grownups-line: #c8d5db;
+  --grownups-accent: #2f7d95;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: var(--grownups-ink);
+}
+
+/* The button ------------------------------------------------------------ */
+
+.grownups-key {
+  --fill: 0;
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 10;
+  padding: 4px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  touch-action: none;
+
+  /* The ring: a conic sweep behind an opaque face, so the padding is all that
+     shows of it. It fills clockwise over the length of the hold. */
+  background: conic-gradient(
+    var(--grownups-accent) calc(var(--fill) * 360deg),
+    rgba(47, 125, 149, 0.22) 0
+  );
+}
+
+.grownups-key-face {
+  display: block;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--grownups-ink);
+}
+
+.grownups-key-label {
+  display: block;
+  font-weight: 600;
+}
+
+/* "Hold to open" is the answer to the tap that just failed to open anything,
+   so it appears on the press and outstays it. */
+.grownups-key-hint {
+  display: none;
+  font-size: 12px;
+  color: var(--grownups-accent);
+}
+
+.grownups-key.is-prompting .grownups-key-hint {
+  display: block;
+}
+
+.grownups.is-open .grownups-key {
+  visibility: hidden;
+}
+
+/* The panel ------------------------------------------------------------- */
+
+.grownups-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(16, 32, 40, 0.55);
+  overflow: auto;
+}
+
+.grownups-panel[hidden] {
+  display: none;
+}
+
+.grownups-sheet {
+  width: min(640px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 18px 22px 20px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(10, 25, 35, 0.4);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.grownups-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.grownups-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.grownups-section {
+  padding-top: 11px;
+  margin-top: 11px;
+  border-top: 1px solid var(--grownups-line);
+}
+
+.grownups-heading {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5d727d;
+}
+
+.grownups-note {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #5d727d;
+}
+
+/* The level map --------------------------------------------------------- */
+
+.grownups-levels {
+  margin-top: 10px;
+}
+
+.grownups-chapter-row {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.grownups-chapter-row + .grownups-chapter-row {
+  margin-top: 6px;
+}
+
+.grownups-chapter {
+  font-size: 12px;
+  color: #5d727d;
+}
+
+.grownups-chapter-levels {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.grownups-level {
+  padding: 7px 0;
+  border: 1px solid var(--grownups-line);
+  border-radius: 6px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  color: #7b8c95;
+  cursor: pointer;
+}
+
+@media (max-width: 460px) {
+  .grownups-chapter-row {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .grownups-chapter-row + .grownups-chapter-row {
+    margin-top: 10px;
+  }
+}
+
+/* Filled means played. Choosing a level from here never fills one in - see
+   `jumpToLevel` in progress.ts. */
+.grownups-level.is-reached {
+  background: #e3eff3;
+  color: var(--grownups-ink);
+  font-weight: 600;
+}
+
+.grownups-level.is-current {
+  border-color: var(--grownups-accent);
+  box-shadow: inset 0 0 0 1px var(--grownups-accent);
+  color: var(--grownups-accent);
+}
+
+/* Options --------------------------------------------------------------- */
+
+.grownups-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.grownups-option + .grownups-option {
+  border-top: 1px solid #edf2f4;
+}
+
+.grownups-option-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.grownups-option-label {
+  font-weight: 600;
+}
+
+.grownups-option-note {
+  font-size: 13px;
+  color: #5d727d;
+}
+
+.grownups-switch {
+  flex: none;
+  width: 46px;
+  height: 26px;
+  padding: 2px;
+  border: 1px solid var(--grownups-line);
+  border-radius: 999px;
+  background: #e7edf0;
+  cursor: pointer;
+}
+
+.grownups-switch-knob {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(10, 25, 35, 0.35);
+  transition: transform 120ms ease;
+}
+
+.grownups-switch.is-on {
+  background: var(--grownups-accent);
+  border-color: var(--grownups-accent);
+}
+
+.grownups-switch.is-on .grownups-switch-knob {
+  transform: translateX(20px);
+}
+
+.grownups-choices {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.grownups-choice {
+  padding: 6px 10px;
+  border: 1px solid var(--grownups-line);
+  border-radius: 6px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  color: var(--grownups-ink);
+  cursor: pointer;
+}
+
+.grownups-choice.is-on {
+  background: var(--grownups-accent);
+  border-color: var(--grownups-accent);
+  color: #ffffff;
+}
+
+/* Buttons --------------------------------------------------------------- */
+
+.grownups-done,
+.grownups-reset {
+  flex: none;
+  padding: 8px 14px;
+  border: 1px solid var(--grownups-line);
+  border-radius: 6px;
+  background: #f4f8f9;
+  font: inherit;
+  font-size: 14px;
+  color: var(--grownups-ink);
+  cursor: pointer;
+}
+
+.grownups-done {
+  font-weight: 600;
+}
+
+.grownups-reset.is-confirming {
+  border-color: #b4483f;
+  background: #b4483f;
+  color: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grownups-switch-knob {
+    transition-duration: 1ms;
+  }
+}

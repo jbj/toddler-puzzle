@@ -41,10 +41,18 @@ oversights until you know it, so the reason is written next to the rule.
 - Keep the snap radius deliberately generous, about two thirds of the piece being
   dropped. Do not tighten it as a cleanup. Why: near misses should count for a
   toddler.
-- Let the game move only forward: no menu, no difficulty picker, no settings, no
-  failure state, and no score. The chapter dots are an indicator for a grown-up,
-  not a control, and `?level=` in the URL is a tool for working on the game, not
-  a way in. Why: a two-year-old cannot read or configure a toy.
+- Let the child's game move only forward: no menu, no difficulty picker, no
+  settings, no failure state, and no score on the play surface. The chapter dots
+  are an indicator for a grown-up, not a control, and `?level=` in the URL is a
+  tool for working on the game, not a way in. Why: a two-year-old cannot read or
+  configure a toy.
+- Keep everything a grown-up can change behind the two-second hold on the
+  "Grown-ups" button, and keep the panel behind it plainly styled for an adult.
+  Do not move any of it onto the play surface, and do not hide the button behind
+  a secret gesture instead. Why: a toddler cannot wait two seconds and a parent
+  cannot find a secret; the panel is the sanctioned exception to the rule above,
+  and it earns that by being unreachable by tapping. See
+  [decision 20260729T000652](../../docs/decisions/20260729T000652-a-door-for-grown-ups.md).
 - Resume on the level the child stopped on, and treat storage as a nicety rather
   than a dependency: any failure to remember - a browser that refuses, a record
   that is corrupt, a level number the table no longer has - falls back silently
@@ -70,12 +78,22 @@ mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
 [decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md).
 
-**The game only ever moves forward.** There is no menu and no difficulty picker:
-the thirty levels are always played in the same order, the button at the end of
-one leads straight into the next, and the button after the last one starts again
-at level 1. Six dots by the reset button, one per chapter, show a grown-up how
-far along the set is; they are not a control. See
+**The game only ever moves forward.** There is no menu and no difficulty picker
+in front of the child: the thirty levels are always played in the same order, the
+button at the end of one leads straight into the next, and the button after the
+last one starts again at level 1. Six dots by the reset button, one per chapter,
+show a grown-up how far along the set is; they are not a control. See
 [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
+
+**A grown-up can steer, from behind a hold.** Thirty levels and options that
+apply across all of them need somebody who can read to be able to say where the
+child should be and how forgiving the game is. So there is one panel, opened by
+holding a labelled "Grown-ups" button for two seconds - taps never open it,
+however many - holding a map of the thirty levels, the switches, and the only
+reset in the game. It is deliberately styled for an adult rather than a child.
+The mechanics are in
+[`navigation.instructions.md`](navigation.instructions.md); the reasoning is
+[decision 20260729T000652](../../docs/decisions/20260729T000652-a-door-for-grown-ups.md).
 
 **And it picks up where it left off.** The level being played is remembered
 between sittings, so a child who plays ten minutes a day works along the thirty

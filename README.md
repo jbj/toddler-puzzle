@@ -32,8 +32,18 @@ always a real, finishable level, and building the kind later needs no change to
 the table. See
 [decision 20260728T205627](docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md).
 
-Works with a finger or a mouse, in landscape or portrait. There is no menu and
-nothing to configure: the player cannot read.
+**There is a door for grown-ups.** Nothing on the play surface is a menu or a
+setting, because the player cannot read. But thirty levels need somebody who can
+read to be able to steer, so a small "Grown-ups" button in the corner opens a
+panel - by being **held for two seconds**, never by being tapped, however many
+times a small hand tries. Behind it are a map of the thirty levels to jump about
+in, switches for sound, rotation and idle hints, and the only place progress can
+be cleared. It is deliberately plain and adult-looking, and closing it puts the
+child back exactly where they were. Sound works today; rotation and idle hints
+are stored and take effect when those features arrive. See
+[decision 20260729T000652](docs/decisions/20260729T000652-a-door-for-grown-ups.md).
+
+Works with a finger or a mouse, in landscape or portrait.
 
 ```
 npm install

@@ -2,9 +2,31 @@
  * All sound is synthesised with the Web Audio API - no audio files to load and
  * nothing that can fail to download. Tones are soft sine waves with gentle
  * envelopes; nothing harsh or startling for a small child.
+ *
+ * Sound can be turned off from the grown-up panel, for a quiet room or a bus.
+ * The switch is here rather than at each call site so that "off" means silent
+ * whatever starts playing next - a new sound added later is off by default when
+ * a grown-up has asked for silence, rather than being a hole in the setting.
  */
 
 let context: AudioContext | null = null;
+
+/**
+ * Whether sound plays at all. Set from `settings.sound` twice: once at boot in
+ * `main.ts`, and again whenever the grown-up panel's switch moves
+ * (`applySettings` in `grownups.ts`). Nothing else touches it.
+ */
+let enabled = true;
+
+/** Turn every sound in the game on or off. */
+export function setSoundEnabled(on: boolean): void {
+  enabled = on;
+}
+
+/** Whether sound is currently allowed to play. */
+export function soundEnabled(): boolean {
+  return enabled;
+}
 
 function getContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -43,6 +65,7 @@ function tone({
   gain = 0.16,
   type = "sine",
 }: ToneOptions): void {
+  if (!enabled) return;
   const ctx = getContext();
   if (!ctx || ctx.state !== "running") return;
 

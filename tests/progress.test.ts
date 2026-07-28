@@ -127,9 +127,13 @@ describe("reading a stored record", () => {
     expect(progress.level).toBe(3);
   });
 
-  it("never claims a child got less far than where they are", () => {
+  it("keeps a level that is ahead of the furthest one played", () => {
+    // Which is what a grown-up choosing level 9 out of the panel's level map
+    // leaves behind: the child is on 9 without having played their way there,
+    // and raising `furthest` to meet it would quietly mark seven levels as
+    // played that nobody has played. See `jumpToLevel`.
     const progress = readProgress(fakeStorage(stored({ level: 9, furthest: 2 })));
-    expect(progress.furthest).toBe(9);
+    expect(progress).toMatchObject({ level: 9, furthest: 2 });
   });
 
   it("survives a browser that throws on the read", () => {
@@ -332,5 +336,66 @@ describe("the store", () => {
       level: 4,
       settings: { ...DEFAULT_SETTINGS, sound: false },
     });
+  });
+});
+
+/**
+ * The level map in the grown-up panel is the only caller. It is a different
+ * method from `reachLevel` because it means something different: a grown-up
+ * moving the child, rather than the child getting somewhere.
+ */
+describe("a level chosen from the panel", () => {
+  it("moves the child there and remembers it", () => {
+    const storage = fakeStorage();
+    const store = createProgressStore({ storage });
+    store.reachLevel(6);
+    store.jumpToLevel(20);
+    expect(store.read().level).toBe(20);
+    expect(readProgress(storage).level).toBe(20);
+  });
+
+  it("does not claim the child ever got there", () => {
+    const store = createProgressStore({ storage: fakeStorage() });
+    store.reachLevel(6);
+    store.jumpToLevel(30);
+    // Reading the map must never fill the map in, or one look at the last
+    // level marks all thirty as played for ever.
+    expect(store.read().furthest).toBe(6);
+  });
+
+  it("leaves the furthest level alone when a grown-up goes back", () => {
+    const store = createProgressStore({ storage: fakeStorage() });
+    store.reachLevel(12);
+    store.jumpToLevel(2);
+    expect(store.read()).toMatchObject({ level: 2, furthest: 12 });
+    // Playing on from there is the child's own progress again, and is capped
+    // by where they had already got to.
+    store.reachLevel(3);
+    expect(store.read()).toMatchObject({ level: 3, furthest: 12 });
+  });
+
+  it("counts a chosen level the child then plays past", () => {
+    const store = createProgressStore({ storage: fakeStorage() });
+    store.jumpToLevel(20);
+    store.reachLevel(21);
+    expect(store.read()).toMatchObject({ level: 21, furthest: 21 });
+  });
+
+  it("ignores a level the table does not have", () => {
+    const store = createProgressStore({ storage: fakeStorage() });
+    store.reachLevel(5);
+    store.jumpToLevel(LEVEL_COUNT + 1);
+    store.jumpToLevel(0);
+    store.jumpToLevel(2.5);
+    expect(store.read()).toMatchObject({ level: 5, furthest: 5 });
+  });
+
+  it("is written even in a session started by a deep link", () => {
+    const storage = fakeStorage(stored({ level: 4, furthest: 4 }));
+    const store = createProgressStore({ storage, trackLevel: false });
+    // Nothing about `?level=` was chosen, so it is not remembered; picking a
+    // level out of the panel is as deliberate as changing a setting.
+    store.jumpToLevel(8);
+    expect(readProgress(storage)).toMatchObject({ level: 8, furthest: 4 });
   });
 });

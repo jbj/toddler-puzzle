@@ -68,9 +68,11 @@ export interface Progress {
   /** The level to resume on: the one the child stopped in the middle of. */
   readonly level: number;
   /**
-   * The furthest level ever reached, which only ever climbs. The level map in
-   * the grown-up panel (#8) shows which levels have been seen; play itself
-   * never reads it, because the game only moves forward one level at a time.
+   * The furthest level ever reached by playing, which only ever climbs. The
+   * level map in the grown-up panel (#8) shows which levels have been seen;
+   * play itself never reads it, because the game only moves forward one level
+   * at a time. A grown-up jumping about the map does not move it - see
+   * `jumpToLevel`.
    */
   readonly furthest: number;
   readonly settings: Settings;
@@ -189,10 +191,11 @@ export function readProgress(storage: StorageLike | null): Progress {
   const furthest = isLevel(record["furthest"]) ? record["furthest"] : NEW_PLAYER.furthest;
   return {
     level,
-    // The two are stored separately and can disagree - a hand-edited record, or
-    // a table that shrank past one of them but not the other. Where a child has
-    // been is at least where they are.
-    furthest: Math.max(level, furthest),
+    // Read on its own merits, and deliberately not raised to meet `level`. The
+    // two are allowed to disagree, because a grown-up who picks level 20 out of
+    // the panel puts the child on a level they never played their way to, and
+    // the level map's whole value is that it goes on saying so.
+    furthest,
     settings: readSettings(asRecord(record["settings"])),
   };
 }
@@ -237,6 +240,23 @@ export interface ProgressStore {
   settings(): Settings;
   /** Record that this level is being played now. Out-of-range is ignored. */
   reachLevel(level: number): Progress;
+  /**
+   * Put the child on this level because a grown-up chose it from the level map
+   * (#8). Out-of-range is ignored, as with `reachLevel`.
+   *
+   * Two things make this a different method rather than the same one.
+   *
+   * It leaves `furthest` alone. The map's whole job is to show where the child
+   * actually got to, and a `reachLevel` here would fill the map in as a
+   * grown-up read it: one look at level 30 and every level is marked reached,
+   * for ever. Where the child has been is something only playing can change.
+   *
+   * And it writes even when `trackLevel` is off. A session opened by `?level=`
+   * does not move the child's place, because nothing in it was chosen; picking
+   * a level out of the panel is as deliberate as changing a setting, and is
+   * kept for the same reason.
+   */
+  jumpToLevel(level: number): Progress;
   /** Change one setting, leaving the others where they are. */
   updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Settings;
   /**
@@ -276,6 +296,10 @@ export function createProgressStore(options: ProgressStoreOptions = {}): Progres
     reachLevel(level) {
       if (!isLevel(level) || !trackLevel || level === progress.level) return progress;
       return save({ ...progress, level, furthest: Math.max(level, progress.furthest) });
+    },
+    jumpToLevel(level) {
+      if (!isLevel(level) || level === progress.level) return progress;
+      return save({ ...progress, level });
     },
     updateSetting(key, value) {
       return save({ ...progress, settings: { ...progress.settings, [key]: value } }).settings;

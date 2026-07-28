@@ -65,6 +65,7 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/icons.ts` | The hand-drawn SVG icons used by the chrome around the puzzle |
 | `src/drag.ts` | Pointer-event drag engine |
 | `src/game.ts` | The host: drag state, settling, sound, sparkles, level lifecycle |
+| `src/grownups.ts` | The grown-up panel: the hold that opens it, the level map, the switches |
 | `src/audio.ts` | Web Audio sound synthesis |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `scripts/preview.mjs` | Renders the art for review, as a contact sheet or one animal large |
@@ -101,7 +102,7 @@ broken one.
 
 ## Attaching screenshots
 
-`npm run verify` leaves thirteen screenshots and a combined
+`npm run verify` leaves fifteen screenshots and a combined
 `.art/shots/contact-sheet.png` in `.art/shots/`. Attach the contact sheet to the
 pull request body, and an individual shot as well when one detail deserves a
 closer look.

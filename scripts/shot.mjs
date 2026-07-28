@@ -313,6 +313,76 @@ async function pressFinishButton() {
   await sleep(500);
 }
 
+// --- the grown-up panel ---------------------------------------------------
+// The one part of the game that is not for the child, and the only place
+// progress can be cleared. It is opened by holding a labelled button for two
+// seconds; tapping it, however often, must never get in. See src/grownups.ts.
+
+const panelIsOpen = () => evaluate(`!!document.querySelector('.grownups-panel:not([hidden])')`);
+const grownUpsLabel = () =>
+  evaluate(`document.querySelector('.grownups-key-label')?.textContent ?? ''`);
+/** Whether "Hold to open" is on screen: the answer to a tap that did nothing. */
+const holdPromptShown = () =>
+  evaluate(`getComputedStyle(document.querySelector('.grownups-key-hint')).display !== 'none'`);
+
+/** The level map: how many squares, how many played, and which is current. */
+const levelSquares = () =>
+  evaluate(`
+  (() => {
+    const squares = [...document.querySelectorAll('.grownups-level')];
+    const current = squares.find((s) => s.classList.contains('is-current'));
+    return {
+      total: squares.length,
+      reached: squares.filter((s) => s.classList.contains('is-reached')).length,
+      current: Number(current?.dataset.level ?? 0),
+    };
+  })()
+`);
+
+const soundIsOn = () =>
+  evaluate(
+    `document.querySelector('.grownups-switch[data-setting="sound"]').getAttribute('aria-checked') === 'true'`,
+  );
+
+/** The record as it actually sits in storage, which is what a reload will read. */
+const savedRecord = () =>
+  evaluate(`JSON.parse(window.localStorage.getItem('animal-puzzle') ?? 'null')`);
+
+/** A click on something inside the panel, scrolled into view first. */
+async function pressInPanel(selector) {
+  await evaluate(
+    `document.querySelector(${JSON.stringify(selector)}).scrollIntoView({ block: 'center' })`,
+  );
+  await sleep(150);
+  const at = await centreOf(selector);
+  if (!at) throw new Error(`Nothing to press at "${selector}".`);
+  await mouse("mousePressed", at.x, at.y);
+  await mouse("mouseReleased", at.x, at.y);
+  await sleep(300);
+}
+
+/** Press and release the grown-ups button, the way a small hand would. */
+async function tapGrownUps() {
+  const at = await centreOf(".grownups-key");
+  if (!at) throw new Error("No grown-ups button on screen.");
+  await mouse("mousePressed", at.x, at.y);
+  await sleep(70);
+  await mouse("mouseReleased", at.x, at.y);
+  await sleep(70);
+}
+
+/** Hold it down the way a grown-up who has read "Hold to open" would. */
+async function holdGrownUps({ pauseAtHalfway } = {}) {
+  const at = await centreOf(".grownups-key");
+  if (!at) throw new Error("No grown-ups button on screen.");
+  await mouse("mousePressed", at.x, at.y);
+  await sleep(1200);
+  if (pauseAtHalfway) await pauseAtHalfway();
+  await sleep(1200);
+  await mouse("mouseReleased", at.x, at.y);
+  await sleep(300);
+}
+
 /**
  * Start at a given level. `?level=` exists for this script and for whoever is
  * working on the game - reaching level 30 by playing the twenty-nine before it
@@ -460,6 +530,62 @@ try {
   check("resuming deals a fresh board", (await placedCount()) === 0);
   check("resuming keeps the chapter", (await chapterName()) === "animals");
 
+  // --- the grown-up panel ---------------------------------------------------
+  // A visible, labelled button that a toddler cannot get through and a parent
+  // needs no instructions for. Everything below is played through the real
+  // thing: real presses, a real hold, a real reload.
+  check("a grown-up button says what it is", (await grownUpsLabel()) === "Grown-ups");
+  check("the panel starts closed", (await panelIsOpen()) === false);
+
+  for (let tap = 0; tap < 6; tap++) await tapGrownUps();
+  check("tapping the button never opens the panel", (await panelIsOpen()) === false);
+  check("tapping it answers with 'Hold to open'", (await holdPromptShown()) === true);
+
+  await holdGrownUps({ pauseAtHalfway: () => shot("06-grownups-hold") });
+  check("holding the button opens the panel", (await panelIsOpen()) === true);
+  const map = await levelSquares();
+  check(`the level map shows all thirty levels (${map.total})`, map.total === 30);
+  check(`the map marks the six levels played (${map.reached})`, map.reached === 6);
+  check("the map marks the level being played", map.current === 6);
+  await shot("07-grownups-panel");
+
+  // A level chosen here moves the child; it does not claim they got there.
+  await pressInPanel('.grownups-level[data-level="12"]');
+  check("choosing a level closes the panel", (await panelIsOpen()) === false);
+  check("choosing a level deals it", (await levelNumber()) === 12);
+  check("a chosen level starts empty", (await placedCount()) === 0);
+  const afterJump = await savedRecord();
+  check("a chosen level is remembered", afterJump?.level === 12);
+  check(`reading the map does not fill it in (${afterJump?.furthest})`, afterJump?.furthest === 6);
+
+  // A switch that has to survive being closed, and then a whole reload.
+  await holdGrownUps();
+  check("the panel reopens on the chosen level", (await levelSquares()).current === 12);
+  check("sound starts on", (await soundIsOn()) === true);
+  await pressInPanel('.grownups-switch[data-setting="sound"]');
+  check("the sound switch turns off", (await soundIsOn()) === false);
+  await pressInPanel(".grownups-done");
+  check("Done closes the panel", (await panelIsOpen()) === false);
+
+  await reopenTheGame();
+  check("the game reopens on the chosen level", (await levelNumber()) === 12);
+  await holdGrownUps();
+  check("a switch survives a reload", (await soundIsOn()) === false);
+  await pressInPanel('.grownups-switch[data-setting="sound"]');
+  check("sound can be turned back on", (await soundIsOn()) === true);
+
+  // The only place progress can be cleared, and it asks first.
+  await pressInPanel(".grownups-reset");
+  check("resetting asks before it does anything", (await levelNumber()) === 12);
+  await pressInPanel(".grownups-reset");
+  check("resetting starts the game over", (await levelNumber()) === 1);
+  const afterReset = await levelSquares();
+  check(`the map empties with it (${afterReset.reached})`, afterReset.reached === 1);
+
+  // Back where the rest of this run expects the child to be.
+  await pressInPanel('.grownups-level[data-level="6"]');
+  check("a grown-up can put the child back", (await levelNumber()) === 6);
+
   // --- level 10: the busiest board of animals ------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for
   // whoever is working on the game; nothing in the game offers it.
@@ -473,12 +599,12 @@ try {
   // Six smaller pieces: the grab boxes have to hold their shape at this size
   // too, where the tray leaves least room between them.
   await checkGrabBoxes(6);
-  await shot("06-level10-start");
+  await shot("08-level10-start");
 
   await dragAnimal(busyCast[0]);
   await dragAnimal(busyCast[1]);
   check("the pieces snap into their holes", (await placedCount()) === 2);
-  await shot("07-level10-two-placed");
+  await shot("09-level10-two-placed");
 
   // Rotating mid-puzzle must reflow and keep progress.
   await setViewport(480, 900);
@@ -486,7 +612,7 @@ try {
   check("switches to the portrait layout", (await layoutName()) === "portrait");
   check("rotation preserves placed pieces", (await placedCount()) === 2);
   check("rotation stays on the same level", (await levelNumber()) === 10);
-  await shot("08-portrait-level10");
+  await shot("10-portrait-level10");
 
   const fits = await evaluate(`
     (() => {
@@ -507,7 +633,7 @@ try {
   await solveRemaining();
   check("dragging works in the portrait layout", (await placedCount()) === 6);
   check("a middle level offers the next puzzle", (await finishLabel()) === "Next puzzle");
-  await shot("09-portrait-complete");
+  await shot("11-portrait-complete");
 
   // --- level 30: the last one, and the loop back ---------------------------
   await setViewport(1280, 800);
@@ -522,17 +648,17 @@ try {
   const lastDots = await chapterDots();
   check(`every chapter dot filled on level 30 (${lastDots.filled})`, lastDots.filled === 6);
   const lastCount = await pieceCount();
-  await shot("10-level30-start");
+  await shot("12-level30-start");
 
   await solveRemaining();
   check("the last level can be completed", (await placedCount()) === lastCount);
   check("the last level offers a replay", (await finishLabel()) === "Play again");
-  await shot("11-level30-complete");
+  await shot("13-level30-complete");
 
   await pressFinishButton();
   check("play again loops back to level 1", (await levelNumber()) === 1);
   check("looping back clears the board", (await placedCount()) === 0);
-  await shot("12-looped-back");
+  await shot("14-looped-back");
 
   // --- a fresh deal every time ---------------------------------------------
   await evaluate(`document.querySelector('.reset-button').dispatchEvent(
@@ -551,7 +677,7 @@ try {
   const deals = new Set();
   for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
-  await shot("13-another-deal");
+  await shot("15-another-deal");
 } finally {
   socket.close();
   chrome.kill();

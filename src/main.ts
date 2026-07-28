@@ -2,6 +2,7 @@ import "./style.css";
 import { loadAnimalShapes } from "./assets";
 import { createGame } from "./game";
 import { seededRandom } from "./geometry";
+import { applySettings, createGrownUpPanel } from "./grownups";
 import { LEVEL_COUNT } from "./levels";
 import { browserStorage, createProgressStore } from "./progress";
 
@@ -37,8 +38,15 @@ const progress = createProgressStore({
   trackLevel: deepLink === null,
 });
 
-createGame(root, loadAnimalShapes(), {
+// What a grown-up set last time, in force before the first sound can play.
+applySettings(progress.settings());
+
+const game = createGame(root, loadAnimalShapes(), {
   random: Number.isFinite(seed) && seed !== 0 ? seededRandom(seed) : Math.random,
   startLevel: deepLink ?? progress.read().level,
   progress,
 });
+
+// The one way into anything that is not the puzzle, and the only place progress
+// can be cleared. It mounts outside `#app`, which the board replaces wholesale.
+createGrownUpPanel({ progress, game });

@@ -59,15 +59,30 @@ mostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level
 number the table no longer has, a browser that throws on every call, and one
 that reads back yesterday's record but refuses every write - which resumes on it
-all the same, and only says so through `persists`. All of them have to end with
+all the same, and only says so through `persists`. Alongside those it covers the
+one thing that moves the record without the child moving: a level chosen from
+the grown-up panel's map, which is remembered without ever raising `furthest`.
+All of them have to end with
 a playable game on a real level, and none of them may throw. The storage object
 is injected, so none of it needs a browser; the DOM-facing ends are covered by
 `npm run shot`, which reloads the page and checks the game comes back where it
 was.
 
-Every animal is square, so both suites also carry a plank and a pole - pieces
-that are deliberately not square, in both directions. They keep the engine
-honest about per-piece bounds: each is clamped and snapped by its own box, so a
+`tests/grownups.test.ts` covers the two parts of the grown-up panel that do not
+need a browser: the hold that opens it, and the level map. The hold is a state
+machine with the clock passed in, so two hundred taps - none of which may open
+anything - are played through it in a millisecond, alongside a hold that opens,
+a release that empties the ring, two near misses that must not add up to one
+hold, and the "Hold to open" prompt outliving the press that raised it. The map
+is checked for saying what it means: thirty squares in six chapters of five,
+filled only up to `furthest`, exactly one marked current, and the current one
+taken from the game rather than the record, because `?level=` plays a level the
+record was deliberately not told about. The DOM around both - the button, the
+sheet, the switches - is `npm run shot`'s.
+
+Every animal is square, so the geometry and layout suites also carry a plank and
+a pole - pieces that are deliberately not square, in both directions. They keep
+the engine honest about per-piece bounds: each is clamped and snapped by its own box, so a
 wide piece cannot borrow its width's forgiveness for its short axis. Add such a
 case whenever a check would otherwise pass only because a piece happens to be
 square.
@@ -85,10 +100,18 @@ portrait preserves progress, that reopening the game resumes on the level the
 child stopped on while a level played from `?level=` leaves that alone, that the
 last level loops back to the first, and
 that different seeds deal different puzzles while one seed always deals the same.
+
+It is also the only place the grown-up panel is exercised as a grown-up would
+use it: six taps on the button open nothing and put "Hold to open" up instead, a
+two-second hold opens it, the level map shows thirty squares with the six played
+ones filled, choosing a level deals it and is remembered without claiming the
+child reached it, a switch turned off survives closing the panel and then a
+whole reload of the page, and resetting asks once before starting the game over.
+
 It plays a sample rather than all thirty because thirty levels of real pointer
-drags would take minutes; the table itself is swept in `tests/levels.test.ts`. Screenshots land in `.art/shots/`,
-alongside a `contact-sheet.png` that collects them into one image to drag into a
-pull request.
+drags would take minutes; the table itself is swept in `tests/levels.test.ts`.
+Screenshots land in `.art/shots/`, alongside a `contact-sheet.png` that collects
+them into one image to drag into a pull request.
 
 It is also the only place the grab boxes can be checked, since they are measured
 from rendered artwork: every piece has one, it covers the drawing without

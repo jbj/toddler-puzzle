@@ -16,10 +16,12 @@
  * A game is thirty levels long, in six chapters of five (`levels.ts`). Every
  * level is dealt fresh, so it never plays out quite the same way twice.
  * Finishing a level shows one big button that leads to the next one, and the
- * button after the last level starts the whole game over - so the only way to
- * go is forward and there is never a menu to get lost in. Thirty levels is more
- * than one sitting, so the host tells `progress.ts` which level is being played
- * and the next visit starts there.
+ * button after the last level starts the whole game over - so the only way the
+ * child can go is forward, and there is never a menu to get lost in. Thirty
+ * levels is more than one sitting, so the host tells `progress.ts` which level
+ * is being played and the next visit starts there. A grown-up can steer, from
+ * the panel in `grownups.ts`, which is what the returned `GameHandle` is for;
+ * nothing on the play surface offers it.
  *
  * Which tray slot each piece belongs to lives here and survives a re-layout, so
  * rotating the device mid-puzzle does not lose progress.
@@ -67,17 +69,41 @@ export interface GameOptions {
   readonly progress?: ProgressStore;
 }
 
+/**
+ * How the level being played was arrived at. The two are the same board dealt
+ * the same way, and differ only in what they mean for what is remembered: a
+ * level played through is where the child has got to, and a level chosen from
+ * the grown-up panel's map is not.
+ */
+type Arrival = "played" | "chosen";
+
+/** What the shell around the game can ask of it once it is running. */
+export interface GameHandle {
+  /**
+   * Deal a level a grown-up picked out of the panel's level map. The only
+   * caller is `grownups.ts`; play itself moves on by its own finish button.
+   */
+  chooseLevel(level: number): void;
+  /** The level on the board now, which the panel's map marks as current. */
+  currentLevel(): number;
+}
+
 /** `shapes` are the pieces a kind may deal from. */
 export function createGame(
   root: HTMLElement,
   shapes: readonly PieceShape[],
   options: GameOptions = {},
-): void {
+): GameHandle {
   const random = options.random ?? Math.random;
   const progress = options.progress ?? createProgressStore({ storage: null });
   const state = new Map<PieceId, PieceState>();
 
   let levelNumber = options.startLevel ?? 1;
+  /**
+   * How this level was arrived at, kept so that re-dealing it - the reset
+   * button - records it the same way the first deal did.
+   */
+  let arrival: Arrival = "played";
   // Assigned by the startPuzzle() call at the end of this function, which is
   // what resolves the first level, deals it and mounts the first board.
   let kind!: PuzzleKind;
@@ -173,7 +199,9 @@ export function createGame(
    * It is also the one place the level being played is recorded, which is what
    * makes coming back tomorrow land on the right board. Re-dealing the same
    * level writes nothing, so the reset button stays what it is: a fresh puzzle,
-   * never a change to how far the child has got.
+   * never a change to how far the child has got. A level a grown-up chose from
+   * the panel is recorded as somewhere the child is rather than somewhere they
+   * reached, so reading the level map never fills the level map in.
    *
    * The level is resolved every time rather than once, because a level whose
    * kind is not built yet is played by a stand-in, and the stand-in has a piece
@@ -181,7 +209,8 @@ export function createGame(
    */
   function startPuzzle(): void {
     complete = false;
-    progress.reachLevel(levelNumber);
+    if (arrival === "chosen") progress.jumpToLevel(levelNumber);
+    else progress.reachLevel(levelNumber);
     const resolved = resolveLevel(levelSpec(levelNumber), shapes.length);
     kind = resolved.kind;
     level = resolved.spec;
@@ -200,8 +229,9 @@ export function createGame(
   }
 
   /** Move on to a different level: new deal, new layout, fresh board. */
-  function goToLevel(next: number): void {
+  function goToLevel(next: number, how: Arrival = "played"): void {
     levelNumber = next;
+    arrival = how;
     startPuzzle();
   }
 
@@ -263,4 +293,9 @@ export function createGame(
   });
 
   startPuzzle();
+
+  return {
+    chooseLevel: (level) => goToLevel(level, "chosen"),
+    currentLevel: () => levelNumber,
+  };
 }

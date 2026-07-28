@@ -1,7 +1,7 @@
 ---
 name: "Navigation and feel"
 description: "How the game moves between levels, what the buttons and dots are for, and the feedback and toddler-proofing around a drag."
-applyTo: "src/game.ts,src/celebrate.ts,src/drag.ts,src/audio.ts,src/main.ts,src/style.css,index.html"
+applyTo: "src/game.ts,src/celebrate.ts,src/drag.ts,src/audio.ts,src/grownups.ts,src/main.ts,src/style.css,index.html"
 ---
 
 # Navigation and feel
@@ -23,8 +23,11 @@ level; the button after the last level starts the whole game over
 there is never a menu to get lost in.
 
 There is no menu, no difficulty picker, no settings, no failure state and no
-score, and adding one is a change to an invariant, not a feature. The reasoning
-is [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
+score on the play surface, and putting one there is a change to an invariant,
+not a feature. The reasoning is
+[decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
+Everything a grown-up can change lives in the panel described below, which the
+child cannot open.
 
 The six dots by the reset button (`buildChapterDots` in `src/board.ts`) are one
 per chapter, filled up to the chapter being played, so a grown-up can see how far
@@ -65,15 +68,50 @@ Three things about it are load-bearing:
   it stays false.
 - **A stored level is checked against the table.** A level number the thirty no
   longer has sends the child back to level 1, not to the last level.
-- **Progress is cleared from the grown-up panel and nowhere else** (#8, via
-  `clearProgress()`). The button on the play surface deals a fresh puzzle for
-  the level being played; that is all it has ever done.
+- **Progress is cleared from the grown-up panel and nowhere else**, via
+  `clearProgress()`. The button on the play surface deals a fresh puzzle for the
+  level being played; that is all it has ever done.
 
-The settings in the record - `sound`, `rotation` and `hints` - are stored and
-defaulted before anything reads them, so the panel that sets them (#8) and the
-code that acts on them (#14, #21) have one shape to agree on. The reasoning for
-all of this is
+The settings in the record - `sound`, `rotation` and `hints` - are set from the
+grown-up panel below. `sound` is wired: `applySettings` in `src/grownups.ts`
+calls `setSoundEnabled` in `src/audio.ts`, which every tone goes through, so off
+means silent whatever is played next. `rotation` (#14) and `hints` (#21) are
+stored and read back correctly and have no consumer yet; each is one line in
+`applySettings` when its consumer arrives. The reasoning for all of this is
 [decision 20260728T212500](../../docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
+
+## The grown-up panel
+
+The one part of the game that is not for the child (`src/grownups.ts`). It holds
+a map of the thirty levels to jump about in, the switches, and the only reset in
+the game. The reasoning is
+[decision 20260729T000652](../../docs/decisions/20260729T000652-a-door-for-grown-ups.md);
+what the code has to keep true is this.
+
+- **The button is visible and says "Grown-ups".** It is not a secret gesture and
+  must not become one: a parent who has never seen the game has to be able to
+  find it, and a gesture obscure enough to defeat a toddler defeats them too.
+- **Tapping it never opens anything.** A press starts a two-second hold
+  (`HOLD_MS`) and shows "Hold to open"; a release starts the next hold from
+  zero, so taps never add up. The rule is `createHoldGate`, a state machine with
+  the clock passed in and no DOM in it, which is why two hundred taps can be
+  checked in Vitest. The ring around the button is painted from the same gate on
+  an animation frame, but the opening is armed on a timer as well: frames are
+  for the ring, the clock is the rule.
+- **The prompt outlives the press.** "Hold to open" stays up for `PROMPT_MS`
+  after a tap, because the tap is the moment a grown-up needs telling and the
+  answer has to still be there when they look.
+- **The panel is not toddler-styled.** Small text, ordinary switches, ordinary
+  spacing. Making it big and bright would invite exactly the person it is
+  hiding from.
+- **It never touches the board.** It is HTML mounted outside `#app` - which
+  `buildBoard` replaces wholesale - so closing it puts the child back mid-puzzle
+  without re-dealing anything. Only choosing a level changes the board.
+- **Choosing a level is not reaching it.** The map's squares come from
+  `furthest`, and a level chosen here goes through `jumpToLevel` rather than
+  `reachLevel`, so reading the map never fills the map in. `createGame` returns
+  the handle the panel drives (`chooseLevel`, `currentLevel`).
+- **Reset asks twice**, and is the only place progress can be cleared.
 
 ## Feedback
 
