@@ -54,6 +54,16 @@ composing is *for*: the same cast composes twice the same, a fuller board never
 gets bigger pieces, portrait stacks more rows than landscape spreads, and a cast
 too big to compose above the grabbable size is refused rather than shrunk away.
 
+`tests/progress.test.ts` covers what is remembered between sittings, and is
+mostly the unhappy paths, because that is what the storage layer is for: a
+resumed level, a corrupt record, a version this build does not know, a level
+number the table no longer has, a browser that throws on every call, and one
+that accepts a write and loses it. All of them have to end with a playable game
+on a real level, and none of them may throw. The storage object is injected, so
+none of it needs a browser; the DOM-facing ends are covered by
+`npm run shot`, which reloads the page and checks the game comes back where it
+was.
+
 Every animal is square, so both suites also carry a plank and a pole - pieces
 that are deliberately not square, in both directions. They keep the engine
 honest about per-piece bounds: each is clamped and snapped by its own box, so a
@@ -70,7 +80,9 @@ the last level - asserting that pieces snap, that a bad drop does *not* stick,
 that each level hands over to the next, that a level whose kind is not built yet
 is still a complete playable level, that the boards grow rather than shrink as a
 chapter goes on, that the chapter dots track the chapter, that rotating to
-portrait preserves progress, that the last level loops back to the first, and
+portrait preserves progress, that reopening the game resumes on the level the
+child stopped on while a level played from `?level=` leaves that alone, that the
+last level loops back to the first, and
 that different seeds deal different puzzles while one seed always deals the same.
 It plays a sample rather than all thirty because thirty levels of real pointer
 drags would take minutes; the table itself is swept in `tests/levels.test.ts`. Screenshots land in `.art/shots/`,

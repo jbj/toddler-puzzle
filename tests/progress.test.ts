@@ -1,0 +1,254 @@
+/**
+ * Coming back tomorrow.
+ *
+ * The store's whole job is to be unbreakable, so nearly all of this is the
+ * unhappy paths: a browser that throws on the sight of `localStorage`, one that
+ * accepts a write and loses it, a record another tab mangled, a record from a
+ * version of this game that no longer exists, and a level number the table has
+ * since dropped. Each of them has to end with a playable game on a real level,
+ * and none of them may throw.
+ *
+ * Storage is injected, so all of it runs in Node. The DOM-facing ends - which
+ * level to start on, and recording each one as it is reached - are `main.ts`
+ * and `game.ts`, and are covered by the screenshot run, which reloads the page
+ * and checks it comes back where it was.
+ */
+import { describe, expect, it } from "vitest";
+import { LEVEL_COUNT } from "../src/levels";
+import {
+  DEFAULT_SETTINGS,
+  NEW_PLAYER,
+  STORAGE_KEY,
+  STORAGE_VERSION,
+  createProgressStore,
+  readProgress,
+  type StorageLike,
+} from "../src/progress";
+
+/** A working `localStorage`, and a way to see what actually landed in it. */
+function fakeStorage(initial?: string): StorageLike & { readonly items: Map<string, string> } {
+  const items = new Map<string, string>();
+  if (initial !== undefined) items.set(STORAGE_KEY, initial);
+  return {
+    items,
+    getItem: (key) => items.get(key) ?? null,
+    setItem: (key, value) => void items.set(key, value),
+    removeItem: (key) => void items.delete(key),
+  };
+}
+
+/** iPad Safari in private browsing: every call throws, including the read. */
+const hostileStorage = (): StorageLike => ({
+  getItem() {
+    throw new DOMException("The operation is insecure.", "SecurityError");
+  },
+  setItem() {
+    throw new DOMException("The operation is insecure.", "SecurityError");
+  },
+  removeItem() {
+    throw new DOMException("The operation is insecure.", "SecurityError");
+  },
+});
+
+/** Storage that reads back but refuses to keep anything: a full disk, a quota. */
+const fullStorage = (initial?: string): StorageLike => ({
+  getItem: (key) => (key === STORAGE_KEY ? (initial ?? null) : null),
+  setItem() {
+    throw new DOMException("QuotaExceededError", "QuotaExceededError");
+  },
+  removeItem() {
+    /* nothing to remove */
+  },
+});
+
+/** A record as another visit would have left it - or as nothing sane would. */
+const stored = (record: Record<string, unknown>): string =>
+  JSON.stringify({ version: STORAGE_VERSION, ...record });
+
+describe("reading a stored record", () => {
+  it("starts a new player at level 1 with the default settings", () => {
+    expect(readProgress(fakeStorage())).toEqual(NEW_PLAYER);
+    expect(readProgress(null)).toEqual(NEW_PLAYER);
+  });
+
+  it("resumes on the level the child stopped on", () => {
+    const progress = readProgress(fakeStorage(stored({ level: 7, furthest: 9 })));
+    expect(progress.level).toBe(7);
+    expect(progress.furthest).toBe(9);
+  });
+
+  it.each([
+    ["not JSON at all", "{ this is not"],
+    ["JSON that is not an object", '"level 7"'],
+    ["an array", "[7]"],
+    ["null", "null"],
+    ["an empty record", "{}"],
+  ])("falls back to a new player when the record is %s", (_why, raw) => {
+    expect(readProgress(fakeStorage(raw))).toEqual(NEW_PLAYER);
+  });
+
+  it("drops a record written by a version it does not know", () => {
+    const future = JSON.stringify({ version: STORAGE_VERSION + 1, level: 12, furthest: 12 });
+    expect(readProgress(fakeStorage(future))).toEqual(NEW_PLAYER);
+    const ancient = JSON.stringify({ level: 12, furthest: 12 });
+    expect(readProgress(fakeStorage(ancient))).toEqual(NEW_PLAYER);
+  });
+
+  it.each([
+    ["past the end of the table", LEVEL_COUNT + 1],
+    ["below the first level", 0],
+    ["not a whole number", 6.5],
+    ["not a number", "seven"],
+  ])("starts over when the stored level is %s", (_why, level) => {
+    const progress = readProgress(fakeStorage(stored({ level })));
+    expect(progress.level).toBe(1);
+    expect(progress.furthest).toBe(1);
+  });
+
+  it("keeps a grown-up's settings even when the level has to be dropped", () => {
+    const progress = readProgress(
+      fakeStorage(
+        stored({
+          level: LEVEL_COUNT + 10,
+          settings: { sound: false, rotation: true, hints: "sooner" },
+        }),
+      ),
+    );
+    expect(progress.level).toBe(1);
+    expect(progress.settings).toEqual({ sound: false, rotation: true, hints: "sooner" });
+  });
+
+  it("replaces a setting it does not recognise with the default", () => {
+    const progress = readProgress(
+      fakeStorage(stored({ level: 3, settings: { sound: "loud", hints: "immediately" } })),
+    );
+    expect(progress.settings).toEqual(DEFAULT_SETTINGS);
+    expect(progress.level).toBe(3);
+  });
+
+  it("never claims a child got less far than where they are", () => {
+    const progress = readProgress(fakeStorage(stored({ level: 9, furthest: 2 })));
+    expect(progress.furthest).toBe(9);
+  });
+
+  it("survives a browser that throws on the read", () => {
+    expect(readProgress(hostileStorage())).toEqual(NEW_PLAYER);
+  });
+});
+
+describe("the store", () => {
+  it("remembers each level as it is reached", () => {
+    const storage = fakeStorage();
+    const store = createProgressStore({ storage });
+    store.reachLevel(2);
+    store.reachLevel(3);
+    expect(store.read().level).toBe(3);
+    expect(store.persists).toBe(true);
+    // What a reload sees, which is the only thing that matters.
+    expect(readProgress(storage)).toEqual({ level: 3, furthest: 3, settings: DEFAULT_SETTINGS });
+  });
+
+  it("keeps the furthest level reached when the game loops back", () => {
+    const store = createProgressStore({ storage: fakeStorage() });
+    store.reachLevel(LEVEL_COUNT);
+    store.reachLevel(1);
+    expect(store.read()).toMatchObject({ level: 1, furthest: LEVEL_COUNT });
+  });
+
+  it("writes nothing when the level is re-dealt", () => {
+    const storage = fakeStorage();
+    const store = createProgressStore({ storage });
+    store.reachLevel(4);
+    const afterFirst = storage.items.get(STORAGE_KEY);
+    // What the reset button does: the same level again, and again.
+    store.reachLevel(4);
+    store.reachLevel(4);
+    expect(storage.items.get(STORAGE_KEY)).toBe(afterFirst);
+    expect(store.read().level).toBe(4);
+  });
+
+  it("ignores a level the table does not have", () => {
+    const store = createProgressStore({ storage: fakeStorage() });
+    store.reachLevel(5);
+    store.reachLevel(LEVEL_COUNT + 1);
+    store.reachLevel(0);
+    store.reachLevel(Number.NaN);
+    expect(store.read().level).toBe(5);
+  });
+
+  it("plays on in memory when there is no storage at all", () => {
+    const store = createProgressStore({ storage: null });
+    expect(store.read()).toEqual(NEW_PLAYER);
+    store.reachLevel(6);
+    expect(store.read().level).toBe(6);
+    expect(store.persists).toBe(false);
+  });
+
+  it("plays on when every storage call throws", () => {
+    const store = createProgressStore({ storage: hostileStorage() });
+    expect(store.read()).toEqual(NEW_PLAYER);
+    expect(() => store.reachLevel(8)).not.toThrow();
+    expect(store.read().level).toBe(8);
+    expect(store.updateSetting("sound", false).sound).toBe(false);
+    expect(store.clearProgress().level).toBe(1);
+    expect(store.persists).toBe(false);
+  });
+
+  it("plays on when a write is refused after a good read", () => {
+    const store = createProgressStore({
+      storage: fullStorage(stored({ level: 11, furthest: 11 })),
+    });
+    expect(store.read().level).toBe(11);
+    store.reachLevel(12);
+    expect(store.read().level).toBe(12);
+    expect(store.persists).toBe(false);
+  });
+
+  it("changes one setting and leaves the others alone", () => {
+    const storage = fakeStorage();
+    const store = createProgressStore({ storage });
+    expect(store.settings()).toEqual(DEFAULT_SETTINGS);
+    store.reachLevel(5);
+    expect(store.updateSetting("rotation", true)).toEqual({ ...DEFAULT_SETTINGS, rotation: true });
+    expect(store.updateSetting("hints", "off")).toEqual({
+      ...DEFAULT_SETTINGS,
+      rotation: true,
+      hints: "off",
+    });
+    // Settings and progress live in one record and neither disturbs the other.
+    expect(readProgress(storage)).toEqual({
+      level: 5,
+      furthest: 5,
+      settings: { sound: true, rotation: true, hints: "off" },
+    });
+  });
+
+  it("clears progress back to level 1, keeping the settings", () => {
+    const storage = fakeStorage();
+    const store = createProgressStore({ storage });
+    store.reachLevel(14);
+    store.updateSetting("sound", false);
+    expect(store.clearProgress()).toEqual({
+      level: 1,
+      furthest: 1,
+      settings: { ...DEFAULT_SETTINGS, sound: false },
+    });
+    expect(readProgress(storage).furthest).toBe(1);
+  });
+
+  it("leaves the saved level alone for a session started by a deep link", () => {
+    const storage = fakeStorage(stored({ level: 4, furthest: 4 }));
+    const store = createProgressStore({ storage, trackLevel: false });
+    // `?level=30` plays the last level and loops back to the first; neither
+    // moves the place the child had got to.
+    store.reachLevel(LEVEL_COUNT);
+    store.reachLevel(1);
+    expect(readProgress(storage)).toMatchObject({ level: 4, furthest: 4 });
+    // A grown-up changing a setting is deliberate, so it is still written.
+    store.updateSetting("sound", false);
+    expect(readProgress(storage)).toMatchObject({
+      level: 4,
+      settings: { ...DEFAULT_SETTINGS, sound: false },
+    });
+  });
+});

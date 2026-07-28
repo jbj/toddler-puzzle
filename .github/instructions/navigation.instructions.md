@@ -35,12 +35,42 @@ control: they carry `pointer-events: none` on purpose. Do not make them tappable
 the screenshot run and for whoever is working on the game - playing to level 30
 to look at level 30 takes minutes - and is emphatically not a difficulty picker:
 nothing in the game offers it, and the player cannot read a URL. Do not surface
-it, and do not persist it.
+it. It wins over the saved level, because a link should go where it says, and it
+writes nothing: a level played from a deep link, and the loop back to level 1
+after it, leave the child's own place exactly where it was.
 
 The reset button re-deals the current level. It goes through the same path as
 moving between levels (`startPuzzle` in `src/game.ts`), so a board is rebuilt
 one way rather than two, and a toddler never sees the same line-up twice in a
 row for long.
+
+## Coming back to it
+
+Thirty levels is more than one sitting, so the level being played is remembered
+in `localStorage` and the next visit resumes there. `src/progress.ts` owns the
+record - current level, furthest reached, and the grown-up settings - and
+`startPuzzle` in `src/game.ts` is the one place that tells it which level is
+being played. Re-dealing the same level writes nothing, which is what keeps the
+reset button from touching progress.
+
+Three things about it are load-bearing:
+
+- **Storage failing is not an error.** iPad Safari in private browsing throws on
+  the mere mention of `localStorage`. Every failure - throwing, disabled, full,
+  corrupt, a version this build does not know - falls back to an in-memory
+  record and level 1, silently. Never surface it: the player cannot read, and
+  the game is not diminished by forgetting.
+- **A stored level is checked against the table.** A level number the thirty no
+  longer has sends the child back to level 1, not to the last level.
+- **Progress is cleared from the grown-up panel and nowhere else** (#8, via
+  `clearProgress()`). The button on the play surface deals a fresh puzzle for
+  the level being played; that is all it has ever done.
+
+The settings in the record - `sound`, `rotation` and `hints` - are stored and
+defaulted before anything reads them, so the panel that sets them (#8) and the
+code that acts on them (#14, #21) have one shape to agree on. The reasoning for
+all of this is
+[decision 20260728T212500](../../docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
 
 ## Feedback
 

@@ -324,6 +324,12 @@ async function goToLevel(level) {
   await sleep(900);
 }
 
+/** Reload the way a child's grown-up would open it: no level in the URL. */
+async function reopenTheGame() {
+  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?seed=${SEED}` });
+  await sleep(900);
+}
+
 /** Drag every animal still in the tray into its hole. */
 async function solveRemaining() {
   for (const animal of await unplacedAnimals()) await dragAnimal(animal);
@@ -357,9 +363,9 @@ try {
   await send("Runtime.enable");
   await setViewport(1280, 800);
   // The cast is dealt at random; a seed keeps the screenshots comparable
-  // between runs. Randomness itself is checked at the end.
-  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?seed=${SEED}` });
-  await sleep(900);
+  // between runs. Randomness itself is checked at the end. The Chrome profile
+  // is thrown away each run, so this is a child who has never played.
+  await reopenTheGame();
 
   const bootError = await evaluate(`document.querySelector('#stage') ? '' : 'stage missing'`);
   check("app boots and renders the stage", bootError === "");
@@ -367,7 +373,7 @@ try {
   // --- level 1: one huge animal --------------------------------------------
   // The ramp starts with a single piece so the first win arrives at once; the
   // level table (src/levels.ts) is where that and the other twenty-nine live.
-  check("starts on level 1", (await levelNumber()) === 1);
+  check("a new player starts on level 1", (await levelNumber()) === 1);
   check("level 1 is in the first chapter", (await chapterName()) === "first-touches");
   const firstCount = await pieceCount();
   check(`level 1 is one or two huge pieces (${firstCount})`, firstCount >= 1 && firstCount <= 2);
@@ -442,6 +448,18 @@ try {
   }
   check("the first chapter still offers the next puzzle", (await finishLabel()) === "Next puzzle");
 
+  // --- coming back to it tomorrow ------------------------------------------
+  // Thirty levels is more than one sitting, so the level being played is
+  // remembered (src/progress.ts) and reopening the game starts there. This is
+  // the only place that path is exercised end to end: a real browser, a real
+  // reload, a real localStorage.
+  await pressFinishButton();
+  check("moves on to level 6", (await levelNumber()) === 6);
+  await reopenTheGame();
+  check("reopening the game resumes where the child stopped", (await levelNumber()) === 6);
+  check("resuming deals a fresh board", (await placedCount()) === 0);
+  check("resuming keeps the chapter", (await chapterName()) === "animals");
+
   // --- level 10: the busiest board of animals ------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for
   // whoever is working on the game; nothing in the game offers it.
@@ -493,6 +511,11 @@ try {
 
   // --- level 30: the last one, and the loop back ---------------------------
   await setViewport(1280, 800);
+  // A whole level has just been played from `?level=`, which is a tool for
+  // working on the game rather than a way into it: the place the child had got
+  // to is exactly where they left it.
+  await reopenTheGame();
+  check("a level played from ?level= leaves the saved level alone", (await levelNumber()) === 6);
   await goToLevel(30);
   check("jumps to the last level", (await levelNumber()) === 30);
   check("the last level is in the mastery chapter", (await chapterName()) === "mastery");

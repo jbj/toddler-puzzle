@@ -17,7 +17,9 @@
  * level is dealt fresh, so it never plays out quite the same way twice.
  * Finishing a level shows one big button that leads to the next one, and the
  * button after the last level starts the whole game over - so the only way to
- * go is forward and there is never a menu to get lost in.
+ * go is forward and there is never a menu to get lost in. Thirty levels is more
+ * than one sitting, so the host tells `progress.ts` which level is being played
+ * and the next visit starts there.
  *
  * Which tray slot each piece belongs to lives here and survives a re-layout, so
  * rotating the device mid-puzzle does not lose progress.
@@ -31,6 +33,7 @@ import { resolveLevel } from "./kinds/registry";
 import { boxOf, chooseLayout, type Layout } from "./layout";
 import { LEVEL_COUNT, levelSpec, nextLevel, type LevelSpec } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
+import { createProgressStore, type ProgressStore } from "./progress";
 import type { Puzzle, PuzzleKind } from "./puzzle";
 
 const SETTLE_MS = 340;
@@ -43,21 +46,38 @@ interface PieceState {
 
 const viewport = (): Size => ({ width: window.innerWidth, height: window.innerHeight });
 
-/**
- * `shapes` are the pieces a kind may deal from; `random` is injectable so a run
- * can be made repeatable - `?seed=` in main.ts uses it - and left alone every
- * puzzle deals a fresh cast. `startLevel` is where the game begins, which is
- * level 1 for a player and anything for `?level=`.
- */
+export interface GameOptions {
+  /**
+   * Injectable so a run can be made repeatable - `?seed=` in main.ts uses it -
+   * and left alone every puzzle deals a fresh cast.
+   */
+  readonly random?: () => number;
+  /**
+   * Where the game begins: level 1 for a new player, the level they stopped on
+   * for one coming back, and whatever `?level=` said for whoever is working on
+   * the game. Which of those it is, is main.ts's business rather than the
+   * host's.
+   */
+  readonly startLevel?: number;
+  /**
+   * Where "the level they stopped on" is kept. The host tells it which level is
+   * being played and never reads it back: resuming is a decision taken once, at
+   * boot, in main.ts. Left out, a game remembers nothing beyond this sitting.
+   */
+  readonly progress?: ProgressStore;
+}
+
+/** `shapes` are the pieces a kind may deal from. */
 export function createGame(
   root: HTMLElement,
   shapes: readonly PieceShape[],
-  random: () => number = Math.random,
-  startLevel = 1,
+  options: GameOptions = {},
 ): void {
+  const random = options.random ?? Math.random;
+  const progress = options.progress ?? createProgressStore({ storage: null });
   const state = new Map<PieceId, PieceState>();
 
-  let levelNumber = startLevel;
+  let levelNumber = options.startLevel ?? 1;
   // Assigned by the startPuzzle() call at the end of this function, which is
   // what resolves the first level, deals it and mounts the first board.
   let kind!: PuzzleKind;
@@ -150,12 +170,18 @@ export function createGame(
    * through here, so a toddler never sees the same line-up twice in a row for
    * long.
    *
+   * It is also the one place the level being played is recorded, which is what
+   * makes coming back tomorrow land on the right board. Re-dealing the same
+   * level writes nothing, so the reset button stays what it is: a fresh puzzle,
+   * never a change to how far the child has got.
+   *
    * The level is resolved every time rather than once, because a level whose
    * kind is not built yet is played by a stand-in, and the stand-in has a piece
    * count of its own; see `kinds/registry.ts`.
    */
   function startPuzzle(): void {
     complete = false;
+    progress.reachLevel(levelNumber);
     const resolved = resolveLevel(levelSpec(levelNumber), shapes.length);
     kind = resolved.kind;
     level = resolved.spec;

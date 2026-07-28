@@ -3,6 +3,7 @@ import { loadAnimalShapes } from "./assets";
 import { createGame } from "./game";
 import { seededRandom } from "./geometry";
 import { LEVEL_COUNT } from "./levels";
+import { browserStorage, createProgressStore } from "./progress";
 
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) {
@@ -23,11 +24,21 @@ const seed = Number(params.get("seed"));
  * of range values are ignored rather than argued with.
  */
 const asked = Number(params.get("level"));
-const level = Number.isInteger(asked) && asked >= 1 && asked <= LEVEL_COUNT ? asked : 1;
+const deepLink = Number.isInteger(asked) && asked >= 1 && asked <= LEVEL_COUNT ? asked : null;
 
-createGame(
-  root,
-  loadAnimalShapes(),
-  Number.isFinite(seed) && seed !== 0 ? seededRandom(seed) : Math.random,
-  level,
-);
+/**
+ * A deep link wins over the saved level, and leaves it alone: it goes where it
+ * says, and nothing played from there moves the place the child had got to.
+ * Without one the game resumes where it was left - which is level 1 for a new
+ * player, and level 1 again for a browser that will not store anything.
+ */
+const progress = createProgressStore({
+  storage: browserStorage(),
+  trackLevel: deepLink === null,
+});
+
+createGame(root, loadAnimalShapes(), {
+  random: Number.isFinite(seed) && seed !== 0 ? seededRandom(seed) : Math.random,
+  startLevel: deepLink ?? progress.read().level,
+  progress,
+});

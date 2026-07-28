@@ -16,6 +16,13 @@ particular deal - the screenshot run uses it to keep its shots comparable - and
 `?level=17` to start partway along the ramp, which is for working on the game
 rather than for playing it.
 
+**It picks up where it left off.** Thirty levels is more than one sitting, so
+the level being played is kept in `localStorage` and the next visit resumes
+there. A browser that will not store anything - private browsing on an iPad
+throws at the sight of it - simply starts at level 1 again, silently, because a
+toy that will not start is worse than a toy that forgets. See
+[decision 20260728T212500](docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
+
 **Some of the thirty levels are still stand-ins.** The whole ramp lives in one
 table, [`src/levels.ts`](src/levels.ts), and each level names the kind of puzzle
 it wants: matching animals to holes, cutting one animal into slices, a jigsaw, and

@@ -45,6 +45,13 @@ oversights until you know it, so the reason is written next to the rule.
   failure state, and no score. The chapter dots are an indicator for a grown-up,
   not a control, and `?level=` in the URL is a tool for working on the game, not
   a way in. Why: a two-year-old cannot read or configure a toy.
+- Resume on the level the child stopped on, and treat storage as a nicety rather
+  than a dependency: any failure to remember - a browser that refuses, a record
+  that is corrupt, a level number the table no longer has - falls back silently
+  to level 1 and a game that plays. Why: iPad Safari in private browsing throws
+  on the sight of `localStorage`, and a toy that will not start is worse than a
+  toy that forgets. See
+  [decision 20260728T212500](../../docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
 - Keep the project free of binary assets, runtime dependencies, and network
   requests. Art is hand-authored SVG; sound is synthesised with the Web Audio
   API. Why: there is nothing to download and nothing to fail to load.
@@ -69,6 +76,12 @@ one leads straight into the next, and the button after the last one starts again
 at level 1. Six dots by the reset button, one per chapter, show a grown-up how
 far along the set is; they are not a control. See
 [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
+
+**And it picks up where it left off.** The level being played is remembered
+between sittings, so a child who plays ten minutes a day works along the thirty
+rather than replaying the first five. Forgetting is always allowed - a browser
+that will not store anything simply starts at level 1 - and the mechanics are in
+[`navigation.instructions.md`](navigation.instructions.md).
 
 **Toddler-proofing.** Pinch-zoom, double-tap zoom, text selection, long-press
 context menus and native image dragging are all disabled. Every target is large.

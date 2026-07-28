@@ -55,6 +55,7 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/piece.ts` | What a piece is: `PieceId` and `PieceShape`, independent of any provider |
 | `src/puzzle.ts` | What a kind of puzzle is: the `PuzzleKind` contract the host plugs into |
 | `src/levels.ts` | The thirty levels: the whole difficulty ramp, in one table |
+| `src/progress.ts` | What is remembered between sittings: the level, and the grown-up settings |
 | `src/kinds/registry.ts` | Resolves a level's kind, standing in for the kinds not built yet |
 | `src/kinds/shape-match.ts` | The animal-and-hole game, as one `PuzzleKind` |
 | `src/layout.ts` | Composes a level's layout from its cast, and all tunable constants |
