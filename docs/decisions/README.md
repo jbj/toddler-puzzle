@@ -25,3 +25,4 @@ and an argument nobody can see having changed is worth nothing.
 | [0005](0005-no-binary-assets-or-runtime-dependencies.md) | Keep assets and runtime simple |
 | [0006](0006-screenshots-come-from-the-author.md) | Let the author attach the screenshots |
 | [0007](0007-no-required-approving-review.md) | Require no approving review on `main` |
+| [0008](0008-composed-layouts.md) | Compose layouts for any cast |

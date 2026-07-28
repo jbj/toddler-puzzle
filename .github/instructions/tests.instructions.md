@@ -11,13 +11,28 @@ applyTo: "tests/**"
 The deal is random: tests must not assume one fixed cast, one fixed order, or one
 animal always occupying a particular hole.
 
-When testing layout behavior, rotate the animal list so every animal appears in
-every place that matters. This catches foot-level and size problems that one seed
-can hide.
-
 Prefer asserting the invariant over snapshotting one deal. Good tests say things
 like holes stay on canvas, snap zones do not overlap, tray slots do not collide,
 and wrong drops return to the tray.
+
+Layouts are composed rather than tabulated, so what is worth testing is the
+promise, not the output. `PROMISES` in `tests/puzzle.test.ts` is a table of them
+- each takes a layout and returns what is wrong with it, or null - and each is
+checked against every layout in `COMPOSED`: every piece count a level could ask
+for, in both orientations, over several random casts each. A new property goes
+in that table and is checked everywhere for free; a new piece count needs
+nothing.
+
+Two kinds of cast are dealt into it. `animalCast` is the real animals in a random
+order, repeating the list when a count runs past it. `oddCast` is pieces of no
+particular shape - boxes of any proportions, standing anywhere in the lower part
+of their box - because every animal is square and stands near the foot of its
+box, so a cast of animals cannot tell whether the composition reasons about each
+piece's own reach or merely assumes the proportions of an animal.
+
+When a check does need one specific shape rather than a random one, rotate the
+animal list so every animal appears in every place that matters. This catches
+foot-level problems that one seed can hide.
 
 Use `?seed=` when an end-to-end or browser run needs to reproduce a specific
 deal. A seed is a reproduction tool, not a reason to make tests depend on only
@@ -28,11 +43,14 @@ one cast.
 Vitest covers the coordinate mapping (including letterboxing in both
 orientations), snap tolerance, clamping, the random deal, the shape-match kind's
 rules - it accepts a sloppy drop on a piece's own hole, never accepts anybody
-else's, and only finishes when the last piece is in - and every stage layout
-in both orientations - holes stay on canvas, snap zones never overlap, tray slots
-never collide, pieces stay big enough to grab, and each orientation fills at
-least 75% of its viewport. Because the cast is random, the layout checks run
-against a rotation of the animal list that puts every animal in every place.
+else's, and only finishes when the last piece is in - and the composed layouts:
+targets stay on canvas and clear of the tray, every piece stands on one of the
+layout's ground lines, snap zones never reach each other, tray slots never
+collide or sit in a target's snap zone, pieces stay big enough to grab, and each
+orientation fills at least 75% of its viewport. Alongside those it checks what
+composing is *for*: the same cast composes twice the same, a fuller board never
+gets bigger pieces, portrait stacks more rows than landscape spreads, and a cast
+too big to compose above the grabbable size is refused rather than shrunk away.
 
 Every animal is square, so both suites also carry a plank and a pole - pieces
 that are deliberately not square, in both directions. They keep the engine

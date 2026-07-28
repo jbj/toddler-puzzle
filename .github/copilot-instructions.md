@@ -26,7 +26,7 @@ they cover, so you may find one already in front of you.
 | [`art.instructions.md`](instructions/art.instructions.md) | Drawing or reviewing an animal: why you have to look at the render, the SVG contract, the overhang budget, foot levels, adding one |
 | [`code.instructions.md`](instructions/code.instructions.md) | Working anywhere in the code: definition of done, the scripts, the source map, what a pull request has to carry |
 | [`tests.instructions.md`](instructions/tests.instructions.md) | Writing or reading tests: how to test against a random deal, and what each suite already covers |
-| [`puzzle-kinds.instructions.md`](instructions/puzzle-kinds.instructions.md) | Changing a kind of puzzle or its layout: the `PuzzleKind` contract, shape-match, stages, arrangements, orientation |
+| [`puzzle-kinds.instructions.md`](instructions/puzzle-kinds.instructions.md) | Changing a kind of puzzle or its layout: the `PuzzleKind` contract, shape-match, stages, how a layout is composed, orientation |
 | [`navigation.instructions.md`](instructions/navigation.instructions.md) | Changing the shell around the puzzle: moving between stages, the buttons and dots, sound, sparkles, drag feel, toddler-proofing |
 
 Keep each rule in exactly one of those files. If two of them would both be a

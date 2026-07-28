@@ -14,6 +14,7 @@ import {
   STAGE_COUNT,
   STAGE_SIZES,
   boxOf,
+  buildLayout,
   buildStageLayout,
   chooseLayout,
   holeOf,
@@ -56,13 +57,99 @@ function castsFor(stage: number): PieceShape[][] {
   );
 }
 
-/** Every stage, both orientations, across a representative spread of casts. */
-const LAYOUTS: Layout[] = [];
-for (let stage = 1; stage <= STAGE_COUNT; stage++) {
-  for (const id of ORIENTATIONS) {
-    for (const cast of castsFor(stage)) LAYOUTS.push(buildStageLayout(id, stage, cast));
-  }
+/** The most pieces any of the thirty levels asks a layout to hold. */
+const MAX_PIECES = 12;
+
+const COUNTS = Array.from({ length: MAX_PIECES }, (_, index) => index + 1);
+
+/** How many casts each piece count is composed for. */
+const RUNS = 6;
+
+/** `count` animals in a random order, repeating the list if it runs short. */
+function animalCast(count: number, random: () => number): PieceShape[] {
+  const dealt = shuffle(SHAPES, random);
+  return Array.from({ length: count }, (_, index) => {
+    const shape = dealt[index % dealt.length] as PieceShape;
+    // A repeat needs an identity of its own; two pieces may not share a hole.
+    return index < dealt.length ? shape : { ...shape, id: pieceId(`${shape.id}-${index}`) };
+  });
 }
+
+/**
+ * A cast of `count` pieces of no particular shape: boxes of any proportions,
+ * standing anywhere in the lower quarter of their box. Every animal is square
+ * and stands near the foot of its box, so a cast of animals cannot tell whether
+ * the composition reasons about each piece's own reach or merely assumes the
+ * proportions of an animal.
+ *
+ * Pieces that hang further below their line than that are checked separately,
+ * at the counts the game plays: twelve pieces that each want two slots of
+ * height do not fit a landscape canvas at a size a toddler could grab, and the
+ * composition is supposed to say so rather than lay them out anyway.
+ */
+function oddCast(count: number, random: () => number, sit = 0.75): PieceShape[] {
+  return Array.from({ length: count }, (_, index) => {
+    const box = {
+      width: 60 + Math.round(random() * 240),
+      height: 60 + Math.round(random() * 240),
+    };
+    return {
+      id: pieceId(`test:piece-${index}`),
+      outline: "",
+      artwork: "",
+      box,
+      anchor: { x: box.width / 2, y: Math.round((sit + (1 - sit) * random()) * box.height) },
+      label: `piece ${index}`,
+    };
+  });
+}
+
+const castFor = (count: number, run: number): PieceShape[] => {
+  const random = seededRandom(count * 100 + run);
+  return run % 2 === 0 ? animalCast(count, random) : oddCast(count, random);
+};
+
+/**
+ * Every composition the thirty levels could ask for: each piece count, in both
+ * orientations, over a spread of casts of both kinds. Layouts are composed
+ * rather than tabulated, so what is worth checking is the properties they
+ * promise for any cast, not the coordinates of one lucky deal.
+ */
+const COMPOSED: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
+  COUNTS.flatMap((count) =>
+    Array.from({ length: RUNS }, (_, run) => buildLayout(id, 1, castFor(count, run))),
+  ),
+);
+
+/** A representative handful, for checks that do not need all of them. */
+const LAYOUTS: readonly Layout[] = COMPOSED.filter((_, index) => index % 17 === 0);
+
+/** Each piece of a layout with the target it belongs in and its bounds there. */
+const placementsOf = (layout: Layout) =>
+  layout.pieces.map((shape) => ({
+    shape,
+    hole: holeOf(layout, shape.id),
+    box: boxOf(layout, shape.id),
+  }));
+
+/**
+ * Report every layout in `layouts` that breaks `promise`, rather than only the
+ * first: a composition that fails at nine pieces and not at three has a lot
+ * more to say than one failure does.
+ */
+function complaintsFrom(
+  layouts: readonly Layout[],
+  promise: (layout: Layout) => string | null,
+): string[] {
+  return layouts.flatMap((layout) => {
+    const complaint = promise(layout);
+    return complaint === null ? [] : [`${layout.id} of ${layout.pieces.length}: ${complaint}`];
+  });
+}
+
+/** The first complaint from a per-piece check, or null when every piece is fine. */
+const firstComplaint = (complaints: (string | null)[]): string | null =>
+  complaints.find((complaint) => complaint !== null) ?? null;
 
 /** Where a piece's anchor lands once it is standing in its hole. */
 const groundOf = (layout: Layout, shape: PieceShape): number =>
@@ -72,9 +159,10 @@ describe("anchors", () => {
   it("stands every piece on one ground line, whatever its anchor", () => {
     for (let stage = 1; stage <= STAGE_COUNT; stage++) {
       for (const cast of castsFor(stage)) {
-        // Landscape puts a stage's whole cast on a single ground line, so any
+        // Landscape spreads a stage's whole cast along one ground line, so any
         // difference here is a piece floating or sinking rather than standing.
         const layout = buildStageLayout("landscape", stage, cast);
+        expect(layout.groundLines).toHaveLength(1);
         const grounds = layout.pieces.map((shape) => groundOf(layout, shape));
         for (const ground of grounds) expect(ground).toBeCloseTo(grounds[0]!);
       }
@@ -287,52 +375,72 @@ describe("pickStagePieces", () => {
   });
 });
 
-const CASES = LAYOUTS.map((layout) => ({
-  layout,
-  cast: layout.pieces.map((shape) => shape.id).join(" "),
-}));
-
-describe.each(CASES)("stage $layout.stage, $layout.id layout of $cast", ({ layout }) => {
-  const { width, height } = layout.canvas;
-  const { slotSize } = layout;
-  /** Each piece with the hole it stands in and the bounds it stands there at. */
-  const placed = layout.pieces.map((shape) => ({
-    shape,
-    hole: holeOf(layout, shape.id),
-    box: boxOf(layout, shape.id),
-  }));
-
-  it("gives exactly this stage's pieces a hole", () => {
-    expect(layout.pieces).toHaveLength(stageSize(layout.stage));
-    expect([...layout.holes.keys()].sort()).toEqual(layout.pieces.map((s) => s.id).sort());
-  });
-
-  it("measures exactly this stage's pieces, each inside the stage's slot", () => {
-    expect([...layout.boxes.keys()].sort()).toEqual(layout.pieces.map((s) => s.id).sort());
-    for (const { shape, box } of placed) {
-      // Fitting every piece inside one slot is what keeps the checks below true
-      // for a piece of any proportions, not just for a square animal.
-      expect(box.size.width).toBeLessThanOrEqual(slotSize);
-      expect(box.size.height).toBeLessThanOrEqual(slotSize);
-      expect(Math.max(box.size.width, box.size.height)).toBeCloseTo(slotSize);
-      expect(box.size).toEqual({
-        width: shape.box.width * box.scale,
-        height: shape.box.height * box.scale,
-      });
+/**
+ * What a composition promises, whatever the cast and whatever the count. The
+ * layout is generated rather than tabulated, so these are what is worth
+ * checking: not the coordinates of one lucky deal, but the properties every
+ * deal has to have. Each returns what is wrong with a layout, or null.
+ */
+const PROMISES = {
+  "gives every piece a target, a box and a tray slot": (layout) => {
+    const wanted = layout.pieces.length;
+    if (layout.holes.size !== wanted) return `${layout.holes.size} targets for ${wanted} pieces`;
+    if (layout.boxes.size !== wanted) return `${layout.boxes.size} boxes for ${wanted} pieces`;
+    if (layout.traySlots.length !== wanted) {
+      return `${layout.traySlots.length} tray slots for ${wanted} pieces`;
     }
-  });
+    return null;
+  },
 
-  it("keeps every hole inside the scenery, above the tray", () => {
-    for (const { hole, box } of placed) {
-      expect(hole.x).toBeGreaterThanOrEqual(0);
-      expect(hole.x + box.size.width).toBeLessThanOrEqual(width);
-      expect(hole.y).toBeGreaterThanOrEqual(0);
-      expect(hole.y + box.size.height).toBeLessThanOrEqual(layout.trayTop + box.size.height);
-    }
-  });
+  // Fitting every piece inside one square slot is what keeps the rest of these
+  // true for a piece of any proportions, not only for a square animal.
+  "fits every piece inside the slot, whatever its proportions": (layout) =>
+    firstComplaint(
+      placementsOf(layout).map(({ shape, box }) => {
+        const { width, height } = box.size;
+        if (width > layout.slotSize + 0.5 || height > layout.slotSize + 0.5) {
+          return `${shape.id} is ${width}x${height} in a ${layout.slotSize} slot`;
+        }
+        if (Math.abs(Math.max(width, height) - layout.slotSize) > 0.5) {
+          return `${shape.id} does not fill its slot on its longer side`;
+        }
+        if (Math.abs(width / height - shape.box.width / shape.box.height) > 1e-9) {
+          return `${shape.id} is drawn out of proportion`;
+        }
+        return null;
+      }),
+    ),
 
-  it("keeps snap zones from overlapping each other", () => {
-    const zones = placed.map(({ hole, box }) => ({
+  "keeps every target fully on canvas and clear of the tray": (layout) =>
+    firstComplaint(
+      placementsOf(layout).map(({ shape, hole, box }) => {
+        const right = hole.x + box.size.width;
+        const bottom = hole.y + box.size.height;
+        if (hole.x < 0 || right > layout.canvas.width) {
+          return `${shape.id} runs off the side of the canvas`;
+        }
+        if (hole.y < 0) return `${shape.id} runs off the top of the canvas`;
+        // Box and all, not just the anchor: a target the tray covers is a
+        // target a piece cannot be dropped into.
+        if (bottom > layout.trayTop) return `${shape.id} reaches into the tray`;
+        return null;
+      }),
+    ),
+
+  // The ground line is the whole idea of the composition: a row of pieces
+  // stands on a line of ground, however differently each one sits in its box.
+  "stands every piece on one of the ground lines": (layout) =>
+    firstComplaint(
+      placementsOf(layout).map(({ shape, hole, box }) => {
+        const ground = hole.y + shape.anchor.y * box.scale;
+        const nearest = Math.min(...layout.groundLines.map((line) => Math.abs(line - ground)));
+        return nearest > 0.5 ? `${shape.id} stands at ${Math.round(ground)}, off any line` : null;
+      }),
+    ),
+
+  "keeps snap zones from reaching each other": (layout) => {
+    const zones = placementsOf(layout).map(({ shape, hole, box }) => ({
+      piece: shape.id,
       center: boxCenter(hole, box.size),
       radius: box.snapRadius,
     }));
@@ -340,52 +448,135 @@ describe.each(CASES)("stage $layout.stage, $layout.id layout of $cast", ({ layou
       for (let j = i + 1; j < zones.length; j++) {
         const a = zones[i]!;
         const b = zones[j]!;
-        // Neither centre may sit inside the other's zone, whichever of the two
-        // pieces is the more forgiving one.
-        expect(distance(a.center, b.center)).toBeGreaterThan(Math.max(a.radius, b.radius));
+        // Whichever of the two is the more forgiving: a generous radius may not
+        // reach its neighbour's target, or a piece could snap into the wrong one.
+        if (distance(a.center, b.center) <= Math.max(a.radius, b.radius)) {
+          return `${a.piece} and ${b.piece} have snap zones that reach each other`;
+        }
       }
     }
-  });
+    return null;
+  },
 
-  it("provides one tray slot per animal, all on canvas and below the tray line", () => {
-    expect(layout.traySlots).toHaveLength(placed.length);
+  "keeps every tray slot on canvas, below the tray line": (layout) => {
+    // A slot holds whichever piece is shuffled into it, so it is measured at
+    // the full slot size rather than at any one piece's bounds.
     for (const slot of layout.traySlots) {
-      // A slot holds whichever piece is shuffled into it, so it is checked at
-      // the full slot size rather than at any one piece's bounds.
-      expect(slot.x).toBeGreaterThanOrEqual(0);
-      expect(slot.x + slotSize).toBeLessThanOrEqual(width);
-      expect(slot.y).toBeGreaterThanOrEqual(layout.trayTop);
-      expect(slot.y + slotSize).toBeLessThanOrEqual(height);
+      if (slot.x < 0 || slot.x + layout.slotSize > layout.canvas.width) {
+        return `a tray slot at ${Math.round(slot.x)} runs off the side`;
+      }
+      if (slot.y < layout.trayTop || slot.y + layout.slotSize > layout.canvas.height) {
+        return `a tray slot at ${Math.round(slot.y)} is outside the tray`;
+      }
     }
-  });
+    return null;
+  },
 
-  it("does not overlap tray slots with each other", () => {
+  "keeps tray slots from overlapping each other": (layout) => {
     const slots = layout.traySlots;
     for (let i = 0; i < slots.length; i++) {
       for (let j = i + 1; j < slots.length; j++) {
         const a = slots[i]!;
         const b = slots[j]!;
-        const overlaps = Math.abs(a.x - b.x) < slotSize && Math.abs(a.y - b.y) < slotSize;
-        expect(overlaps).toBe(false);
+        const apart =
+          Math.abs(a.x - b.x) >= layout.slotSize || Math.abs(a.y - b.y) >= layout.slotSize;
+        if (!apart) return `two tray slots overlap near ${Math.round(a.x)},${Math.round(a.y)}`;
       }
     }
-  });
+    return null;
+  },
 
-  it("does not let a tray slot sit inside a hole's snap zone", () => {
+  "keeps every tray slot out of every target's snap zone": (layout) => {
     for (const slot of layout.traySlots) {
-      for (const { hole, box } of placed) {
-        // Measured with the piece's own bounds at both ends: this is where that
-        // piece would sit if it were left in that slot.
+      for (const { shape, hole, box } of placementsOf(layout)) {
+        // Measured with that piece's own bounds at both ends: this is where the
+        // piece would sit if it were the one left waiting in that slot.
         const gap = distance(boxCenter(slot, box.size), boxCenter(hole, box.size));
-        expect(gap).toBeGreaterThan(box.snapRadius);
+        if (gap <= box.snapRadius) return `${shape.id} would snap home from its tray slot`;
+      }
+    }
+    return null;
+  },
+
+  // A piece narrower than a tenth of the canvas is a fiddly target for a small
+  // hand, however many pieces the level asks for.
+  "keeps every piece big enough for a toddler to grab": (layout) =>
+    layout.slotSize / layout.canvas.width > 0.1
+      ? null
+      : `a ${layout.slotSize} slot on a ${layout.canvas.width} canvas is too small to grab`,
+} satisfies Record<string, (layout: Layout) => string | null>;
+
+const PROMISED = Object.entries(PROMISES);
+
+describe("composed layouts", () => {
+  it("composes every piece count the levels ask for, in both orientations", () => {
+    expect(COMPOSED).toHaveLength(ORIENTATIONS.length * COUNTS.length * RUNS);
+  });
+
+  it.each(PROMISED)("%s, at every count in both orientations", (_name, promise) => {
+    expect(complaintsFrom(COMPOSED, promise)).toEqual([]);
+  });
+
+  it("keeps every promise for pieces that hang below their line", () => {
+    // An anchor is where a piece sits, which need not be at its feet: anchored
+    // at the top of its box, a piece hangs its whole self below its line and
+    // wants two slots of height. Checked at the counts a scene plays, because
+    // twelve of those do not fit a landscape canvas at a size worth having.
+    const hanging = ORIENTATIONS.flatMap((id) =>
+      COUNTS.filter((count) => count <= stageSize(STAGE_COUNT)).flatMap((count) =>
+        Array.from({ length: RUNS }, (_, run) =>
+          buildLayout(id, 1, oddCast(count, seededRandom(count * 31 + run), 0)),
+        ),
+      ),
+    );
+    for (const [name, promise] of PROMISED) {
+      expect(complaintsFrom(hanging, promise), name).toEqual([]);
+    }
+  });
+
+  it("shrinks the pieces as the board fills up", () => {
+    // Not step by step: three pieces leave a row ragged where four fill it, so
+    // a board of four can compose a shade better than a board of three. The
+    // ramp is what holds - twice as many pieces are never bigger ones.
+    for (const id of ORIENTATIONS) {
+      for (let run = 0; run < RUNS; run++) {
+        const cast = castFor(MAX_PIECES, run);
+        const slots = COUNTS.map((count) => buildLayout(id, 1, cast.slice(0, count)).slotSize);
+        for (const count of COUNTS) {
+          const doubled = slots[count * 2 - 1];
+          if (doubled !== undefined) expect(doubled).toBeLessThanOrEqual(slots[count - 1]!);
+        }
       }
     }
   });
 
-  it("keeps pieces big enough for a toddler to grab", () => {
-    // A piece narrower than a tenth of the canvas would be a fiddly target on a
-    // small screen, however many animals the stage has.
-    expect(slotSize / width).toBeGreaterThan(0.1);
+  it("reflows rather than shrinking: portrait stacks what landscape spreads", () => {
+    // Letterboxing the landscape composition onto an upright phone would leave
+    // the pieces too small to grab, so portrait spends the height it has.
+    for (const count of COUNTS.filter((one) => one >= 3)) {
+      for (let run = 0; run < RUNS; run++) {
+        const cast = castFor(count, run);
+        const landscape = buildLayout("landscape", 1, cast);
+        const portrait = buildLayout("portrait", 1, cast);
+        expect(portrait.groundLines.length).toBeGreaterThan(landscape.groundLines.length);
+      }
+    }
+  });
+
+  it("composes the same layout twice for the same cast", () => {
+    for (const count of COUNTS) {
+      const cast = castFor(count, 0);
+      expect(buildLayout("portrait", 1, cast)).toEqual(buildLayout("portrait", 1, cast));
+    }
+  });
+
+  it("refuses a cast too big to compose rather than shrinking it away", () => {
+    // Nothing stops a level asking for sixty pieces. What the composition must
+    // not do is answer with pieces no toddler could pick up.
+    for (const id of ORIENTATIONS) {
+      expect(() => buildLayout(id, 1, animalCast(60, seededRandom(3)))).toThrow(/too small/i);
+      expect(() => buildLayout(id, 1, [])).toThrow(/at least one piece/i);
+    }
   });
 });
 
