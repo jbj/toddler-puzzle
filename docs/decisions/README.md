@@ -26,3 +26,4 @@ and an argument nobody can see having changed is worth nothing.
 | [0006](0006-screenshots-come-from-the-author.md) | Let the author attach the screenshots |
 | [0007](0007-no-required-approving-review.md) | Require no approving review on `main` |
 | [0008](0008-deploy-to-github-pages.md) | Deploy to Pages from a verified commit |
+| [0009](0009-composed-layouts.md) | Compose layouts for any cast |

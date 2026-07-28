@@ -12,14 +12,16 @@ rather than letterbox a landscape board onto a portrait phone.
 
 ## Decision
 
-Layouts are generated when a puzzle starts. Arrangement tables describe row
-counts, ground lines, tray rows, and piece sizes; the dealt animals fill those
-places on demand.
+Layouts are generated when a puzzle starts, from the cast that was dealt rather
+than from a fixed set of coordinates. (Arrangement tables described the row
+counts, ground lines, tray rows and piece sizes to generate them into;
+[0009](0009-composed-layouts.md) replaced the tables with a composition that
+works for any piece count, and the rest of this record still holds.)
 
 ## Consequence
 
 A hole's height can depend on the foot level of the animal dealt into it. The
-same stage can use landscape and portrait arrangements that keep pieces large.
+same stage can be composed for landscape and for portrait in ways that keep the
+pieces large.
 
-Tests must cover the arrangements across rotated animal lists, not just one
-lucky deal.
+Tests must cover the layouts across many casts, not just one lucky deal.
