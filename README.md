@@ -28,7 +28,7 @@ run that plays the game through and screenshots it.
 Every push to `main` that CI verifies is published to the URL above by
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml); why it waits for CI
 rather than deploying on the push is
-[decision 0008](docs/decisions/0008-deploy-to-github-pages.md).
+[decision 20260728T103610](docs/decisions/20260728T103610-deploy-to-github-pages.md).
 
 ## Documentation
 

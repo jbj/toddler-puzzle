@@ -118,7 +118,7 @@ function links(text) {
 
 const decisionNumbers = new Set(
   paths
-    .map((path) => new RegExp(`^${DECISIONS_DIR}/(\\d{4})-`).exec(path)?.[1])
+    .map((path) => new RegExp(`^${DECISIONS_DIR}/(\\d{8}T\\d{6})-`).exec(path)?.[1])
     .filter((number) => number !== undefined),
 );
 
@@ -177,8 +177,8 @@ function resolvesSomehow(file, mention) {
 function checkDecisionNumbers(file, text, problems) {
   const body = withoutFences(text);
   const cited = [
-    ...body.matchAll(new RegExp(`${DECISIONS_DIR}/(\\d{4})`, "g")),
-    ...body.matchAll(/\bdecisions?\s+(\d{4})\b/gi),
+    ...body.matchAll(new RegExp(`${DECISIONS_DIR}/(\\d{8}T\\d{6})`, "g")),
+    ...body.matchAll(/\bdecisions?\s+(\d{8}T\d{6})\b/gi),
   ];
   for (const [, number] of cited) {
     if (!decisionNumbers.has(number)) {

@@ -3,7 +3,7 @@ name: Deploy
 # The site is only ever published from a commit CI has already verified, so this
 # does not run on the push itself: it waits for the CI run of that push to
 # finish and then builds the exact commit CI looked at. See
-# docs/decisions/0008. `workflow_dispatch` is the manual re-deploy, including
+# docs/decisions/20260728T103610. `workflow_dispatch` is the manual re-deploy, including
 # the first one - a `workflow_run` trigger does nothing until this file is on
 # the default branch.
 on:

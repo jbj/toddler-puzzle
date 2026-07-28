@@ -69,9 +69,9 @@ instead of crowding the pieces out. It runs in four steps:
 Steps 3 and 4 are why layouts are built when a puzzle starts rather than up
 front: a hole's height depends on the anchor of whichever piece was dealt into
 that place. Generating the layouts rather than declaring them is
-[decision 0004](../../docs/decisions/0004-generated-layouts.md); composing them
+[decision 20260727T072917](../../docs/decisions/20260727T072917-generated-layouts.md); composing them
 for any cast rather than from a table is
-[decision 0009](../../docs/decisions/0009-composed-layouts.md).
+[decision 20260728T115938](../../docs/decisions/20260728T115938-composed-layouts.md).
 
 Because room is left for each invariant *before* a size is picked, the
 invariants hold by construction rather than by tuning: a hole cannot land off
@@ -96,7 +96,7 @@ what lets six animals share a single row and still leaves every piece well over 
 tenth of the canvas wide - the size a small hand needs.
 
 The snap radius stays deliberately generous, about two thirds of the piece it
-belongs to; [decision 0001](../../docs/decisions/0001-generous-snap-radius.md)
+belongs to; [decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md)
 explains why tightening it is not a cleanup.
 
 ## Orientation

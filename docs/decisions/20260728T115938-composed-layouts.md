@@ -1,10 +1,10 @@
-# 0009. Compose layouts for any cast, rather than tabulating them
+# 20260728T115938. Compose layouts for any cast, rather than tabulating them
 
-Extends [0004](0004-generated-layouts.md).
+Extends [20260727T072917](20260727T072917-generated-layouts.md).
 
 ## Context
 
-0004 settled that layouts are built when a puzzle starts, because a hole's
+20260727T072917 settled that layouts are built when a puzzle starts, because a hole's
 height depends on the foot level of whichever animal was dealt into it. What it
 left behind was a table: for each of the three stages, in each of the two
 orientations, an arrangement gave the row counts, the ground lines, the tray

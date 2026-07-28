@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 # This workflow only ever reads. Screenshots leave as an artifact, which needs no
-# write access and no privileged second job: see docs/decisions/0006.
+# write access and no privileged second job: see docs/decisions/20260727T105836.
 permissions:
   contents: read
 

@@ -1,4 +1,4 @@
-# 0004. Generate layouts at stage start
+# 20260727T072917. Generate layouts at stage start
 
 ## Context
 
@@ -15,7 +15,7 @@ rather than letterbox a landscape board onto a portrait phone.
 Layouts are generated when a puzzle starts, from the cast that was dealt rather
 than from a fixed set of coordinates. (Arrangement tables described the row
 counts, ground lines, tray rows and piece sizes to generate them into;
-[0009](0009-composed-layouts.md) replaced the tables with a composition that
+[20260728T115938](20260728T115938-composed-layouts.md) replaced the tables with a composition that
 works for any piece count, and the rest of this record still holds.)
 
 ## Consequence
