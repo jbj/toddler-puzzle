@@ -11,7 +11,8 @@ Closes #
 ## Checklist
 
 - [ ] `npm run verify` passes
-- [ ] Design invariants were not changed, or issue #___ explicitly authorised the change
+- [ ] Any design invariants this changes are documented in the relevant Markdown
+      files and highlighted in the description above
 - [ ] The screenshots below come from this branch
 
 ## Screenshots
