@@ -38,12 +38,12 @@ export const FINGER_LIFT = 34;
 
 /**
  * How far a piece's grab area reaches past its artwork, as a fraction of the
- * authored box. A piece is picked up anywhere inside the box around its
- * drawing, not just where a finger lands on paint, and this is the margin
- * around that drawing: enough to cover the outline's stroke, which measuring
- * the geometry leaves out, plus a little for a toddler aiming at an edge.
- * `padWithin` holds the result inside the authored box, which is what keeps one
- * piece's grab area out of the next one's.
+ * shorter side of the authored box. A piece is picked up anywhere inside the
+ * box around its drawing, not just where a finger lands on paint, and this is
+ * the margin around that drawing: enough to cover the outline's stroke, which
+ * measuring the geometry leaves out, plus a little for a toddler aiming at an
+ * edge. `padWithin` holds the result inside the authored box, which is what
+ * keeps one piece's grab area out of the next one's.
  */
 export const GRAB_PADDING = 0.04;
 

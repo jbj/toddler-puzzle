@@ -79,7 +79,7 @@ function buildPiece(shape: PieceShape, scale: number): SVGGElement {
  *    `.piece.is-placed` in style.css go on switching the whole piece off.
  */
 function fitGrabBox(piece: SVGGElement, shape: PieceShape): void {
-  const art = piece.firstElementChild;
+  const art = piece.querySelector(".art");
   if (!(art instanceof SVGGElement)) return;
 
   // In the element's own units, i.e. before its `scale()`. Measured rather than

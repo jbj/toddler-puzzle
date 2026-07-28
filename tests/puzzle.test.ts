@@ -171,7 +171,7 @@ describe("padWithin", () => {
   // The animals' box; a grab area is measured in these units before it is
   // scaled into a slot.
   const BOX = { width: 240, height: 240 };
-  const padding = GRAB_PADDING * BOX.width;
+  const padding = GRAB_PADDING * Math.min(BOX.width, BOX.height);
 
   it("gives a measured drawing a margin on every side", () => {
     expect(padWithin({ x: 60, y: 50, width: 100, height: 120 }, 10, BOX)).toEqual({
