@@ -1,0 +1,84 @@
+name: Deploy
+
+# The site is only ever published from a commit CI has already verified, so this
+# does not run on the push itself: it waits for the CI run of that push to
+# finish and then builds the exact commit CI looked at. See
+# docs/decisions/0008. `workflow_dispatch` is the manual re-deploy, including
+# the first one - a `workflow_run` trigger does nothing until this file is on
+# the default branch.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+# `pages` and `id-token` are what the Pages deployment needs and the whole of
+# what this workflow may do: nothing here writes to the repository. Publishing
+# is an artifact handed to the Pages service, so no branch is ever committed to.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and never cancelled: a half-published site is worse than
+# a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to GitHub Pages
+    # A CI run on a pull request also completes on a branch named `main` when
+    # the pull request targets it, so the event is checked as well as the
+    # conclusion.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The commit CI verified, not whatever `main` points at by now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Only the build: the art check and the screenshot run need Chrome and
+      # system tools, and CI has already run all of `npm run verify` on this
+      # very commit.
+      - name: Build
+        run: npm run build
+
+      # Reads the site's URL and base path back from the repository's Pages
+      # settings, whose source must be "GitHub Actions". That switch is a
+      # one-off: `enablement` would flip it here, but only for a token with
+      # administration rights, which this workflow deliberately does not carry.
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

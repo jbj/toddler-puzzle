@@ -1,5 +1,7 @@
 # Animal Puzzle
 
+**Play it at [jbj.github.io/toddler-puzzle](https://jbj.github.io/toddler-puzzle/).**
+
 A drag-and-drop shape puzzle for toddlers. Animals wait in a tray; each one is
 dragged onto the matching animal-shaped hole in the landscape. The game is three
 puzzles long and grows as it goes - **three animals, then four, then six** - so
@@ -22,6 +24,11 @@ npm run dev
 `npm run verify` is the single check that has to pass before a pull request:
 lint, format check, docs check, build, tests, art check, and a headless Chrome
 run that plays the game through and screenshots it.
+
+Every push to `main` that CI verifies is published to the URL above by
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml); why it waits for CI
+rather than deploying on the push is
+[decision 0008](docs/decisions/0008-deploy-to-github-pages.md).
 
 ## Documentation
 
