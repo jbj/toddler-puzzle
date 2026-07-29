@@ -139,3 +139,26 @@ export function playFanfare(grand = false): void {
     tone({ frequency, delay: index * 0.13, duration: 0.4, gain: 0.15 });
   });
 }
+
+/**
+ * The end of a chapter, and of the whole game. Longer and fuller than
+ * `playFanfare` on purpose: five levels finishing has to sound like more than
+ * one level finishing, or the chapter celebration it opens is only a bigger
+ * picture of the same moment.
+ *
+ * It is one phrase rather than a piece of music - the same rising run, taken
+ * further and answered by two notes underneath it - because the point is to be
+ * unmistakably bigger, not to be clever. Everything is a soft sine like every
+ * other sound in the game; the vocabulary proper is issue #18.
+ */
+export function playChapterFanfare(grand = false): void {
+  const run = [523.25, 587.33, 659.25, 783.99, 880, 1046.5];
+  const top = grand ? [1318.51, 1567.98, 2093] : [1318.51];
+  [...run, ...top].forEach((frequency, index) => {
+    tone({ frequency, delay: index * 0.11, duration: 0.42, gain: 0.14 });
+  });
+  // Two notes held underneath the run, so it lands rather than trails off.
+  const settle = run.length * 0.11;
+  tone({ frequency: 261.63, delay: settle, duration: 1.1, gain: 0.09 });
+  tone({ frequency: 392, delay: settle, duration: 1.1, gain: 0.07 });
+}

@@ -25,6 +25,13 @@ export interface Board {
    */
   readonly activityLayer: SVGGElement;
   readonly piecesLayer: SVGGElement;
+  /**
+   * Where a chapter celebration puts its balloons, its parade and its fireworks
+   * (`celebration.ts`). Deliberately *under* `fxLayer`: the sparkles and the big
+   * button onwards are drawn there, so nothing a celebration floats can ever
+   * cover the way out of it.
+   */
+  readonly celebrationLayer: SVGGElement;
   readonly fxLayer: SVGGElement;
   readonly pieces: ReadonlyMap<PieceId, SVGGElement>;
   readonly resetButton: SVGGElement;
@@ -174,6 +181,7 @@ export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOpti
   const backdropLayer = group("backdrop");
   const activityLayer = group("activity");
   const piecesLayer = group("pieces");
+  const celebrationLayer = group("celebration");
   const fxLayer = group("fx");
 
   const built = options.pieces ?? true;
@@ -192,6 +200,7 @@ export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOpti
     backdropLayer,
     activityLayer,
     piecesLayer,
+    celebrationLayer,
     fxLayer,
     resetButton,
     buildChapterDots(layout),
@@ -203,5 +212,14 @@ export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOpti
   // once the board is mounted rather than while it is being built.
   if (built) for (const shape of layout.pieces) fitGrabBox(elementFor(pieces, shape.id), shape);
 
-  return { stage, backdropLayer, activityLayer, piecesLayer, fxLayer, pieces, resetButton };
+  return {
+    stage,
+    backdropLayer,
+    activityLayer,
+    piecesLayer,
+    celebrationLayer,
+    fxLayer,
+    pieces,
+    resetButton,
+  };
 }

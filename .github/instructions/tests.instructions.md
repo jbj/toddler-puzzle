@@ -102,8 +102,19 @@ the first chapter on one. Whether a bubble is big enough to hit, whether a touch
 registers and whether the level can actually be finished by touching are all
 `npm run shot`'s.
 
-`tests/progress.test.ts` covers what is remembered between sittings, and is
-mostly the unhappy paths, because that is what the storage layer is for: a
+`tests/celebration.test.ts` covers where the chapter celebrations fall, and
+almost nothing else, because almost all of a celebration is a thing on a screen
+answering a finger and this suite has no screen. What it holds is the wiring
+nobody would notice was wrong until a child had played twenty-five levels to
+find out: that every chapter names a celebration and no two name the same one,
+that the finale belongs to the last chapter and to nothing else, that
+`endsChapter` agrees level by level with the chapter numbering it is read from -
+5, 10, 15, 20, 25 and 30 as the table stands - and that a level the table does
+not have ends nothing rather than throwing. Whether a celebration is *played*,
+whether the way onwards is up while it runs, whether the sky refills and whether
+it survives a rotation are all `npm run shot`'s.
+
+`tests/progress.test.ts` covers what is remembered between sittings, and ismostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level
 number the table no longer has, a browser that throws on every call, and one
 that reads back yesterday's record but refuses every write - which resumes on it
@@ -219,6 +230,20 @@ two-second hold opens it, the level map shows thirty squares with the six played
 ones filled, choosing a level deals it and is remembered without claiming the
 child reached it, a switch turned off survives closing the panel and then a
 whole reload of the page, and resetting asks once before starting the game over.
+
+It is the only place the chapter celebrations can be *played*, which is the only
+way to find out whether they work. All six are reached and shot. The balloons
+are played hardest, because everything that could go wrong with a celebration
+can go wrong with them: the run checks the celebration goes up on finishing
+level 5 and not before, that every balloon is more than a tenth of the board
+across, that the way onwards is on screen while the party is running rather than
+after it, that five popped balloons all burst and are counted, that the sky
+fills itself back up, that the level does not change underneath the child, that
+nothing floats over the button out, and that turning the tablet keeps both the
+celebration and what has been played with. The finale then gets the same
+treatment plus the two things only it does: several kinds of thing to touch at
+once, and a tap on bare sky still answered. See
+[`navigation.instructions.md`](navigation.instructions.md).
 
 It plays a sample rather than all thirty because thirty levels of real pointer
 drags would take minutes; the table itself is swept in `tests/levels.test.ts`.

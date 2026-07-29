@@ -40,4 +40,5 @@ and an argument nobody can see having changed is worth nothing.
 | [20260729T101500-every-piece-needs-something-in-it](20260729T101500-every-piece-needs-something-in-it.md) | Measure that no piece of a picture is featureless |
 | [20260729T114500-every-cut-is-made-once](20260729T114500-every-cut-is-made-once.md) | Make every jigsaw cut once and give it to both neighbours |
 | [20260729T124500-a-shard-is-a-thing-to-hold](20260729T124500-a-shard-is-a-thing-to-hold.md) | Cut a picture into shards that are things to hold |
+| [20260729T152400-a-celebration-is-played-not-finished](20260729T152400-a-celebration-is-played-not-finished.md) | Play a chapter celebration rather than watch it |
 | [20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters](20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters.md) | Stand a lone picture's pieces in the gutters |

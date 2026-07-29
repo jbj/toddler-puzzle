@@ -400,13 +400,17 @@ const activityProgress = () =>
  * from below the bottom edge is not something a child can touch yet, so
  * counting it would let a nearly empty sky pass for a full one - and the point
  * returned is the middle of the part that *is* on the board.
+ *
+ * The scope is a parameter because the same question is asked of two layers:
+ * the activity of a touch level, and the celebration a chapter ends with. Both
+ * are the same promise - something is there and it answers.
  */
-const thingsToTouch = () =>
+const thingsToTouch = (scope = "#stage .activity") =>
   evaluate(`
   (() => {
     const stage = document.querySelector('#stage').getBoundingClientRect();
     const things = [];
-    for (const el of document.querySelectorAll('#stage .activity [data-touch]')) {
+    for (const el of document.querySelectorAll('${scope} [data-touch]')) {
       const r = el.getBoundingClientRect();
       const left = Math.max(r.x, stage.x);
       const right = Math.min(r.right, stage.right);
@@ -419,6 +423,8 @@ const thingsToTouch = () =>
         touch: el.dataset.touch,
         x: (left + right) / 2,
         y: (top + bottom) / 2,
+        width: right - left,
+        height: bottom - top,
         size: Math.max(r.width, r.height),
         shown,
       });
@@ -426,6 +432,55 @@ const thingsToTouch = () =>
     return things;
   })()
 `);
+
+// --- the end of a chapter --------------------------------------------------
+// Five levels finishing is a bigger moment than one level finishing, and the
+// moment is played rather than watched: balloons to pop, a rainbow to paint, a
+// sky to fire into. What this run is really checking is that it is not a trap
+// at either end - the way onwards is up from the first instant, and things keep
+// arriving for a child who has popped the lot. See src/celebration.ts.
+
+/** Which celebration is on screen, or "" if this level did not end a chapter. */
+const celebrationName = () =>
+  evaluate(`document.querySelector('#stage .celebration')?.dataset.celebration ?? ''`);
+
+/** How many things the child has made answer, counted across a rotation. */
+const celebrationPlayed = () =>
+  evaluate(`Number(document.querySelector('#stage .celebration')?.dataset.played ?? -1)`);
+
+/** What a finger could land on in the celebration itself. */
+const celebrationThings = () => thingsToTouch("#stage .celebration");
+
+/** Whether night has fallen over the finished picture, for the fireworks. */
+const nightHasFallen = () =>
+  evaluate(`
+  (() => {
+    const night = document.querySelector('#stage .celebration .night');
+    if (!night) return false;
+    return Number(getComputedStyle(night).opacity) > 0.3;
+  })()
+`);
+
+/**
+ * Tap the things a celebration is offering, one at a time, and report what
+ * answered. Every tap is on something that was on screen when it was aimed at,
+ * so a tap that does not register is the celebration failing to answer a finger.
+ */
+async function playCelebration(taps) {
+  let answered = 0;
+  let missed = 0;
+  for (let tap = 0; tap < taps; tap++) {
+    const things = await celebrationThings();
+    if (things.length === 0) throw new Error("The celebration has nothing to touch.");
+    const thing = things[tap % things.length];
+    const before = await celebrationPlayed();
+    await tapAt(thing.x, thing.y);
+    const after = await celebrationPlayed();
+    if (after > before) answered++;
+    else missed++;
+  }
+  return { answered, missed };
+}
 
 /**
  * A point on the board with nothing on it: no thing to touch, no button. A
@@ -836,6 +891,64 @@ try {
 
   check("the first chapter still offers the next puzzle", (await finishLabel()) === "Next puzzle");
 
+  // --- the end of chapter 1: balloons ---------------------------------------
+  // The first of the five chapter moments. It has to be bigger than the 700 ms
+  // sparkle every other level ends with, and it has to be *played*: a
+  // two-year-old will not sit through a cutscene, they will put a finger on it.
+  check("finishing a chapter raises a celebration", (await celebrationName()) === "balloons");
+  check("the celebration starts with nothing played with", (await celebrationPlayed()) === 0);
+  const balloons = await celebrationThings();
+  check(`balloons are up to be popped (${balloons.length})`, balloons.length >= 4);
+  const boardWidth = await evaluate(
+    `document.querySelector('#stage').getBoundingClientRect().width`,
+  );
+  const narrowest = Math.min(...balloons.map((thing) => thing.width)) / boardWidth;
+  check(
+    `every balloon is a big target (${(narrowest * 100).toFixed(1)}% of the board)`,
+    narrowest >= 0.1,
+  );
+  // The way onwards is there from the first instant, not after the party. A
+  // child who pops everything in four seconds is never left with an empty
+  // screen and no way out.
+  check("the way onwards is up during the celebration", (await finishButtons()) === 1);
+  await shot("07b-chapter1-balloons");
+
+  const bang = await playCelebration(5);
+  check(`every balloon touched popped (${bang.missed} missed)`, bang.missed === 0);
+  check(`popping is counted (${bang.answered})`, (await celebrationPlayed()) === bang.answered);
+  // Long enough for a replacement to have climbed into reach, and no longer:
+  // the sky a child is looking at a second after popping the lot has to have
+  // something in it.
+  await sleep(2000);
+  const topUp = await celebrationThings();
+  check(`the sky fills itself back up (${topUp.length})`, topUp.length >= 4);
+  check("the celebration never takes the level away", (await levelNumber()) === 5);
+  check("the way onwards is still there after playing", (await finishButtons()) === 1);
+  await shot("07c-chapter1-balloons-popped");
+
+  // A celebration is drawn under the effects layer for exactly one reason: a
+  // balloon must never float over the button out.
+  const buttonIsReachable = await evaluate(`
+    (() => {
+      const button = document.querySelector('#stage .fx [role="button"]');
+      const r = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return !!hit?.closest('[role="button"]');
+    })()
+  `);
+  check("nothing floats over the button out", buttonIsReachable === true);
+
+  // Turning the tablet mid-party keeps what has been played with, because it is
+  // counted outside the board that gets rebuilt.
+  const playedBeforeTurn = await celebrationPlayed();
+  await setViewport(900, 1300);
+  await sleep(700);
+  check("the celebration survives a rotation", (await celebrationName()) === "balloons");
+  check("a rotation keeps what was played with", (await celebrationPlayed()) === playedBeforeTurn);
+  check("a rotation keeps the way onwards", (await finishButtons()) === 1);
+  await setViewport(1280, 800);
+  await sleep(700);
+
   // --- coming back to it tomorrow ------------------------------------------
   // Thirty levels is more than one sitting, so the level being played is
   // remembered (src/progress.ts) and reopening the game starts there. This is
@@ -957,6 +1070,22 @@ try {
   check("a middle level offers the next puzzle", (await finishLabel()) === "Next puzzle");
   await shot("13-portrait-complete");
 
+  // --- the end of chapter 2: a parade ---------------------------------------
+  // The animals just matched walk across the board, and every one of them hops
+  // and sings when it is poked. In portrait as it happens, which is the point:
+  // a celebration is composed from the layout like everything else.
+  check("finishing chapter 2 raises the parade", (await celebrationName()) === "parade");
+  const marchers = await evaluate(
+    `[...document.querySelectorAll('#stage .celebration [data-piece]')].map((el) => el.dataset.piece)`,
+  );
+  check(
+    `every animal just placed is parading, once each (${marchers.length})`,
+    marchers.length === 6 && new Set(marchers).size === 6,
+  );
+  const hops = await playCelebration(3);
+  check(`a poked animal answers (${hops.missed} missed)`, hops.missed === 0);
+  await shot("13b-chapter2-parade");
+
   // --- level 30: the last one, and the loop back ---------------------------
   await setViewport(1280, 800);
   // A whole level has just been played from `?level=`, which is a tool for
@@ -1044,6 +1173,31 @@ try {
   check("the picture finishes however the twins were shared out", (await placedCount()) === 6);
   await shot("22-level20-built");
 
+  // --- the end of chapter 4: a rainbow --------------------------------------
+  // The one celebration the child *makes*. A tap anywhere paints the next arc,
+  // and an arc arrives by itself every second or two - so it draws itself for a
+  // child who is only watching, and is painted by a child who is not.
+  check("finishing chapter 4 raises the rainbow", (await celebrationName()) === "rainbow");
+  const arcsAtFirst = await evaluate(
+    `document.querySelectorAll('#stage .celebration .rainbow-arc').length`,
+  );
+  const skyToTap = await celebrationThings();
+  check(
+    "the whole sky is the target",
+    skyToTap.some((thing) => thing.touch === "sky"),
+  );
+  await playCelebration(4);
+  const arcsAfter = await evaluate(
+    `document.querySelectorAll('#stage .celebration .rainbow-arc').length`,
+  );
+  check(`tapping paints arcs (${arcsAtFirst} to ${arcsAfter})`, arcsAfter > arcsAtFirst);
+  await sleep(2200);
+  const arcsAlone = await evaluate(
+    `document.querySelectorAll('#stage .celebration .rainbow-arc').length`,
+  );
+  check(`an arc arrives even if nobody taps (${arcsAlone})`, arcsAlone > arcsAfter);
+  await shot("22b-chapter4-rainbow");
+
   // --- level 21: a picture cut up -------------------------------------------
   // The jigsaw chapter. One picture is one hole however many pieces it is in,
   // and the picture stays under the empty frame so the child can see what they
@@ -1107,6 +1261,44 @@ try {
   check("the guide goes once the picture is whole", !(await guideIsShowing()));
   await shot("28-level26-built");
 
+  // --- the ends of chapters 3 and 5 -----------------------------------------
+  // Blossom over the animal that has just been put back together, and fireworks
+  // over the picture that has just been finished. Both are here to be looked at
+  // as much as checked: a celebration that has gone wrong is something a person
+  // sees in the contact sheet long before a check catches it.
+  await goToLevel(15);
+  await solveRemaining();
+  check("finishing chapter 3 raises the petals", (await celebrationName()) === "petals");
+  const blossom = await celebrationThings();
+  check(`blossom is falling to be caught (${blossom.length})`, blossom.length >= 3);
+  const caught = await playCelebration(3);
+  check(`a caught petal scatters (${caught.missed} missed)`, caught.missed === 0);
+  await shot("28b-chapter3-petals");
+
+  await goToLevel(25);
+  await solveRemaining();
+  check("finishing chapter 5 raises the fireworks", (await celebrationName()) === "fireworks");
+  check("the night sky falls over the finished picture", (await nightHasFallen()) === true);
+  // A tap anywhere sets one off there, in the tick the finger landed. Three
+  // spread across the sky, and the shot taken while they are still open.
+  const board25 = await evaluate(`
+    (() => {
+      const r = document.querySelector('#stage').getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    })()
+  `);
+  const beforeBangs = await celebrationPlayed();
+  // Clear of the button, which lives above the celebration at the top middle.
+  for (const [fx, fy] of [
+    [0.22, 0.3],
+    [0.45, 0.55],
+    [0.78, 0.26],
+  ]) {
+    await tapAt(board25.x + fx * board25.w, board25.y + fy * board25.h);
+  }
+  check("a tap anywhere sets one off", (await celebrationPlayed()) === beforeBangs + 3);
+  await shot("28c-chapter5-fireworks");
+
   await goToLevel(30);
   check("jumps to the last level", (await levelNumber()) === 30);
   check("the last level is in the mastery chapter", (await chapterName()) === "mastery");
@@ -1120,11 +1312,61 @@ try {
   check("the last level offers a replay", (await finishLabel()) === "Play again");
   await shot("30-level30-complete");
 
+  // --- the finale -----------------------------------------------------------
+  // Thirty levels finished. This used to be an arrow that looped silently back
+  // to level 1, which told a child who had played the whole game that nothing
+  // had happened. It is now every celebration at once - a rainbow, balloons,
+  // blossom, fireworks, and a parade of the animals - and unlike the five
+  // chapter moments it never winds down. The end of the game is a room to stay
+  // in rather than a wall, and the way out is the same big button the child has
+  // pressed at the end of all thirty levels.
+  check("the last level ends with the finale", (await celebrationName()) === "finale");
+  const finale = await celebrationThings();
+  const kindsInFinale = new Set(finale.map((thing) => thing.touch));
+  check(
+    `the finale offers several things at once (${[...kindsInFinale].sort().join(", ")})`,
+    kindsInFinale.size >= 3,
+  );
+  check("the finale offers a way out from the first instant", (await finishButtons()) === 1);
+  await shot("30b-finale");
+
+  const playedFinale = await playCelebration(6);
+  check(
+    `the finale answers every touch (${playedFinale.missed} missed)`,
+    playedFinale.missed === 0,
+  );
+  // A tap that lands on nothing at all still sets off a firework, so no part of
+  // the board is dead. The sky is the last thing under a finger.
+  const emptySky = await evaluate(`
+    (() => {
+      const stage = document.querySelector('#stage').getBoundingClientRect();
+      for (let fy = 0.15; fy <= 0.6; fy += 0.05) {
+        for (let fx = 0.1; fx <= 0.9; fx += 0.05) {
+          const x = stage.x + fx * stage.width;
+          const y = stage.y + fy * stage.height;
+          const hit = document.elementFromPoint(x, y)?.closest('[data-touch], [role="button"]');
+          if (hit?.dataset.touch === 'sky') return { x, y };
+        }
+      }
+      return null;
+    })()
+  `);
+  check("there is bare sky to tap in the finale", emptySky !== null);
+  const playedBeforeSky = await celebrationPlayed();
+  await tapAt(emptySky.x, emptySky.y);
+  check("a tap on the empty sky is still answered", (await celebrationPlayed()) > playedBeforeSky);
+  await sleep(1200);
+  const stillGoing = await celebrationThings();
+  check(`the finale does not run out (${stillGoing.length} to touch)`, stillGoing.length >= 3);
+  check("the finale never takes the game away", (await levelNumber()) === 30);
+  await shot("30c-finale-played");
+
   await pressFinishButton();
   check("play again loops back to level 1", (await levelNumber()) === 1);
   check("looping back clears the board", (await placedCount()) === 0);
   check("looping back starts the bubbles again", (await activityName()) === "bubbles");
   check("looping back forgets what was touched", (await activityProgress()).touched === 0);
+  check("looping back takes the finale away", (await celebrationName()) === "");
   await shot("31-looped-back");
 
   // --- a fresh deal every time ---------------------------------------------

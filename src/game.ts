@@ -23,7 +23,10 @@
  * level is dealt fresh, so it never plays out quite the same way twice.
  * Finishing a level shows one big button that leads to the next one, and the
  * button after the last level starts the whole game over - so the only way the
- * child can go is forward, and there is never a menu to get lost in. Thirty
+ * child can go is forward, and there is never a menu to get lost in. Finishing
+ * the *fifth* level of a chapter shows that button on top of a celebration
+ * (`celebration.ts`): a bigger moment than a level's fanfare, and one the child
+ * plays with rather than watches. Thirty
  * levels is more than one sitting, so the host tells `progress.ts` which level
  * is being played and the next visit starts there. A grown-up can steer, from
  * the panel in `grownups.ts`, which is what the returned `GameHandle` is for;
@@ -32,14 +35,22 @@
  * Which tray slot each piece belongs to lives here and survives a re-layout, so
  * rotating the device mid-puzzle does not lose progress.
  */
-import { playFanfare, playPickUp, playReturn, playSnap, unlockAudio } from "./audio";
+import {
+  playChapterFanfare,
+  playFanfare,
+  playPickUp,
+  playReturn,
+  playSnap,
+  unlockAudio,
+} from "./audio";
 import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
 import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
+import { celebrationFor, createCelebration, type Celebration } from "./celebration";
 import { enableDragging } from "./drag";
 import { boxCenter, type Point, type Size } from "./geometry";
 import { kindFor } from "./kinds/registry";
 import { boxOf, chooseLayout, trayHome, type Layout } from "./layout";
-import { LEVEL_COUNT, levelSpec, nextLevel, type LevelSpec } from "./levels";
+import { LEVEL_COUNT, endsChapter, levelSpec, nextLevel, type LevelSpec } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
 import { createProgressStore, type ProgressStore } from "./progress";
 import type { Puzzle, PuzzleKind } from "./puzzle";
@@ -123,8 +134,16 @@ export function createGame(
    * arriving over the top of the next one.
    */
   let stopActivity: (() => void) | null = null;
+  /**
+   * The celebration this level ended with, if it ended a chapter. It outlives
+   * the board so that turning the tablet mid-party keeps the arcs of a rainbow
+   * and the half-minute of arrivals where they were, and is thrown away as soon
+   * as another level is dealt.
+   */
+  let celebration: Celebration | null = null;
+  let stopCelebration: (() => void) | null = null;
 
-  /** The last level of the set gets the fanfare and the replay arrow. */
+  /** The last level of the set gets the finale and the replay arrow. */
   const isLastLevel = (): boolean => levelNumber === LEVEL_COUNT;
 
   function stateOf(piece: PieceId): PieceState {
@@ -181,14 +200,49 @@ export function createGame(
 
     complete = true;
     const last = isLastLevel();
+    // Five levels finishing has to be a bigger moment than one level finishing,
+    // or the thirty flatten into one long identical fanfare. A chapter ends
+    // with a celebration that is played rather than watched (`celebration.ts`);
+    // the last chapter's is the finale, and does not stop.
+    const chapterEnd = endsChapter(levelNumber);
+    celebration = chapterEnd ? createCelebration(celebrationFor(level.chapter)) : null;
     // Let the last snap chime land before the fanfare starts.
     window.setTimeout(() => {
-      playFanfare(last);
-      celebrationBurst(board.fxLayer, layout);
-      showFinishButton(board.fxLayer, layout, last ? "again" : "next", () =>
-        goToLevel(nextLevel(levelNumber)),
-      );
+      if (chapterEnd) playChapterFanfare(last);
+      else playFanfare(false);
+      showFinish();
     }, 260);
+  }
+
+  /**
+   * The end of a level: the sparkles, the celebration if this level ended a
+   * chapter, and the one big button onwards.
+   *
+   * The button goes up *with* the celebration rather than after it, and that is
+   * the whole of what keeps a celebration from being a trap. A child who has
+   * popped every balloon in four seconds already has the way on, and a child who
+   * touches nothing is never waiting for permission to leave. Nothing here moves
+   * them on by itself: a clock that changed the level would take the game away
+   * mid-tap.
+   *
+   * Called again after a re-layout, which is why it takes nothing and reads
+   * everything from the board that is standing now.
+   */
+  function showFinish(): void {
+    celebrationBurst(board.fxLayer, layout);
+    if (celebration) {
+      stopCelebration = celebration.mount({
+        layer: board.celebrationLayer,
+        fxLayer: board.fxLayer,
+        layout,
+        pieces: puzzle.pieces,
+        cast: shapes,
+        random,
+      });
+    }
+    showFinishButton(board.fxLayer, layout, isLastLevel() ? "again" : "next", () =>
+      goToLevel(nextLevel(levelNumber)),
+    );
   }
 
   /** Settle an accepted piece where the kind says it belongs. */
@@ -224,6 +278,7 @@ export function createGame(
    */
   function startPuzzle(): void {
     complete = false;
+    celebration = null;
     if (arrival === "chosen") progress.jumpToLevel(levelNumber);
     else progress.reachLevel(levelNumber);
     level = levelSpec(levelNumber);
@@ -253,6 +308,8 @@ export function createGame(
     // into is replaced.
     stopActivity?.();
     stopActivity = null;
+    stopCelebration?.();
+    stopCelebration = null;
 
     const touched = kind.play !== undefined;
     const built = buildBoard(root, next, { pieces: !touched });
@@ -313,13 +370,9 @@ export function createGame(
     layout = next;
     board = mount(layout);
     render();
-    if (complete) {
-      const last = isLastLevel();
-      celebrationBurst(board.fxLayer, layout);
-      showFinishButton(board.fxLayer, layout, last ? "again" : "next", () =>
-        goToLevel(nextLevel(levelNumber)),
-      );
-    }
+    // Including the celebration, which counts what has been played with outside
+    // the board precisely so a turned tablet does not undo it.
+    if (complete) showFinish();
   }
 
   let resizeTimer = 0;

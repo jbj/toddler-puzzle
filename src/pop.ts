@@ -4,9 +4,9 @@
  *
  * It is one module rather than part of the bubbles because two parts of the game
  * want the same mechanic. The bubbles of the first chapter
- * (`kinds/play.ts`) are the first, and the balloons of a chapter celebration
- * (issue #9) are the second; `celebrate.ts` can reach this without either of
- * them knowing about the other. Anything specific to what is floating - how many
+ * (`kinds/play.ts`) are the first, and the balloons and petals of a chapter
+ * celebration (`celebration.ts`) are the second; either can reach this without
+ * knowing about the other. Anything specific to what is floating - how many
  * there are, where they come from, when the level is over - belongs to the
  * caller. What lives here is the *feel*:
  *
@@ -39,10 +39,15 @@ export const POP_COLOURS: readonly string[] = [
   "#ffb27a",
 ];
 
-/** What a floater is drawn as. A bubble here; a balloon for a celebration. */
-export type PopShape = "bubble" | "balloon";
+/**
+ * What a floater is drawn as. A bubble for a cause-and-effect level; a balloon
+ * or a petal for a chapter celebration (`celebration.ts`). They differ only in
+ * paint - the drift, the hit target and the burst are the same for all three,
+ * which is the whole reason they live together.
+ */
+export type PopShape = "bubble" | "balloon" | "petal";
 
-/** How the two are painted, in units of the floater's own radius. */
+/** How each is painted, in units of the floater's own radius. */
 const PAINT: Record<PopShape, (radius: number, colour: string) => string> = {
   bubble: (r, colour) => `
     <circle r="${r}" fill="${colour}" fill-opacity="0.34" />
@@ -60,6 +65,20 @@ const PAINT: Record<PopShape, (radius: number, colour: string) => string> = {
              rx="${(r * 0.18).toFixed(1)}" ry="${(r * 0.26).toFixed(1)}"
              fill="#ffffff" fill-opacity="0.55" transform="rotate(-18)" />
   `,
+  petal: (r, colour) => {
+    const lobes = Array.from({ length: 5 }, (_, i) => {
+      const turn = i * 72;
+      return `<ellipse cx="0" cy="${(-r * 0.5).toFixed(1)}"
+                 rx="${(r * 0.34).toFixed(1)}" ry="${(r * 0.5).toFixed(1)}"
+                 fill="${colour}" transform="rotate(${turn})" />`;
+    }).join("");
+    return `
+    ${lobes}
+    <circle r="${(r * 0.24).toFixed(1)}" fill="#fff3b0" />
+    <circle cx="${(-r * 0.07).toFixed(1)}" cy="${(-r * 0.07).toFixed(1)}"
+            r="${(r * 0.1).toFixed(1)}" fill="#ffffff" fill-opacity="0.8" />
+  `;
+  },
 };
 
 /** Where a floater goes if nobody touches it, and how long it takes. */

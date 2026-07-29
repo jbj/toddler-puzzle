@@ -85,6 +85,7 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/grownups.ts` | The grown-up panel: the hold that opens it, the level map, the switches |
 | `src/audio.ts` | Web Audio sound synthesis |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
+| `src/celebration.ts` | What the end of a chapter looks like, and what the end of the game looks like. Six celebrations, all played rather than watched |
 | `scripts/preview.mjs` | Renders the art for review: a contact sheet, one animal large, or a scene under its cut grids |
 | `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG and every scene |
 | `scripts/pictures.mjs` | Judges a scene from pixels: the grids the levels cut at, and whether every piece has something in it |

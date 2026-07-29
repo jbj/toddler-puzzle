@@ -466,6 +466,24 @@ export function chapterNumber(spec: LevelSpec): number {
 }
 
 /**
+ * Is this the last level of its chapter? True at 5, 10, 15, 20, 25 and 30 as the
+ * table stands, and the moment a chapter celebration is hung on
+ * (`celebration.ts`).
+ *
+ * Read off the table rather than written down as a list of level numbers, so
+ * retuning the ramp - a chapter of six, a thirty-fifth level - moves the
+ * celebrations with it instead of leaving them stranded mid-chapter. A level
+ * the table does not have ends nothing, rather than throwing: a number out of
+ * range has already been dealt with by the time anything asks this, and a
+ * celebration is not worth a crash.
+ */
+export function endsChapter(level: number): boolean {
+  if (level < 1 || level > LEVEL_COUNT) return false;
+  if (level === LEVEL_COUNT) return true;
+  return levelSpec(level).chapter !== levelSpec(level + 1).chapter;
+}
+
+/**
  * The pieces of a themed cast, in the order they were given. A piece joins a
  * theme by listing it (`piece.ts`); a piece with no themes at all is in none of
  * them, which is what makes a provider that does not group its pieces simply

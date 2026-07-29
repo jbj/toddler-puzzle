@@ -1,7 +1,7 @@
 ---
 name: "Navigation and feel"
-description: "How the game moves between levels, what the buttons and dots are for, and the feedback and toddler-proofing around a drag."
-applyTo: "src/game.ts,src/celebrate.ts,src/drag.ts,src/audio.ts,src/grownups.ts,src/main.ts,src/style.css,index.html"
+description: "How the game moves between levels, how a chapter and the game end, what the buttons and dots are for, and the feedback and toddler-proofing around a drag."
+applyTo: "src/game.ts,src/celebrate.ts,src/celebration.ts,src/drag.ts,src/audio.ts,src/grownups.ts,src/main.ts,src/style.css,index.html"
 ---
 
 # Navigation and feel
@@ -21,7 +21,9 @@ cannot work is a closed door. What each level holds is the table in
 [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md). Finishing a
 level clears the tray and puts one big button in it, which leads to the next
 level - a level played by touching has no tray to clear, and the same button
-appears in the same place. The button after the last level starts the whole game
+appears in the same place. Finishing the fifth level of a chapter puts that
+button on top of a celebration; see [The end of a chapter](#the-end-of-a-chapter)
+below. The button after the last level starts the whole game
 over
 (`nextLevel` in `src/levels.ts` wraps). So the only way to go is forward and
 there is never a menu to get lost in.
@@ -50,6 +52,42 @@ The reset button re-deals the current level. It goes through the same path as
 moving between levels (`startPuzzle` in `src/game.ts`), so a board is rebuilt
 one way rather than two, and a toddler never sees the same line-up twice in a
 row for long.
+
+## The end of a chapter
+
+Thirty levels that all end with the same four-note fanfare and the same 700ms
+sparkle flatten completely, so the fifth level of every chapter ends with a
+celebration instead: balloons, a parade, blossom, a rainbow, fireworks, and
+after level 30 the finale. `src/celebration.ts` owns all six; `endsChapter` in
+`src/levels.ts` says when one is due, read off the level table rather than
+written down as a list of level numbers.
+
+The rules a celebration has to keep:
+
+- **It is played, not watched.** Everything in one answers a finger in the tick
+  the finger landed - a balloon pops, an animal hops, a tap paints the next arc
+  or sets off a firework. A two-year-old will not sit through a cutscene; they
+  will put a finger on it, and what a finger lands on has to do something good.
+- **It is not a level and not a `PuzzleKind`.** It has no pieces, no targets, no
+  difficulty and no row in the thirty-level table. What it copies from
+  `PuzzleKind.play` is the shape: handed a layer, answers the finger itself,
+  returns a teardown, keeps its progress outside the board so a rotation does not
+  lose it.
+- **It cannot be a trap at either end.** The big button onwards goes up *with*
+  the celebration rather than after it, so a child who pops everything in four
+  seconds already has the way on; and new things go on arriving unasked for
+  `CELEBRATION_SPAN_MS`, so a child who touches nothing is not looking at an
+  empty screen. When the span runs out only the *arriving* stops - whatever is on
+  screen goes on answering for as long as the child stays.
+- **Nothing here ever changes the level by itself.** A clock that advanced the
+  game would take it away mid-tap. The finale does not wind down at all: the end
+  of thirty levels is a room to stay in, and the way out is the same button.
+- **It is drawn below the effects layer.** `board.celebrationLayer` sits between
+  the pieces and `fx`, which is what makes it impossible for a balloon or a
+  full-board tap catcher to cover the button onwards. Do not move it above.
+
+The reasoning is
+[decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md).
 
 ## Coming back to it
 
@@ -125,7 +163,8 @@ what the code has to keep true is this.
 - A refused drop plays `playReturn` - a soft, warm tone - and the piece drifts
   back to the tray. Never a buzzer, and never leaving the piece where it fell.
 - A piece that lands gets a sparkle burst; finishing a level gets a bigger one
-  (`src/celebrate.ts`).
+  (`src/celebrate.ts`), and finishing a chapter gets a celebration on top of it
+  (`src/celebration.ts`, above).
 - On a level played by touching (`PuzzleKind.play`), the host does the same for
   a touch: the kind reports one through `host.touched(at)` and gets a sparkle
   there and a check for completion, so a bubble bursting and an animal landing
@@ -141,6 +180,9 @@ what the code has to keep true is this.
   it holds still instead, because collapsing its drift would carry it off screen
   at once; see
   [decision 20260729T072100](../../docs/decisions/20260729T072100-reduced-motion-holds-still.md).
+  A celebration follows the same rule: the parade stands in a row rather than
+  walking, a rainbow appears without wiping itself on, and a firework bursts
+  without climbing - the moment still happens, more calmly.
 - Audio needs a gesture to start, so `unlockAudio` runs off the first pointer
   down rather than at load.
 
