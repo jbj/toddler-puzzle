@@ -91,6 +91,8 @@ it, the box it was authored in, and the `anchor` it stands on. If a file is
 missing its silhouette, or uses the wrong `viewBox`, loading throws immediately
 rather than shipping an unsolvable puzzle.
 
+Every animal is parsed at startup and always will be: level 2 wants one.
+
 ## Why hole and piece share one path
 
 The engine knows only that shape - animals are simply one provider of them - and
@@ -298,6 +300,24 @@ several rounds - and one rule is added that has no equivalent for an animal.
 `src/pictures.ts` enforces the markup rules and throws on a scene it cannot hand
 out safely; `npm run art:check` enforces the box, the wrapper, the registration
 and everything only pixels can answer.
+
+### When the artwork loads
+
+The animals are in the bundle a child downloads first. The **scenes are not**:
+they ride in with the puzzle kinds that cut them up, which are chunks of their
+own, and `src/warm.ts` pulls those in during play rather than when a chapter is
+reached. So `loadPictures()` no longer runs at startup, and a malformed scene
+would no longer throw there.
+
+That is safe because the guarantee moved earlier rather than being dropped.
+`npm run art:check` judges every scene against the contract, and
+`tests/pictures.test.ts` calls `loadPictures()` and asserts the whole catalogue
+parses and that nothing in it is unsafe to inline. Both run inside
+`npm run verify`, which is the whole of CI, so no scene can ship malformed. Do
+not add an eager parse back to make a scene fail at boot; it would put a chapter
+of artwork back into the first download and buy nothing CI does not already
+have. See
+[decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
 
 ### Every piece has to have something in it
 

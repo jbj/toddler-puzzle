@@ -61,7 +61,11 @@ level draws only from its own theme, every animal of a theme is reachable, and a
 theme too short for the level's piece count is topped up from the rest of the
 cast and reshuffled rather than throwing. That last one is checked with a
 deliberately starved provider, because the fallback exists for a cast that
-changes under the table, not for the cast as it stands today.
+changes under the table, not for the cast as it stands today. Last, it checks
+what the warm asks for (`src/warm.ts`): every kind is named from wherever the
+child is standing, in the order the levels will want them, wrapping round for a
+level a grown-up went back to. A kind the warm never names is a kind a child
+would wait for.
 
 `tests/slices.test.ts` covers the sliced chapter, in two halves. The cells are
 arithmetic: every committed recipe is replayed and checked to *tile* the art box

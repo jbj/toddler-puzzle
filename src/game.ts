@@ -52,11 +52,11 @@ import {
   showFinishButton,
   sparkleBurst,
 } from "./celebrate";
-import { celebrationFor, createCelebration, type Celebration } from "./celebration";
+import type { Celebration, CelebrationId } from "./celebration";
 import { enableDragging } from "./drag";
 import { boxCenter, type Point, type Size } from "./geometry";
 import { clearHint, createIdleHint, drawHint, hintPiece, type IdleHint } from "./hint";
-import { kindFor } from "./kinds/registry";
+import { ensureKind, isKindLoaded, kindFor } from "./kinds/registry";
 import { boxOf, chooseLayout, trayHome, type Layout } from "./layout";
 import { LEVEL_COUNT, endsChapter, levelSpec, nextLevel, type LevelSpec } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
@@ -170,6 +170,33 @@ export function createGame(
    * cannot raise a finish on a board that is not finished.
    */
   let finishTimer = 0;
+  /**
+   * How many times a level has been dealt onto this stage. Anything that has to
+   * wait - a chunk arriving, the pause before the fanfare - takes a copy and
+   * checks it before touching the board, so a re-deal in the meantime cannot be
+   * finished, or replaced, by the board it succeeded.
+   */
+  let deals = 0;
+  /**
+   * How many deals have been *asked* for, including ones still waiting for a
+   * chunk. A deal that arrives to find this has moved on is a board the child
+   * has already left, and is thrown away rather than mounted.
+   */
+  let awaited = 0;
+
+  /**
+   * The celebration module, once somebody has asked for it. It is a chunk of
+   * its own - the largest single piece of the game - so it is fetched when a
+   * chapter-ending level is *dealt* rather than when one is finished: five
+   * levels of warning, and no chance of the button onwards being late. A failed
+   * fetch is forgotten, so the next chapter tries again.
+   */
+  let celebrationModule: Promise<typeof import("./celebration")> | null = null;
+  function loadCelebration(): Promise<typeof import("./celebration")> {
+    celebrationModule ??= import("./celebration");
+    celebrationModule.catch(() => (celebrationModule = null));
+    return celebrationModule;
+  }
 
   /** The last level of the set gets the finale and the replay arrow. */
   const isLastLevel = (): boolean => levelNumber === LEVEL_COUNT;
@@ -270,20 +297,43 @@ export function createGame(
     // built, so nothing can glow underneath one.
     hint?.stop();
     hint = null;
-    // Five levels finishing has to be a bigger moment than one level finishing,
-    // or the thirty flatten into one long identical fanfare. A chapter ends
-    // with a celebration that is played rather than watched (`celebration.ts`);
-    // the last chapter's is the finale, and does not stop.
-    const chapterEnd = endsChapter(levelNumber) ? celebrationFor(level.chapter) : null;
-    celebration = chapterEnd ? createCelebration(chapterEnd) : null;
-    // Let the last snap chime land before the fanfare starts. A chapter's
-    // fanfare is the celebration's own; an ordinary level's walks a step along
-    // the scale each time, so two levels running do not end identically.
-    finishTimer = window.setTimeout(() => {
-      if (chapterEnd) playChapterFanfare(chapterEnd);
-      else playFanfare(levelNumber);
-      showFinish(true);
-    }, 260);
+    // Let the last snap chime land before the fanfare starts.
+    const dealt = deals;
+    finishTimer = window.setTimeout(() => void raiseFinish(dealt), 260);
+  }
+
+  /**
+   * Raise the end of a level: its fanfare, its celebration if it ended a
+   * chapter, and the button onwards.
+   *
+   * Five levels finishing has to be a bigger moment than one level finishing,
+   * or the thirty flatten into one long identical fanfare. A chapter ends with
+   * a celebration that is played rather than watched (`celebration.ts`); the
+   * last chapter's is the finale, and does not stop. An ordinary level's
+   * fanfare walks a step along the scale each time, so two levels running do
+   * not end identically.
+   *
+   * The celebration is a chunk of its own, and one that was asked for when this
+   * level was dealt, so the wait here is over before it starts. If it somehow
+   * is not - a chunk that never arrived - the level ends the way an ordinary
+   * one does, with its fanfare and its button, and the child goes on. A missing
+   * party is a disappointment; a missing way out would be a trap.
+   */
+  async function raiseFinish(dealt: number): Promise<void> {
+    let fanfare: CelebrationId | null = null;
+    if (endsChapter(levelNumber)) {
+      const module = await loadCelebration().catch(() => null);
+      // A board dealt while that was in flight - the reset button, or a level
+      // chosen from the panel - is not this board, and must not be finished.
+      if (dealt !== deals) return;
+      if (module) {
+        fanfare = module.celebrationFor(level.chapter);
+        celebration = module.createCelebration(fanfare);
+      }
+    }
+    if (fanfare) playChapterFanfare(fanfare);
+    else playFanfare(levelNumber);
+    showFinish(true);
   }
 
   /**
@@ -361,16 +411,41 @@ export function createGame(
    * never a change to how far the child has got. A level a grown-up chose from
    * the panel is recorded as somewhere the child is rather than somewhere they
    * reached, so reading the level map never fills the level map in.
+   *
+   * A kind is a chunk (`kinds/registry.ts`), and `warm.ts` fetches every one of
+   * them during play, so in practice the code is always already here and this
+   * runs straight through. When it is not - the first sitting, on a connection
+   * slow enough that the child got ahead of the warm - the board that is up
+   * stays up until it arrives. Whatever the child was looking at is a better
+   * thing to look at than an empty stage.
    */
   function startPuzzle(): void {
+    const next = levelSpec(levelNumber);
+    if (isKindLoaded(next.kind)) {
+      deal(next, kindFor(next));
+      return;
+    }
+    const wanted = ++awaited;
+    void ensureKind(next.kind).then((loaded) => {
+      // Only the most recent thing asked for gets to land: a child pressing on
+      // while a chunk was in flight has already chosen a different board.
+      if (wanted === awaited) deal(next, loaded);
+    });
+  }
+
+  function deal(next: LevelSpec, dealer: PuzzleKind): void {
+    deals++;
     complete = false;
     celebration = null;
     lastTouched = null;
     window.clearTimeout(finishTimer);
     if (arrival === "chosen") progress.jumpToLevel(levelNumber);
     else progress.reachLevel(levelNumber);
-    level = levelSpec(levelNumber);
-    kind = kindFor(level);
+    level = next;
+    kind = dealer;
+    // Asked for now rather than when the last piece lands, so the party is here
+    // by the time there is anything to celebrate.
+    if (endsChapter(levelNumber)) void loadCelebration().catch(() => null);
     puzzle = kind.deal({ level, shapes }, random);
     layout = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
     board = mount(layout);

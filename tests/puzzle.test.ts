@@ -31,8 +31,12 @@ import { SCENES, sceneShapes, scenesOf } from "../src/scenes";
 import { jigsawShapes } from "../src/jigsaw";
 import { loadPictures } from "../src/pictures";
 import { shatterShapes } from "../src/shatter";
-import { kindFor } from "../src/kinds/registry";
+import { kindFor, loadAllKinds } from "../src/kinds/registry";
 import type { Puzzle } from "../src/puzzle";
+
+// The kinds that are chunks of their own are fetched during play in the running
+// game; a test wants the lot before it starts.
+await loadAllKinds();
 
 /** The kinds that cut one picture up, as opposed to dealing a row of animals. */
 const PICTURE_KINDS = new Set(["sliced", "polygon", "jigsaw", "shatter"]);

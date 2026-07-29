@@ -3,8 +3,10 @@ import { loadAnimalShapes } from "./assets";
 import { createGame } from "./game";
 import { seededRandom } from "./geometry";
 import { applySettings, createGrownUpPanel } from "./grownups";
-import { LEVEL_COUNT } from "./levels";
+import { ensureKind } from "./kinds/registry";
+import { LEVEL_COUNT, levelSpec } from "./levels";
 import { browserStorage, createProgressStore } from "./progress";
+import { warmAhead } from "./warm";
 
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) {
@@ -41,12 +43,44 @@ const progress = createProgressStore({
 // What a grown-up set last time, in force before the first sound can play.
 applySettings(progress.settings());
 
-const game = createGame(root, loadAnimalShapes(), {
-  random: Number.isFinite(seed) && seed !== 0 ? seededRandom(seed) : Math.random,
-  startLevel: deepLink ?? progress.read().level,
-  progress,
-});
+const startLevel = deepLink ?? progress.read().level;
 
-// The one way into anything that is not the puzzle, and the only place progress
-// can be cleared. It mounts outside `#app`, which the board replaces wholesale.
-createGrownUpPanel({ progress, game });
+/**
+ * Chapters 1 and 2 are in this file's own bundle, so a new player starts with
+ * nothing to wait for. A child resuming further along needs the chunk their
+ * chapter is in before there is a board to draw, and gets it here - which is
+ * still less to download than the single bundle this used to be. See
+ * [decision 20260729T223500](../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
+ *
+ * A fetch that fails is tried again rather than left as a blank screen. If it
+ * will not come at all there is nothing to draw and nothing to be done, which
+ * is what a bundle that would not load has always meant.
+ */
+async function kindForStart(attempts = 3): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await ensureKind(levelSpec(startLevel).kind);
+      return;
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+      await new Promise((resume) => window.setTimeout(resume, 300 * attempt));
+    }
+  }
+}
+
+void kindForStart().then(() => {
+  const game = createGame(root, loadAnimalShapes(), {
+    random: Number.isFinite(seed) && seed !== 0 ? seededRandom(seed) : Math.random,
+    startLevel,
+    progress,
+  });
+
+  // The one way into anything that is not the puzzle, and the only place
+  // progress can be cleared. It mounts outside `#app`, which the board replaces
+  // wholesale.
+  createGrownUpPanel({ progress, game });
+
+  // Everything the rest of the thirty levels needs, fetched while the child
+  // plays this one, so no level seam ever waits for the network.
+  warmAhead(startLevel);
+});

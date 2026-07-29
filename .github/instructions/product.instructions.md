@@ -79,6 +79,13 @@ oversights until you know it, so the reason is written next to the rule.
 - Keep the project free of binary assets, runtime dependencies, and network
   requests. Art is hand-authored SVG; sound is synthesised with the Web Audio
   API. Why: there is nothing to download and nothing to fail to load.
+- Keep the game inside its bundle budget, and keep every chunk it is split into
+  warmed during play rather than fetched when it is reached. A child must never
+  wait at a level seam, and a chapter must never be one network request away
+  from being unplayable. Why: the budget is what stops the first download
+  drifting upwards a good change at a time, and the warm is what lets the game
+  be split at all without putting a two-year-old in front of nothing. See
+  [decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
 - Keep every target large; pieces stay well over a tenth of the canvas wide. Why:
   small hands need large things to grab.
 - Keep the opening chapter playable without a drag. Levels 1, 3 and 5 are
@@ -153,10 +160,17 @@ context menus and native image dragging are all disabled. Every target is large.
 While dragging, the piece is held slightly above the finger so a small hand
 doesn't cover it.
 
-**No binary assets.** The animals are hand-authored SVG and the sounds are
-synthesised with the Web Audio API, so there is nothing to download and nothing
-to fail to load. The whole bundle is around 24 kB. See
-[decision 20260727T072917](../../docs/decisions/20260727T072917-no-binary-assets-or-runtime-dependencies.md).
+**No binary assets, and a budget on the rest.** The animals are hand-authored
+SVG and the sounds are synthesised with the Web Audio API, so there is nothing
+to download and nothing to fail to load. The game is around 30 kB gzipped before
+the first level appears and around 52 kB in total; `npm run build` fails if
+either grows past its budget. The difference between those two numbers is the
+four later chapters, split into a chunk each and fetched in the background while
+the child plays the first one, so nothing arrives later than it used to and no
+level seam ever waits. See
+[decision 20260727T072917](../../docs/decisions/20260727T072917-no-binary-assets-or-runtime-dependencies.md)
+and
+[decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
 
 **Every puzzle is dealt fresh.** Which animals turn up and the order they stand
 in are drawn at random each time a puzzle starts, so the same animals are

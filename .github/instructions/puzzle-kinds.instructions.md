@@ -360,9 +360,22 @@ kind was played by shape-match instead so that the table could run ahead of the
 code; that scaffold came down when the last kind landed
 ([decision 20260728T205627](../../docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md)).
 
-Adding a kind is one call - `registerKind(myKind)` in `src/kinds/registry.ts` -
-and the levels that named it start playing it. Do not edit `LEVELS` to switch a
-kind on.
+Adding a kind is one entry in `LOADERS` in `src/kinds/registry.ts`, and the
+levels that named it start playing it. Do not edit `LEVELS` to switch a kind on.
+
+**A kind is also where the bundle is cut.** A chapter is five levels and, near
+enough, one kind, so splitting by kind is splitting by chapter. `play` and
+`shapeMatch` are static imports, because they are the whole of chapters 1 and 2
+and the opening of the game must never wait for anything; the other four are
+`import()`ed and are a chunk each, carrying their own artwork and machinery.
+`kindFor` stays synchronous and stays strict - a kind that has not arrived
+throws, and says so differently from one nobody wrote - and `ensureKind` is the
+one place that waits. Nothing is loaded on demand: `src/warm.ts` fetches every
+kind during play, long before the child reaches it, so a level seam is a
+resolved promise rather than a fetch, and a board that is up stays up in the
+rare case where it is not. A new kind therefore wants a `LOADERS` entry and
+nothing else - the warm walks the level table and will find it. See
+[decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
 
 ## Layout
 

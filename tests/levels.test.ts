@@ -14,7 +14,7 @@
 import { describe, expect, it } from "vitest";
 import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalThemes } from "../src/assets";
 import { seededRandom } from "../src/geometry";
-import { isKindRegistered, kindFor } from "../src/kinds/registry";
+import { isKindRegistered, kindFor, loadAllKinds } from "../src/kinds/registry";
 import { buildLevelLayout } from "../src/layout";
 import {
   CHAPTERS,
@@ -32,8 +32,15 @@ import {
   type PuzzleKindId,
 } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
+import { kindsAhead } from "../src/warm";
 import { SCENE_SIZES } from "../src/scenes";
 import { THEMES, type ThemeId } from "../src/themes";
+
+// Four of the six kinds are chunks of their own, fetched during play so that
+// first paint does not wait for artwork twenty levels away. A test is not
+// playing, so it asks for all of them up front and then treats the registry the
+// way the running game does once its warm has finished.
+await loadAllKinds();
 
 const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   id: pieceId(id),
@@ -436,5 +443,50 @@ describe("the kind registry", () => {
     // the thirty from one written out by hand is that the table vouches for it.
     for (const level of LEVELS) expect(isVouchedLevel(level)).toBe(true);
     expect(isVouchedLevel({ ...levelSpec(1), snapForgiveness: 9 })).toBe(false);
+  });
+});
+
+describe("what is fetched ahead of the child", () => {
+  /**
+   * Four of the six kinds are chunks of their own, and none of them is loaded
+   * on demand: `warm.ts` walks the table from the level being played and pulls
+   * each one in while the child is busy, so a level seam is a resolved promise
+   * rather than a fetch. What matters is the *order* - a kind five levels away
+   * must not be queued behind one twenty levels away - and that nothing is
+   * left out, because a kind the warm never names is a kind a child waits for.
+   */
+  it("names every kind, from wherever the child is", () => {
+    for (const level of LEVELS) {
+      expect(new Set(kindsAhead(level.level)), `from level ${level.level}`).toEqual(
+        new Set(LEVELS.map((each) => each.kind)),
+      );
+    }
+  });
+
+  it("asks for what is coming before what has been", () => {
+    // From level 16 the child is in the shapes chapter, so `polygon` is the one
+    // they are playing, `jigsaw` and `shatter` are ahead of them, and the two
+    // kinds of the first chapters - already in the bundle - come last.
+    expect(kindsAhead(16)).toEqual([
+      "polygon",
+      "jigsaw",
+      "shatter",
+      "sliced",
+      "play",
+      "shape-match",
+    ]);
+  });
+
+  it("wraps round, so a level a grown-up went back to is covered too", () => {
+    // The last level is a jigsaw, so that comes first; the rest is the table
+    // read from the top, which is where a child who loops back is going.
+    expect(kindsAhead(LEVEL_COUNT)).toEqual([
+      "jigsaw",
+      "play",
+      "shape-match",
+      "sliced",
+      "polygon",
+      "shatter",
+    ]);
   });
 });

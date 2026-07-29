@@ -20,6 +20,15 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
 contract, and the headless Chrome shot run, in that order. It is also the whole
 of what CI runs, so a script added to `verify` is a check added to CI.
 
+The build itself now enforces a **bundle budget**: four numbers in
+`scripts/check-bundle.mjs` for what a child downloads before the first level
+appears and what the whole game weighs, raw and gzipped. It prints the table
+whether it passes or fails. Raising a budget is allowed and raising one quietly
+is not - say in the pull request what grew and why it earned the space - but
+never ship less art than the game needs, or weaken a check, to stay underneath
+one. See
+[decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
+
 Markdown is listed in `.prettierignore`: the prose is hand-wrapped and
 deliberately worded, so wrap it yourself at about 80 columns rather than
 expecting the formatter to.
@@ -32,7 +41,8 @@ expecting the formatter to.
 | `npm run verify` | Single check that has to pass before a pull request: lint, format check, docs check, build, tests, audio check, art check, and screenshot run |
 | `npm run lint` | ESLint |
 | `npm run format` | Formats with Prettier |
-| `npm run build` | Type-check, then production build into `dist/` |
+| `npm run build` | Type-check, production build into `dist/`, then the bundle budget |
+| `npm run budget` | Prints what the last build weighs - what loads before the first level, what arrives later, raw and gzipped - and fails when a budget is exceeded |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run docs:check` | Checks that every cross-reference between Markdown files still resolves |
 | `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large; `npm run art -- scenes` renders the picture scenes, and `npm run art -- farmyard` one scene with its cut grids over it |
@@ -62,7 +72,7 @@ SVG regardless if it is missing.
 | `src/levels.ts` | The thirty levels: the whole difficulty ramp, in one table, and the deal |
 | `src/themes.ts` | The themed casts a level can deal from: farm, sea, jungle, vehicles |
 | `src/progress.ts` | What is remembered between sittings: the level, and the grown-up settings |
-| `src/kinds/registry.ts` | Resolves a level's kind by id, and refuses one nobody registered |
+| `src/kinds/registry.ts` | Resolves a level's kind by id, and refuses one nobody registered. Also where the bundle is cut: chapters 1 and 2 are inline, the other four kinds are a chunk each |
 | `src/kinds/shape-match.ts` | The animal-and-hole game, as one `PuzzleKind` |
 | `src/kinds/sliced.ts` | One animal in two to four slices, assembled in one hole |
 | `src/slices.ts` | Rebuilds a slice's cell from a recipe, and cuts an animal into pieces |
@@ -90,20 +100,22 @@ SVG regardless if it is missing.
 | `src/audio.ts` | Every sound in the game, as data: one pentatonic ladder, voices, phrases, and the single gate the sound toggle sits on |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `src/hint.ts` | The idle hint: how long a board is left alone, which piece it is about, and the glow at both ends |
-| `src/celebration.ts` | What the end of a chapter looks like, and what the end of the game looks like. Six celebrations, all played rather than watched |
+| `src/celebration.ts` | What the end of a chapter looks like, and what the end of the game looks like. Six celebrations, all played rather than watched. A chunk of its own, asked for when a chapter-ending level is dealt |
+| `src/warm.ts` | Pulls every deferred chunk in during play, in the order the levels will want it, so no level seam ever waits for the network |
 | `scripts/preview.mjs` | Renders the art for review: a contact sheet, one animal large, or a scene under its cut grids |
 | `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG and every scene |
 | `scripts/pictures.mjs` | Judges a scene from pixels: the grids the levels cut at, and whether every piece has something in it |
 | `scripts/slices.mjs` | Judges a cut from pixels: whole, fair, grabbable. Shared by the two above |
 | `scripts/slice-recipes.mjs` | Searches for where to cut every animal, and writes the table |
 | `scripts/check-docs.mjs` | Enforces that Markdown cross-references resolve |
+| `scripts/check-bundle.mjs` | Holds the build to the bundle budget, and prints what everything weighs |
 | `scripts/check-audio.mjs` | Renders every sound offline in Chromium, measures the samples, and optionally draws the waveform sheet |
 | `scripts/audio-probe.mjs` | The half of that which runs in the browser: `OfflineAudioContext` renders, an FFT and the measurements |
 | `scripts/chrome.mjs` | Starts headless Chromium and speaks the debugging protocol to it. Shared by the screenshot run and the audio render |
 | `scripts/shot.mjs` | End-to-end drag and touch test in headless Chromium |
 | `scripts/shot-sheet.mjs` | Packs the run's screenshots into one image to attach to a pull request |
 | `scripts/tools.mjs` | Resolves the external art tools, with one clear message when they are missing |
-| `vite.config.ts` | Build configuration. `base` is relative, so one bundle works both at a server root and under the Pages path: see [decision 20260728T103610](../../docs/decisions/20260728T103610-deploy-to-github-pages.md) |
+| `vite.config.ts` | Build configuration. `base` is relative, so one bundle works both at a server root and under the Pages path: see [decision 20260728T103610](../../docs/decisions/20260728T103610-deploy-to-github-pages.md). Also writes `.art/bundle.json`, which is what the budget check reads |
 
 ## Pull request expectations
 
