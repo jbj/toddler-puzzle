@@ -80,6 +80,13 @@ export interface Voice {
 /** A sound: voices with times on them, relative to the start of the phrase. */
 export type Phrase = readonly Voice[];
 
+/** A phrase with the words for what sets it off, for the tables below. */
+interface Sounding {
+  /** What the child did, in words. Labels the waveform sheet. */
+  readonly when: string;
+  readonly phrase: Phrase;
+}
+
 interface VoiceOptions {
   readonly at?: number;
   readonly to?: number;
@@ -96,15 +103,27 @@ interface VoiceOptions {
  */
 export const MAX_VOICE_GAIN = 0.2;
 
+/**
+ * No voice may be pitched above this either. C7, which is the highest note the
+ * game has ever played; the ear is at its most sensitive between two and four
+ * kilohertz, so a phrase that wanders up there is the one way a soft sine wave
+ * can still be piercing. It is enforced here rather than left to whoever writes
+ * the next phrase, because a bright sound is written by adding to a degree and
+ * the degree that goes too far does not look any different from the ones that
+ * do not.
+ */
+export const MAX_PITCH_HZ = 2100;
+
 /** The shortest attack anything is allowed. Below this an onset ticks. */
 const MIN_ATTACK = 0.006;
 
 function voice(frequency: number, options: VoiceOptions = {}): Voice {
   const duration = options.duration ?? 0.18;
+  const pitch = (hz: number) => Math.min(hz, MAX_PITCH_HZ);
   return {
     at: options.at ?? 0,
-    frequency,
-    to: options.to ?? frequency,
+    frequency: pitch(frequency),
+    to: pitch(options.to ?? frequency),
     duration,
     gain: Math.min(options.gain ?? 0.14, MAX_VOICE_GAIN),
     attack: Math.max(Math.min(options.attack ?? 0.02, duration * 0.5), MIN_ATTACK),
@@ -370,42 +389,64 @@ const PICK_UP: Phrase = [voice(note(5), { to: note(6), duration: 0.1, gain: 0.08
  *
  * Keyed by every `PuzzleKindId` there is, so a kind added later cannot quietly
  * fall through to somebody else's sound: it will not compile without one.
+ *
+ * `when` is what sets the sound off, in words. It is here rather than in the
+ * harness so that it cannot drift away from the sound it describes, and so that
+ * the waveform sheet can label a picture nobody can hear.
  */
-const SNAP: Record<PuzzleKindId, Phrase> = {
+const SNAP: Record<PuzzleKindId, Sounding> = {
   // The original two-note chime, and the one every other landing is a variation
   // of. The upper note moved from a stray 990 Hz onto the ladder's C, which
   // both lands the phrase on the tonic and stops it clashing with a plink.
-  "shape-match": [
-    voice(note(7), { duration: 0.16, gain: 0.16 }),
-    voice(note(10), { at: 0.09, duration: 0.24, gain: 0.13 }),
-  ],
+  "shape-match": {
+    when: "an animal seats into its own hole",
+    phrase: [
+      voice(note(7), { duration: 0.16, gain: 0.16 }),
+      voice(note(10), { at: 0.09, duration: 0.24, gain: 0.13 }),
+    ],
+  },
   // Two notes closing to one: a slice rejoining the animal it came out of.
-  sliced: [
-    voice(note(5), { to: note(8), duration: 0.26, gain: 0.1 }),
-    voice(note(11), { to: note(8), duration: 0.26, gain: 0.08 }),
-  ],
+  sliced: {
+    when: "a slice rejoins the animal it was cut from",
+    phrase: [
+      voice(note(5), { to: note(8), duration: 0.26, gain: 0.1 }),
+      voice(note(11), { to: note(8), duration: 0.26, gain: 0.08 }),
+    ],
+  },
   // A wooden tap with a bright note over it: a flat shape onto a flat shadow.
-  polygon: [
-    voice(note(0), { to: note(-1), duration: 0.08, gain: 0.11, type: "triangle" }),
-    voice(note(12), { at: 0.02, duration: 0.16, gain: 0.09 }),
-  ],
+  polygon: {
+    when: "a flat shape clicks onto its shadow",
+    phrase: [
+      voice(note(0), { to: note(-1), duration: 0.08, gain: 0.11, type: "triangle" }),
+      voice(note(12), { at: 0.02, duration: 0.16, gain: 0.09 }),
+    ],
+  },
   // Sliding into a seat: two pieces meshing rather than one piece arriving.
-  jigsaw: [
-    voice(note(6), { to: note(9), duration: 0.12, gain: 0.1 }),
-    voice(note(9), { at: 0.1, duration: 0.22, gain: 0.12 }),
-  ],
+  jigsaw: {
+    when: "two jigsaw pieces mesh",
+    phrase: [
+      voice(note(6), { to: note(9), duration: 0.12, gain: 0.1 }),
+      voice(note(9), { at: 0.1, duration: 0.22, gain: 0.12 }),
+    ],
+  },
   // Lower, rounder and settling: a shard of stone put down rather than clicked.
-  shatter: [
-    voice(note(3), { to: note(2), duration: 0.3, gain: 0.12, type: "triangle" }),
-    voice(note(-2), { at: 0.02, duration: 0.34, gain: 0.07 }),
-  ],
+  shatter: {
+    when: "a shard of a broken picture settles",
+    phrase: [
+      voice(note(3), { to: note(2), duration: 0.3, gain: 0.12, type: "triangle" }),
+      voice(note(-2), { at: 0.02, duration: 0.34, gain: 0.07 }),
+    ],
+  },
   // The one landing on a level played by touching: a bush opening on an animal.
   // Three notes rising, softer than a snap - "there you are" rather than "in".
-  play: [
-    voice(note(5), { duration: 0.2, gain: 0.1 }),
-    voice(note(9), { at: 0.1, duration: 0.26, gain: 0.09 }),
-    voice(note(12), { at: 0.2, duration: 0.3, gain: 0.06 }),
-  ],
+  play: {
+    when: "a bush opens on the animal hiding behind it",
+    phrase: [
+      voice(note(5), { duration: 0.2, gain: 0.1 }),
+      voice(note(9), { at: 0.1, duration: 0.26, gain: 0.09 }),
+      voice(note(12), { at: 0.2, duration: 0.3, gain: 0.06 }),
+    ],
+  },
 };
 
 /** A refused drop. Warm, low and falling away: a nudge, never a buzzer. */
@@ -430,10 +471,16 @@ function fireworkPhrase(step: number): Phrase {
     [voice(note(2), { to: note(11), duration: 0.24, gain: 0.06 })],
     delayed(
       0.22,
-      run([13 + lift, 15 + lift, 12 + lift], { spacing: 0.05, duration: 0.3, gain: 0.07 }),
+      // Rooted so that the fifth firework's top note is the ladder's C7 and no
+      // higher: `lift` is what makes a sky of them musical, and it must not
+      // also be what makes the last one shrill.
+      run([9 + lift, 11 + lift, 10 + lift], { spacing: 0.05, duration: 0.3, gain: 0.07 }),
     ),
   );
 }
+
+/** The highest degree anything is written at: C7, the pitch ceiling. */
+const TOP_DEGREE = 15;
 
 /** Where a pop of pitch 1 sits on the ladder. */
 const POP_ROOT = 8;
@@ -442,7 +489,12 @@ const POP_ROOT = 8;
 function popPhrase(degree: number): Phrase {
   return [
     voice(note(degree), { duration: 0.09, gain: 0.13, attack: 0.008 }),
-    voice(note(degree + 3), { at: 0.02, duration: 0.11, gain: 0.06, attack: 0.008 }),
+    voice(note(Math.min(degree + 3, TOP_DEGREE)), {
+      at: 0.02,
+      duration: 0.11,
+      gain: 0.06,
+      attack: 0.008,
+    }),
   ];
 }
 
@@ -476,41 +528,65 @@ function fanfarePhrase(level: number): Phrase {
  * things to arrive in, and a child who has heard the same fanfare five times
  * has stopped hearing it. Keyed by every `CelebrationId`, so a celebration
  * added later cannot go without one.
+ *
+ * **This is the table to edit.** Five of these six were written by somebody who
+ * could not hear them, and the only way to find out whether a parade sounds
+ * like a parade is to play it. Each is a gesture and a list of degrees: the
+ * comment says the sound intended, so a correction is a change to the degrees
+ * under the sentence it failed to live up to, not a hunt through the scheduler.
  */
-const CHAPTER: Record<CelebrationId, Phrase> = {
+const CHAPTER: Record<CelebrationId, Sounding> = {
   // Buoyant and quick, and it ends up in the air rather than coming to rest.
-  balloons: together(
-    run([5, 7, 8, 10, 12], { spacing: 0.09, duration: 0.34, gain: 0.13 }),
-    delayed(0.46, [voice(note(13), { duration: 0.9, gain: 0.1 })]),
-  ),
+  balloons: {
+    when: "chapter 1 is done and the balloons go up",
+    phrase: together(
+      run([5, 7, 8, 10, 12], { spacing: 0.09, duration: 0.34, gain: 0.13 }),
+      delayed(0.46, [voice(note(13), { duration: 0.9, gain: 0.1 })]),
+    ),
+  },
   // A tread underneath, because a parade is walked rather than announced.
-  parade: together(
-    run([5, 8, 10, 8, 12], { spacing: 0.17, duration: 0.36, gain: 0.13 }),
-    run([-5, -2, -5, -2], { spacing: 0.34, duration: 0.3, gain: 0.08, type: "triangle" }),
-  ),
+  parade: {
+    when: "chapter 2 is done and the animals parade",
+    phrase: together(
+      run([5, 8, 10, 8, 12], { spacing: 0.17, duration: 0.36, gain: 0.13 }),
+      run([-5, -2, -5, -2], { spacing: 0.34, duration: 0.3, gain: 0.08, type: "triangle" }),
+    ),
+  },
   // Falling, unhurried, and held: blossom coming down rather than going up.
-  petals: together(
-    run([15, 13, 12, 10, 9, 7, 5], { spacing: 0.13, duration: 0.44, gain: 0.11 }),
-    delayed(0.3, chord([0, 4], { duration: 1.5, gain: 0.06 })),
-  ),
+  petals: {
+    when: "chapter 3 is done and the blossom falls",
+    phrase: together(
+      run([15, 13, 12, 10, 9, 7, 5], { spacing: 0.13, duration: 0.44, gain: 0.11 }),
+      delayed(0.3, chord([0, 4], { duration: 1.5, gain: 0.06 })),
+    ),
+  },
   // An arch: over the top and down the other side, which is the shape the child
   // is painting a tap at a time.
-  rainbow: together(
-    run([5, 7, 9, 10, 12, 10, 9, 7], { spacing: 0.14, duration: 0.42, gain: 0.12 }),
-    chord([0, 3], { duration: 1.8, gain: 0.06 }),
-  ),
+  rainbow: {
+    when: "chapter 4 is done and a rainbow is painted",
+    phrase: together(
+      run([5, 7, 9, 10, 12, 10, 9, 7], { spacing: 0.14, duration: 0.42, gain: 0.12 }),
+      chord([0, 3], { duration: 1.8, gain: 0.06 }),
+    ),
+  },
   // Up, and then specks over the top of it.
-  fireworks: together(
-    run([5, 8, 10, 12], { spacing: 0.11, duration: 0.36, gain: 0.13 }),
-    delayed(0.5, run([15, 17, 16], { spacing: 0.09, duration: 0.5, gain: 0.08 })),
-  ),
+  fireworks: {
+    when: "chapter 5 is done and the fireworks start",
+    phrase: together(
+      run([5, 8, 10, 12], { spacing: 0.11, duration: 0.36, gain: 0.13 }),
+      delayed(0.5, run([13, 15, 14], { spacing: 0.09, duration: 0.5, gain: 0.08 })),
+    ),
+  },
   // Thirty levels. The longest run, the whole chord under it, and a note left
   // ringing over the top - the finale does not wind down, and neither does this.
-  finale: together(
-    run([5, 6, 7, 8, 9, 10, 12, 13, 15], { spacing: 0.11, duration: 0.44, gain: 0.12 }),
-    delayed(0.5, chord([0, 3, 5], { duration: 2.2, gain: 0.06 })),
-    delayed(1.1, [voice(note(15), { duration: 1.4, gain: 0.09 })]),
-  ),
+  finale: {
+    when: "all thirty levels are done",
+    phrase: together(
+      run([5, 6, 7, 8, 9, 10, 12, 13, 15], { spacing: 0.11, duration: 0.44, gain: 0.12 }),
+      delayed(0.5, chord([0, 3, 5], { duration: 2.2, gain: 0.06 })),
+      delayed(1.1, [voice(note(15), { duration: 1.4, gain: 0.09 })]),
+    ),
+  },
 };
 
 // --- what the game calls --------------------------------------------------
@@ -522,7 +598,7 @@ export function playPickUp(): void {
 
 /** A piece dropping into place, in the voice of the kind of puzzle it belongs to. */
 export function playSnap(kind: PuzzleKindId): void {
-  play(SNAP[kind]);
+  play(SNAP[kind].phrase);
 }
 
 /**
@@ -584,41 +660,56 @@ export function playFanfare(level = 1): void {
 
 /** The end of a chapter, or of the whole game: one phrase per celebration. */
 export function playChapterFanfare(celebration: CelebrationId): void {
-  play(CHAPTER[celebration]);
+  play(CHAPTER[celebration].phrase);
 }
 
 // --- the vocabulary, for the harnesses ------------------------------------
 
-/** One entry of the vocabulary: a name, the phrase, and a way to play it. */
+/** One entry of the vocabulary: a name, what sets it off, and how to play it. */
 export interface Sound {
   readonly name: string;
+  /** What the child did to hear it. The waveform sheet is labelled with this. */
+  readonly when: string;
   readonly phrase: Phrase;
   /** Plays exactly `phrase`, so what is measured is what is heard. */
   readonly play: () => void;
 }
 
-function sound(name: string, phrase: Phrase): Sound {
-  return { name, phrase, play: () => play(phrase) };
+function sound(name: string, when: string, phrase: Phrase): Sound {
+  return { name, when, phrase, play: () => play(phrase) };
 }
 
 /**
  * Every sound the game can make, enumerable.
  *
  * This exists because nobody can hear the game in a test. `tests/audio.test.ts`
- * walks it to check that no two kinds and no two celebrations share a phrase
- * and that nothing exceeds the gain ceiling, and `scripts/check-audio.mjs`
- * renders each entry through a real `OfflineAudioContext` and measures the
- * samples that come back. A sound that is not in here is a sound nothing has
- * ever looked at.
+ * walks it to check that no two kinds and no two celebrations share a phrase,
+ * that nothing exceeds the gain ceiling or the pitch ceiling, and that every
+ * pitch sits on the ladder; `scripts/check-audio.mjs` renders each entry
+ * through a real `OfflineAudioContext` and measures the samples that come back.
+ * A sound that is not in here is a sound nothing has ever looked at.
+ *
+ * Where a sound comes in variants, the *ends* of the range are listed and not
+ * just the first one - the fifth firework and the highest pop are the brightest
+ * things the game can play, and they are exactly the ones worth measuring.
  */
 export const VOCABULARY: readonly Sound[] = [
-  sound("pick-up", PICK_UP),
-  ...Object.entries(SNAP).map(([kind, phrase]) => sound(`snap-${kind}`, phrase)),
-  sound("return", RETURN),
-  sound("pop", popPhrase(POP_ROOT)),
-  sound("plink", plinkPhrase(PLINK_ROOT)),
-  sound("firework", fireworkPhrase(0)),
-  sound("turn", TURN),
-  ...[1, 2, 3, 4, 5].map((level) => sound(`fanfare-${level}`, fanfarePhrase(level))),
-  ...Object.entries(CHAPTER).map(([id, phrase]) => sound(`chapter-${id}`, phrase)),
+  sound("pick-up", "a piece is picked up", PICK_UP),
+  ...Object.entries(SNAP).map(([kind, one]) => sound(`snap-${kind}`, one.when, one.phrase)),
+  sound("return", "a piece is dropped somewhere it cannot go", RETURN),
+  sound("pop", "a bubble bursts", popPhrase(POP_ROOT)),
+  sound("pop-highest", "the smallest bubble bursts", popPhrase(POP_ROOT + 5)),
+  sound("plink", "a thing answers a finger", plinkPhrase(PLINK_ROOT)),
+  sound("plink-highest", "the fifth thing in a row answers", plinkPhrase(PLINK_ROOT + 4)),
+  sound("firework", "a firework goes up and breaks", fireworkPhrase(0)),
+  sound("firework-highest", "the fifth firework in a row", fireworkPhrase(4)),
+  sound("turn", "a piece is turned - issue #14, unwired", TURN),
+  ...[1, 2, 3, 4, 5].map((level) =>
+    sound(
+      `fanfare-${level}`,
+      `a level ending on step ${level} of the ladder`,
+      fanfarePhrase(level),
+    ),
+  ),
+  ...Object.entries(CHAPTER).map(([id, one]) => sound(`chapter-${id}`, one.when, one.phrase)),
 ];

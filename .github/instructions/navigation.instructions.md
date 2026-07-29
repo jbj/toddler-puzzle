@@ -199,8 +199,12 @@ what the code has to keep true is this.
   polygon clicking onto its shadow, two jigsaw pieces meshing and a shard
   settling are five different physical events and sound like it.
 - **Nothing harsh.** Sine and triangle only, a real attack on every voice, an
-  exponential release, and a per-voice gain ceiling (`MAX_VOICE_GAIN`). The
-  game is played close to a face at full volume. A refused drop plays
+  exponential release, a per-voice gain ceiling (`MAX_VOICE_GAIN`) and a pitch
+  ceiling (`MAX_PITCH_HZ`, C7). The ear is most sensitive between two and four
+  kilohertz, so pitch is the one way a soft sine wave can still be piercing;
+  `voice()` clamps both, because the degree that goes too far does not look any
+  different from the ones that do not. The game is played close to a face at
+  full volume. A refused drop plays
   `playReturn` - a soft, warm tone that falls slightly - and the piece drifts
   back to the tray: never a buzzer, and never left where it fell.
 - **A run of pops is musical, not mechanical.** `playPop` and `playPlink` share
@@ -218,7 +222,12 @@ what the code has to keep true is this.
   in Chromium and measures the samples - peak, onset and release continuity,
   duration, spectral centroid, and bit-silence when the toggle is off. It is in
   `npm run verify`. `npm run audio` draws the same renders as
-  `.art/audio/sheet.png` for a human to look at.
+  `.art/audio/sheet.png` - each sound labelled with what sets it off and the
+  notes it plays - for a human to look at.
+- **`VOCABULARY` is what gets measured**, so where a sound has variants it lists
+  the *ends* of the range and not only the first. The fifth firework and the
+  smallest bubble are the brightest things the game can play, and listing only
+  `firework(0)` hid three phrases that climbed to 3.5 kHz.
 - `playTurn` is the rotation click for #14, which is not built. It ships
   measured and unwired; wire it where a piece turns.
 - Audio needs a gesture to start, so `unlockAudio` runs off the first pointer

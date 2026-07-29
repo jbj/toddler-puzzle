@@ -137,6 +137,25 @@ function measure(samples) {
   };
 }
 
+const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+/**
+ * The notes of a phrase, in the order they start, as a person would say them.
+ * The sheet is the only review this work gets, and a reviewer asking whether it
+ * sounds like the same game needs the pitches in a form they can read.
+ */
+function noteNames(phrase) {
+  const seen = [];
+  for (const one of [...phrase].sort((a, b) => a.at - b.at)) {
+    for (const hz of one.to === one.frequency ? [one.frequency] : [one.frequency, one.to]) {
+      const steps = Math.round(12 * Math.log2(hz / 440));
+      const name = `${NAMES[(((steps + 9) % 12) + 12) % 12]}${4 + Math.floor((steps + 9) / 12)}`;
+      if (seen[seen.length - 1] !== name) seen.push(name);
+    }
+  }
+  return seen;
+}
+
 /** The highest pitch a phrase ever asks for, which bounds how fast it can move. */
 function topFrequency(phrase) {
   return phrase.reduce((top, one) => Math.max(top, one.frequency, one.to), 0);
@@ -165,6 +184,8 @@ window.measureVocabulary = async function measureVocabulary(columns = 0) {
     const stats = measure(samples);
     measured.push({
       name: sound.name,
+      when: sound.when,
+      notes: noteNames(sound.phrase),
       span,
       seconds,
       voices: sound.phrase.length,
@@ -192,6 +213,8 @@ window.measurePileUp = async function measurePileUp(columns = 0) {
   });
   return {
     name: "pile-up",
+    when: "the finale, with forty bubbles and twenty fireworks through it",
+    notes: [],
     span: 3.4,
     seconds: 4,
     voices: 0,

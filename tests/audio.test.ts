@@ -328,6 +328,32 @@ describe("the shape of every voice in the vocabulary", () => {
     }
   });
 
+  it("stays under the pitch ceiling, wherever a variant reaches", () => {
+    // The ear is at its most sensitive between two and four kilohertz, which is
+    // the one way a soft sine wave can still be piercing. `VOCABULARY` lists the
+    // brightest variant of anything that varies, so this covers the fifth
+    // firework and the smallest bubble and not only the first of each.
+    for (const sound of audio.VOCABULARY) {
+      for (const one of sound.phrase) {
+        expect(one.frequency, `${sound.name} ${one.frequency}`).toBeLessThanOrEqual(
+          audio.MAX_PITCH_HZ,
+        );
+        expect(one.to, `${sound.name} ${one.to}`).toBeLessThanOrEqual(audio.MAX_PITCH_HZ);
+      }
+    }
+  });
+
+  it("refuses a pitch above the ceiling however it is asked for", () => {
+    // Every bubble in the game, including one asked to pop an octave above the
+    // top of its range, which the caller is free to do.
+    for (const pitch of [0.25, 0.5, 1, 2, 4, 16]) {
+      audio.playPop(pitch);
+    }
+    const asked = pitches(ctx);
+    expect(asked.length).toBeGreaterThan(0);
+    for (const hz of asked) expect(hz).toBeLessThanOrEqual(audio.MAX_PITCH_HZ);
+  });
+
   it("picks every pitch off the one ladder, so nothing can clash", () => {
     const ladder = new Set<string>();
     for (let degree = -12; degree <= 24; degree++) ladder.add(audio.note(degree).toFixed(3));

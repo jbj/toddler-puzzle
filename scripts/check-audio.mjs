@@ -227,9 +227,9 @@ for (const sound of measured) {
  * art review already needs; if that is not installed the SVG is still written,
  * because half a sheet beats none.
  */
-const ROW = 74;
-const LABEL_WIDTH = 170;
-const WAVE_WIDTH = 900;
+const ROW = 82;
+const LABEL_WIDTH = 330;
+const WAVE_WIDTH = 820;
 const SHEET_WIDTH = LABEL_WIDTH + WAVE_WIDTH + 30;
 
 /**
@@ -241,6 +241,15 @@ const SHEET_WIDTH = LABEL_WIDTH + WAVE_WIDTH + 30;
  * the short sounds get an axis of their own and the long ones another, and
  * within a group the lengths are honestly comparable.
  */
+/** Monospace at 10.5px, in the label column, is about this many characters. */
+const LABEL_CHARS = 50;
+
+const escape = (text) => {
+  const one = String(text);
+  const fitted = one.length > LABEL_CHARS ? `${one.slice(0, LABEL_CHARS - 1)}...` : one;
+  return fitted.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+};
+
 function block(title, sounds, top, loudest) {
   const longest = Math.max(...sounds.map((one) => one.seconds), 0.2);
   const perSecond = WAVE_WIDTH / longest;
@@ -275,10 +284,13 @@ function block(title, sounds, top, loudest) {
         (one) => `${at(one.column).toFixed(1)},${(middle - (one.low / loudest) * half).toFixed(1)}`,
       )
       .join(" ");
+    const notes = sound.notes.length > 0 ? sound.notes.join(" ") : "-";
     return `
       <g>
-        <text x="14" y="${middle + 2}" font-size="13" font-family="monospace" fill="#20303c">${sound.name}</text>
-        <text x="14" y="${middle + 18}" font-size="10" font-family="monospace" fill="#6b7b86">peak ${round(sound.peak)}  ${Math.round(sound.centroid)} Hz</text>
+        <text x="14" y="${middle - 12}" font-size="13" font-family="monospace" fill="#20303c">${sound.name}</text>
+        <text x="14" y="${middle + 3}" font-size="10.5" font-family="monospace" fill="#41525e">${escape(sound.when)}</text>
+        <text x="14" y="${middle + 17}" font-size="10.5" font-family="monospace" fill="#2f7fa8">${escape(notes)}</text>
+        <text x="14" y="${middle + 31}" font-size="10" font-family="monospace" fill="#8c9aa4">peak ${round(sound.peak)} - centroid ${Math.round(sound.centroid)} Hz - ${sound.span.toFixed(2)}s</text>
         <line x1="${LABEL_WIDTH}" y1="${middle}" x2="${LABEL_WIDTH + WAVE_WIDTH}" y2="${middle}" stroke="#cfd9e0" stroke-width="1" />
         <polygon points="${upper} ${lower}" fill="#2f7fa8" />
       </g>`;
@@ -302,7 +314,7 @@ function buildSheet(sounds) {
   const short = sounds.filter((one) => one.seconds <= 1.2);
   const long = sounds.filter((one) => one.seconds > 1.2);
 
-  let top = 44;
+  let top = 56;
   const blocks = [];
   for (const [title, group] of [
     ["What a child hears all day - a touch, a landing, a pop", short],
@@ -316,7 +328,8 @@ function buildSheet(sounds) {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${SHEET_WIDTH}" height="${top}" viewBox="0 0 ${SHEET_WIDTH} ${top}">
   <rect width="${SHEET_WIDTH}" height="${top}" fill="#f6f9fb" />
-  <text x="14" y="26" font-size="15" font-family="monospace" fill="#20303c">Animal Puzzle - every sound, rendered offline. Amplitude scaled to ${round(loudest)}; time to scale within each group.</text>
+  <text x="14" y="22" font-size="15" font-family="monospace" fill="#20303c">Animal Puzzle - every sound the game can make, rendered offline. Nobody can hear a pull request, so this is the review.</text>
+  <text x="14" y="38" font-size="11" font-family="monospace" fill="#6b7b86">Every pitch is a note of one C major pentatonic ladder. Amplitude is to scale across the sheet (loudest ${round(loudest)}); time is to scale within each group.</text>
   ${blocks.join("\n")}
 </svg>`;
 }
@@ -326,11 +339,19 @@ if (drawSheet) {
   const svgFile = join(outDir, "sheet.svg");
   writeFileSync(svgFile, buildSheet(measured));
   console.log(`\nWaveforms: ${svgFile}`);
-  if (haveRsvg()) {
-    const png = join(outDir, "sheet.png");
-    rsvg(["-w", "1200", "-o", png, svgFile]);
-    console.log(`Waveforms: ${png}`);
+  if (!haveRsvg()) {
+    // The sheet is the only way a person reviews this work, so a missing
+    // rasteriser is a failure rather than a quiet half-result. The SVG is
+    // written first and stays, because it opens in any browser.
+    console.error(
+      "\nrsvg-convert is not installed, so only the SVG above was written." +
+        "\nInstall it first - on Debian or Ubuntu: sudo apt-get install librsvg2-bin",
+    );
+    process.exit(1);
   }
+  const png = join(outDir, "sheet.png");
+  rsvg(["-w", "1360", "-o", png, svgFile]);
+  console.log(`Waveforms: ${png}`);
 }
 
 if (failures > 0) {

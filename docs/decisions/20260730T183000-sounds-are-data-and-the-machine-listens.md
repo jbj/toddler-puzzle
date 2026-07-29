@@ -67,11 +67,24 @@ duration in range; spectral centroid low enough to count as soft. It plays
 everything at once to see that a burst is limited rather than clipped, and then
 plays everything again with the toggle off, which has to come back bit-silent.
 
+What is measured is whatever `VOCABULARY` lists, and where a sound comes in
+variants it lists the ends of the range rather than the first of them. That is
+not tidiness. Written the other way, three phrases that climbed to three and a
+half kilohertz - the fifth firework, the smallest bubble, the fireworks fanfare
+- passed every check in this file, because the only variant anything rendered
+was the lowest one. Now the ceiling is enforced in the voice factory
+(`MAX_PITCH_HZ`, C7, the highest note the game has ever played) and the
+brightest variant of everything is on the sheet.
+
 `npm run audio` draws the same renders as a sheet of labelled waveforms in
-`.art/audio/sheet.png`, the way `npm run art` draws the animals. It is built out
-of the render that had to exist anyway and the rasteriser the art review already
-needs, so it adds no dependency, and it is the only way a person can review a
-change to the sound at all.
+`.art/audio/sheet.png`, the way `npm run art` draws the animals. Each is
+labelled with what sets it off and the notes it plays, because the person
+opening that PNG wants to answer "does this sound like the same game" and a wall
+of unlabelled envelopes will not tell them. It is built out of the render that
+had to exist anyway and the rasteriser the art review already needs, so it adds
+no dependency; if that rasteriser is missing it says which package to install
+and leaves the SVG, rather than half-succeeding, because this sheet is the whole
+review surface.
 
 ## Consequence
 
