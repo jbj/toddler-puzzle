@@ -44,7 +44,7 @@
  * `prefers-reduced-motion` is honoured through `motion.ts` as everywhere else:
  * the moment still happens, more calmly.
  */
-import { playPlink, playPop, unlockAudio } from "./audio";
+import { playFirework, playPlink, playPop, unlockAudio } from "./audio";
 import { sparkleBurst } from "./celebrate";
 import { shuffle, type Point } from "./geometry";
 import type { Layout } from "./layout";
@@ -715,8 +715,7 @@ function firework(party: Party, at: Point, note: number, byHand: boolean): void 
   popBurst(layer, at, radius, colours[0] as string);
   popBurst(layer, at, radius * 0.62, colours[1 % colours.length] as string);
   sparkleBurst(party.stage.fxLayer, at);
-  playPop(0.55);
-  playPlink(note);
+  playFirework(note);
   if (byHand) party.answer(at);
 }
 

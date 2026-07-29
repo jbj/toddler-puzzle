@@ -211,17 +211,18 @@ export function createGame(
     if (complete || !kind.isComplete(puzzle)) return;
 
     complete = true;
-    const last = isLastLevel();
     // Five levels finishing has to be a bigger moment than one level finishing,
     // or the thirty flatten into one long identical fanfare. A chapter ends
     // with a celebration that is played rather than watched (`celebration.ts`);
     // the last chapter's is the finale, and does not stop.
-    const chapterEnd = endsChapter(levelNumber);
-    celebration = chapterEnd ? createCelebration(celebrationFor(level.chapter)) : null;
-    // Let the last snap chime land before the fanfare starts.
+    const chapterEnd = endsChapter(levelNumber) ? celebrationFor(level.chapter) : null;
+    celebration = chapterEnd ? createCelebration(chapterEnd) : null;
+    // Let the last snap chime land before the fanfare starts. A chapter's
+    // fanfare is the celebration's own; an ordinary level's walks a step along
+    // the scale each time, so two levels running do not end identically.
     finishTimer = window.setTimeout(() => {
-      if (chapterEnd) playChapterFanfare(last);
-      else playFanfare(false);
+      if (chapterEnd) playChapterFanfare(chapterEnd);
+      else playFanfare(levelNumber);
       showFinish(true);
     }, 260);
   }
@@ -276,7 +277,7 @@ export function createGame(
     pieceEl(piece).classList.add("is-placed");
     renderBackdrop();
 
-    playSnap();
+    playSnap(puzzle.kind);
     // On the piece's own drawing rather than the middle of the box it carries.
     // For an animal those are the same point; for a piece of a bigger picture -
     // a slice, a shape, a jigsaw piece - the box is the whole picture, and its

@@ -29,7 +29,7 @@ expecting the formatter to.
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Vite dev server |
-| `npm run verify` | Single check that has to pass before a pull request: lint, format check, docs check, build, tests, art check, and screenshot run |
+| `npm run verify` | Single check that has to pass before a pull request: lint, format check, docs check, build, tests, audio check, art check, and screenshot run |
 | `npm run lint` | ESLint |
 | `npm run format` | Formats with Prettier |
 | `npm run build` | Type-check, then production build into `dist/` |
@@ -38,6 +38,8 @@ expecting the formatter to.
 | `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large; `npm run art -- scenes` renders the picture scenes, and `npm run art -- farmyard` one scene with its cut grids over it |
 | `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level), that no two in one theme read alike, and that its committed slice recipes still cut it well; and every scene against the scene contract, including that no piece of it is featureless at any grid the levels cut at |
 | `npm run art:slices` | Re-measures where every animal is cut and rewrites `src/slice-recipes.json`. Run it after redrawing an animal |
+| `npm run audio` | Renders every sound offline and draws `.art/audio/sheet.png`, so a human can see what nobody can hear in review |
+| `npm run audio:check` | Renders every sound through a real `OfflineAudioContext` in Chromium and measures the samples: peak, onset and release continuity, duration, spectral centroid, and bit-silence with sound off |
 | `npm run shot` | Drives real drags in headless Chromium and screenshots the result (run `npm run build` first) |
 | `npm run shot:sheet` | Rebuilds `.art/shots/contact-sheet.png` from the last run's screenshots |
 
@@ -45,8 +47,10 @@ expecting the formatter to.
 
 `npm install`, then `npm run dev`. `npm run art` and `npm run art:check` need
 `rsvg-convert` and ImageMagick, which are not npm packages; on Debian or Ubuntu,
-`sudo apt-get install librsvg2-bin imagemagick`. `npm run shot` needs a headless
-Chrome binary and honours `CHROME_BIN`.
+`sudo apt-get install librsvg2-bin imagemagick`. `npm run shot` and
+`npm run audio:check` need a headless Chrome binary and honour `CHROME_BIN`;
+`npm run audio` also wants `rsvg-convert` to rasterise its sheet, and writes the
+SVG regardless if it is missing.
 
 ## Source map
 
@@ -83,7 +87,7 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/drag.ts` | Pointer-event drag engine |
 | `src/game.ts` | The host: drag state, settling, sound, sparkles, level lifecycle |
 | `src/grownups.ts` | The grown-up panel: the hold that opens it, the level map, the switches |
-| `src/audio.ts` | Web Audio sound synthesis |
+| `src/audio.ts` | Every sound in the game, as data: one pentatonic ladder, voices, phrases, and the single gate the sound toggle sits on |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `src/celebration.ts` | What the end of a chapter looks like, and what the end of the game looks like. Six celebrations, all played rather than watched |
 | `scripts/preview.mjs` | Renders the art for review: a contact sheet, one animal large, or a scene under its cut grids |
@@ -92,6 +96,9 @@ Chrome binary and honours `CHROME_BIN`.
 | `scripts/slices.mjs` | Judges a cut from pixels: whole, fair, grabbable. Shared by the two above |
 | `scripts/slice-recipes.mjs` | Searches for where to cut every animal, and writes the table |
 | `scripts/check-docs.mjs` | Enforces that Markdown cross-references resolve |
+| `scripts/check-audio.mjs` | Renders every sound offline in Chromium, measures the samples, and optionally draws the waveform sheet |
+| `scripts/audio-probe.mjs` | The half of that which runs in the browser: `OfflineAudioContext` renders, an FFT and the measurements |
+| `scripts/chrome.mjs` | Starts headless Chromium and speaks the debugging protocol to it. Shared by the screenshot run and the audio render |
 | `scripts/shot.mjs` | End-to-end drag and touch test in headless Chromium |
 | `scripts/shot-sheet.mjs` | Packs the run's screenshots into one image to attach to a pull request |
 | `scripts/tools.mjs` | Resolves the external art tools, with one clear message when they are missing |

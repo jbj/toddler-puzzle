@@ -114,6 +114,21 @@ not have ends nothing rather than throwing. Whether a celebration is *played*,
 whether the way onwards is up while it runs, whether the sky refills and whether
 it survives a rotation are all `npm run shot`'s.
 
+`tests/audio.test.ts` covers the *shape* of the sound vocabulary, against a fake
+`AudioContext` handed to the module through `useAudioContext` - a seam that
+exists for this suite and for the offline render, and that the game never
+touches. It is where the one hard rule lives: the suite enumerates the module's
+own exports, finds every `play` function, and insists each one is silent when
+the toggle is off, so a sound added later that forgets the toggle fails here
+rather than on a train. Around that it holds the things a compiler cannot state:
+that every puzzle kind and every celebration resolves to a phrase and no two
+share one, that a long run of pops never repeats a pitch immediately, that no
+voice exceeds the gain ceiling, that nothing but a sine or a triangle is ever
+asked for, that every pitch sits on the ladder, and that two hundred pops in one
+tick neither throw nor outrun the voice budget, and disconnect what they used.
+Whether any of it sounds *nice* is nobody's test; whether it sounds harsh is
+`npm run audio:check`'s.
+
 `tests/progress.test.ts` covers what is remembered between sittings, and is
 mostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level
@@ -262,7 +277,35 @@ green for the wrong reason if the box were ever moved in front of the artwork.
 
 Run `npm run build` first; the shot run serves `dist/`. It honours `CHROME_BIN`.
 
+## What `npm run audio:check` covers
+
+Nobody can hear a pull request. So the sounds are rendered rather than
+described: the script bundles `src/audio.ts`, serves it to headless Chromium,
+and plays every entry in the module's own `VOCABULARY` through an
+`OfflineAudioContext` - through the game's real scheduling function, not a
+re-implementation - then measures the samples that come back. Peak amplitude
+inside a ceiling and above an audible floor. No discontinuity at onset or
+release, which is the thing that makes a click: the first and last samples must
+be zero and no sample-to-sample step may exceed what the highest scheduled
+frequency at that amplitude could produce. Duration in range. Spectral centroid
+low enough to count as soft. Then everything at once, to see that a burst is
+limited rather than clipped, and finally every sound again with the toggle off,
+which has to come back bit-silent.
+
+It is in `npm run verify`, so "nothing harsh" stays a check rather than a hope.
+A failure prints the measured number next to the bound it broke. Adding a sound
+to `VOCABULARY` is what puts it in front of all of this; a sound that is not
+listed there is not measured.
+
+`npm run audio` runs the same render and draws it, as `.art/audio/sheet.png` -
+a waveform per sound, on two time axes so that a pop and the finale are both
+legible. It is the only way a person can review a change to the sound, so put it
+in the pull request.
+
 ## What the tests cannot see
 
 The artwork. `npm run art:check` covers that, and
-[`art.instructions.md`](art.instructions.md) says how.
+[`art.instructions.md`](art.instructions.md) says how. And what any of it
+actually sounds like: the checks above can say a sound is soft, brief and
+distinct from its neighbours, but not that it is the right sound for the moment.
+Only a person with a speaker can say that.

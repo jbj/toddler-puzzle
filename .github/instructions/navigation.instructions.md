@@ -167,13 +167,65 @@ what the code has to keep true is this.
   the handle the panel drives (`chooseLevel`, `currentLevel`).
 - **Reset asks twice**, and is the only place progress can be cleared.
 
+## Sound
+
+Every sound in the game is synthesised in `src/audio.ts`. There are no audio
+files; see the no-binary-assets invariant in
+[`product.instructions.md`](product.instructions.md). Thirty levels, six kinds
+and six celebrations need more than four tones, so the file is a small
+vocabulary rather than a list of hand-tuned copies. The reasoning is
+[decision 20260730T183000](../../docs/decisions/20260730T183000-sounds-are-data-and-the-machine-listens.md);
+what the code has to keep true is this.
+
+- **One ladder.** `note(degree)` reads a pitch off a C major pentatonic ladder,
+  and *every* pitch in the game comes off it. That is what makes twenty sounds
+  feel like one game, and why there is no wrong note whatever order a toddler
+  triggers them in. Do not hard-code a frequency; if a sound needs a pitch the
+  ladder does not have, the ladder is wrong.
+- **Sounds are data.** A `Voice` is one oscillator and one envelope as a plain
+  object; a `Phrase` is a list of them relative to its own start; gestures
+  (`run`, `chord`, `together`, `delayed`) build phrases out of voices. Only
+  `schedule` touches Web Audio, and only `play` gets to call it. Adding a sound
+  means writing a phrase, not writing more audio code.
+- **One gate.** `play` is the only way a phrase is heard, and it is where the
+  sound toggle is checked. A new sound that does not go through it is a bug a
+  grown-up meets on a train; `tests/audio.test.ts` enumerates the module's own
+  exports and fails if one of them is not silent when sound is off.
+- **A voice per kind, a phrase per celebration.** `playSnap(kind)` is keyed by
+  `Record<PuzzleKindId, Phrase>` and `playChapterFanfare(id)` by
+  `Record<CelebrationId, Phrase>`, so a new kind or celebration without a sound
+  is a compile error rather than a silent fall-through to a default. A wooden
+  animal seating into its hole, a slice rejoining the animal it was cut from, a
+  polygon clicking onto its shadow, two jigsaw pieces meshing and a shard
+  settling are five different physical events and sound like it.
+- **Nothing harsh.** Sine and triangle only, a real attack on every voice, an
+  exponential release, and a per-voice gain ceiling (`MAX_VOICE_GAIN`). The
+  game is played close to a face at full volume. A refused drop plays
+  `playReturn` - a soft, warm tone that falls slightly - and the piece drifts
+  back to the tray: never a buzzer, and never left where it fell.
+- **A run of pops is musical, not mechanical.** `playPop` and `playPlink` share
+  one "never the same degree twice running" rule, so bursting a raft of bubbles
+  walks up and down the ladder instead of repeating one note.
+- **A burst degrades rather than crackles.** Live voices are counted
+  (`MAX_LIVE_VOICES`); over the cap a voice is dropped rather than queued, and
+  `onended` disconnects both its nodes. The whole bus runs through a `tanh` soft
+  clip, so thirty balloons popped at once get gently *quieter* instead of
+  clipping. Do not swap it for a `DynamicsCompressorNode`: Chrome attenuates by
+  a fixed 6 dB there even far below threshold.
+- **Nobody can hear a change to this file in review**, so two harnesses stand in
+  for ears. `tests/audio.test.ts` checks the structure, and
+  `npm run audio:check` renders every sound through a real `OfflineAudioContext`
+  in Chromium and measures the samples - peak, onset and release continuity,
+  duration, spectral centroid, and bit-silence when the toggle is off. It is in
+  `npm run verify`. `npm run audio` draws the same renders as
+  `.art/audio/sheet.png` for a human to look at.
+- `playTurn` is the rotation click for #14, which is not built. It ships
+  measured and unwired; wire it where a piece turns.
+- Audio needs a gesture to start, so `unlockAudio` runs off the first pointer
+  down rather than at load.
+
 ## Feedback
 
-- Picking a piece up, snapping one in, and finishing all play synthesised tones
-  (`src/audio.ts`). There are no audio files; see the no-binary-assets
-  invariant in [`product.instructions.md`](product.instructions.md).
-- A refused drop plays `playReturn` - a soft, warm tone - and the piece drifts
-  back to the tray. Never a buzzer, and never leaving the piece where it fell.
 - A piece that lands gets a sparkle burst; finishing a level gets a bigger one
   (`src/celebrate.ts`), and finishing a chapter gets a celebration on top of it
   (`src/celebration.ts`, above).
@@ -195,9 +247,6 @@ what the code has to keep true is this.
   A celebration follows the same rule: the parade stands in a row rather than
   walking, a rainbow appears without wiping itself on, and a firework bursts
   without climbing - the moment still happens, more calmly.
-- Audio needs a gesture to start, so `unlockAudio` runs off the first pointer
-  down rather than at load.
-
 ## Drag feel
 
 `src/drag.ts` is the pointer-event drag engine; `src/game.ts` owns what a drag

@@ -37,6 +37,19 @@ export default tseslint.config(
     },
   },
 
+  // One script is not a Node script at all: `audio-probe.mjs` is served to a
+  // headless browser by the audio check and runs there, so it is linted with
+  // browser globals rather than Node's.
+  {
+    files: ["scripts/audio-probe.mjs"],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: globals.browser,
+      ecmaVersion: "latest",
+      sourceType: "module",
+    },
+  },
+
   // The review and check harnesses are plain Node scripts, not part of the
   // bundle, so they are linted without type information. A test written as
   // `.mjs` is here for the same reason: it exercises one of those scripts,

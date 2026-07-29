@@ -10,12 +10,12 @@
  * Output lands in .art/shots/.
  */
 import { createServer } from "node:http";
-import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import { openChrome } from "./chrome.mjs";
 import { buildSheet } from "./shot-sheet.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -58,98 +58,16 @@ await new Promise((resolve) => server.listen(PORT, resolve));
 
 // --- browser --------------------------------------------------------------
 
-rmSync(profileDir, { recursive: true, force: true });
-// Which Chrome is on PATH depends on the machine: `chromium` on a Debian
-// desktop, `google-chrome` on a GitHub Actions runner. CHROME_BIN lets the
-// caller say, so CI does not need a different script.
-const CHROME = process.env.CHROME_BIN || "chromium";
-const chrome = spawn(
-  CHROME,
-  [
-    "--headless=new",
-    `--remote-debugging-port=${DEBUG_PORT}`,
-    `--user-data-dir=${profileDir}`,
-    "--no-sandbox",
-    "--disable-gpu",
-    "--hide-scrollbars",
-    "--force-device-scale-factor=1",
-    "--window-size=1280,800",
-    "about:blank",
-  ],
-  { stdio: "ignore" },
-);
-
-chrome.on("error", (error) => {
-  const why = error.code === "ENOENT" ? `no such program: ${CHROME}` : error.message;
-  console.error(
-    `Could not start Chrome (${why}).\n` +
-      "Install Chromium, or point CHROME_BIN at the browser to use:\n" +
-      "  CHROME_BIN=google-chrome npm run shot",
-  );
-  process.exit(1);
-});
-
-async function findTarget() {
-  for (let attempt = 0; attempt < 60; attempt++) {
-    try {
-      const response = await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/list`);
-      const targets = await response.json();
-      const page = targets.find((t) => t.type === "page" && t.webSocketDebuggerUrl);
-      if (page) return page;
-    } catch {
-      /* browser not up yet */
-    }
-    await sleep(250);
-  }
-  throw new Error(`${CHROME} did not expose a debuggable page.`);
-}
-
-let socket;
+// Launching Chrome and speaking the DevTools Protocol is `chrome.mjs`, shared
+// with the audio check so there is one version of it rather than two.
+let browser;
 try {
-  const target = await findTarget();
-  socket = new WebSocket(target.webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => {
-    socket.addEventListener("open", resolve, { once: true });
-    socket.addEventListener("error", reject, { once: true });
-  });
+  browser = await openChrome({ debugPort: DEBUG_PORT, profileDir });
 } catch (error) {
-  socket?.close();
-  chrome.kill();
   server.close();
   throw error;
 }
-
-let nextId = 0;
-const pending = new Map();
-socket.addEventListener("message", (event) => {
-  const message = JSON.parse(event.data);
-  if (message.id !== undefined && pending.has(message.id)) {
-    const { resolve, reject } = pending.get(message.id);
-    pending.delete(message.id);
-    if (message.error) reject(new Error(JSON.stringify(message.error)));
-    else resolve(message.result);
-  }
-});
-
-function send(method, params = {}) {
-  const id = ++nextId;
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    socket.send(JSON.stringify({ id, method, params }));
-  });
-}
-
-async function evaluate(expression) {
-  const result = await send("Runtime.evaluate", {
-    expression,
-    awaitPromise: true,
-    returnByValue: true,
-  });
-  if (result.exceptionDetails) {
-    throw new Error(result.exceptionDetails.exception?.description ?? "evaluation failed");
-  }
-  return result.result.value;
-}
+const { send, evaluate } = browser;
 
 async function setViewport(width, height) {
   await send("Emulation.setDeviceMetricsOverride", {
@@ -1532,8 +1450,7 @@ try {
   );
   check(`every touch answered in portrait (${turnedPlay.missed} missed)`, turnedPlay.missed === 0);
 } finally {
-  socket.close();
-  chrome.kill();
+  browser.close();
   server.close();
 }
 

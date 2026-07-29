@@ -47,6 +47,9 @@ const rsvgConvert = once(() => (have("rsvg-convert") ? "rsvg-convert" : null));
 /** Whether ImageMagick is installed, without exiting if it is not. */
 export const haveImageMagick = () => imagemagick() !== null;
 
+/** Whether rsvg-convert is installed, without exiting if it is not. */
+export const haveRsvg = () => rsvgConvert() !== null;
+
 /**
  * Fail now, with the package name, rather than part-way through a run. For
  * scripts that cannot do anything useful without both rasterisers.

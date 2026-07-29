@@ -331,7 +331,7 @@ function playPeekaboo(
       }
       thing.dataset["open"] = "true";
       body.style.opacity = "1";
-      playSnap();
+      playSnap("play");
       playPlink(index);
       leaves
         .animate([{ opacity: 1 }, { opacity: 0 }], {
