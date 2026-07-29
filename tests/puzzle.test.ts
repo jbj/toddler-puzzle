@@ -11,6 +11,8 @@ import {
   screenToLogical,
   seededRandom,
   shuffle,
+  type Point,
+  type Rect,
 } from "../src/geometry";
 import {
   GRAB_PADDING,
@@ -29,6 +31,11 @@ import { SCENES, sceneShapes, scenesOf } from "../src/scenes";
 import { jigsawShapes } from "../src/jigsaw";
 import { loadPictures } from "../src/pictures";
 import { shatterShapes } from "../src/shatter";
+import { kindFor } from "../src/kinds/registry";
+import type { Puzzle } from "../src/puzzle";
+
+/** The kinds that cut one picture up, as opposed to dealing a row of animals. */
+const PICTURE_KINDS = new Set(["sliced", "polygon", "jigsaw", "shatter"]);
 
 const CANVAS = { width: 1000, height: 700 };
 const PIECE = { width: 190, height: 190 };
@@ -255,15 +262,24 @@ const placementsOf = (layout: Layout) =>
     box: boxOf(layout, shape.id),
   }));
 
-/** Each piece waiting in the tray, with the cell it was dealt into. */
+/** Each piece waiting in the tray, with the cell that was cut for it. */
 const waitingOf = (layout: Layout) =>
-  layout.pieces.map((shape, index) => ({
+  layout.pieces.map((shape) => ({
     shape,
     box: boxOf(layout, shape.id),
-    // Slot order is shuffled when a puzzle starts, so a piece could be in any
-    // of them; taking them in order visits every pairing across the sweep.
-    home: trayHome(layout, shape.id, index),
+    cell: layout.trayCells.get(shape.id) as Rect,
+    home: trayHome(layout, shape.id),
   }));
+
+/** Is `inner` wholly inside `outer`? Half a unit of slack for the rounding. */
+const inside = (inner: Rect, outer: Rect): boolean =>
+  inner.x >= outer.x - 0.5 &&
+  inner.y >= outer.y - 0.5 &&
+  inner.x + inner.width <= outer.x + outer.width + 0.5 &&
+  inner.y + inner.height <= outer.y + outer.height + 0.5;
+
+const overlaps = (a: Rect, b: Rect): boolean =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 /**
  * Report every layout in `layouts` that breaks `promise`, rather than only the
@@ -473,7 +489,7 @@ describe("snapping", () => {
 
   it("rejects a drop that is clearly somewhere else", () => {
     const hole = boxCenter(holeOf(layout, piece), size);
-    const tray = boxCenter(layout.traySlots[0]!, size);
+    const tray = boxCenter(trayHome(layout, piece), size);
     expect(isWithinSnapRadius(tray, hole, snapRadius)).toBe(false);
   });
 });
@@ -503,7 +519,7 @@ describe("buildLevelLayout", () => {
  * deal has to have. Each returns what is wrong with a layout, or null.
  */
 const PROMISES = {
-  "gives every piece a target, a box and a tray slot": (layout) => {
+  "gives every piece a target, a box and a tray cell": (layout) => {
     const wanted = layout.pieces.length;
     const aimed = layout.targets.length;
     if (layout.holes.size !== aimed) return `${layout.holes.size} holes for ${aimed} targets`;
@@ -511,8 +527,8 @@ const PROMISES = {
     if (layout.boxes.size !== measured.size) {
       return `${layout.boxes.size} boxes for ${measured.size} pieces and targets`;
     }
-    if (layout.traySlots.length !== wanted) {
-      return `${layout.traySlots.length} tray slots for ${wanted} pieces`;
+    if (layout.trayCells.size !== wanted) {
+      return `${layout.trayCells.size} tray cells for ${wanted} pieces`;
     }
     return null;
   },
@@ -584,16 +600,17 @@ const PROMISES = {
     return null;
   },
 
-  "keeps every tray slot on canvas, within the tray": (layout) => {
-    // A cell holds whichever piece is shuffled into it, so it is measured at
-    // the full cell rather than at any one piece's bounds.
-    const { width, height } = layout.trayCell;
-    for (const slot of layout.traySlots) {
-      if (slot.x < 0 || slot.x + width > layout.canvas.width) {
-        return `a tray slot at ${Math.round(slot.x)} runs off the side`;
-      }
-      if (slot.y < 0 || slot.y + height > layout.sceneTop) {
-        return `a tray slot at ${Math.round(slot.y)} is outside the tray`;
+  "keeps every tray cell on canvas, on one of the tray's shelves": (layout) => {
+    const canvas = { x: 0, y: 0, ...layout.canvas };
+    for (const { shape, cell } of waitingOf(layout)) {
+      if (!inside(cell, canvas)) return `${shape.id}'s cell runs off the canvas`;
+      // The tray is a band across the top, or a pair of columns down the sides
+      // where a solitary picture leaves the middle of the board to itself. A
+      // cell has to be wholly on one of them either way: what the promise is
+      // about is a piece waiting somewhere that reads as shelved rather than
+      // dropped, not the shape of the shelving.
+      if (!layout.trayBands.some((band) => inside(cell, band.rect))) {
+        return `${shape.id}'s cell is not on any tray band`;
       }
     }
     return null;
@@ -605,40 +622,49 @@ const PROMISES = {
   "keeps every waiting piece's drawing inside the tray": (layout) =>
     firstComplaint(
       waitingOf(layout).map(({ shape, box, home }) => {
-        const left = home.x + box.ink.x;
-        const top = home.y + box.ink.y;
-        if (left < 0 || left + box.ink.width > layout.canvas.width) {
-          return `${shape.id} waits off the side of the canvas`;
+        const drawn = {
+          x: home.x + box.ink.x,
+          y: home.y + box.ink.y,
+          width: box.ink.width,
+          height: box.ink.height,
+        };
+        if (!inside(drawn, { x: 0, y: 0, ...layout.canvas })) {
+          return `${shape.id} waits off the canvas`;
         }
-        if (top < 0 || top + box.ink.height > layout.sceneTop) {
+        if (!layout.trayBands.some((band) => inside(drawn, band.rect))) {
           return `${shape.id} waits outside the tray`;
         }
         return null;
       }),
     ),
 
-  "keeps tray slots from overlapping each other": (layout) => {
-    const slots = layout.traySlots;
-    const { width, height } = layout.trayCell;
-    for (let i = 0; i < slots.length; i++) {
-      for (let j = i + 1; j < slots.length; j++) {
-        const a = slots[i]!;
-        const b = slots[j]!;
-        const apart = Math.abs(a.x - b.x) >= width || Math.abs(a.y - b.y) >= height;
-        if (!apart) return `two tray slots overlap near ${Math.round(a.x)},${Math.round(a.y)}`;
+  "keeps tray cells from overlapping each other": (layout) => {
+    const waiting = waitingOf(layout);
+    for (let i = 0; i < waiting.length; i++) {
+      for (let j = i + 1; j < waiting.length; j++) {
+        const a = waiting[i]!;
+        const b = waiting[j]!;
+        if (overlaps(a.cell, b.cell)) return `${a.shape.id} and ${b.shape.id} overlap in the tray`;
       }
     }
     return null;
   },
 
-  "keeps every tray slot out of every target's snap zone": (layout) => {
-    for (const [slot] of layout.traySlots.entries()) {
-      for (const { shape, hole, box } of placementsOf(layout)) {
-        // Measured with that piece's own bounds at both ends: this is where the
-        // piece would sit if it were the one left waiting in that slot.
-        const waiting = trayHome(layout, shape.id, slot);
-        const gap = distance(boxCenter(waiting, box.size), boxCenter(hole, box.size));
-        if (gap <= box.snapRadius) return `${shape.id} would snap home from its tray slot`;
+  "keeps every tray cell out of every target's snap zone": (layout) => {
+    // Measured from what each piece *draws* at both ends, which is what a kind
+    // whose pieces share one big box snaps by, and the same circle as the box
+    // for a piece that fills it. A cell now belongs to one piece rather than
+    // holding whichever was shuffled into it, so this asks the question that is
+    // actually on the board: could the piece waiting there snap from where it
+    // stands?
+    for (const { shape, box, home } of waitingOf(layout)) {
+      const drawn = (at: Point): Point =>
+        boxCenter({ x: at.x + box.ink.x, y: at.y + box.ink.y }, box.ink);
+      const radius = Math.max(inkSnapRadius(layout, shape.id), 0);
+      for (const target of placementsOf(layout)) {
+        if (distance(drawn(home), drawn(target.hole)) <= radius) {
+          return `${shape.id} would snap home from its tray cell`;
+        }
       }
     }
     return null;
@@ -726,13 +752,20 @@ describe("composed layouts", () => {
 
   it("reflows rather than shrinking: portrait stacks what landscape spreads", () => {
     // Letterboxing the landscape composition onto an upright phone would leave
-    // the pieces too small to grab, so portrait spends the height it has.
+    // the pieces too small to grab, so portrait spends the height it has: never
+    // fewer rows of ground than landscape, and always a bigger piece for the
+    // width it has to play with. The share is the point rather than the row
+    // count - the same cast can want two rows on either canvas and still be
+    // drawn half again as large on the narrow one.
     for (const count of COUNTS.filter((one) => one >= 3)) {
       for (let run = 0; run < RUNS; run++) {
         const cast = castFor(count, run);
         const landscape = buildLayout("landscape", MOST_FORGIVING, cast);
         const portrait = buildLayout("portrait", MOST_FORGIVING, cast);
-        expect(portrait.groundLines.length).toBeGreaterThan(landscape.groundLines.length);
+        expect(portrait.groundLines.length).toBeGreaterThanOrEqual(landscape.groundLines.length);
+        expect(portrait.slotSize / portrait.canvas.width).toBeGreaterThan(
+          landscape.slotSize / landscape.canvas.width,
+        );
       }
     }
   });
@@ -771,7 +804,7 @@ describe("layouts where several pieces fill one target", () => {
     for (const layout of SLICED) {
       expect(layout.holes.size).toBe(layout.targets.length);
       expect(layout.holes.size).toBeLessThan(layout.pieces.length);
-      expect(layout.traySlots).toHaveLength(layout.pieces.length);
+      expect(layout.trayCells.size).toBe(layout.pieces.length);
     }
   });
 
@@ -834,16 +867,14 @@ describe("layouts where several pieces fill one target", () => {
     }
   });
 
-  it("centres each piece's drawing in the tray cell it was dealt into", () => {
+  it("centres each piece's drawing in the cell cut for it", () => {
     for (const layout of SLICED) {
-      for (const [slot] of layout.traySlots.entries()) {
-        for (const piece of layout.pieces) {
-          const home = trayHome(layout, piece.id, slot);
-          const { ink } = boxOf(layout, piece.id);
-          const cell = layout.traySlots[slot]!;
-          expect(home.x + ink.x + ink.width / 2).toBeCloseTo(cell.x + layout.trayCell.width / 2);
-          expect(home.y + ink.y + ink.height / 2).toBeCloseTo(cell.y + layout.trayCell.height / 2);
-        }
+      for (const piece of layout.pieces) {
+        const home = trayHome(layout, piece.id);
+        const { ink } = boxOf(layout, piece.id);
+        const cell = layout.trayCells.get(piece.id)!;
+        expect(home.x + ink.x + ink.width / 2).toBeCloseTo(cell.x + cell.width / 2);
+        expect(home.y + ink.y + ink.height / 2).toBeCloseTo(cell.y + cell.height / 2);
       }
     }
   });
@@ -876,7 +907,7 @@ describe("layouts for a picture built out of shapes", () => {
   it("cuts one hole for the whole picture, not one per shape", () => {
     for (const layout of POLYGON) {
       expect(layout.holes.size).toBe(1);
-      expect(layout.traySlots).toHaveLength(layout.pieces.length);
+      expect(layout.trayCells.size).toBe(layout.pieces.length);
       expect(layout.pieces.length).toBeGreaterThan(1);
     }
   });
@@ -921,7 +952,7 @@ describe("layouts for a picture cut into jigsaw pieces", () => {
   it("cuts one hole for the whole picture, not one per piece", () => {
     for (const layout of JIGSAW) {
       expect(layout.holes.size).toBe(1);
-      expect(layout.traySlots).toHaveLength(layout.pieces.length);
+      expect(layout.trayCells.size).toBe(layout.pieces.length);
       expect(layout.pieces.length).toBeGreaterThan(1);
     }
   });
@@ -967,7 +998,7 @@ describe("layouts for a picture shattered into irregular shards", () => {
   it("cuts one hole for the whole picture, not one per shard", () => {
     for (const layout of SHATTER) {
       expect(layout.holes.size).toBe(1);
-      expect(layout.traySlots).toHaveLength(layout.pieces.length);
+      expect(layout.trayCells.size).toBe(layout.pieces.length);
       expect(layout.pieces.length).toBeGreaterThan(1);
     }
   });
@@ -995,6 +1026,139 @@ describe("layouts for a picture shattered into irregular shards", () => {
         return Math.max(ink.width, ink.height) / layout.canvas.width;
       });
       expect(Math.min(...drawn), `level ${layout.level.level} ${layout.id}`).toBeGreaterThan(0.085);
+    }
+  });
+});
+
+/**
+ * How big the board gets, level by level, and the floor under it.
+ *
+ * This is a *ceiling* test read backwards. A piece a two-year-old can see and
+ * grab is the whole point of the layout, and the size of one is an emergent
+ * property of a dozen interacting limits in `planFor`: it is very easy to make
+ * a piece smaller by accident and impossible to notice from a green suite. So
+ * every level's board is measured and held above where it stands today.
+ *
+ * The numbers are measured, not chosen: the worst of twenty-four deals per
+ * level and orientation, shaded down 3% for deals this table has not seen.
+ * Three per cent and no more - a floor with room in it is decoration.
+ *
+ * `slot` is `slotSize / canvas.width`, which for a picture kind is also the
+ * assembled picture's width as a share of the canvas, because a picture is
+ * drawn exactly one slot across its longer side. `ink` is the smallest piece's
+ * longer side over the same width.
+ *
+ * Raising a number here is a good day. *Lowering* one is a decision, and the
+ * pull request that does it has to say which invariant bought the loss.
+ */
+const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number, number])[] = [
+  [1, "landscape", 0.203, 0.203],
+  [1, "portrait", 0.291, 0.291],
+  [2, "landscape", 0.203, 0.203],
+  [2, "portrait", 0.291, 0.291],
+  [3, "landscape", 0.203, 0.203],
+  [3, "portrait", 0.291, 0.291],
+  [4, "landscape", 0.203, 0.203],
+  [4, "portrait", 0.291, 0.291],
+  [5, "landscape", 0.203, 0.203],
+  [5, "portrait", 0.265, 0.265],
+  [6, "landscape", 0.203, 0.203],
+  [6, "portrait", 0.265, 0.265],
+  [7, "landscape", 0.203, 0.203],
+  [7, "portrait", 0.274, 0.274],
+  [8, "landscape", 0.203, 0.203],
+  [8, "portrait", 0.278, 0.278],
+  [9, "landscape", 0.164, 0.164],
+  [9, "portrait", 0.265, 0.265],
+  [10, "landscape", 0.137, 0.137],
+  [10, "portrait", 0.265, 0.265],
+  [11, "landscape", 0.226, 0.166],
+  [11, "portrait", 0.323, 0.239],
+  [12, "landscape", 0.263, 0.138],
+  [12, "portrait", 0.391, 0.197],
+  [13, "landscape", 0.226, 0.116],
+  [13, "portrait", 0.323, 0.163],
+  [14, "landscape", 0.266, 0.128],
+  [14, "portrait", 0.406, 0.19],
+  [15, "landscape", 0.214, 0.089],
+  [15, "portrait", 0.35, 0.143],
+  [16, "landscape", 0.203, 0.095],
+  [16, "portrait", 0.291, 0.135],
+  [17, "landscape", 0.244, 0.097],
+  [17, "portrait", 0.349, 0.139],
+  [18, "landscape", 0.244, 0.097],
+  [18, "portrait", 0.349, 0.139],
+  [19, "landscape", 0.262, 0.087],
+  [19, "portrait", 0.388, 0.129],
+  [20, "landscape", 0.408, 0.115],
+  [20, "portrait", 0.556, 0.158],
+  [21, "landscape", 0.336, 0.167],
+  [21, "portrait", 0.517, 0.258],
+  [22, "landscape", 0.336, 0.167],
+  [22, "portrait", 0.517, 0.258],
+  [23, "landscape", 0.377, 0.145],
+  [23, "portrait", 0.553, 0.214],
+  [24, "landscape", 0.377, 0.145],
+  [24, "portrait", 0.553, 0.214],
+  [25, "landscape", 0.311, 0.103],
+  [25, "portrait", 0.562, 0.187],
+  [26, "landscape", 0.341, 0.137],
+  [26, "portrait", 0.471, 0.201],
+  [27, "landscape", 0.193, 0.074],
+  [27, "portrait", 0.364, 0.137],
+  [28, "landscape", 0.262, 0.085],
+  [28, "portrait", 0.491, 0.166],
+  [29, "landscape", 0.311, 0.103],
+  [29, "portrait", 0.562, 0.187],
+  [30, "landscape", 0.311, 0.09],
+  [30, "portrait", 0.515, 0.149],
+];
+
+describe("how big the board gets", () => {
+  /**
+   * Dealt for real, kind by kind, rather than assembled from a cast of animals:
+   * a jigsaw piece's shape is what decides how much room the tray asks for, and
+   * a stand-in square would measure a board nobody plays.
+   */
+  const dealt = (level: LevelSpec, run: number): Puzzle =>
+    kindFor(level).deal({ level, shapes: SHAPES }, seededRandom(level.level * 101 + run));
+
+  const DEALS = 12;
+
+  for (const [number, orientation, slotFloor, inkFloor] of BOARD_FLOORS) {
+    const level = levelSpec(number);
+    it(`keeps level ${number} in ${orientation} at ${slotFloor} of the canvas (${level.kind})`, () => {
+      let worstSlot = Infinity;
+      let worstInk = Infinity;
+      for (let run = 0; run < DEALS; run++) {
+        const puzzle = dealt(level, run);
+        if (puzzle.pieces.length === 0) continue;
+        const layout = buildLevelLayout(orientation, level, puzzle.pieces, puzzle.targets);
+        worstSlot = Math.min(worstSlot, layout.slotSize / layout.canvas.width);
+        for (const piece of layout.pieces) {
+          const { ink } = boxOf(layout, piece.id);
+          worstInk = Math.min(worstInk, Math.max(ink.width, ink.height) / layout.canvas.width);
+        }
+      }
+      expect(worstSlot).toBeGreaterThanOrEqual(slotFloor);
+      expect(worstInk).toBeGreaterThanOrEqual(inkFloor);
+    });
+  }
+
+  /**
+   * The assembled picture and the slot are the same measurement for a picture
+   * kind, and this is what says so - so the floors above can be read as what
+   * the child is rebuilding rather than as an internal unit.
+   */
+  it("draws a picture one slot across, so the floors above are the picture's own size", () => {
+    for (const level of LEVELS.filter((one) => PICTURE_KINDS.has(one.kind))) {
+      const puzzle = dealt(level, 0);
+      for (const orientation of ORIENTATIONS) {
+        const layout = buildLevelLayout(orientation, level, puzzle.pieces, puzzle.targets);
+        const target = layout.targets[0] as { id: PieceShape["id"] };
+        const picture = boxOf(layout, target.id).size;
+        expect(Math.max(picture.width, picture.height)).toBeCloseTo(layout.slotSize, 6);
+      }
     }
   });
 });

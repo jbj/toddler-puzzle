@@ -367,16 +367,19 @@ The composition is expressed as fractions of a slot rather than as positions
 level gets smaller pieces, and its margins, gaps and tufts shrink with them
 instead of crowding the pieces out. It runs in four steps:
 
-1. split the cast into scene rows and tray rows, every way worth trying, and for
-   each split work out the largest slot that still fits the canvas;
+1. split the cast into scene rows and tray shelves, every way worth trying, and
+   for each split work out the largest slot that still fits the canvas;
 2. take the biggest, preferring the split that suits the canvas's shape among
    those within `sizeTolerance` of it, and refuse the cast outright if the best
    is below `minSlot` rather than laying out pieces too small to grab;
-3. give each scene row room for the worst reach above and below the line among
+3. where the scene holds a *single* target, try the gutters as well - the pieces
+   in two columns down the sides with the target between them - and take that
+   instead if it is worth at least `gutterGain` more slot than the best shelving;
+4. give each scene row room for the worst reach above and below the line among
    the pieces *dealt into it* - `reach()` measures each piece from its own
    anchor - so a giraffe's row is deeper than a row of turtles;
-4. spend what height is left on sky and on the gaps between rows, then read the
-   horizon, the grass band and the tray line off the result.
+5. spend what height is left on sky and on the gaps between rows, then read the
+   horizon, the grass band and the tray's bands off the result.
 
 Steps 3 and 4 are why layouts are built when a puzzle starts rather than up
 front: a hole's height depends on the anchor of whichever piece was dealt into
@@ -387,9 +390,35 @@ for any cast rather than from a table is
 
 Because room is left for each invariant *before* a size is picked, the
 invariants hold by construction rather than by tuning: a hole cannot land off
-canvas or under the tray, two snap zones cannot overlap, and two tray slots
+canvas or under the tray, two snap zones cannot overlap, and two tray cells
 cannot collide. `layout.groundLines` says where the lines came out, which is
-what the tests measure a standing piece against.
+what the tests measure a standing piece against, and `layout.trayBands` says
+where the tray came out, which is what the scenery paints and what the tests
+measure a waiting piece against.
+
+**The tray is not always a band across the top.** `layout.trayBands` is a list
+of rectangles, each with the edge it is lipped along, and there are two shapes
+it comes in. *Shelves* are the familiar one: rows across the top of the canvas,
+lipped along the bottom. *Gutters* are two columns down the sides, lipped along
+the edge that faces the scene, and are only ever tried where the scene holds one
+target and more than one piece - a picture being rebuilt. A landscape canvas
+leaves about two thirds of its width empty either side of a picture drawn one
+slot wide, and standing the pieces in that room instead of above it is what lets
+the picture itself grow; `COMPOSITION.controlRoom` keeps the bottom of a gutter
+clear of the reset button and the grown-ups button, in canvas units rather than
+as a share, because what it protects is not a share either. A gutter tray is
+only adopted where it is worth `COMPOSITION.gutterGain` more slot than the best
+shelving, so a marginal win never buys a rearranged board. See
+[decision 20260730T093000](../../docs/decisions/20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters.md).
+
+A tray cell belongs to a *piece*, not to a position: `layout.trayCells` maps a
+piece id to the rectangle it waits in, cut to that piece's own ink rather than
+to the largest ink in the cast, and `trayHome(layout, piece)` centres it there.
+Packing the shelf by what each piece draws is worth a fifth of a shatter's tray
+width, because its shards vary; it is worth almost nothing for a jigsaw, whose
+pieces are near enough the same size. The consequence to remember is that the
+host can no longer shuffle *slots* to deal a tray in a random order - the cell
+was cut for the piece - so **every kind must shuffle its own `pieces`**.
 
 `slotSize` is a square, but a piece need not be. Each piece in play gets its own
 `PieceBox` - `boxOf(layout, piece)` - holding the scale from its authored box to
@@ -404,7 +433,7 @@ A tray is packed by what a piece *draws*, not by the box it was authored in.
 `PieceShape.inked` is a piece's own bounds within its box, and a piece that
 leaves it out fills its box, which is what every animal does. A slice cannot:
 it keeps the whole animal's box so that the slices assemble, so its box is
-mostly empty. `trayCell` is therefore the largest ink in the cast rather than
+mostly empty. A tray cell is therefore the piece's own ink rather than
 the slot, `trayHome` centres a piece's ink in its cell, `clampInkToCanvas` holds
 a dragged piece on canvas by its ink, and `fitGrabBox` believes a declared
 `inked` over `getBBox` - which cannot see a clip path and would hand every slice
@@ -442,7 +471,9 @@ top of the range.
 
 The puzzle reflows rather than merely shrinking. Landscape puts the animals in
 one row with the tray beneath; portrait uses shallower rows and spends the saved
-width on a taller tray. Letterboxing a landscape canvas into an upright phone
+width on a taller tray. A picture being rebuilt reflows further still: landscape
+has room to stand its pieces down the gutters and usually does, portrait has not
+and keeps its shelves. Letterboxing a landscape canvas into an upright phone
 would leave the pieces too small to grab, so `chooseLayout()` picks by aspect
 ratio. Rotating the device mid-puzzle rebuilds the board but keeps progress.
 
@@ -455,7 +486,8 @@ piece of art.
 Tune `COMPOSITION`, not the output. Every number in it is a fraction of a slot
 or of the canvas, and several of them are load-bearing: `columnGap` and `rowGap`
 are what hold two snap zones apart, `footRoom` is what keeps a hole clear of the
-tray, and `minSlot` is what keeps a piece grabbable. Reaching past them to nudge
+tray, `controlRoom` is what keeps a gutter clear of the buttons, and `minSlot`
+is what keeps a piece grabbable. Reaching past them to nudge
 a coordinate would move a piece without moving the room left for it.
 
 All layout tunables belong in `src/layout.ts`. Start there rather than
@@ -471,17 +503,25 @@ in `PROMISES` (`tests/puzzle.test.ts`) is checked against every piece count a
 level could ask for, in both orientations, over random casts of animals and of
 pieces of no particular shape:
 
-- every piece has a target, a box and a tray slot;
+- every piece has a target, a box and a tray cell;
 - several pieces may share one target, and every one of them is drawn at that
   target's scale;
 - every piece fits the slot it was dealt into, whatever its proportions;
 - targets stay on canvas and clear of the tray;
 - every piece stands on one of the layout's ground lines;
 - snap zones never reach each other;
-- tray slots stay in the tray, never collide, and never sit in a target's snap
-  zone;
+- tray cells stay on one of the tray's bands, never collide, and never sit in a
+  target's snap zone;
 - pieces stay grabbable - over a tenth of the canvas wide;
 - each orientation fills at least 75% of its viewport.
+
+Alongside them, `how big the board gets` holds a measured floor under every one
+of the thirty levels in both orientations: the slot as a share of the canvas,
+which for a picture kind is the assembled picture's own width, and the smallest
+piece's ink. Those numbers are the worst of twenty-four deals shaded down three
+per cent, and they are a ceiling test read backwards - a piece is very easy to
+shrink by accident and impossible to miss doing from a green suite. Raising one
+is a good day; lowering one has to name the invariant that bought the loss.
 
 A layout change must leave every one of those properties standing. Between them
 they keep a piece grabbable, reachable and unambiguous, so weakening one is a

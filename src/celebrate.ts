@@ -93,8 +93,8 @@ export function showFinishButton(
   onPress: () => void,
 ): void {
   const anchor = document.createElementNS(SVG_NS, "g");
-  const centerY = layout.sceneTop / 2;
-  anchor.setAttribute("transform", `translate(${layout.canvas.width / 2} ${centerY})`);
+  const { x, y } = layout.finishCenter;
+  anchor.setAttribute("transform", `translate(${x} ${y})`);
 
   // The pulse animates CSS `transform`, which would clobber a `transform`
   // attribute on the same element - so the translate lives on a parent.

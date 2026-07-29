@@ -60,6 +60,10 @@ export function renderScenery(layout: Layout, options: SceneryOptions = {}): str
   const { sceneTop, horizon, bands } = layout;
   const { tray = true, sky = true } = options;
   const skyTop = tray ? sceneTop : 0;
+  // The sun and the clouds belong to the scene, not to the whole canvas: where
+  // the tray runs down the sides, the room between the columns is all the sky
+  // there is.
+  const open = tray ? layout.sceneBox : { x: 0, y: 0, ...layout.canvas };
 
   const bandMarkup = bands
     .map((band, index) => {
@@ -86,23 +90,33 @@ export function renderScenery(layout: Layout, options: SceneryOptions = {}): str
     .join("");
 
   const trayBand = tray
-    ? `<rect x="0" y="0" width="${width}" height="${sceneTop}" fill="#f6ead0" />
-       <rect x="0" y="${sceneTop}" width="${width}" height="10" fill="#d9c398" />`
+    ? layout.trayBands
+        .map(({ rect, lip }) => {
+          const edge =
+            lip === "bottom"
+              ? { x: rect.x, y: rect.y + rect.height, width: rect.width, height: 10 }
+              : lip === "right"
+                ? { x: rect.x + rect.width - 10, y: rect.y, width: 10, height: rect.height }
+                : { x: rect.x, y: rect.y, width: 10, height: rect.height };
+          return `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" fill="#f6ead0" />
+       <rect x="${edge.x}" y="${edge.y}" width="${edge.width}" height="${edge.height}" fill="#d9c398" />`;
+        })
+        .join("")
     : "";
 
   const skyFurniture = sky
     ? `
-    <g transform="translate(${width - 108} ${skyTop + 74})">
+    <g transform="translate(${open.x + open.width - 108} ${skyTop + 74})">
       <circle r="46" fill="#ffd23f" />
       <circle r="46" fill="none" stroke="#f6b820" stroke-width="5" />
     </g>
 
     <g fill="#ffffff" opacity="0.92">
-      <g transform="translate(${width * 0.16} ${Math.round(skyTop + (horizon - skyTop) * 0.29)})">
+      <g transform="translate(${open.x + open.width * 0.16} ${Math.round(skyTop + (horizon - skyTop) * 0.29)})">
         <circle cx="0" cy="0" r="30" /><circle cx="34" cy="8" r="24" /><circle cx="-32" cy="10" r="22" />
         <rect x="-32" y="0" width="66" height="22" rx="11" />
       </g>
-      <g transform="translate(${width * 0.55} ${Math.round(skyTop + (horizon - skyTop) * 0.19)})">
+      <g transform="translate(${open.x + open.width * 0.55} ${Math.round(skyTop + (horizon - skyTop) * 0.19)})">
         <circle cx="0" cy="0" r="24" /><circle cx="28" cy="6" r="19" /><circle cx="-26" cy="8" r="17" />
         <rect x="-26" y="0" width="54" height="18" rx="9" />
       </g>
@@ -123,11 +137,14 @@ export function renderScenery(layout: Layout, options: SceneryOptions = {}): str
     </defs>
 
     <rect x="0" y="${skyTop}" width="${width}" height="${height - skyTop}" fill="url(#sky)" />
-    ${trayBand}
     ${skyFurniture}
 
     ${bandMarkup}
     ${crests}
     ${decor}
+
+    <!-- Last, because a tray down the gutters stands in front of the ground it
+         crosses; a tray across the top has nothing to cover. -->
+    ${trayBand}
   `;
 }

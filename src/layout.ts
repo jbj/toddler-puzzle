@@ -71,6 +71,16 @@ export interface GroundBand {
 }
 
 /**
+ * A shelf the waiting pieces stand on. `lip` is the edge that faces the scene -
+ * the one that gets the darker line, so the tray reads as a surface a piece is
+ * lifted off rather than a rectangle of a different colour.
+ */
+export interface TrayBand {
+  readonly rect: Rect;
+  readonly lip: "bottom" | "left" | "right";
+}
+
+/**
  * What one piece measures in this layout: how far its authored box is scaled,
  * the bounds that produces, and how forgiving a drop of it is. Every piece gets
  * its own, because a wide piece, a thin one and a tall one share nothing but
@@ -162,12 +172,27 @@ export interface Layout {
   /** Only the targets of this level have holes, keyed by the target's id. */
   readonly holes: ReadonlyMap<PieceId, Point>;
   /**
-   * The tray's cells, top-left first. A cell holds whichever piece was shuffled
-   * into it, by its ink rather than by its box: use `trayHome` to place one.
+   * Where each piece waits before it is picked up: one cell per piece, exactly
+   * the size of that piece's own drawing. A tray is packed like a bookshelf
+   * rather than ruled into a grid, so a narrow piece stands beside a wide one
+   * instead of both being given the room the widest of them needs. Use
+   * `trayHome` to place a piece in its cell.
    */
-  readonly traySlots: readonly Point[];
-  /** How big a tray cell is: enough for the ink of any piece in this level. */
-  readonly trayCell: Size;
+  readonly trayCells: ReadonlyMap<PieceId, Rect>;
+  /**
+   * The sand-coloured shelving the cells stand on, for the scenery to paint.
+   * One band across the top usually; two columns down the sides when a solitary
+   * picture leaves the middle of the canvas to itself.
+   */
+  readonly trayBands: readonly TrayBand[];
+  /**
+   * The part of the canvas the scene has to itself, the tray's shelving taken
+   * off. What the sky is furnished within, so the sun does not rise behind a
+   * column of waiting pieces.
+   */
+  readonly sceneBox: Rect;
+  /** Where the finish button goes: the emptiest part of the board once won. */
+  readonly finishCenter: Point;
   /**
    * The lines the pieces stand on, top to bottom - one per row of the scene.
    * Every target's anchor lands on one of these, whatever height its own anchor
@@ -205,26 +230,25 @@ export function boxOf(layout: Layout, piece: PieceId): PieceBox {
 }
 
 /**
- * Where a piece waiting in tray cell `slot` sits: its box top-left, placed so
- * that its *ink* is centred in the cell. Which piece is in which cell is
- * shuffled when the puzzle starts, so a cell is a place rather than a position
- * and it is the piece that has to be fitted to it.
+ * Where a piece waiting in the tray sits: its box top-left, placed so that its
+ * *ink* is centred in the cell packed for it. Which cell that is was decided
+ * when the tray was packed, from the piece's own drawing, so a piece is placed
+ * rather than fitted into a square somebody else's size.
  *
  * For a piece that fills its box this is simply the cell's own corner, which is
  * what an animal has always got.
  */
-export function trayHome(layout: Layout, piece: PieceId, slot: number): Point {
-  const cell = layout.traySlots[slot];
+export function trayHome(layout: Layout, piece: PieceId): Point {
+  const cell = layout.trayCells.get(piece);
   if (!cell) {
     throw new Error(
-      `Level ${layout.level.level} ${layout.id} layout has no tray cell ${slot}; ` +
-        `it has ${layout.traySlots.length}.`,
+      `Piece "${piece}" has no tray cell in the level ${layout.level.level} ${layout.id} layout.`,
     );
   }
   const { ink } = boxOf(layout, piece);
   return {
-    x: cell.x + (layout.trayCell.width - ink.width) / 2 - ink.x,
-    y: cell.y + (layout.trayCell.height - ink.height) / 2 - ink.y,
+    x: cell.x + (cell.width - ink.width) / 2 - ink.x,
+    y: cell.y + (cell.height - ink.height) / 2 - ink.y,
   };
 }
 
@@ -234,26 +258,26 @@ interface SceneRow {
   readonly count: number;
 }
 
-/** A row of tray slots whose boxes start at `top`. */
-interface TrayRow {
-  readonly top: number;
-  readonly count: number;
+/** One tray cell: which piece of the cast waits there, and the room it has. */
+interface TrayCell {
+  readonly piece: number;
+  readonly rect: Rect;
 }
 
 interface Arrangement {
   readonly canvas: Size;
   /** The square a target of any proportions is drawn to fit inside. */
   readonly slotSize: number;
-  /** How big a tray cell is: enough for the ink of any piece in the cast. */
-  readonly trayCell: Size;
   readonly sceneTop: number;
   readonly horizon: number;
   readonly bands: readonly GroundBand[];
   readonly sceneRows: readonly SceneRow[];
   /** Space kept clear at the left and right of every scene row. */
   readonly sceneMargin: number;
-  readonly trayRows: readonly TrayRow[];
-  readonly trayMargin: number;
+  readonly trayCells: readonly TrayCell[];
+  readonly trayBands: readonly TrayBand[];
+  readonly sceneBox: Rect;
+  readonly finishCenter: Point;
   readonly decorLines: readonly number[];
 }
 
@@ -262,6 +286,24 @@ function spreadX(count: number, size: number, width: number, margin: number): nu
   if (count === 1) return [(width - size) / 2];
   const step = (width - 2 * margin - size) / (count - 1);
   return Array.from({ length: count }, (_, index) => margin + index * step);
+}
+
+/**
+ * Where a shelf's cells start, left to right. The cells differ in width, so the
+ * leftovers are shared out as equal gaps rather than as an equal step: a narrow
+ * piece beside a wide one gets the same air on either side of it.
+ */
+function spreadCells(widths: readonly number[], width: number, margin: number): number[] {
+  const taken = widths.reduce((sum, one) => sum + one, 0);
+  if (widths.length === 1) return [(width - taken) / 2];
+  const gap = (width - 2 * margin - taken) / (widths.length - 1);
+  const xs: number[] = [];
+  let x = margin;
+  for (const one of widths) {
+    xs.push(x);
+    x += one + gap;
+  }
+  return xs;
 }
 
 /**
@@ -296,12 +338,12 @@ function fromArrangement(
   const where = `buildLayout(${JSON.stringify(id)}, level ${level.level}, pieces)`;
   assertUniquePieceIds(pieces, where);
   assertUniquePieceIds(targets, `${where} targets`);
-  const { canvas, slotSize, trayCell, sceneRows, trayRows } = arrangement;
-  if (total(sceneRows) !== targets.length || total(trayRows) !== pieces.length) {
+  const { canvas, slotSize, sceneRows } = arrangement;
+  if (total(sceneRows) !== targets.length || arrangement.trayCells.length !== pieces.length) {
     throw new Error(
       `Level ${level.level} ${id} layout must hold ${targets.length} targets and ` +
         `${pieces.length} pieces, but has ${total(sceneRows)} holes and ` +
-        `${total(trayRows)} tray slots.`,
+        `${arrangement.trayCells.length} tray cells.`,
     );
   }
 
@@ -325,15 +367,10 @@ function fromArrangement(
     }
   }
 
-  // Tray cells are nominal rather than per-piece: which piece waits in which
-  // cell is shuffled when the puzzle starts, so a cell has to hold whatever
-  // turns up. It is sized for the largest ink in the cast, and `trayHome`
-  // centres each piece's own ink inside it.
-  const traySlots = trayRows.flatMap((row) =>
-    spreadX(row.count, trayCell.width, canvas.width, arrangement.trayMargin).map((x) => ({
-      x,
-      y: row.top,
-    })),
+  // A cell is cut for the piece that waits in it rather than for the biggest
+  // piece of the cast, which is what lets a narrow one stand beside a wide one.
+  const trayCells = new Map<PieceId, Rect>(
+    arrangement.trayCells.map((cell) => [(pieces[cell.piece] as PieceShape).id, cell.rect]),
   );
 
   return {
@@ -348,8 +385,10 @@ function fromArrangement(
     horizon: arrangement.horizon,
     bands: arrangement.bands,
     holes,
-    traySlots,
-    trayCell,
+    trayCells,
+    trayBands: arrangement.trayBands,
+    sceneBox: arrangement.sceneBox,
+    finishCenter: arrangement.finishCenter,
     groundLines: sceneRows.map((row) => row.groundY),
     decorLines: arrangement.decorLines,
   };
@@ -443,6 +482,23 @@ const COMPOSITION = {
    */
   sizeTolerance: 0.94,
   /**
+   * How much bigger a tray down the gutters has to make the picture before it
+   * is used instead of a band across the top. A board with the pieces stacked
+   * either side of the picture looks deliberate when it buys a tenth again and
+   * looks like a mistake when it buys a fiftieth, so the bar is set where the
+   * gain is plain to see.
+   */
+  gutterGain: 1.1,
+  /**
+   * How much room a tray down the gutters leaves at the bottom of its columns,
+   * in canvas units rather than a share of the height. The reset button stands
+   * 90 units tall in the bottom left corner and the grown-ups button about 60
+   * in the bottom right, both of them inside a gutter; a piece a child cannot
+   * reach for without pressing one of them is worse than a slightly smaller
+   * piece. Not a share, because what it is protecting is not one either.
+   */
+  controlRoom: 96,
+  /**
    * The smallest a slot may be, as a fraction of the canvas width. A piece
    * narrower than this is a fiddly target for a small hand, so a cast that
    * cannot be composed above it is refused rather than laid out unplayably.
@@ -492,16 +548,47 @@ function reach(shape: PieceShape): { readonly rise: number; readonly drop: numbe
   return { rise, drop: shape.box.height * scale - rise };
 }
 
+/** One shelf of the tray: which pieces stand in it, and what it costs. */
+interface Shelf {
+  /** Indices into the cast, left to right. */
+  readonly pieces: readonly number[];
+  /** What it takes across the canvas, in slot units, margins and gaps counted. */
+  readonly span: number;
+  /** How tall it is: the tallest drawing standing in it, in slot units. */
+  readonly height: number;
+}
+
+/** One column of the tray: pieces stacked in a gutter beside a lone target. */
+interface Column {
+  /** Indices into the cast, top to bottom. */
+  readonly pieces: readonly number[];
+  /** The widest drawing standing in it, in slot units. */
+  readonly width: number;
+  /** What it takes down the canvas, in slot units, padding counted. */
+  readonly depth: number;
+}
+
+/**
+ * Where the pieces wait. A tray is a band of shelves across the top of the
+ * board; where the scene is a single picture, which leaves most of the canvas
+ * empty on either side of it, it can instead be two columns down the gutters.
+ */
+type TrayPlan =
+  | { readonly shape: "shelves"; readonly shelves: readonly Shelf[] }
+  | { readonly shape: "gutters"; readonly columns: readonly Column[] };
+
 /** One candidate: how the cast is split, and how big that lets a slot be. */
 interface Plan {
   readonly sceneCounts: readonly number[];
-  readonly trayCounts: readonly number[];
+  readonly tray: TrayPlan;
+  /** What each piece of the cast draws, in slot units, in cast order. */
+  readonly inks: readonly Size[];
   /** Per scene row, the worst reach above and below its ground line, at slot size 1. */
   readonly rises: readonly number[];
   readonly drops: readonly number[];
-  /** A tray cell's sides, as fractions of the slot size. */
-  readonly cell: Size;
   readonly slotSize: number;
+  /** The largest drawing in the cast, on its longer side, in slot units. */
+  readonly largest: number;
   /**
    * How much of a slot the *smallest* piece of the cast draws on its longer
    * side. One for a cast that fills its boxes; a fraction for a cast of slices,
@@ -511,46 +598,122 @@ interface Plan {
 }
 
 /**
- * How big a tray cell has to be, in slot units, to hold the ink of any piece in
- * the cast - and how little the least of them draws. A piece is scaled by the
- * longer side of its authored box, so both of these are constants of the cast
- * rather than of the size it ends up at.
+ * What each piece draws, in slot units. A piece is scaled by the longer side of
+ * its authored box, so this is a constant of the cast rather than of the size it
+ * ends up at, and it is what the tray is packed by: a piece that draws a corner
+ * of a big box - a slice, a jigsaw piece - takes up the corner rather than the
+ * box.
  */
-function inkShares(pieces: readonly PieceShape[]): { cell: Size; smallest: number } {
-  const shares = pieces.map((shape) => {
+function inkShares(pieces: readonly PieceShape[]): Size[] {
+  return pieces.map((shape) => {
     const scale = 1 / Math.max(shape.box.width, shape.box.height);
     const ink = inkOf(shape);
     return { width: ink.width * scale, height: ink.height * scale };
   });
-  return {
-    cell: {
-      width: Math.max(...shares.map((one) => one.width)),
-      height: Math.max(...shares.map((one) => one.height)),
-    },
-    smallest: Math.min(...shares.map((one) => Math.max(one.width, one.height))),
-  };
+}
+
+/** What a row of these drawings takes across the canvas, in slot units. */
+function spanOf(widths: readonly number[]): number {
+  const { sideMargin, columnGap } = COMPOSITION;
+  return (
+    widths.reduce((sum, width) => sum + width, 0) + (widths.length - 1) * columnGap + 2 * sideMargin
+  );
 }
 
 /**
- * The widest slot `count` cells fit across the canvas side by side, where a
- * cell is `size` slots wide. The margins and the gap stay in slot units, so
- * shrinking the cells spreads them out rather than crowding them together.
+ * Pack the cast into `rows` shelves, taking the pieces in `order` and giving
+ * each to the shelf with the least on it so far.
+ *
+ * A tray used to be a grid: every cell the size of the biggest piece's box,
+ * however little the piece standing in it drew. That is nearly free for a cast
+ * of animals, which are all much of a size, and expensive for a shattered
+ * picture, whose whole point is that its shards are not - so the widest shard
+ * set the size of all of them and the tray filled the canvas while drawing
+ * about two thirds of it. Packed as shelves the leftover goes back into the
+ * slot, which is to say into the picture the child is rebuilding.
+ *
+ * Two orders are worth trying and both are offered to the search: widest first
+ * balances the rows' widths, tallest first gathers the tall pieces into the same
+ * row so the *other* rows can be shallow. Which of them wins depends on the
+ * cast, so neither is chosen here.
  */
-function widthLimit(width: number, count: number, size = 1): number {
-  const { sideMargin, columnGap } = COMPOSITION;
-  return width / (count * size + (count - 1) * columnGap + 2 * sideMargin);
+function packShelves(shares: readonly Size[], rows: number, order: readonly number[]): Shelf[] {
+  const packed: number[][] = Array.from({ length: rows }, () => []);
+  const widths: number[][] = Array.from({ length: rows }, () => []);
+  for (const index of order) {
+    const share = shares[index] as Size;
+    let best = 0;
+    for (let row = 1; row < rows; row++) {
+      if (spanOf(widths[row] as number[]) < spanOf(widths[best] as number[])) best = row;
+    }
+    (packed[best] as number[]).push(index);
+    (widths[best] as number[]).push(share.width);
+  }
+  // Left to right in the order they were dealt, so the tray is not sorted by
+  // size in front of the child.
+  return packed.map((indices) => {
+    const inOrder = [...indices].sort((a, b) => a - b);
+    return {
+      pieces: inOrder,
+      span: spanOf(inOrder.map((index) => (shares[index] as Size).width)),
+      height: Math.max(...inOrder.map((index) => (shares[index] as Size).height)),
+    };
+  });
+}
+
+const orderedBy = (shares: readonly Size[], measure: (share: Size) => number): number[] =>
+  shares
+    .map((_, index) => index)
+    .sort((a, b) => measure(shares[b] as Size) - measure(shares[a] as Size) || a - b);
+
+/** The two packings of this cast into `rows` shelves that are worth costing. */
+function shelvings(shares: readonly Size[], rows: number): Shelf[][] {
+  return [
+    packShelves(
+      shares,
+      rows,
+      orderedBy(shares, (share) => share.width),
+    ),
+    packShelves(
+      shares,
+      rows,
+      orderedBy(shares, (share) => share.height),
+    ),
+  ];
+}
+
+/**
+ * The cast stacked into two gutters, tallest first into whichever column is
+ * shorter. Only two, one either side, because the point of the arrangement is
+ * that the picture keeps the middle of the board.
+ */
+function gutterings(shares: readonly Size[]): Column[] {
+  const packed: number[][] = [[], []];
+  const depths = [0, 0];
+  for (const index of orderedBy(shares, (share) => share.height)) {
+    const at = (depths[0] as number) <= (depths[1] as number) ? 0 : 1;
+    (packed[at] as number[]).push(index);
+    depths[at] = (depths[at] as number) + (shares[index] as Size).height;
+  }
+  return packed.map((indices, at) => {
+    const inOrder = [...indices].sort((a, b) => a - b);
+    return {
+      pieces: inOrder,
+      width: Math.max(...inOrder.map((index) => (shares[index] as Size).width), 0),
+      depth: (depths[at] as number) + (inOrder.length + 1) * COMPOSITION.trayPad,
+    };
+  });
 }
 
 function planFor(
   view: View,
-  pieces: readonly PieceShape[],
+  shares: readonly Size[],
   targets: readonly PieceShape[],
   sceneRowCount: number,
-  trayRowCount: number,
+  tray: TrayPlan,
 ): Plan {
   const sceneCounts = splitRows(targets.length, sceneRowCount);
-  const trayCounts = splitRows(pieces.length, trayRowCount);
-  const { cell, smallest } = inkShares(pieces);
+  const drawn = shares.map((share) => Math.max(share.width, share.height));
 
   const rises: number[] = [];
   const drops: number[] = [];
@@ -568,18 +731,137 @@ function planFor(
     rises.reduce((sum, rise, index) => sum + rise + (drops[index] as number), 0) +
     (sceneRowCount - 1) * COMPOSITION.rowGap +
     COMPOSITION.footRoom;
-  const trayHeight = trayRowCount * cell.height + (trayRowCount + 1) * COMPOSITION.trayPad;
+
+  // A band of shelves is height the scene does not get; a pair of gutters is
+  // width it does not get. Which of the two the canvas can better spare is the
+  // whole reason both are costed.
+  const trayHeight =
+    tray.shape === "shelves"
+      ? tray.shelves.reduce((sum, shelf) => sum + shelf.height, 0) +
+        (tray.shelves.length + 1) * COMPOSITION.trayPad
+      : 0;
+  const sceneSpan =
+    tray.shape === "shelves"
+      ? spanOf(Array.from({ length: Math.max(...sceneCounts) }, () => 1))
+      : spanOf([gutterWidth(tray.columns), 1, gutterWidth(tray.columns)]);
+  const trayWidthSpan =
+    tray.shape === "shelves" ? Math.max(...tray.shelves.map((shelf) => shelf.span)) : 0;
+  const trayDepth =
+    tray.shape === "gutters" ? Math.max(...tray.columns.map((column) => column.depth)) : 0;
 
   const { width, height } = view.canvas;
+  const columnRoom = height - COMPOSITION.controlRoom;
+  const largest = Math.max(...drawn);
   const slotSize = Math.floor(
     Math.min(
       (height * (1 - COMPOSITION.skyShare)) / (sceneHeight + trayHeight),
-      widthLimit(width, Math.max(...sceneCounts)),
-      widthLimit(width, Math.max(...trayCounts), cell.width),
-      (COMPOSITION.maxSlot * Math.min(width, height)) / Math.max(cell.width, cell.height),
+      width / Math.max(sceneSpan, trayWidthSpan),
+      trayDepth > 0 ? columnRoom / trayDepth : Infinity,
+      (COMPOSITION.maxSlot * Math.min(width, height)) / largest,
     ),
   );
-  return { sceneCounts, trayCounts, rises, drops, cell, slotSize, smallest };
+  return {
+    sceneCounts,
+    tray,
+    inks: shares,
+    rises,
+    drops,
+    slotSize,
+    largest,
+    smallest: Math.min(...drawn),
+  };
+}
+
+/** Both gutters get the width of the deeper drawing, so the picture stays centred. */
+const gutterWidth = (columns: readonly Column[]): number =>
+  Math.max(...columns.map((column) => column.width));
+
+interface LaidTray {
+  readonly cells: readonly TrayCell[];
+  readonly bands: readonly TrayBand[];
+  readonly sceneTop: number;
+}
+
+/**
+ * A band of shelves across the top: the arrangement every kind uses, and the
+ * only one where the tray costs the scene any height.
+ */
+function shelveTray(plan: Plan, canvas: Size, slotSize: number, margin: number): LaidTray {
+  const shelves = plan.tray.shape === "shelves" ? plan.tray.shelves : [];
+  const scaled = (share: number): number => share * slotSize;
+  const heights = shelves.map((shelf) => scaled(shelf.height));
+  const shelved = heights.reduce((sum, height) => sum + height, 0);
+  const sceneTop = Math.round(shelved + (shelves.length + 1) * scaled(COMPOSITION.trayPad));
+  const pad = (sceneTop - shelved) / (shelves.length + 1);
+
+  const cells: TrayCell[] = [];
+  let top = pad;
+  for (const [index, shelf] of shelves.entries()) {
+    const height = heights[index] as number;
+    const widths = shelf.pieces.map((piece) => scaled((plan.inks[piece] as Size).width));
+    for (const [at, x] of spreadCells(widths, canvas.width, margin).entries()) {
+      cells.push({
+        piece: shelf.pieces[at] as number,
+        rect: { x, y: Math.round(top), width: widths[at] as number, height },
+      });
+    }
+    top += height + pad;
+  }
+  return {
+    cells,
+    bands: [{ rect: { x: 0, y: 0, width: canvas.width, height: sceneTop }, lip: "bottom" }],
+    sceneTop,
+  };
+}
+
+/**
+ * Two columns down the sides, with the picture between them. Worth having only
+ * where the scene is a single target: a picture is drawn to a square slot and
+ * fills about three quarters of it, so a tray band across the top pays for the
+ * picture's height twice over while the canvas either side of it stays empty.
+ * Standing the pieces in that empty room gives the height back to the picture.
+ */
+function gutterTray(
+  columns: readonly Column[],
+  plan: Plan,
+  canvas: Size,
+  slotSize: number,
+  margin: number,
+): LaidTray {
+  const scaled = (share: number): number => share * slotSize;
+  const width = scaled(gutterWidth(columns));
+  const edge = margin + width + Math.round(scaled(COMPOSITION.columnGap) / 2);
+  // The column is centred in the sand it stands on rather than pushed against
+  // the picture: the shelf is what the child reads as "these are waiting".
+  const inset = (edge - width) / 2;
+  const lefts = [inset, canvas.width - edge + inset];
+  const room = canvas.height - COMPOSITION.controlRoom;
+  const cells: TrayCell[] = [];
+  for (const [side, column] of columns.entries()) {
+    const heights = column.pieces.map((piece) => scaled((plan.inks[piece] as Size).height));
+    const stacked = heights.reduce((sum, height) => sum + height, 0);
+    const pad = (room - stacked) / (column.pieces.length + 1);
+    let top = pad;
+    for (const [at, piece] of column.pieces.entries()) {
+      const height = heights[at] as number;
+      cells.push({
+        piece,
+        rect: { x: lefts[side] as number, y: Math.round(top), width, height },
+      });
+      top += height + pad;
+    }
+  }
+  return {
+    cells,
+    bands: [
+      { rect: { x: 0, y: 0, width: edge, height: canvas.height }, lip: "right" },
+      {
+        rect: { x: canvas.width - edge, y: 0, width: edge, height: canvas.height },
+        lip: "left",
+      },
+    ],
+    sceneTop: 0,
+  };
 }
 
 /**
@@ -596,18 +878,9 @@ function compose(view: View, plan: Plan): Arrangement {
   /** How deep each row of ground has to be for the pieces dealt into it. */
   const depths = plan.rises.map((rise, index) => (rise + (plan.drops[index] as number)) * slotSize);
   const rowGap = scaled(COMPOSITION.rowGap);
-  const trayRowCount = plan.trayCounts.length;
-  const trayCell = { width: scaled(plan.cell.width), height: scaled(plan.cell.height) };
-
-  // Tray sits at the top, sized to fit its rows with padding.
-  const trayNeed =
-    trayRowCount * trayCell.height + (trayRowCount + 1) * scaled(COMPOSITION.trayPad);
-  const sceneTop = Math.round(trayNeed);
-  const trayPad = (sceneTop - trayRowCount * trayCell.height) / (trayRowCount + 1);
-  const trayRows = plan.trayCounts.map((count, index) => ({
-    top: Math.round(trayPad + index * (trayCell.height + trayPad)),
-    count,
-  }));
+  const margin = Math.round(scaled(COMPOSITION.sideMargin));
+  const laid = plan.tray.shape === "shelves" ? shelveTray(plan, canvas, slotSize, margin) : null;
+  const sceneTop = laid ? laid.sceneTop : 0;
 
   const sceneNeed =
     depths.reduce((sum, depth) => sum + depth, 0) +
@@ -645,14 +918,34 @@ function compose(view: View, plan: Plan): Arrangement {
       ),
     ),
   );
-  const margin = Math.round(scaled(COMPOSITION.sideMargin));
+
+  const gutters =
+    plan.tray.shape === "gutters"
+      ? gutterTray(plan.tray.columns, plan, canvas, slotSize, margin)
+      : null;
+  const tray = laid ?? gutters;
+  if (!tray) throw new Error("A tray is either shelves or gutters; this plan was neither.");
 
   return {
     canvas,
     slotSize,
-    trayCell,
     sceneTop,
     horizon,
+    trayCells: tray.cells,
+    trayBands: tray.bands,
+    sceneBox: laid
+      ? { x: 0, y: sceneTop, width: canvas.width, height: canvas.height - sceneTop }
+      : {
+          x: (tray.bands[0] as TrayBand).rect.width,
+          y: 0,
+          width: canvas.width - 2 * (tray.bands[0] as TrayBand).rect.width,
+          height: canvas.height,
+        },
+    finishCenter: laid
+      ? { x: canvas.width / 2, y: Math.round(sceneTop / 2) }
+      : // No band across the top, so the button goes in the sky above the
+        // picture, which is the one part of the board nothing else is using.
+        { x: canvas.width / 2, y: Math.round((sceneTop + sky) / 2) },
     bands: [
       { top: horizon, fill: "#8ed76f" },
       {
@@ -662,8 +955,6 @@ function compose(view: View, plan: Plan): Arrangement {
     ],
     sceneRows,
     sceneMargin: margin,
-    trayRows,
-    trayMargin: margin,
     decorLines: sceneRows.map((row) => Math.round(row.groundY + scaled(COMPOSITION.decorDrop))),
   };
 }
@@ -707,10 +998,13 @@ function arrange(
   );
   const wantedTrayRows = idealRows(count, traySpan, width);
 
+  const shares = inkShares(pieces);
   const plans: Plan[] = [];
   for (let sceneRows = 1; sceneRows <= targets.length; sceneRows++) {
     for (let trayRows = 1; trayRows <= count; trayRows++) {
-      plans.push(planFor(view, pieces, targets, sceneRows, trayRows));
+      for (const shelves of shelvings(shares, trayRows)) {
+        plans.push(planFor(view, shares, targets, sceneRows, { shape: "shelves", shelves }));
+      }
     }
   }
 
@@ -719,9 +1013,9 @@ function arrange(
   // pick up. A slice fails the second one long before the first.
   const smallest = COMPOSITION.minSlot * width;
   const smallestInk = COMPOSITION.minPieceInk * width;
-  const viable = plans.filter(
-    (plan) => plan.slotSize >= smallest && plan.slotSize * plan.smallest >= smallestInk,
-  );
+  const grabbable = (plan: Plan): boolean =>
+    plan.slotSize >= smallest && plan.slotSize * plan.smallest >= smallestInk;
+  const viable = plans.filter(grabbable);
   if (viable.length === 0) {
     throw new Error(
       `${count} pieces do not fit the ${view.id} canvas without dropping below ` +
@@ -732,7 +1026,7 @@ function arrange(
   const biggest = Math.max(...viable.map((plan) => plan.slotSize));
   const misshapen = (plan: Plan): number =>
     Math.abs(plan.sceneCounts.length - wantedSceneRows) +
-    Math.abs(plan.trayCounts.length - wantedTrayRows);
+    Math.abs(trayRowsOf(plan) - wantedTrayRows);
   const best = viable
     .filter((plan) => plan.slotSize >= biggest * COMPOSITION.sizeTolerance)
     // Plans are in row order, so a tie keeps the one with fewest rows.
@@ -742,8 +1036,25 @@ function arrange(
         ? plan
         : chosen,
     );
+
+  // A tray down the gutters is unusual enough to look like a mistake if it
+  // bought nothing, so it has to buy something: it stands only where the scene
+  // is one target - a picture, keeping the middle of the board - and only where
+  // it makes that picture markedly bigger than a band across the top would.
+  if (targets.length === 1 && count > 1) {
+    const gutters = planFor(view, shares, targets, 1, {
+      shape: "gutters",
+      columns: gutterings(shares),
+    });
+    if (grabbable(gutters) && gutters.slotSize >= best.slotSize * COMPOSITION.gutterGain) {
+      return compose(view, gutters);
+    }
+  }
   return compose(view, best);
 }
+
+const trayRowsOf = (plan: Plan): number =>
+  plan.tray.shape === "shelves" ? plan.tray.shelves.length : plan.tray.columns.length;
 
 /**
  * Compose one layout for one orientation around a given cast, however many

@@ -167,8 +167,8 @@ describe("shape-match rules", () => {
   it("sends a drop left out in the tray back home", () => {
     for (const { puzzle, layout } of CASES) {
       for (const shape of puzzle.pieces) {
-        for (const slot of layout.traySlots) {
-          expect(shapeMatch.accepts(puzzle, layout, shape.id, slot)).toBe(false);
+        for (const cell of layout.trayCells.values()) {
+          expect(shapeMatch.accepts(puzzle, layout, shape.id, cell)).toBe(false);
         }
       }
     }

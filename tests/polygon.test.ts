@@ -219,7 +219,15 @@ function spot(scene: Scene, layout: Layout, piece: number, place: number) {
   return { x: origin.x + (to.x - from.x) * scale, y: origin.y + (to.y - from.y) * scale };
 }
 
-const idOf = (puzzle: Puzzle, index: number): PieceId => puzzle.pieces[index]!.id;
+/**
+ * The piece drawn for the scene's `index`th part. Pieces are dealt in a random
+ * order - the tray cell a piece waits in is cut for it, so the deal is where
+ * the shuffle has to happen - so this looks the part up rather than counting.
+ */
+const idOf = (puzzle: Puzzle, index: number): PieceId => {
+  const { homeOf } = puzzle as unknown as { homeOf: ReadonlyMap<PieceId, number> };
+  return puzzle.pieces.find((shape) => homeOf.get(shape.id) === index)!.id;
+};
 
 describe("the polygon kind", () => {
   it("deals one picture and one piece per part", () => {

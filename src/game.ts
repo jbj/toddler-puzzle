@@ -36,7 +36,7 @@ import { playFanfare, playPickUp, playReturn, playSnap, unlockAudio } from "./au
 import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
 import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
 import { enableDragging } from "./drag";
-import { boxCenter, shuffle, type Point, type Size } from "./geometry";
+import { boxCenter, type Point, type Size } from "./geometry";
 import { kindFor } from "./kinds/registry";
 import { boxOf, chooseLayout, trayHome, type Layout } from "./layout";
 import { LEVEL_COUNT, levelSpec, nextLevel, type LevelSpec } from "./levels";
@@ -47,8 +47,6 @@ import type { Puzzle, PuzzleKind } from "./puzzle";
 const SETTLE_MS = 340;
 
 interface PieceState {
-  /** Index into the current layout's tray slots. */
-  slot: number;
   position: Point;
 }
 
@@ -139,7 +137,7 @@ export function createGame(
 
   const isPlaced = (piece: PieceId): boolean => puzzle.placed.has(piece);
 
-  const homeOf = (piece: PieceId): Point => trayHome(layout, piece, stateOf(piece).slot);
+  const homeOf = (piece: PieceId): Point => trayHome(layout, piece);
 
   const restingPlace = (piece: PieceId): Point =>
     isPlaced(piece) ? kind.target(puzzle, layout, piece) : homeOf(piece);
@@ -213,7 +211,7 @@ export function createGame(
 
   /**
    * Deal the current level afresh: whoever plays it, new pieces, new board,
-   * shuffled tray slots. Both the reset button and moving between levels come
+   * new order in the tray. Both the reset button and moving between levels come
    * through here, so a toddler never sees the same line-up twice in a row for
    * long.
    *
@@ -234,13 +232,12 @@ export function createGame(
     layout = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
     board = mount(layout);
     state.clear();
-    const slots = shuffle(
-      layout.traySlots.map((_, index) => index),
-      random,
-    );
-    puzzle.pieces.forEach((shape, index) => {
-      state.set(shape.id, { slot: slots[index] as number, position: { x: 0, y: 0 } });
-    });
+    // Where a piece waits is settled by the deal rather than shuffled here: a
+    // tray cell is cut for the piece that stands in it, so the two cannot be
+    // dealt separately. Every kind deals its pieces in a random order.
+    for (const shape of puzzle.pieces) {
+      state.set(shape.id, { position: { x: 0, y: 0 } });
+    }
     render();
   }
 

@@ -192,6 +192,35 @@ const centreOf = (selector) =>
 `);
 
 /**
+ * Centre of what a piece actually *draws*, the grab box left out. The grab box
+ * is the ink padded and then clipped to the piece's own box, so for a piece cut
+ * out of a picture it sits a few pixels off-centre - by the padding it lost at
+ * the edge it was clipped against, which grows with the picture. Where a piece
+ * has come to rest is a question about its drawing, and a shadow is drawn from
+ * the same path, so this is the like-for-like measurement.
+ */
+const drawingCentreOf = (pieceId) =>
+  evaluate(
+    `
+  (() => {
+    const piece = document.querySelector('.piece[data-piece="' + ${JSON.stringify("PIECE")} + '"]');
+    if (!piece) return null;
+    const art = piece.querySelector('.art');
+    if (!art) return null;
+    const drawn = Array.from(art.children).filter((child) => !child.classList.contains('grab-box'));
+    if (drawn.length === 0) return null;
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (const child of drawn) {
+      const r = child.getBoundingClientRect();
+      left = Math.min(left, r.x); top = Math.min(top, r.y);
+      right = Math.max(right, r.x + r.width); bottom = Math.max(bottom, r.y + r.height);
+    }
+    return { x: (left + right) / 2, y: (top + bottom) / 2 };
+  })()
+`.replace("PIECE", pieceId),
+  );
+
+/**
  * A point inside a piece's grab box that is not on its artwork - somewhere the
  * old hit test, which only ever saw painted shapes, would have missed. Which
  * element is topmost at a point says which of the two caught it. Corners and
@@ -1003,9 +1032,9 @@ try {
   const twinShadow = await centreOf(`.hole[data-piece="${itsTwin}"]`);
   await dragAnimal(oneShape, { onto: itsTwin });
   check("a shape is taken by its twin's shadow", (await placedCount()) === 1);
-  const landed = await centreOf(`.piece[data-piece="${oneShape}"] .grab-box`);
+  const landed = await drawingCentreOf(oneShape);
   const drift = Math.hypot(landed.x - twinShadow.x, landed.y - twinShadow.y);
-  check(`it settles where it was aimed (${drift.toFixed(1)}px out)`, drift < 6);
+  check(`it settles where it was aimed (${drift.toFixed(1)}px out)`, drift < 2);
   const owners = await shadowOwners();
   check("the shadows still name one shape each", new Set(owners).size === 6);
   check("the shape it displaced is now expected elsewhere", owners.includes(itsTwin));

@@ -37,7 +37,7 @@
  * swapping them would change the picture. See
  * [decision 20260729T090200](../../docs/decisions/20260729T090200-two-shapes-the-same-are-the-same-piece.md).
  */
-import { boxCenter, distance, type Point, type Size } from "../geometry";
+import { boxCenter, distance, shuffle, type Point, type Size } from "../geometry";
 import { boxOf, holeOf, inkSnapRadius, type Layout } from "../layout";
 import type { PieceId } from "../piece";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
@@ -224,7 +224,9 @@ export const polygon: PuzzleKind = {
     const puzzle: PolygonPuzzle = {
       kind: ID,
       level,
-      pieces: parts,
+      // Shuffled because a tray cell is cut for the piece that waits in it, so
+      // the order they are dealt in is the order the child sees them in.
+      pieces: shuffle(parts, random),
       targets: [picture],
       placed: new Set<PieceId>(),
       scene,
