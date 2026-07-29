@@ -62,10 +62,17 @@ sends the displaced petal to the shadow that was freed. Being told "no" for a
 correct move is the one thing this game never does. See
 [decision 20260729T090200](docs/decisions/20260729T090200-two-shapes-the-same-are-the-same-piece.md).
 
-**There are pictures waiting to be cut up.** Levels 21-30 want jigsaws, and a
-jigsaw needs a picture: four hand-drawn scenes - a farmyard, a rockpool, a
-jungle path, a night sky - are drawn and checked, ahead of the code that cuts
-them. The hard part is not drawing a nice picture, it is drawing one whose
+**A picture cut into interlocking pieces.** Levels 21-25, 29 and 30 are
+jigsaws: one of four hand-drawn scenes - a farmyard, a rockpool, a jungle path,
+a night sky - cut on a grid that grows from four pieces to twelve, and rebuilt
+in the frame it came out of, with the picture itself left showing faintly
+underneath as the guide. Every cut is made **once** and given to both the
+pieces it divides, one of them backwards, so neighbours mesh by construction
+rather than by two calculations that agree; and a piece is the scene's own
+artwork through a clip path, so one drawing serves every grid size. See
+[decision 20260729T114500](docs/decisions/20260729T114500-every-cut-is-made-once.md).
+
+The hard part was not drawing a nice picture, it was drawing one whose
 *pieces* are all worth looking at: a lovely wide beach cuts into four squares of
 identical blue, and a two-year-old holding one of them has been given a puzzle
 with no information in it. So `npm run art:check` cuts each scene at every grid
@@ -83,8 +90,8 @@ toy that will not start is worse than a toy that forgets. See
 **Some of the thirty levels are still stand-ins.** The whole ramp lives in one
 table, [`src/levels.ts`](src/levels.ts), and each level names the kind of puzzle
 it wants: matching animals to holes, cutting one animal into slices, building a
-picture out of shapes, something to touch, a jigsaw, and so on. Four are built;
-jigsaws and shatter are not. A level naming one that is not is played as a
+picture out of shapes, something to touch, a jigsaw, and so on. Five are built;
+shatter is not. A level naming one that is not is played as a
 matching puzzle of about the right size instead, so the level is always a real,
 finishable level, and building the kind later needs no change to the table. See
 [decision 20260728T205627](docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md).

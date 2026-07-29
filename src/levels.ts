@@ -25,7 +25,7 @@
  * one, which is what keeps the game from going stale after three plays.
  * `?seed=` replays a deal exactly by handing the same `random` in.
  *
- * Most of the kinds this table names are not built yet. A level whose kind is
+ * One of the kinds this table names is not built yet. A level whose kind is
  * missing is played as a shape-match stand-in rather than being skipped; see
  * `kinds/registry.ts`.
  */
@@ -330,12 +330,15 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.1,
   },
 
-  // Chapter 5: pictures. A scene cut into a grid, 2x2 growing to 3x3.
+  // Chapter 5: pictures. One hand-drawn scene, cut into a grid of interlocking
+  // pieces and rebuilt in the frame it came out of. One picture is one thing to
+  // fill however many pieces it took, so every row here stands a single target,
+  // as the sliced and polygon chapters do.
   {
     level: 21,
     chapter: "pictures",
     kind: "jigsaw",
-    targets: 4,
+    targets: 1,
     pieces: 4,
     snapForgiveness: 1.05,
     options: { grid: { columns: 2, rows: 2 }, scene: "farmyard" },
@@ -344,7 +347,7 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 22,
     chapter: "pictures",
     kind: "jigsaw",
-    targets: 4,
+    targets: 1,
     pieces: 4,
     snapForgiveness: 1.05,
     options: { grid: { columns: 2, rows: 2 }, scene: "rockpool" },
@@ -353,7 +356,7 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 23,
     chapter: "pictures",
     kind: "jigsaw",
-    targets: 6,
+    targets: 1,
     pieces: 6,
     snapForgiveness: 1.05,
     options: { grid: { columns: 3, rows: 2 }, scene: "farmyard" },
@@ -362,7 +365,7 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 24,
     chapter: "pictures",
     kind: "jigsaw",
-    targets: 6,
+    targets: 1,
     pieces: 6,
     snapForgiveness: 1.05,
     options: { grid: { columns: 3, rows: 2 }, scene: "jungle-path" },
@@ -371,7 +374,7 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 25,
     chapter: "pictures",
     kind: "jigsaw",
-    targets: 9,
+    targets: 1,
     pieces: 9,
     snapForgiveness: 1.05,
     options: { grid: { columns: 3, rows: 3 }, scene: "rockpool" },
@@ -410,7 +413,7 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 29,
     chapter: "mastery",
     kind: "jigsaw",
-    targets: 9,
+    targets: 1,
     pieces: 9,
     snapForgiveness: 1,
     options: { grid: { columns: 3, rows: 3 }, scene: "farmyard" },
@@ -419,7 +422,7 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 30,
     chapter: "mastery",
     kind: "jigsaw",
-    targets: 12,
+    targets: 1,
     pieces: 12,
     snapForgiveness: 1,
     options: { grid: { columns: 4, rows: 3 }, scene: "jungle-path" },

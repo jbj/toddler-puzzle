@@ -27,6 +27,8 @@ import { resolveLevel } from "../src/kinds/registry";
 import { LEVELS, LEVEL_COUNT, dealPieces, levelSpec, type LevelSpec } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
 import { SCENES, sceneShapes, scenesOf } from "../src/scenes";
+import { jigsawShapes } from "../src/jigsaw";
+import { loadPictures } from "../src/pictures";
 
 const CANVAS = { width: 1000, height: 700 };
 const PIECE = { width: 190, height: 190 };
@@ -184,6 +186,25 @@ const POLYGON: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
     scenesOf(level.pieces).map((scene) => {
       const { picture, parts } = sceneShapes(scene);
       return buildLevelLayout(id, level, parts, [picture]);
+    }),
+  ),
+);
+
+/** The levels a picture is cut into jigsaw pieces for. */
+const JIGSAW_LEVELS = LEVELS.filter((level) => level.kind === "jigsaw");
+
+/**
+ * Every grid the table cuts a picture at, over every scene in the library, in
+ * both orientations - the real cut rather than a stand-in, because a jigsaw
+ * piece's drawing is its cell plus whatever tabs happened to point outwards,
+ * and it is the tabs that decide how big a tray cell has to be.
+ */
+const JIGSAW: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
+  JIGSAW_LEVELS.flatMap((level) =>
+    loadPictures().map((picture) => {
+      const grid = level.options?.grid as { columns: number; rows: number };
+      const { frame, pieces } = jigsawShapes(picture, grid, seededRandom(level.level));
+      return buildLevelLayout(id, level, pieces, [frame]);
     }),
   ),
 );
@@ -862,6 +883,50 @@ describe("layouts for a picture built out of shapes", () => {
           Math.round(Math.min(ink.width, ink.height) * 0.68 * layout.level.snapForgiveness),
         );
       }
+    }
+  });
+});
+
+describe("layouts for a picture cut into jigsaw pieces", () => {
+  it("composes every scene at every grid the table cuts at, in both orientations", () => {
+    expect(JIGSAW).toHaveLength(ORIENTATIONS.length * JIGSAW_LEVELS.length * loadPictures().length);
+  });
+
+  it.each(PROMISED)("%s, for every grid in the level table", (_name, promise) => {
+    expect(complaintsFrom(JIGSAW, promise)).toEqual([]);
+  });
+
+  it("cuts one hole for the whole picture, not one per piece", () => {
+    for (const layout of JIGSAW) {
+      expect(layout.holes.size).toBe(1);
+      expect(layout.traySlots).toHaveLength(layout.pieces.length);
+      expect(layout.pieces.length).toBeGreaterThan(1);
+    }
+  });
+
+  it("draws every piece of a picture at the picture's own scale", () => {
+    // The reason a piece carries the whole picture box: at one scale on one
+    // origin, the pieces are the picture, without any arithmetic.
+    for (const layout of JIGSAW) {
+      const whole = boxOf(layout, layout.targets[0]!.id);
+      for (const piece of layout.pieces) {
+        expect(boxOf(layout, piece.id).scale).toBe(whole.scale);
+        expect(boxOf(layout, piece.id).size).toEqual(whole.size);
+      }
+    }
+  });
+
+  it("stands a picture big enough that a piece of it is worth grabbing", () => {
+    // The busiest grid is the one to watch: twelve pieces of one picture, each
+    // a twelfth of the box the tray is packing by. A picture too small here is
+    // a level a child cannot see, and the screenshot run is the only other
+    // place it would show up.
+    for (const layout of JIGSAW) {
+      const drawn = layout.pieces.map((piece) => {
+        const { ink } = boxOf(layout, piece.id);
+        return Math.max(ink.width, ink.height) / layout.canvas.width;
+      });
+      expect(Math.min(...drawn), `level ${layout.level.level} ${layout.id}`).toBeGreaterThan(0.09);
     }
   });
 });

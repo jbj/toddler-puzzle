@@ -202,7 +202,12 @@ export function createGame(
     renderBackdrop();
 
     playSnap();
-    sparkleBurst(board.fxLayer, boxCenter(target, boxOf(layout, piece).size));
+    // On the piece's own drawing rather than the middle of the box it carries.
+    // For an animal those are the same point; for a piece of a bigger picture -
+    // a slice, a shape, a jigsaw piece - the box is the whole picture, and its
+    // middle is nowhere near the corner piece that just went in.
+    const { ink } = boxOf(layout, piece);
+    sparkleBurst(board.fxLayer, boxCenter({ x: target.x + ink.x, y: target.y + ink.y }, ink));
     checkComplete();
   }
 

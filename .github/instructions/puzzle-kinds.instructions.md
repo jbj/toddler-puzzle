@@ -1,7 +1,7 @@
 ---
 name: "Puzzle kinds and layout"
 description: "The PuzzleKind contract the host plugs into, the thirty-level table and the kind registry, and how a level's layout is generated."
-applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/slices.ts,src/scenes.ts,src/scenery.ts,src/board.ts"
+applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/slices.ts,src/jigsaw.ts,src/scenes.ts,src/scenery.ts,src/board.ts"
 ---
 
 # Puzzle kinds and layout
@@ -164,6 +164,64 @@ the code:
   one falls outside its twin's snap radius, or a piece would appear to jump.
   `tests/polygon.test.ts` measures every scene for it.
 
+## Jigsaws
+
+`src/kinds/jigsaw.ts` plays levels 21-25, 29 and 30: one hand-drawn scene
+(`src/pictures.ts`) cut into interlocking pieces on a grid the table names in
+`options.grid`, from 2x2 up to the twelve pieces of 4x3, and rebuilt in the
+frame it came out of. The cutter is `src/jigsaw.ts` and is worth reading on its
+own; three rules run through it.
+
+**Every internal cut is generated once.** A cut is minted as a single curve and
+handed to *both* the pieces it divides - forwards to one, reversed to the other
+- so two neighbours mesh by construction rather than by two calculations that
+agree. Reversing an edge reorders its points and recomputes none of them. This
+is the same trick the animals have always used, where a piece and its hole come
+from one `#silhouette` path. Generating each piece on its own and hoping the
+tabs line up is the mistake the file exists to make impossible:
+[decision 20260729T114500](../../docs/decisions/20260729T114500-every-cut-is-made-once.md).
+
+**Cutting is clipping.** A piece is the scene's own markup inside a
+`<g clip-path>` made from the piece's outline, exactly as a slice is an animal
+through its cell. Nothing intersects artwork with anything, so one scene serves
+a 2x2 board and a 4x3 board without being redrawn, and two neighbours cannot
+draw the same pixel differently. A scene is safe to inline many times over: no
+ids, no outward references, which `npm run art:check` enforces. See
+[`art.instructions.md`](art.instructions.md).
+
+**The picture stays under the empty frame.** The guide is the scene itself,
+dimmed, with every cut drawn over it - the *same* path each piece is clipped
+from, so a piece covers its own line exactly. A blank frame would make a jigsaw
+a memory game; at two years old the game is to see where a piece goes. The
+whole guide fades only when the last piece is home.
+
+**One picture is one target**, as a sliced animal and a polygon scene are: every
+piece carries the whole picture box and the picture's anchor, so the layout
+gives them one scale and one origin and they assemble by construction. The table
+says `targets: 1` however many pieces the grid cuts. Unlike a slice - a quarter
+of a duck has no home worth insisting on - a jigsaw piece *does* have a home, so
+it is measured against its own cell at the game's ordinary two thirds of the
+piece being dropped.
+
+Two sizes are held deliberately, and both are about a small hand rather than
+about the drawing:
+
+- **the tab is a share of the cell** (`TAB_SHARE`), so a 4x3 grid gets small
+  tabs on small pieces instead of knobs bigger than the pieces carrying them;
+- **no piece carries two tabs on one axis, and none carries none at all.** The
+  tray packs by what a piece draws, so a piece with tabs all round drags the
+  whole board's scale down and a piece with none is the smallest thing on it.
+  Holding every piece to one tab per axis is what lets the busiest board -
+  twelve pieces across a landscape screen - still draw every piece clear of the
+  layout's floors. `tests/jigsaw.test.ts` measures both, and
+  `tests/puzzle.test.ts` measures what they buy.
+
+**Adding a grid** means a row in `LEVELS` naming it, and then `npm run art:check`
+- which re-judges every scene at every grid the table cuts at, and fails naming
+the scene and the cell that cannot take it. Adding a scene is
+[`art.instructions.md`](art.instructions.md); nothing in the kind or the cutter
+knows how many scenes there are.
+
 ## Levels played by touching
 
 `src/kinds/play.ts` plays levels 1, 3 and 5: three cause-and-effect activities
@@ -224,17 +282,16 @@ Chapter 1 alternates touch and drag rather than being all one or the other:
 ## The kind registry
 
 A level names the kind it wants by id. `resolveLevel` in `src/kinds/registry.ts`
-looks that id up, and some of them are not there yet: jigsaws and shatter are
-each still to be built. A
-level whose kind is missing is played by **shape-match** instead, at a piece
+looks that id up, and one of them is not there yet: shatter is still to be
+built. A level whose kind is missing is played by **shape-match** instead, at a piece
 count that follows its chapter rather than the missing kind's own numbers, so the
 ramp keeps climbing and the level is a real, finishable level. The stand-in is
 deliberately visible: `resolveLevel` returns `standIn: true` and the board's
 `data-kind` says which kind is actually playing. See
 [decision 20260728T205627](../../docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md).
 
-Building a kind is one call - `registerKind(myKind)` at the bottom of the kind's
-own module - and the levels that named it start playing it. Do not edit `LEVELS`
+Building a kind is one call - `registerKind(myKind)` in
+`src/kinds/registry.ts` - and the levels that named it start playing it. Do not edit `LEVELS`
 to switch a kind on, and do not remove the stand-in until every id in
 `PuzzleKindId` is registered.
 

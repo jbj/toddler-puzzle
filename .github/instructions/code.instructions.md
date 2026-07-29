@@ -65,6 +65,8 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/slice-recipes.json` | Where each animal is cut, measured offline and committed |
 | `src/kinds/polygon.ts` | One picture built out of plain shapes, any two the same interchangeable |
 | `src/scenes.ts` | The shape-picture catalogue: geometric forms, generated, and what makes two of them the same. Not the jigsaw scenes - those are `src/pictures.ts` |
+| `src/kinds/jigsaw.ts` | One picture cut into interlocking pieces, rebuilt over a guide of itself |
+| `src/jigsaw.ts` | The cutter: every internal cut minted once and handed to both its neighbours |
 | `src/kinds/play.ts` | Cause and effect: the bubbles, the peekaboo bushes and the scene that answers |
 | `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - a chapter celebration bursts balloons with it |
 | `src/motion.ts` | Whether the player asked for less motion. The one place `prefers-reduced-motion` is read |

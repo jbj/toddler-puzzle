@@ -226,6 +226,18 @@ const emptySpotOn = (pieceId) =>
 const holeFor = (pieceId) => (pieceId.startsWith("slice:") ? pieceId.split(":")[1] : pieceId);
 
 /**
+ * What to aim a piece at. A jigsaw's hole is the whole picture, whose middle is
+ * only one piece's home, so a jigsaw piece aims at the cut its own outline made
+ * in the guide (`.cell[data-piece=...]` in `src/kinds/jigsaw.ts`) - which is the
+ * same path the piece is clipped from, so aiming its drawing at that cut aims it
+ * at where the drawing belongs.
+ */
+const targetSelector = (pieceId) =>
+  pieceId.startsWith("jigsaw:") && pieceId.split(":").length > 2
+    ? `.cell[data-piece="${pieceId}"]`
+    : `.hole[data-piece="${holeFor(pieceId)}"]`;
+
+/**
  * Drag a piece into its hole. `grabAt` picks it up somewhere other than the
  * middle - the drop moves by the same offset, so where it lands is unchanged.
  * `onto` aims it at some other piece's hole instead of its own, which is how a
@@ -237,7 +249,7 @@ async function dragAnimal(pieceId, { pauseAtHalfway, grabAt, onto } = {}) {
   // anywhere near the drawing - the box around a slice is mostly the rest of
   // the animal.
   const centre = await centreOf(`.piece[data-piece="${pieceId}"] .grab-box`);
-  const hole = await centreOf(`.hole[data-piece="${holeFor(onto ?? pieceId)}"]`);
+  const hole = await centreOf(targetSelector(onto ?? pieceId));
   if (!centre || !hole) throw new Error(`Could not locate piece or hole for "${pieceId}".`);
 
   const from = grabAt ?? centre;
@@ -293,6 +305,11 @@ const grabBoxMargins = () =>
   })()
 `);
 const holeCount = () => evaluate(`document.querySelectorAll('.hole').length`);
+/** The cut lines drawn over a jigsaw's guide, one per piece. */
+const cutsInGuide = () => evaluate(`document.querySelectorAll('.hole .cell').length`);
+/** Is the picture still showing under the frame it is being built in? */
+const guideIsShowing = () =>
+  evaluate(`Number(getComputedStyle(document.querySelector('.hole')).opacity) > 0.5`);
 const levelNumber = () => evaluate(`Number(document.querySelector('#stage').dataset.level)`);
 const chapterName = () => evaluate(`document.querySelector('#stage').dataset.chapter`);
 /** Which kind is actually playing: a level's own, or the stand-in for it. */
@@ -997,12 +1014,45 @@ try {
   check("the picture finishes however the twins were shared out", (await placedCount()) === 6);
   await shot("22-level20-built");
 
-  // --- level 21: a kind that is not built yet -------------------------------
-  // Jigsaws do not exist, so level 21 is played by the shape-match stand-in
-  // (src/kinds/registry.ts). It has to be a real, complete level: that is the
-  // whole point of standing in rather than skipping.
+  // --- level 21: a picture cut up -------------------------------------------
+  // The jigsaw chapter. One picture is one hole however many pieces it is in,
+  // and the picture stays under the empty frame so the child can see what they
+  // are making - a blank frame at two years old is a memory game.
   await goToLevel(21);
   check("jumps to level 21", (await levelNumber()) === 21);
+  check("level 21 is a jigsaw", (await kindName()) === "jigsaw");
+  const jigsawPieces = await pieceCount();
+  check(`a 2x2 board deals four pieces (${jigsawPieces})`, jigsawPieces === 4);
+  check("four pieces, one picture to build them in", (await holeCount()) === 1);
+  check("every piece has a cut of its own in the guide", (await cutsInGuide()) === jigsawPieces);
+  check("the picture shows under the empty frame", await guideIsShowing());
+  await shot("23-level21-jigsaw");
+
+  // Aimed at its own cut, and it has to land there: a jigsaw piece dropped
+  // where it belongs is the whole of the game.
+  const [firstPiece] = await unplacedAnimals();
+  const itsCut = await centreOf(`.cell[data-piece="${firstPiece}"]`);
+  await dragAnimal(firstPiece);
+  check("a piece is taken by its own place", (await placedCount()) === 1);
+  // The piece's own cut rather than its grab box: the grab box is padded, and
+  // the padding is clipped by the picture's edge, so on an edge piece its middle
+  // is not the middle of the drawing. The cut is the same path both sides draw.
+  const settled = await centreOf(`.piece[data-piece="${firstPiece}"] .cut`);
+  const off = Math.hypot(settled.x - itsCut.x, settled.y - itsCut.y);
+  check(`a piece settles into the cut it came from (${off.toFixed(1)}px out)`, off < 6);
+  await shot("24-level21-first-piece");
+
+  await solveRemaining();
+  check("a jigsaw can be finished", (await placedCount()) === jigsawPieces);
+  check("the guide goes once the picture is whole", !(await guideIsShowing()));
+  await shot("25-level21-built");
+
+  // --- a kind that is not built yet -----------------------------------------
+  // Shatter does not exist, so level 26 is played by the shape-match stand-in
+  // (src/kinds/registry.ts). It has to be a real, complete level: that is the
+  // whole point of standing in rather than skipping.
+  await goToLevel(26);
+  check("jumps to level 26", (await levelNumber()) === 26);
   check("an unbuilt kind is played by the stand-in", (await kindName()) === "shape-match");
   const standInCount = await pieceCount();
   check(`the stand-in deals a real board (${standInCount} pieces)`, standInCount > 0);
@@ -1016,19 +1066,19 @@ try {
   const lastDots = await chapterDots();
   check(`every chapter dot filled on level 30 (${lastDots.filled})`, lastDots.filled === 6);
   const lastCount = await pieceCount();
-  await shot("23-level30-start");
+  await shot("26-level30-start");
 
   await solveRemaining();
   check("the last level can be completed", (await placedCount()) === lastCount);
   check("the last level offers a replay", (await finishLabel()) === "Play again");
-  await shot("24-level30-complete");
+  await shot("27-level30-complete");
 
   await pressFinishButton();
   check("play again loops back to level 1", (await levelNumber()) === 1);
   check("looping back clears the board", (await placedCount()) === 0);
   check("looping back starts the bubbles again", (await activityName()) === "bubbles");
   check("looping back forgets what was touched", (await activityProgress()).touched === 0);
-  await shot("25-looped-back");
+  await shot("28-looped-back");
 
   // --- a fresh deal every time ---------------------------------------------
   // Reset on a touch level has to take the old bubbles away with it, or the
@@ -1058,7 +1108,7 @@ try {
   const deals = new Set();
   for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
-  await shot("26-another-deal");
+  await shot("29-another-deal");
 
   // --- a touch level held the other way up ---------------------------------
   // A tablet gets turned. A touch level has no tray to reflow, so what has to
@@ -1079,7 +1129,7 @@ try {
     "portrait keeps every target big enough to hit",
     Math.min(...turned.map((thing) => thing.size)) / turnedStage >= 0.1,
   );
-  await shot("27-portrait-alive");
+  await shot("30-portrait-alive");
   const turnedPlay = await playActivity();
   check(
     `a touch level finishes in portrait too (${turnedPlay.taps} taps)`,

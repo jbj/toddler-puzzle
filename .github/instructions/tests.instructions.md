@@ -122,6 +122,19 @@ document, that every scene the level table names resolves to one, that an
 unknown id throws saying which id, and that the picture box divides evenly by
 every grid the table cuts at - the property the whole cutter rests on.
 
+`tests/jigsaw.test.ts` covers the cutter and the kind that plays it. The half
+worth knowing about is the cut, and it is measured rather than looked at: two
+neighbours are checked to hold the *same* curve point for point, one of them
+reversed, at every grid the table cuts at - not "to within a tolerance", which
+is what a jigsaw whose tabs nearly fit looks like. The tiling follows and is
+measured too, by flattening every outline and adding the areas up: short of the
+box is a stripe of the picture no piece draws, over it is a stripe two pieces
+both draw. Alongside those it holds the sizes - one tab per axis per piece and
+never none at all, a tab that shrinks with the cell, a border that stays
+straight - because those are what keep the busiest board's pieces big enough to
+grab. What a cut-up picture actually looks like is `npm run shot`'s, which plays
+a jigsaw level and finishes it.
+
 `tests/scene-cells.test.mjs` covers the measure behind "every piece has
 something in it", which is the one piece of real logic in the art scripts. It is
 written as plain ESM rather than TypeScript because it imports

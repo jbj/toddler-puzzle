@@ -98,10 +98,11 @@ describe("the level table", () => {
   });
 
   it("keeps targets and pieces equal except where a target holds several", () => {
-    // A sliced level fills one animal with several slices and a polygon level
-    // builds one picture out of several shapes; for everything else two numbers
+    // A sliced level fills one animal with several slices, a polygon level
+    // builds one picture out of several shapes and a jigsaw level fills one
+    // frame with the pieces it was cut into; for everything else two numbers
     // that disagree would be a typo.
-    const many = new Set(["sliced", "polygon"]);
+    const many = new Set(["sliced", "polygon", "jigsaw"]);
     for (const level of LEVELS) {
       if (many.has(level.kind)) continue;
       expect(level.targets, `level ${level.level}`).toBe(level.pieces);
@@ -114,6 +115,19 @@ describe("the level table", () => {
     for (const level of LEVELS.filter((one) => one.kind === "polygon")) {
       expect(level.targets, `level ${level.level}`).toBe(1);
       expect(SCENE_SIZES, `level ${level.level}`).toContain(level.pieces);
+    }
+  });
+
+  it("stands exactly one picture in a jigsaw level, cut at the grid it names", () => {
+    // A jigsaw is one picture however many pieces it is in, and the grid is
+    // how it is cut. A row asking for two pictures, or naming no scene, would
+    // throw when it was dealt rather than deal something half-right.
+    for (const level of LEVELS.filter((one) => one.kind === "jigsaw")) {
+      expect(level.targets, `level ${level.level}`).toBe(1);
+      expect(level.options?.scene, `level ${level.level}`).toBeTruthy();
+      const grid = level.options?.grid;
+      expect(grid, `level ${level.level}`).toBeTruthy();
+      expect(Math.min(grid!.columns, grid!.rows), `level ${level.level}`).toBeGreaterThanOrEqual(2);
     }
   });
 

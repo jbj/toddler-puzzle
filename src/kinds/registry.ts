@@ -2,9 +2,9 @@
  * Which kind plays a level, and what happens when that kind does not exist yet.
  *
  * The level table (`levels.ts`) describes the whole thirty-level curve,
- * including the kinds still to be built - jigsaws and shatter. The registry is
- * what lets the table run ahead of the code: it maps a `PuzzleKindId` to the
- * kind that implements it, and it answers for the ones nobody has implemented.
+ * including the one still to be built - shatter. The registry is what lets the
+ * table run ahead of the code: it maps a `PuzzleKindId` to the kind that
+ * implements it, and it answers for the ones nobody has implemented.
  *
  * ## The stand-in
  *
@@ -35,6 +35,7 @@ import {
   type PuzzleKindId,
 } from "../levels";
 import type { PuzzleKind } from "../puzzle";
+import { jigsaw } from "./jigsaw";
 import { play } from "./play";
 import { polygon } from "./polygon";
 import { shapeMatch } from "./shape-match";
@@ -42,8 +43,8 @@ import { sliced } from "./sliced";
 
 /**
  * The most pieces a stand-in deals. Six animals is the busiest board the cast
- * of ten composes comfortably, and standing in for a twelve-piece jigsaw with
- * twelve animals would be a harder level than the one it is covering for.
+ * of ten composes comfortably, and standing in for an eight-piece shatter with
+ * eight animals would be a harder level than the one it is covering for.
  */
 export const MAX_STAND_IN_PIECES = 6;
 
@@ -64,6 +65,7 @@ registerKind(shapeMatch);
 registerKind(sliced);
 registerKind(polygon);
 registerKind(play);
+registerKind(jigsaw);
 
 /** Has this kind been built yet? */
 export const isKindRegistered = (id: PuzzleKindId): boolean => registry.has(id);
