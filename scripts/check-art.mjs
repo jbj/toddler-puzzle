@@ -424,6 +424,28 @@ for (const file of files) {
  * too, so it is nearly free to pass; a scene that fails there has a quarter of
  * itself empty, which is worth knowing separately from a 4x3 piece being thin.
  */
+/**
+ * Where in the picture a patch is, said twice: in the art box's own
+ * coordinates, which is what an author edits in, and in words, because a
+ * scene's author thinks in "the sky, top left" rather than in numbers.
+ *
+ * The emptiest patch can be anywhere - it is usually a stretch of sky or of
+ * water, and only sometimes a corner - so the message has to say which, or it
+ * sends the person fixing it to the wrong part of their own drawing.
+ */
+function whereIs(patch, width, height) {
+  const scale = PICTURE_WIDTH / width;
+  const across = ["left", "middle", "right"][Math.min(2, Math.floor((3 * patch.left) / width))];
+  const down = ["top", "middle", "bottom"][Math.min(2, Math.floor((3 * patch.top) / height))];
+  const place = across === down ? across : `${down} ${across}`;
+  const at = (value) => Math.round(value * scale);
+  return (
+    `${place} of the picture` +
+    ` (${at(patch.right - patch.left)}x${at(patch.bottom - patch.top)}` +
+    ` at ${at(patch.left)},${at(patch.top)} in the art box)`
+  );
+}
+
 function checkScenes() {
   const scenes = sceneFiles();
   const registered = registeredPictures();
@@ -501,9 +523,10 @@ function checkScenes() {
         `nowhere is empty at the size of a shard of ${count}` +
           ` (emptiest ${sharePercent(worst.feature)})`,
         worst.feature >= MIN_FEATURE,
-        `a shard needs ${sharePercent(MIN_FEATURE)}: the ${side}x${side} patch at ` +
-          `${worst.left},${worst.top} is only ${sharePercent(worst.feature)} something` +
-          ` - run \`npm run art -- ${scene.id}\` and put something in that corner`,
+        `a shard needs ${sharePercent(MIN_FEATURE)}: the emptiest patch is ` +
+          `${sharePercent(worst.feature)} something, in the ` +
+          `${whereIs(worst, raster.width, raster.height)}` +
+          ` - run \`npm run art -- ${scene.id}\` and put something there`,
       );
     }
   }
