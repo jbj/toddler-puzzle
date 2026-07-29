@@ -46,8 +46,9 @@ export interface PieceShape {
   /**
    * The themed casts this piece belongs to, if its provider groups its pieces
    * that way (`themes.ts`). A level naming a theme deals from the pieces that
-   * joined it; a piece with none simply never turns up first for a themed
-   * level. Optional because a jigsaw slice or a triangle has no theme to be in.
+   * joined it, and reaches past them only when the theme cannot fill the board
+   * on its own - so a piece with no themes is dealt last, not never. Optional
+   * because a jigsaw slice or a triangle has no theme to be in.
    */
   readonly themes?: readonly ThemeId[];
 }

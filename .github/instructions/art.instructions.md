@@ -136,9 +136,11 @@ because a toddler matches the outline before the detail. That used to be advice;
 `npm run art:check` now measures it.
 
 The measure: shrink each silhouette - stroke included, detail hidden - to 48x48,
-the size a tray piece really is, and score a pair by how much of the ink they
-share (intersection over union). Anything at or over **70%** fails, naming both
-animals and the score. Nothing is re-centred or re-scaled first: every animal is
+which is deliberately coarser than the game ever draws one, and score a pair by
+how much of the ink they share (intersection over union). Anything over **70%**
+fails, naming both animals and the score. The coarseness is the point: at 48
+pixels an ear tip, a notch and a tail are already gone, and what is left is the
+gross shape a toddler matches on before looking at anything. Nothing is re-centred or re-scaled first: every animal is
 drawn in the same 240 box, a level draws every piece at one scale, and a tray
 slot holds that box, so the box *is* the frame a child compares them in.
 

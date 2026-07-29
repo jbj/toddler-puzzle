@@ -273,7 +273,7 @@ describe("themed casts", () => {
   it("deals a themed level from that theme and nothing else", () => {
     for (const spec of themedLevels) {
       for (let run = 0; run < 20; run++) {
-        for (const shape of dealPieces(spec, SHAPES)) {
+        for (const shape of dealPieces(spec, SHAPES, seededRandom(run))) {
           expect(shape.themes, `level ${spec.level}`).toContain(spec.theme);
         }
       }
@@ -287,7 +287,7 @@ describe("themed casts", () => {
       const cast = castOf(spec.theme as ThemeId, SHAPES);
       const seen = new Set<string>();
       for (let run = 0; run < 300; run++) {
-        for (const shape of dealPieces(spec, SHAPES)) seen.add(shape.id);
+        for (const shape of dealPieces(spec, SHAPES, seededRandom(run))) seen.add(shape.id);
       }
       expect(seen.size, `level ${spec.level} (${spec.theme})`).toBe(cast.length);
     }
@@ -299,7 +299,7 @@ describe("themed casts", () => {
     const seen = new Set<string>();
     for (const level of open) {
       for (let run = 0; run < 200; run++) {
-        for (const shape of dealPieces(level, SHAPES)) seen.add(shape.id);
+        for (const shape of dealPieces(level, SHAPES, seededRandom(run))) seen.add(shape.id);
       }
     }
     expect(seen.size).toBe(SHAPES.length);

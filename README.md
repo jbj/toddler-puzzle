@@ -22,8 +22,8 @@ so a whole puzzle can be one place. A theme that is short of animals is topped u
 from the rest of the cast rather than failing, because a child must never meet a
 level that will not start. Two animals in the same theme have to be told apart at
 a glance, which `npm run art:check` measures rather than trusts: it shrinks each
-silhouette to 48 pixels, the size a tray piece really is, and fails any pair that
-overlaps too much. See
+silhouette to 48 pixels - coarser than the game ever draws one, because a glance
+is coarser than a look - and fails any pair that overlaps too much. See
 [decision 20260729T004500](docs/decisions/20260729T004500-silhouettes-checked-at-a-glance.md).
 
 **It picks up where it left off.** Thirty levels is more than one sitting, so

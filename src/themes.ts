@@ -7,7 +7,7 @@
  *
  * ## A piece may belong to more than one theme
  *
- * `themesOf` returns a list rather than a single theme, because a butterfly
+ * `PieceShape.themes` is a list rather than one theme, because a butterfly
  * belongs over a meadow as much as it does under a canopy and a child does not
  * think in taxonomies. The rule is: **a piece joins every theme a child would
  * expect to find it in.** The cost of that is paid in `npm run art:check`,
