@@ -174,10 +174,16 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
     return result.result.value;
   }
 
+  let closed = false;
   return {
     send,
     evaluate,
+    // Idempotent on purpose: a caller that closes in a `finally` and again on
+    // the way out of an error path must not have the second call throw over
+    // the first one's exception, which is the one worth reading.
     close() {
+      if (closed) return;
+      closed = true;
       socket.close();
       chrome.kill();
     },
