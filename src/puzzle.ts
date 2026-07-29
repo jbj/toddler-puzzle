@@ -79,6 +79,19 @@ export interface PuzzleKind {
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean;
 
   /**
+   * Where a kind with a *choice* of place records the one this drop chose.
+   * Called by the host between an accepted drop and settling the piece, and
+   * only then, so what `target` answers afterwards - here, on the next render,
+   * and after a turn of the tablet - is the place the child actually aimed at.
+   *
+   * Most kinds have nothing to record: a piece has one hole and `target`
+   * already knows it. A polygon scene does, because two identical shapes may
+   * fill either of two identical shadows, and the drop point is the only thing
+   * that says which (`kinds/polygon.ts`).
+   */
+  settle?(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): void;
+
+  /**
    * Is the level finished? Not every kind is "all pieces placed": a
    * cause-and-effect level ends when enough things have been touched.
    */

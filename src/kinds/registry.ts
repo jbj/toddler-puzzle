@@ -36,6 +36,7 @@ import {
   type PuzzleKindId,
 } from "../levels";
 import type { PuzzleKind } from "../puzzle";
+import { polygon } from "./polygon";
 import { shapeMatch } from "./shape-match";
 import { sliced } from "./sliced";
 
@@ -61,6 +62,7 @@ export function registerKind(kind: PuzzleKind): void {
 
 registerKind(shapeMatch);
 registerKind(sliced);
+registerKind(polygon);
 
 /** Has this kind been built yet? */
 export const isKindRegistered = (id: PuzzleKindId): boolean => registry.has(id);

@@ -19,12 +19,14 @@ import {
   buildLevelLayout,
   chooseLayout,
   holeOf,
+  inkSnapRadius,
   trayHome,
   type Layout,
 } from "../src/layout";
 import { resolveLevel } from "../src/kinds/registry";
 import { LEVELS, LEVEL_COUNT, dealPieces, levelSpec, type LevelSpec } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
+import { SCENES, sceneShapes, scenesOf } from "../src/scenes";
 
 const CANVAS = { width: 1000, height: 700 };
 const PIECE = { width: 190, height: 190 };
@@ -166,6 +168,23 @@ const SLICED: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
         return buildLayout(id, MOST_FORGIVING, pieces, targets);
       }),
     ),
+  ),
+);
+
+/** The levels a polygon scene is built for. */
+const POLYGON_LEVELS = LEVELS.filter((level) => level.kind === "polygon");
+
+/**
+ * Every polygon scene at every polygon level, in both orientations - the real
+ * shapes rather than stand-ins, because a scene is authored by hand and it is
+ * the authoring that could put a part in it too small to grab.
+ */
+const POLYGON: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
+  POLYGON_LEVELS.flatMap((level) =>
+    scenesOf(level.pieces).map((scene) => {
+      const { picture, parts } = sceneShapes(scene);
+      return buildLevelLayout(id, level, parts, [picture]);
+    }),
   ),
 );
 
@@ -794,6 +813,56 @@ describe("layouts where several pieces fill one target", () => {
       /targets/i,
     );
     expect(() => buildLevelLayout("landscape", level, pieces.slice(1), targets)).toThrow(/pieces/i);
+  });
+});
+
+describe("layouts for a picture built out of shapes", () => {
+  it("composes every scene at every polygon level, in both orientations", () => {
+    const scenes = POLYGON_LEVELS.reduce(
+      (total, level) => total + scenesOf(level.pieces).length,
+      0,
+    );
+    expect(POLYGON).toHaveLength(ORIENTATIONS.length * scenes);
+    expect(POLYGON.length).toBeGreaterThanOrEqual(ORIENTATIONS.length * SCENES.length);
+  });
+
+  it.each(PROMISED)("%s, for every scene in the catalogue", (_name, promise) => {
+    expect(complaintsFrom(POLYGON, promise)).toEqual([]);
+  });
+
+  it("cuts one hole for the whole picture, not one per shape", () => {
+    for (const layout of POLYGON) {
+      expect(layout.holes.size).toBe(1);
+      expect(layout.traySlots).toHaveLength(layout.pieces.length);
+      expect(layout.pieces.length).toBeGreaterThan(1);
+    }
+  });
+
+  it("draws every shape of a picture at the picture's own scale", () => {
+    // The reason a part carries the whole scene box: at one scale on one
+    // origin, the parts are the picture, without any arithmetic.
+    for (const layout of POLYGON) {
+      const whole = boxOf(layout, layout.targets[0]!.id);
+      for (const part of layout.pieces) {
+        expect(boxOf(layout, part.id).scale).toBe(whole.scale);
+        expect(boxOf(layout, part.id).size).toEqual(whole.size);
+      }
+    }
+  });
+
+  it("reaches two thirds of what a shape draws, not two thirds of the picture", () => {
+    // The box is the whole picture, so the box's own radius would put a roof
+    // into a wall. What a piece is measured by is what it draws.
+    for (const layout of POLYGON) {
+      for (const part of layout.pieces) {
+        const { ink, snapRadius } = boxOf(layout, part.id);
+        const reach = inkSnapRadius(layout, part.id);
+        expect(reach).toBeLessThanOrEqual(snapRadius);
+        expect(reach).toBeCloseTo(
+          Math.round(Math.min(ink.width, ink.height) * 0.68 * layout.level.snapForgiveness),
+        );
+      }
+    }
   });
 });
 

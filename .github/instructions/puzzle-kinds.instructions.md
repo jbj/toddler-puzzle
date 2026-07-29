@@ -1,7 +1,7 @@
 ---
 name: "Puzzle kinds and layout"
 description: "The PuzzleKind contract the host plugs into, the thirty-level table and the kind registry, and how a level's layout is generated."
-applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/slices.ts,src/scenery.ts,src/board.ts"
+applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/slices.ts,src/scenes.ts,src/scenery.ts,src/board.ts"
 ---
 
 # Puzzle kinds and layout
@@ -20,6 +20,7 @@ interface PuzzleKind {
   backdrop(puzzle: Puzzle, layout: Layout): string;
   target(puzzle: Puzzle, layout: Layout, piece: PieceId): Point;
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean;
+  settle?(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): void;
   isComplete(puzzle: Puzzle): boolean;
 }
 ```
@@ -38,6 +39,14 @@ are cut from rather than the host assuming one hole per piece.
 ends with an empty tray - a cause-and-effect level ends when enough things have
 been touched. `backdrop` is redrawn whenever the puzzle moves on, which is how a
 filled hole hides itself under the piece now covering it.
+
+`settle` is optional and exists for one reason: `accepts` is the only moment the
+kind is told *where the finger let go*, and `target` is asked afterwards, again
+on every re-render and again after the tablet is turned. A kind that has a
+choice to make about a drop - which of two identical shadows the child aimed at
+- has to write that choice down while it can, and `settle` is the call between
+`accepts` and the host placing the piece where it does so. Only the polygon kind
+implements it; a kind whose drop has one possible meaning should leave it out.
 
 What the host does insist on is that the game stays forgiving: a drop the kind
 refuses drifts gently back to the tray with a soft tone, never off screen. A
@@ -99,11 +108,60 @@ them offline and writes `src/slice-recipes.json`; `npm run art:check` re-judges
 what is committed. That contract, and the numbers behind it, are in
 [`art.instructions.md`](art.instructions.md).
 
+## Pictures out of shapes
+
+`src/kinds/polygon.ts` plays levels 16-20: one picture - a house, a boat, a
+rocket, a car, a fish, a flower, a butterfly, a train, a sunflower - built out
+of three to six plain, strongly coloured geometric shapes dropped into shadows
+inside the finished arrangement. It sits between the other two kinds. In
+shape-match one piece *is* one whole animal; in a sliced level a piece is a
+fragment of one; here several pieces make one picture and each of them is still
+a whole thing a child can name, so the shape names come along without anybody
+making a lesson of them.
+
+**The shapes are generated, and the catalogue is `src/scenes.ts`.** A scene is a
+list of parts, each a named form - square, rectangle, circle, triangle, wedge,
+trapezoid - at a place in the 240x240 scene box. `outlineOf` mints the path,
+`artworkOf` paints it. There is no hand-drawn artwork in this chapter and no
+`.svg` file to add: a new scene is a new entry in `SCENES`.
+
+**A scene is one target with several pieces**, exactly as a sliced animal is.
+Every part carries the whole scene box and the scene's single anchor, so the
+parts assemble by construction rather than by arithmetic, and the level table
+says `targets: 1` however many pieces the picture has. `tests/levels.test.ts`
+holds a polygon level to that.
+
+**Two congruent parts are interchangeable.** A house has two square walls, a
+train three wheels, a flower four petals, and a child who drops a petal on the
+wrong petal-shaped shadow has done something visibly right. So a piece is
+accepted by any *free* place whose signature matches it, and `settle` records
+the swap - `placeOf` stays a bijection, so each shadow always has exactly one
+shape headed for it. Congruence is geometry alone (`signatureOf`), mirrored
+forms deliberately do not match, and a scene must paint congruent parts
+identically or a swap would change the picture. This is the rule to read before
+touching the kind:
+[decision 20260730T093000](../../docs/decisions/20260730T093000-two-shapes-the-same-are-the-same-piece.md).
+
+**Adding a scene** means an entry in `SCENES` and nothing else; `SCENE_SIZES`
+and the level table's piece counts are what decide when it can be dealt. Three
+things the tests will hold you to, and all three are about the child rather than
+the code:
+
+- the picture must read as the thing it is at a glance. Render it and look -
+  `npm run shot` covers two polygon levels, and a scene a two-year-old cannot
+  name is the failure mode of this whole chapter;
+- no part may be much smaller than about a third of the box, or the tray will
+  draw it below the size a small hand can grab and the layout will refuse the
+  cast outright;
+- congruent places must sit far enough apart that a drop dead-centre on a filled
+  one falls outside its twin's snap radius, or a piece would appear to jump.
+  `tests/polygon.test.ts` measures every scene for it.
+
 ## The kind registry
 
 A level names the kind it wants by id. `resolveLevel` in `src/kinds/registry.ts`
-looks that id up, and some of them are not there yet: jigsaws, polygon shapes,
-shatter and cause-and-effect play are each still to be built. A
+looks that id up, and some of them are not there yet: jigsaws, shatter and
+cause-and-effect play are each still to be built. A
 level whose kind is missing is played by **shape-match** instead, at a piece
 count that follows its chapter rather than the missing kind's own numbers, so the
 ramp keeps climbing and the level is a real, finishable level. The stand-in is

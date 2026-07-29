@@ -74,6 +74,20 @@ on its own animal and never on the other one, and the hole stays showing until
 the last slice arrives. Where the cuts actually *go* is not checked there - only
 `npm run art:check` can see whether a cut severed a leg.
 
+`tests/polygon.test.ts` covers the picture chapter, also in two halves. The
+catalogue is geometry: every scene's parts stay inside the box and never overlap
+- sampled, because two shapes that share a corner are fine and two that share an
+area are a picture drawn wrong - none is too small for a tray to draw
+grabbably, and any two congruent parts are painted identically, since a swap
+must not change the picture. The kind is rules, and mostly the swap: a piece is
+accepted by any free shadow of its own shape and by no other, a shadow already
+filled refuses even a dead-centre drop, congruent shadows sit far enough apart
+that such a drop cannot jump to a twin, the piece displaced by a swap is
+expected somewhere else afterwards, and a picture finishes however the twins
+were shared out - including in reverse order, which is the arrangement an
+identity assignment would fail. Whether a scene *reads* as a house is not
+checked there; only a screenshot can see that.
+
 `tests/progress.test.ts` covers what is remembered between sittings, and is
 mostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level
@@ -116,8 +130,9 @@ square.
 
 `npm run shot` is an end-to-end check: it serves the built app, drives real
 pointer drags over the Chrome DevTools Protocol, and plays the whole first
-chapter through, then jumps by `?level=` to the busiest board of animals and to
-the last level - asserting that pieces snap, that a bad drop does *not* stick,
+chapter through, then jumps by `?level=` to the busiest board of animals, to a
+picture built out of shapes and to the last level - asserting that pieces snap,
+that a bad drop does *not* stick,
 that each level hands over to the next, that a level whose kind is not built yet
 is still a complete playable level, that the boards grow rather than shrink as a
 chapter goes on, that the chapter dots track the chapter, that rotating to
@@ -125,6 +140,14 @@ portrait preserves progress, that reopening the game resumes on the level the
 child stopped on while a level played from `?level=` leaves that alone, that the
 last level loops back to the first, and
 that different seeds deal different puzzles while one seed always deals the same.
+
+The picture levels are also where the interchangeable-shapes rule is exercised
+end to end, which no unit test can do: the run finds two identical shapes in a
+scene, drags one onto the *other's* shadow, and checks it settles where it was
+aimed rather than snapping back or sliding to the place it was dealt for, that
+the shadows still name one shape each afterwards, and that the picture finishes
+all the same. It shoots the same level in portrait too, because a picture is one
+target with several pieces and the tray is what holds it down.
 
 It is also the only place the grown-up panel is exercised as a grown-up would
 use it: six taps on the button open nothing and put "Hold to open" up instead, a

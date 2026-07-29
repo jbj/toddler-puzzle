@@ -115,8 +115,26 @@ function pieceBox(shape: PieceShape, slotSize: number, forgiveness: number): Pie
     scale,
     size,
     ink: scaleRect(inkOf(shape), scale),
-    snapRadius: Math.round(Math.min(size.width, size.height) * SNAP_FRACTION * forgiveness),
+    snapRadius: snapRadiusFor(size, forgiveness),
   };
+}
+
+/** Two thirds of a size's narrow side, at a level's forgiveness. */
+function snapRadiusFor(size: Size, forgiveness: number): number {
+  return Math.round(Math.min(size.width, size.height) * SNAP_FRACTION * forgiveness);
+}
+
+/**
+ * The same two thirds, measured from what a piece *draws* rather than from the
+ * box it carries. For most kinds these are the same circle. They are not for a
+ * kind whose pieces all share one big box and each aim at a small part of it: a
+ * polygon scene's box is the whole picture, and two thirds of that would accept
+ * a roof dropped on a wall. Reaching two thirds of the roof is the promise;
+ * `PieceBox.snapRadius` keeps it for a piece that fills its box, and this keeps
+ * it for a piece that does not.
+ */
+export function inkSnapRadius(layout: Layout, piece: PieceId): number {
+  return snapRadiusFor(boxOf(layout, piece).ink, layout.level.snapForgiveness);
 }
 
 export interface Layout {

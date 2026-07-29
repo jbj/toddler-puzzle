@@ -253,51 +253,49 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.15,
   },
 
-  // Chapter 4: shapes. Tangram scenes built from plain polygons.
+  // Chapter 4: shapes. One picture - a house, a boat, a rocket - built out of
+  // plain coloured shapes, so every level here stands a single target and deals
+  // the shapes it takes. Which picture is drawn fresh each time from the scenes
+  // of that size (`scenes.ts`), the same way the animal chapters deal a cast.
   {
     level: 16,
     chapter: "shapes",
     kind: "polygon",
-    targets: 3,
+    targets: 1,
     pieces: 3,
     snapForgiveness: 1.15,
-    options: { scene: "house" },
   },
   {
     level: 17,
     chapter: "shapes",
     kind: "polygon",
-    targets: 4,
+    targets: 1,
     pieces: 4,
     snapForgiveness: 1.1,
-    options: { scene: "boat" },
   },
   {
     level: 18,
     chapter: "shapes",
     kind: "polygon",
-    targets: 4,
+    targets: 1,
     pieces: 4,
     snapForgiveness: 1.1,
-    options: { scene: "rocket" },
   },
   {
     level: 19,
     chapter: "shapes",
     kind: "polygon",
-    targets: 5,
+    targets: 1,
     pieces: 5,
     snapForgiveness: 1.1,
-    options: { scene: "flower" },
   },
   {
     level: 20,
     chapter: "shapes",
     kind: "polygon",
-    targets: 6,
+    targets: 1,
     pieces: 6,
     snapForgiveness: 1.1,
-    options: { scene: "house" },
   },
 
   // Chapter 5: pictures. A scene cut into a grid, 2x2 growing to 3x3.

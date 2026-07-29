@@ -63,6 +63,8 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/kinds/sliced.ts` | One animal in two to four slices, assembled in one hole |
 | `src/slices.ts` | Rebuilds a slice's cell from a recipe, and cuts an animal into pieces |
 | `src/slice-recipes.json` | Where each animal is cut, measured offline and committed |
+| `src/kinds/polygon.ts` | One picture built out of plain shapes, any two the same interchangeable |
+| `src/scenes.ts` | The picture catalogue: geometric forms, generated, and what makes two of them the same |
 | `src/layout.ts` | Composes a level's layout from its cast, and all tunable constants |
 | `src/scenery.ts` | Generates the background for a layout |
 | `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |

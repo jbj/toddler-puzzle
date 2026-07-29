@@ -35,6 +35,21 @@ why the parts meet exactly, and where each animal gets cut is measured from its
 pixels and committed rather than worked out as the game runs. See
 [decision 20260729T061500](docs/decisions/20260729T061500-slices-are-clipped-not-cut.md).
 
+**A picture can be built out of shapes.** Levels 16-20 leave the animals aside
+and hand the child a house, a boat, a rocket, a car, a fish, a flower, a
+butterfly, a train or a sunflower in three to six plain, strongly coloured
+pieces - a square, a triangle, a circle - to be dropped into their shadows in the
+finished picture. Each piece is still a whole thing a child can name, so the
+shape names come along without any of it being a lesson. The shapes are drawn by
+the code rather than by hand.
+
+**Two of the same shape are the same piece.** A house has two square walls and a
+flower four petals, and a child who puts a petal on the wrong petal-shaped
+shadow has done something visibly right - so the game takes it, and quietly
+sends the displaced petal to the shadow that was freed. Being told "no" for a
+correct move is the one thing this game never does. See
+[decision 20260730T093000](docs/decisions/20260730T093000-two-shapes-the-same-are-the-same-piece.md).
+
 **It picks up where it left off.** Thirty levels is more than one sitting, so
 the level being played is kept in `localStorage` and the next visit resumes
 there. A browser that will not store anything - private browsing on an iPad
@@ -44,8 +59,9 @@ toy that will not start is worse than a toy that forgets. See
 
 **Some of the thirty levels are still stand-ins.** The whole ramp lives in one
 table, [`src/levels.ts`](src/levels.ts), and each level names the kind of puzzle
-it wants: matching animals to holes, cutting one animal into slices, a jigsaw, and
-so on. Matching and slicing are built; the rest are not. A level naming one that is not is
+it wants: matching animals to holes, cutting one animal into slices, building a
+picture out of shapes, a jigsaw, and
+so on. The first three are built; the rest are not. A level naming one that is not is
 played as a matching puzzle of about the right size instead, so the level is
 always a real, finishable level, and building the kind later needs no change to
 the table. See

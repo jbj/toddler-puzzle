@@ -253,6 +253,9 @@ export function createGame(
       onDrop: (piece, position) => {
         elementFor(built.pieces, piece).classList.remove("is-dragging");
         if (kind.accepts(puzzle, layout, piece, position)) {
+          // The drop point is the last the kind hears of where the finger was;
+          // a kind that had a choice of place gets to write down which one.
+          kind.settle?.(puzzle, layout, piece, position);
           place(piece);
         } else {
           moveTo(piece, homeOf(piece), true);

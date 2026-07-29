@@ -228,14 +228,16 @@ const holeFor = (pieceId) => (pieceId.startsWith("slice:") ? pieceId.split(":")[
 /**
  * Drag a piece into its hole. `grabAt` picks it up somewhere other than the
  * middle - the drop moves by the same offset, so where it lands is unchanged.
+ * `onto` aims it at some other piece's hole instead of its own, which is how a
+ * polygon scene's interchangeable shapes are exercised.
  */
-async function dragAnimal(pieceId, { pauseAtHalfway, grabAt } = {}) {
+async function dragAnimal(pieceId, { pauseAtHalfway, grabAt, onto } = {}) {
   // The grab box rather than the whole piece: it is the area a finger can
   // actually pick up, and for a slice it is the only part of the piece that is
   // anywhere near the drawing - the box around a slice is mostly the rest of
   // the animal.
   const centre = await centreOf(`.piece[data-piece="${pieceId}"] .grab-box`);
-  const hole = await centreOf(`.hole[data-piece="${holeFor(pieceId)}"]`);
+  const hole = await centreOf(`.hole[data-piece="${holeFor(onto ?? pieceId)}"]`);
   if (!centre || !hole) throw new Error(`Could not locate piece or hole for "${pieceId}".`);
 
   const from = grabAt ?? centre;
@@ -448,6 +450,56 @@ async function solveRemaining() {
   for (const animal of await unplacedAnimals()) await dragAnimal(animal);
   await sleep(700);
 }
+
+/**
+ * Two pieces on the board that are the same shape as each other, or null.
+ *
+ * Worked out from what they draw rather than from what they are called: a fish
+ * has two fins with the same name, one pointing up and one down, which are not
+ * interchangeable at all. Two paths are the same shape when they match once the
+ * first point of each is taken as its origin - the arcs of a circle are already
+ * relative, so they compare as they stand.
+ */
+const twinShapes = () =>
+  evaluate(`
+  (() => {
+    const key = (d) => {
+      const tokens = d.match(/[A-Za-z]|-?[\\d.]+/g) ?? [];
+      const out = [];
+      let cmd = '';
+      let ox = null;
+      let oy = null;
+      for (let i = 0; i < tokens.length; ) {
+        const token = tokens[i];
+        if (/[A-Za-z]/.test(token)) { cmd = token; out.push(token); i++; continue; }
+        if (cmd === 'M' || cmd === 'L') {
+          const x = Number(tokens[i]);
+          const y = Number(tokens[i + 1]);
+          if (ox === null) { ox = x; oy = y; }
+          out.push((x - ox).toFixed(2), (y - oy).toFixed(2));
+          i += 2;
+          continue;
+        }
+        out.push(token);
+        i++;
+      }
+      return out.join(' ');
+    };
+    const groups = new Map();
+    for (const piece of document.querySelectorAll('.piece')) {
+      const path = piece.querySelector('.art > path');
+      if (!path) continue;
+      const shape = key(path.getAttribute('d'));
+      groups.set(shape, [...(groups.get(shape) ?? []), piece.dataset.piece]);
+    }
+    for (const ids of groups.values()) if (ids.length > 1) return ids.slice(0, 2);
+    return null;
+  })()
+`);
+
+/** Which piece each shadow on the board is waiting for, in document order. */
+const shadowOwners = () =>
+  evaluate(`[...document.querySelectorAll('.hole')].map((hole) => hole.dataset.piece)`);
 
 /**
  * Every piece on the board carries a grab box that covers its drawing. The
@@ -711,23 +763,81 @@ try {
   check("the animal can be put back together", (await placedCount()) === 4);
   await shot("14-level14-assembled");
 
+  // --- levels 16-20: a picture built out of plain shapes -------------------
+  // The chapter where several pieces make one thing and each piece is still a
+  // whole shape a child can name. Level 16 is three shapes; level 20 is six,
+  // and is where the rule this chapter exists for is exercised: two shapes the
+  // same fill either of their shadows.
+  await goToLevel(16);
+  check("jumps to level 16", (await levelNumber()) === 16);
+  check("the polygon kind plays its own levels", (await kindName()) === "polygon");
+  check("level 16 is in the shapes chapter", (await chapterName()) === "shapes");
+  check("level 16 deals three shapes", (await pieceCount()) === 3);
+  check("one shadow per shape", (await holeCount()) === 3);
+  await shot("15-level16-shapes");
+  await solveRemaining();
+  check("a picture of three shapes can be built", (await placedCount()) === 3);
+  await shot("16-level16-built");
+
+  await goToLevel(20);
+  check("jumps to level 20", (await levelNumber()) === 20);
+  const shapeCast = await animalsOnBoard();
+  check("level 20 deals six shapes", shapeCast.length === 6);
+  check("six shapes, six shadows, one picture", (await holeCount()) === 6);
+  check(
+    "every shape belongs to the same picture",
+    new Set(shapeCast.map((id) => id.split(":")[1])).size === 1,
+  );
+  await shot("17-level20-shapes");
+
+  // Portrait as well, because a picture is one target with several pieces and
+  // the tray is what holds it down: the orientation that stacks the tray is
+  // where a scene would be squeezed if any of it were composed wrongly.
+  await setViewport(480, 900);
+  await sleep(600);
+  check("a picture composes in portrait too", (await layoutName()) === "portrait");
+  check("portrait keeps all six shadows", (await holeCount()) === 6);
+  await shot("18-level20-portrait");
+  await setViewport(1280, 800);
+  await sleep(600);
+
+  // Two shapes the same, and the child aims one of them at the other's shadow.
+  // Being told "no" for a placement that is visibly right is the one thing this
+  // must never do, so the piece is taken and the picture rearranges itself.
+  const [oneShape, itsTwin] = (await twinShapes()) ?? [];
+  check("a picture of six shapes has two the same in it", Boolean(oneShape && itsTwin));
+  const twinShadow = await centreOf(`.hole[data-piece="${itsTwin}"]`);
+  await dragAnimal(oneShape, { onto: itsTwin });
+  check("a shape is taken by its twin's shadow", (await placedCount()) === 1);
+  const landed = await centreOf(`.piece[data-piece="${oneShape}"] .grab-box`);
+  const drift = Math.hypot(landed.x - twinShadow.x, landed.y - twinShadow.y);
+  check(`it settles where it was aimed (${drift.toFixed(1)}px out)`, drift < 6);
+  const owners = await shadowOwners();
+  check("the shadows still name one shape each", new Set(owners).size === 6);
+  check("the shape it displaced is now expected elsewhere", owners.includes(itsTwin));
+  await shot("19-level20-swapped");
+
+  await solveRemaining();
+  check("the picture finishes however the twins were shared out", (await placedCount()) === 6);
+  await shot("20-level20-built");
+
   await goToLevel(30);
   check("jumps to the last level", (await levelNumber()) === 30);
   check("the last level is in the mastery chapter", (await chapterName()) === "mastery");
   const lastDots = await chapterDots();
   check(`every chapter dot filled on level 30 (${lastDots.filled})`, lastDots.filled === 6);
   const lastCount = await pieceCount();
-  await shot("15-level30-start");
+  await shot("21-level30-start");
 
   await solveRemaining();
   check("the last level can be completed", (await placedCount()) === lastCount);
   check("the last level offers a replay", (await finishLabel()) === "Play again");
-  await shot("16-level30-complete");
+  await shot("22-level30-complete");
 
   await pressFinishButton();
   check("play again loops back to level 1", (await levelNumber()) === 1);
   check("looping back clears the board", (await placedCount()) === 0);
-  await shot("17-looped-back");
+  await shot("23-looped-back");
 
   // --- a fresh deal every time ---------------------------------------------
   await evaluate(`document.querySelector('.reset-button').dispatchEvent(
@@ -746,7 +856,7 @@ try {
   const deals = new Set();
   for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
-  await shot("18-another-deal");
+  await shot("24-another-deal");
 } finally {
   socket.close();
   chrome.kill();

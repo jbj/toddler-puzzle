@@ -33,6 +33,7 @@ import {
   type PuzzleKindId,
 } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
+import { SCENE_SIZES } from "../src/scenes";
 import { THEMES, type ThemeId } from "../src/themes";
 
 const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
@@ -97,11 +98,22 @@ describe("the level table", () => {
   });
 
   it("keeps targets and pieces equal except where a target holds several", () => {
-    // Only a sliced level fills one target with more than one piece; for
-    // everything else two numbers that disagree would be a typo.
+    // A sliced level fills one animal with several slices and a polygon level
+    // builds one picture out of several shapes; for everything else two numbers
+    // that disagree would be a typo.
+    const many = new Set(["sliced", "polygon"]);
     for (const level of LEVELS) {
-      if (level.kind === "sliced") continue;
+      if (many.has(level.kind)) continue;
       expect(level.targets, `level ${level.level}`).toBe(level.pieces);
+    }
+  });
+
+  it("stands exactly one picture in a polygon level", () => {
+    // The kind builds one scene, and a row asking for two would throw rather
+    // than deal something half-right.
+    for (const level of LEVELS.filter((one) => one.kind === "polygon")) {
+      expect(level.targets, `level ${level.level}`).toBe(1);
+      expect(SCENE_SIZES, `level ${level.level}`).toContain(level.pieces);
     }
   });
 
