@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "art": "node scripts/preview.mjs",
     "art:check": "node scripts/check-art.mjs",
+    "art:slices": "node scripts/slice-recipes.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "shot": "node scripts/shot.mjs",
     "shot:sheet": "node scripts/shot-sheet.mjs",

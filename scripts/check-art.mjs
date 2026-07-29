@@ -24,6 +24,18 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  AREA_TOLERANCE,
+  cellMasks,
+  GRID,
+  inkBounds,
+  intersect,
+  isConnected,
+  inscribedRadius,
+  MIN_INSCRIBED,
+  maskPixels,
+  recipeFor,
+} from "./slices.mjs";
 import { magick, requireArtTools, rsvg } from "./tools.mjs";
 
 requireArtTools();
@@ -188,6 +200,85 @@ function similarity(a, b, name) {
 /** A similarity, as the whole percent a human can act on. */
 const percent = (share) => `${(share * 100).toFixed(0)}%`;
 
+// --- slice recipes --------------------------------------------------------
+
+/** How many slices an animal has to have a recipe for; SLICE_COUNTS. */
+const SLICE_COUNTS = [2, 3, 4];
+const recipesPath = join(root, "src/slice-recipes.json");
+
+function declaredRecipes() {
+  try {
+    return JSON.parse(readFileSync(recipesPath, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+const sliceRecipes = declaredRecipes();
+
+/** The entry a human should paste into src/slice-recipes.json, or a shrug. */
+function suggestedRecipe(silhouette, drawn, count) {
+  const found = recipeFor(silhouette, drawn, count);
+  if (!found) return "no cut of this animal into that many slices passes - redraw it";
+  const list = (rows) => rows.map((row) => `[${row.join(", ")}]`).join(", ");
+  return `use { "cuts": [${list(found.cuts)}], "ink": [${list(found.ink)}] }`;
+}
+
+/**
+ * Judge what the committed table says about one animal.
+ *
+ * Deliberately a check rather than a derivation. Searching for cuts takes a
+ * couple of seconds an animal, so the table is generated once by
+ * `npm run art:slices` and only re-judged here - and a recipe that no longer
+ * matches its artwork fails with the replacement to paste in, which is the same
+ * bargain `FOOT_LEVEL` strikes a few lines above.
+ *
+ * Every number that decides the verdict lives in `scripts/slices.mjs`, so the
+ * search and the check can never drift apart into a table that generates but
+ * does not pass.
+ */
+function checkSliceRecipes(id, silhouettePng, drawnPng) {
+  const silhouette = maskPixels(silhouettePng, scratch, `${id}-silhouette-mask`);
+  const drawn = maskPixels(drawnPng, scratch, `${id}-drawn-mask`);
+  const total = silhouette.reduce((sum, on) => sum + on, 0);
+  const whole = new Uint8Array(GRID * GRID).fill(1);
+
+  for (const count of SLICE_COUNTS) {
+    const label = `cuts into ${count} whole, fair, grabbable slices`;
+    const recipe = sliceRecipes[id]?.[String(count)];
+    if (!recipe || recipe.cuts?.length !== count - 1 || recipe.ink?.length !== count) {
+      check(label, false, suggestedRecipe(silhouette, drawn, count));
+      continue;
+    }
+
+    const cells = cellMasks(silhouette, recipe.cuts);
+    const boxes = cellMasks(whole, recipe.cuts);
+    const faults = [];
+    for (const [index, cell] of cells.entries()) {
+      const area = cell.reduce((sum, on) => sum + on, 0) / total;
+      const want = 1 / count;
+      const radius = inscribedRadius(cell);
+      const ink = inkBounds(intersect(drawn, boxes[index]));
+      const declared = recipe.ink[index];
+      if (!isConnected(cell)) faults.push(`slice ${index} is in more than one piece`);
+      if (Math.abs(area - want) > want * AREA_TOLERANCE) {
+        faults.push(`slice ${index} is ${(area * 100).toFixed(0)}% of the animal`);
+      }
+      if (radius < MIN_INSCRIBED) {
+        faults.push(`slice ${index} is only ${radius.toFixed(1)} units fat`);
+      }
+      const drifted =
+        ink === null ||
+        [ink.x, ink.y, ink.width, ink.height].some(
+          (value, at) => Math.abs(value - declared[at]) > 1,
+        );
+      if (drifted) faults.push(`slice ${index} draws somewhere else than its declared ink`);
+    }
+    check(label, faults.length === 0, faults.length === 0 ? "" : `${faults.join("; ")}`);
+    if (faults.length > 0) console.log(`      ${suggestedRecipe(silhouette, drawn, count)}`);
+  }
+}
+
 // --- checks ---------------------------------------------------------------
 
 const files = readdirSync(animalsDir)
@@ -229,7 +320,8 @@ for (const file of files) {
   );
 
   // Drawn extent, stroke included: this is what gets clipped by the art box.
-  const drawn = bounds(mask(svg, "", `${id}-drawn`));
+  const drawnPng = mask(svg, "", `${id}-drawn`);
+  const drawn = bounds(drawnPng);
   const clipped =
     drawn.left <= 0 || drawn.top <= 0 || drawn.right >= ART_BOX - 1 || drawn.bottom >= ART_BOX - 1;
   check(
@@ -292,6 +384,8 @@ for (const file of files) {
       `declared ${declared}, measured ${measured.toFixed(1)} - use ${suggested}`,
     );
   }
+
+  checkSliceRecipes(id, silhouette, drawnPng);
 }
 
 const orphans = registered.filter((id) => !files.includes(`${id}.svg`));
