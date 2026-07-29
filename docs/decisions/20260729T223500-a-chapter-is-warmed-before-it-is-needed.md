@@ -99,13 +99,82 @@ into seven, and it is paid in the background while somebody is popping bubbles.
 That trade is the whole decision in one line: the number that matters got much
 smaller, and the number that does not got slightly bigger.
 
-**The offline promise survives, and is not weakened.** Every chunk is requested
-during the *first* sitting, warm, in the background. Whatever cache held the
-single bundle for a second sitting holds all of the chunks for a second sitting
-too, and nothing is fetched later than it used to be. No service worker, no
-manifest, no runtime dependency and no binary asset were added. A child resuming
-at level 17 is in fact better off than before: they fetch the entry chunk and
-one kind chunk, which is less than the single bundle used to be, not more.
+**What happens with no network — measured, not reasoned.** The first draft of
+this record said the offline promise "survives", on the reasoning that whatever
+cache held one bundle holds seven. That was a hope with a confident voice, so it
+was put to a browser instead. Chromium, driven over the DevTools Protocol,
+loading the built game from a local server, with `Network.emulateNetworkConditions`
+cutting the connection:
+
+| what was tried | before the split | after the split |
+| --- | --- | --- |
+| after the warm, network cut, open chapters 3, 4, 5 and 6 | n/a (one bundle) | **all open, 0 further requests** |
+| reload with no network, host sends cache headers | works | **works** |
+| reload with no network, host sends no cache headers | `ERR_INTERNET_DISCONNECTED` | **`ERR_INTERNET_DISCONNECTED`** |
+
+Three things follow, and only the first is about this change.
+
+*The property the split needs is real.* Once the warm has finished, every
+remaining chapter opens with the network cut and **nothing further is fetched at
+all**. That is what stops a level seam ever waiting, and it is now a check in the
+screenshot run rather than a sentence here.
+
+*The game is not, and never was, offline-capable across sittings.* Whether a
+reload works with no network is decided entirely by the HTTP cache, which is to
+say by the host's headers - and it behaves **identically before and after the
+split**, because all seven files are fetched in the same first sitting and share
+one cache fate. GitHub Pages, where this deploys, sends `cache-control:
+max-age=600`; so a reload ten minutes after the last one needs the network, and
+without a service worker there is nothing to be done about that. Splitting did
+not weaken this. It did not improve it either.
+
+So the invariant in `product.instructions.md` should be read as what it says -
+no binary assets, no runtime dependencies, nothing fetched from anywhere else -
+and **not** as a promise that the game runs offline. It does not. Claiming
+otherwise in a decision record is how a hope becomes a fact somebody later
+relies on.
+
+No service worker, no manifest, no runtime dependency and no binary asset were
+added. A child resuming at level 17 is in fact better off than before: they
+fetch the entry chunk and one kind chunk, which is less than the single bundle
+used to be, not more.
+
+## A chunk that did not arrive
+
+Cutting the network also exposed a trap that reasoning had missed, and it is
+worth writing down because the obvious fix is the one that cannot work.
+
+**A browser remembers a dynamic import that failed.** Ask a second time for a
+module that was not there and the same rejection comes back immediately, with no
+request made: the entry is poisoned for the life of the page. Measured, again,
+rather than assumed - blocked, asked twice while blocked, unblocked, asked twice
+more, all four refused, and only a cache-busted URL succeeded. So a retry loop
+around `ensureKind` is a loop that can never succeed, and the first draft of this
+change had two of them. They are gone.
+
+That matters because the warm fetches every chunk in the first seconds. If the
+connection is down for that instant, the chunk is poisoned, and the child could
+reach chapter 4 an hour later and never be able to leave it - a worse failure
+than the single bundle had, where nothing loaded and nothing pretended to.
+
+What the game does instead, in `recoverWhenPossible`:
+
+- **The board that is up stays up.** Nothing is taken off the screen, there is no
+  spinner, and no message a two-year-old could not read anyway. A finished board
+  is still a thing to touch.
+- **A fresh page is taken only when the device comes back online**, because that
+  is the one moment a fetch that failed would now succeed. Deliberately *not*
+  when the connection was there all along: a chunk that will not load on a
+  working connection will not load on the next page either, and reloading would
+  cost the child the board in front of them to arrive at the same place.
+- **Progress is written before the wait**, so the fresh page opens on the level
+  the child was going to rather than the one behind it.
+- **It is capped at two reloads per sitting**, so a connection that flaps cannot
+  make the game blink.
+
+All of which is staged in the screenshot run - a chunk blocked outright, the
+connection cut, then given back - because a branch nobody exercises is a branch
+nobody knows the state of.
 
 **A kind is now a code-splitting boundary.** `kindFor` stays synchronous and
 stays strict, so the host and the tests go on treating a kind as a plain object;

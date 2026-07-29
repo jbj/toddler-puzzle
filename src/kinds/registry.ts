@@ -76,9 +76,10 @@ export const isKindLoaded = (id: PuzzleKindId): boolean => registry.has(id);
 /**
  * The kind's code, fetching it if this is the first time it has been asked for.
  *
- * A failed fetch is forgotten rather than remembered, so asking again tries
- * again: a chunk that did not arrive on a flaky connection should not condemn
- * the level that needs it for the rest of the sitting.
+ * A failed fetch is forgotten here, so asking again calls the loader again -
+ * but see `recoverWhenPossible` below, because the browser is less forgiving
+ * than this map is, and forgetting on this side does not undo remembering on
+ * that one.
  */
 export function ensureKind(id: PuzzleKindId): Promise<PuzzleKind> {
   const loaded = registry.get(id);
@@ -99,6 +100,66 @@ export function ensureKind(id: PuzzleKindId): Promise<PuzzleKind> {
     arriving.set(id, pending);
   }
   return pending;
+}
+
+/**
+ * How many fresh pages one sitting is allowed to ask for. Two is enough for a
+ * connection that came back, and small enough that a page which cannot load its
+ * own chunks settles down rather than blinking at a child.
+ */
+const RELOAD_LIMIT = 2;
+const RELOAD_KEY = "animal-puzzle-chunk-reload";
+
+/** Have we still got a reload in hand? Counted across reloads, so it converges. */
+function mayReload(): boolean {
+  try {
+    const used = Number(window.sessionStorage.getItem(RELOAD_KEY) ?? "0");
+    if (!(used < RELOAD_LIMIT)) return false;
+    window.sessionStorage.setItem(RELOAD_KEY, String(used + 1));
+    return true;
+  } catch {
+    // A browser that refuses storage - iPad Safari in private browsing throws
+    // on the sight of it - cannot be counted with. One reload is still worth
+    // having, and an `online` event that has already fired once will not fire
+    // again without going offline in between, so this cannot run away.
+    return true;
+  }
+}
+
+/**
+ * Get back from a chunk that would not come.
+ *
+ * This looks like something that should just be retried, and it is the one
+ * thing here that cannot be. **A browser remembers a dynamic import that
+ * failed.** Ask a second time for the module that was not there and you get the
+ * same rejection back, immediately, without a request being made - the entry is
+ * poisoned for the life of the page, and no amount of waiting or asking again
+ * changes it. Only a different URL or a fresh page will do, which is why there
+ * is no retry loop anywhere near `ensureKind`: it would be a loop that could
+ * never succeed, which is worse than no loop at all.
+ *
+ * So the way back is a new page - and the only moment worth taking one is when
+ * the device has *just come back online*, because that is the one moment a
+ * fetch that failed would now succeed. Nothing happens while the connection is
+ * still gone, and, deliberately, nothing happens if it was never gone: a chunk
+ * that will not load on a working connection is a chunk that will not load on
+ * the next page either, and reloading would cost the child the board they are
+ * looking at to arrive back at the same place. Better to leave a game they can
+ * play on the screen.
+ *
+ * Progress is written down before the wait begins, so the fresh page opens on
+ * the level the child was going to rather than the one behind it. And the whole
+ * thing is capped, across reloads, at `RELOAD_LIMIT`, so a connection that
+ * flaps cannot make the game blink.
+ *
+ * See the "a chunk that did not arrive" section of
+ * [decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
+ */
+export function recoverWhenPossible(): void {
+  if (window.navigator.onLine) return;
+  window.addEventListener("online", () => {
+    if (mayReload()) window.location.reload();
+  });
 }
 
 /** Every kind, loaded. For the tests, and for whatever wants the lot. */

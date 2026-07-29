@@ -56,7 +56,7 @@ import type { Celebration, CelebrationId } from "./celebration";
 import { enableDragging } from "./drag";
 import { boxCenter, type Point, type Size } from "./geometry";
 import { clearHint, createIdleHint, drawHint, hintPiece, type IdleHint } from "./hint";
-import { ensureKind, isKindLoaded, kindFor } from "./kinds/registry";
+import { ensureKind, isKindLoaded, kindFor, recoverWhenPossible } from "./kinds/registry";
 import { boxOf, chooseLayout, trayHome, type Layout } from "./layout";
 import { LEVEL_COUNT, endsChapter, levelSpec, nextLevel, type LevelSpec } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
@@ -416,8 +416,11 @@ export function createGame(
    * them during play, so in practice the code is always already here and this
    * runs straight through. When it is not - the first sitting, on a connection
    * slow enough that the child got ahead of the warm - the board that is up
-   * stays up until it arrives. Whatever the child was looking at is a better
-   * thing to look at than an empty stage.
+   * stays up until it arrives, and the asking goes on until it does. Whatever
+   * the child was looking at is a better thing to look at than an empty stage,
+   * and a game that needs pressing again to unstick itself is no use to a
+   * two-year-old who cannot tell that anything is wrong. The screenshot run
+   * blocks a chunk outright and checks both halves of that.
    */
   function startPuzzle(): void {
     const next = levelSpec(levelNumber);
@@ -426,11 +429,27 @@ export function createGame(
       return;
     }
     const wanted = ++awaited;
-    void ensureKind(next.kind).then((loaded) => {
-      // Only the most recent thing asked for gets to land: a child pressing on
-      // while a chunk was in flight has already chosen a different board.
-      if (wanted === awaited) deal(next, loaded);
-    });
+    // A reload lands wherever progress says, so record the level the child
+    // asked for *before* waiting for its code. If the chunk arrives this is
+    // written again by `deal` and nothing has changed; if it does not, the
+    // fresh page opens on the level they were going to rather than the one they
+    // had just finished.
+    if (arrival === "chosen") progress.jumpToLevel(levelNumber);
+    else progress.reachLevel(levelNumber);
+    void ensureKind(next.kind).then(
+      (loaded) => {
+        // Only the most recent thing asked for gets to land: a child pressing
+        // on while a chunk was in flight has already chosen a different board.
+        if (wanted === awaited) deal(next, loaded);
+      },
+      () => {
+        // Nothing is taken off the screen. The board the child just finished
+        // stays exactly where it is - a thing to look at and touch beats an
+        // empty stage - and `recoverWhenPossible` brings the game back by
+        // itself if the connection returns.
+        if (wanted === awaited) recoverWhenPossible();
+      },
+    );
   }
 
   function deal(next: LevelSpec, dealer: PuzzleKind): void {

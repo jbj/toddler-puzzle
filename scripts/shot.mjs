@@ -661,6 +661,56 @@ async function reopenTheGame() {
   await sleep(900);
 }
 
+// --- the network, taken away ----------------------------------------------
+// The game is split into a chunk per chapter, so two things have to be true
+// that are invisible on a fast connection: once the warm has finished nothing
+// more is fetched, and a chunk that has not arrived leaves the board alone
+// rather than blanking it. Neither happens by accident, so both are staged.
+
+/** Cut the connection, or give it back. */
+const setOffline = (offline) =>
+  send("Network.emulateNetworkConditions", {
+    offline,
+    latency: 0,
+    downloadThroughput: offline ? 0 : -1,
+    uploadThroughput: offline ? 0 : -1,
+  });
+
+/**
+ * How many things the page has fetched since it loaded, counted by the page
+ * itself. `PerformanceObserver` would need installing before the fetches it is
+ * meant to see; the resource timeline is already there and remembers them.
+ */
+const resourceCount = () => evaluate(`performance.getEntriesByType('resource').length`);
+
+/** Is there a board at all? The question a blank screen would answer "no" to. */
+const stageIsThere = () => evaluate(`!!document.querySelector('#stage')`);
+
+/**
+ * Anything that would tell a child to wait. There is deliberately nothing in
+ * the game that does - a board to touch beats a spinner - so this is a check
+ * that one has not crept in as a way of covering a slow chunk.
+ */
+const spinnerCount = () =>
+  evaluate(`document.querySelectorAll('.spinner, .loading, [aria-busy="true"]').length`);
+
+/** Wait for the board to become a given level, or give up and say what it is. */
+async function waitForLevel(wanted, within) {
+  const until = Date.now() + within;
+  while (Date.now() < until) {
+    if ((await levelNumber()) === wanted) return wanted;
+    await sleep(250);
+  }
+  return levelNumber();
+}
+
+/** Go to a level the way a grown-up does, without reloading the page. */
+async function jumpToLevelFromPanel(level) {
+  await holdGrownUps();
+  await pressInPanel(`.grownups-level[data-level="${level}"]`);
+  await sleep(1200);
+}
+
 /** A tap on a part of the board with nothing on it: the smallest interaction. */
 async function tapEmptySpot() {
   const spot = await emptySpotOnBoard();
@@ -1694,6 +1744,82 @@ try {
     (await activityProgress()).touched >= turnedGoal,
   );
   check(`every touch answered in portrait (${turnedPlay.missed} missed)`, turnedPlay.missed === 0);
+
+  // --- what happens when a chunk is not there -------------------------------
+  // The game is split by chapter, and `warm.ts` fetches every chunk during the
+  // first level so a seam never waits. Both halves of that are claims about
+  // conditions nobody meets by accident, so this makes them: the network is cut
+  // outright, and a chunk is blocked outright. See
+  // decision 20260729T223500, both halves of it.
+  await setViewport(1280, 800);
+  await send("Network.enable");
+
+  // 1. Once the warm has finished, the rest of the game needs no network at
+  //    all. This is the property the split has to have; without it a child on a
+  //    train would stall at a chapter boundary.
+  await reopenTheGame();
+  await sleep(2500);
+  const beforeCut = await resourceCount();
+  await setOffline(true);
+  const offlineChapters = [];
+  for (const level of [12, 17, 22, 27]) {
+    await jumpToLevelFromPanel(level);
+    offlineChapters.push({
+      level,
+      arrived: await levelNumber(),
+      kind: await kindName(),
+      pieces: await pieceCount(),
+    });
+  }
+  for (const seen of offlineChapters) {
+    check(
+      `level ${seen.level} opens with no network (${seen.kind || "nothing"}, ${seen.pieces} pieces)`,
+      seen.arrived === seen.level && seen.kind !== "" && seen.pieces > 0,
+    );
+  }
+  const afterCut = await resourceCount();
+  check(
+    `nothing is fetched once the warm has finished (${afterCut - beforeCut} requests)`,
+    afterCut === beforeCut,
+  );
+  await shot("34-offline-chapters");
+  await setOffline(false);
+
+  // 2. A chunk that has not arrived must never blank the screen. Blocking one
+  //    outright is the only way to see the branch a slow connection would take.
+  await send("Network.setBlockedURLs", { urls: ["*polygon*"] });
+  await reopenTheGame();
+  await sleep(1500);
+  await jumpToLevelFromPanel(15);
+  const beforeSeam = {
+    level: await levelNumber(),
+    kind: await kindName(),
+    pieces: await pieceCount(),
+  };
+  check("the board before the missing chunk is whole", beforeSeam.pieces > 0);
+  // Offline, so the game waits for the connection rather than reloading into
+  // the same failure. This is the state a child would actually be looking at.
+  await setOffline(true);
+  await jumpToLevelFromPanel(16);
+  await sleep(1200);
+  const heldLevel = await levelNumber();
+  const heldPieces = await pieceCount();
+  check("a missing chunk never empties the stage", (await stageIsThere()) === true);
+  check(
+    `the board that is up stays up (level ${heldLevel}, ${heldPieces} pieces)`,
+    heldLevel === beforeSeam.level && heldPieces === beforeSeam.pieces,
+  );
+  check("nothing asks the child to wait", (await spinnerCount()) === 0);
+  await shot("35-chunk-late-board-stays");
+
+  // 3. And when the connection comes back the game arrives by itself, on the
+  //    level the child asked for rather than the one behind it.
+  await send("Network.setBlockedURLs", { urls: [] });
+  await setOffline(false);
+  const cameBack = await waitForLevel(16, 12000);
+  check(`the game comes back by itself when the network does (level ${cameBack})`, cameBack === 16);
+  check("and on the kind that was missing", (await kindName()) === "polygon");
+  await shot("36-chunk-arrived-after-reconnect");
 } finally {
   browser.close();
   server.close();

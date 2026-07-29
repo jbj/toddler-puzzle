@@ -112,7 +112,7 @@ SVG regardless if it is missing.
 | `scripts/check-audio.mjs` | Renders every sound offline in Chromium, measures the samples, and optionally draws the waveform sheet |
 | `scripts/audio-probe.mjs` | The half of that which runs in the browser: `OfflineAudioContext` renders, an FFT and the measurements |
 | `scripts/chrome.mjs` | Starts headless Chromium and speaks the debugging protocol to it. Shared by the screenshot run and the audio render |
-| `scripts/shot.mjs` | End-to-end drag and touch test in headless Chromium |
+| `scripts/shot.mjs` | End-to-end drag and touch test in headless Chromium. Also the only place the network is taken away: what a child sees when a chapter's chunk is missing is checked here, because nothing else can |
 | `scripts/shot-sheet.mjs` | Packs the run's screenshots into one image to attach to a pull request |
 | `scripts/tools.mjs` | Resolves the external art tools, with one clear message when they are missing |
 | `vite.config.ts` | Build configuration. `base` is relative, so one bundle works both at a server root and under the Pages path: see [decision 20260728T103610](../../docs/decisions/20260728T103610-deploy-to-github-pages.md). Also writes `.art/bundle.json`, which is what the budget check reads |

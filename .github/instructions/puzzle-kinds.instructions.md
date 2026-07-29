@@ -377,6 +377,16 @@ rare case where it is not. A new kind therefore wants a `LOADERS` entry and
 nothing else - the warm walks the level table and will find it. See
 [decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
 
+**Never put a retry loop around a chunk that failed to load.** It reads like an
+obvious robustness fix and it cannot work: a browser remembers a dynamic import
+that failed and answers every later ask with the same rejection, immediately,
+without going near the network. The only ways back are a different URL or a
+fresh page, and `recoverWhenPossible` in `src/kinds/registry.ts` takes the
+second - once the device says it is back online, never merely because a fetch
+failed, and capped so a flapping connection cannot make the game blink. The
+screenshot run blocks a chunk outright and checks both what a child sees while
+it is missing and that the game returns by itself when it can.
+
 ## Layout
 
 Everything about a board is *composed* for the cast that was dealt:

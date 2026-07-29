@@ -3,7 +3,7 @@ import { loadAnimalShapes } from "./assets";
 import { createGame } from "./game";
 import { seededRandom } from "./geometry";
 import { applySettings, createGrownUpPanel } from "./grownups";
-import { ensureKind } from "./kinds/registry";
+import { ensureKind, recoverWhenPossible } from "./kinds/registry";
 import { LEVEL_COUNT, levelSpec } from "./levels";
 import { browserStorage, createProgressStore } from "./progress";
 import { warmAhead } from "./warm";
@@ -52,23 +52,14 @@ const startLevel = deepLink ?? progress.read().level;
  * still less to download than the single bundle this used to be. See
  * [decision 20260729T223500](../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
  *
- * A fetch that fails is tried again rather than left as a blank screen. If it
- * will not come at all there is nothing to draw and nothing to be done, which
- * is what a bundle that would not load has always meant.
+ * There is deliberately no retry around this. A browser remembers a dynamic
+ * import that failed and will not go near the network for it again, so asking
+ * twice cannot work; `recoverWhenPossible` waits for the connection to come
+ * back and takes a fresh page instead, which can. Until then the screen is the
+ * one a bundle that would not load has always given, which is what this was
+ * before it was split.
  */
-async function kindForStart(attempts = 3): Promise<void> {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      await ensureKind(levelSpec(startLevel).kind);
-      return;
-    } catch (error) {
-      if (attempt >= attempts) throw error;
-      await new Promise((resume) => window.setTimeout(resume, 300 * attempt));
-    }
-  }
-}
-
-void kindForStart().then(() => {
+void ensureKind(levelSpec(startLevel).kind).then(() => {
   const game = createGame(root, loadAnimalShapes(), {
     random: Number.isFinite(seed) && seed !== 0 ? seededRandom(seed) : Math.random,
     startLevel,
@@ -83,4 +74,4 @@ void kindForStart().then(() => {
   // Everything the rest of the thirty levels needs, fetched while the child
   // plays this one, so no level seam ever waits for the network.
   warmAhead(startLevel);
-});
+}, recoverWhenPossible);
