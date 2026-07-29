@@ -9,6 +9,12 @@
  * given level comes from the level table by way of the registry. The host
  * cannot tell one kind from another.
  *
+ * Not every level is dragged. A kind that implements `play` is handed a layer
+ * and answers the finger itself, and the host then builds no tray pieces and
+ * starts no drag engine for it - the first chapter's bubbles and peekaboo are
+ * that. Everything after the touch is the host's again: the sparkle, the level
+ * ending, the button onwards.
+ *
  * What the host does insist on is that the game stays forgiving: a drop the
  * kind refuses drifts gently back to the tray with a soft tone, never off
  * screen and never a buzzer.
@@ -112,6 +118,13 @@ export function createGame(
   let layout!: Layout;
   let board!: Board;
   let complete = false;
+  /**
+   * How to take down the activity of a level played by touch, if there is one.
+   * A board that is replaced - a new level, a re-deal, a turned tablet - has to
+   * let go of whatever the kind armed, or a level's bubbles would go on
+   * arriving over the top of the next one.
+   */
+  let stopActivity: (() => void) | null = null;
 
   /** The last level of the set gets the fanfare and the replay arrow. */
   const isLastLevel = (): boolean => levelNumber === LEVEL_COUNT;
@@ -152,6 +165,9 @@ export function createGame(
   /** Push current state into the DOM, e.g. after a fresh puzzle or a re-layout. */
   function render(): void {
     renderBackdrop();
+    // A level played by touch has no pieces on the board to place: what there
+    // is to see, the kind drew for itself when the board was mounted.
+    if (kind.play) return;
     for (const shape of puzzle.pieces) {
       const element = pieceEl(shape.id);
       const target = restingPlace(shape.id);
@@ -236,39 +252,59 @@ export function createGame(
   }
 
   function mount(next: Layout): Board {
-    const built = buildBoard(root, next);
+    // Whatever the last board armed goes now, before the DOM it was drawing
+    // into is replaced.
+    stopActivity?.();
+    stopActivity = null;
 
-    enableDragging(built.stage, next, {
-      isDraggable: (piece) => !isPlaced(piece),
-      getPosition: (piece) => stateOf(piece).position,
-      onPickUp: (_piece, element) => {
-        unlockAudio();
-        element.classList.add("is-dragging");
-        element.classList.remove("is-settling");
-        // Re-appending raises the piece above its siblings while it is held.
-        built.piecesLayer.append(element);
-        playPickUp();
-      },
-      onMove: (piece, position) => moveTo(piece, position, false),
-      onDrop: (piece, position) => {
-        elementFor(built.pieces, piece).classList.remove("is-dragging");
-        if (kind.accepts(puzzle, layout, piece, position)) {
-          // The drop point is the last the kind hears of where the finger was;
-          // a kind that had a choice of place gets to write down which one.
-          kind.settle?.(puzzle, layout, piece, position);
-          place(piece);
-        } else {
-          moveTo(piece, homeOf(piece), true);
-          playReturn();
-        }
-      },
-    });
+    const touched = kind.play !== undefined;
+    const built = buildBoard(root, next, { pieces: !touched });
+
+    if (!touched) {
+      enableDragging(built.stage, next, {
+        isDraggable: (piece) => !isPlaced(piece),
+        getPosition: (piece) => stateOf(piece).position,
+        onPickUp: (_piece, element) => {
+          unlockAudio();
+          element.classList.add("is-dragging");
+          element.classList.remove("is-settling");
+          // Re-appending raises the piece above its siblings while it is held.
+          built.piecesLayer.append(element);
+          playPickUp();
+        },
+        onMove: (piece, position) => moveTo(piece, position, false),
+        onDrop: (piece, position) => {
+          elementFor(built.pieces, piece).classList.remove("is-dragging");
+          if (kind.accepts(puzzle, layout, piece, position)) {
+            // The drop point is the last the kind hears of where the finger was;
+            // a kind that had a choice of place gets to write down which one.
+            kind.settle?.(puzzle, layout, piece, position);
+            place(piece);
+          } else {
+            moveTo(piece, homeOf(piece), true);
+            playReturn();
+          }
+        },
+      });
+    }
 
     built.resetButton.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
       unlockAudio();
       startPuzzle();
     });
+
+    // Last, so the kind draws into a board that is already standing and can
+    // measure it if it wants to.
+    if (kind.play) {
+      stopActivity = kind.play(puzzle, next, {
+        layer: built.activityLayer,
+        touched: (at) => {
+          sparkleBurst(built.fxLayer, at);
+          checkComplete();
+        },
+      });
+    }
 
     return built;
   }

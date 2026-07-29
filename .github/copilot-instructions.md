@@ -2,9 +2,9 @@
 
 Animal Puzzle is a drag-and-drop animal shape puzzle for toddlers: a two-year-old
 matches large animal pieces to matching animal-shaped holes. A game is thirty
-levels long and grows as it goes - one animal to begin with, so the first win
-comes quickly, then more pieces and more kinds of puzzle - and every puzzle is
-dealt fresh.
+levels long and grows as it goes - bubbles to pop and one animal to begin with,
+so the first win comes quickly, then more pieces and more kinds of puzzle - and
+every puzzle is dealt fresh.
 
 Three things are true of every change:
 

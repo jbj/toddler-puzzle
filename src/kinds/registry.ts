@@ -2,10 +2,9 @@
  * Which kind plays a level, and what happens when that kind does not exist yet.
  *
  * The level table (`levels.ts`) describes the whole thirty-level curve,
- * including the kinds still to be built - sliced animals, tangrams, jigsaws,
- * shatter, cause-and-effect play. The registry is what lets the table run ahead
- * of the code: it maps a `PuzzleKindId` to the kind that implements it, and it
- * answers for the ones nobody has implemented.
+ * including the kinds still to be built - jigsaws and shatter. The registry is
+ * what lets the table run ahead of the code: it maps a `PuzzleKindId` to the
+ * kind that implements it, and it answers for the ones nobody has implemented.
  *
  * ## The stand-in
  *
@@ -36,6 +35,7 @@ import {
   type PuzzleKindId,
 } from "../levels";
 import type { PuzzleKind } from "../puzzle";
+import { play } from "./play";
 import { polygon } from "./polygon";
 import { shapeMatch } from "./shape-match";
 import { sliced } from "./sliced";
@@ -63,6 +63,7 @@ export function registerKind(kind: PuzzleKind): void {
 registerKind(shapeMatch);
 registerKind(sliced);
 registerKind(polygon);
+registerKind(play);
 
 /** Has this kind been built yet? */
 export const isKindRegistered = (id: PuzzleKindId): boolean => registry.has(id);

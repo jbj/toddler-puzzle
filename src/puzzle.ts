@@ -12,6 +12,12 @@
  * are built, the stand-in for all of them. A jigsaw cutter, a tangram or a
  * cause-and-effect level can be another without the host learning anything
  * about them.
+ *
+ * There are two ways to be a kind. Most of them are *dragged*: pieces wait in
+ * the tray and the host's drag engine offers each drop to `accepts`. A kind
+ * that implements `play` is *touched* instead - it draws its own things and
+ * answers a finger directly, and the host builds no tray pieces for it and
+ * never drags anything. Both end the same way, through `isComplete`.
  */
 import type { Point } from "./geometry";
 import type { Layout } from "./layout";
@@ -96,4 +102,41 @@ export interface PuzzleKind {
    * cause-and-effect level ends when enough things have been touched.
    */
   isComplete(puzzle: Puzzle): boolean;
+
+  /**
+   * Take over the board and play the level by touch rather than by drag.
+   *
+   * A kind that implements this is telling the host three things: build no
+   * pieces for the tray, start no drag engine, and hand over a layer of its
+   * own. Everything a child can touch is then the kind's - it draws it, it
+   * answers it, and it says what it sounded like. The host's part is what it
+   * always was: the sparkle, the level ending, and the big button afterwards.
+   *
+   * Called once per mounted board, so again after the tablet is turned; the
+   * puzzle it is given is the same one, so how far the child got survives.
+   * Whatever is returned is called before the next board goes up, which is
+   * where a timer or an interval has to be let go of.
+   */
+  play?(puzzle: Puzzle, layout: Layout, host: ActivityHost): () => void;
+}
+
+/**
+ * What the host lends a kind that plays by touch. Deliberately thin: the kind
+ * owns the drawing and the rules, and this is the two things it cannot do for
+ * itself - draw somewhere that is cleared up for it, and tell the host that the
+ * puzzle moved on.
+ */
+export interface ActivityHost {
+  /**
+   * The layer to draw the touchable things into: empty when handed over, and
+   * torn down with the board. It sits above the backdrop and below the effects,
+   * so a burst drawn by the host still lands on top.
+   */
+  readonly layer: SVGGElement;
+  /**
+   * Something was touched and the puzzle moved on. The host sparkles there and
+   * asks `isComplete` whether that was the last one. Sound is the kind's own,
+   * because only the kind knows whether that was a pop or a quack.
+   */
+  touched(at: Point): void;
 }

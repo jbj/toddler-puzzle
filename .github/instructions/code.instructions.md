@@ -65,6 +65,9 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/slice-recipes.json` | Where each animal is cut, measured offline and committed |
 | `src/kinds/polygon.ts` | One picture built out of plain shapes, any two the same interchangeable |
 | `src/scenes.ts` | The picture catalogue: geometric forms, generated, and what makes two of them the same |
+| `src/kinds/play.ts` | Cause and effect: the bubbles, the peekaboo bushes and the scene that answers |
+| `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - a chapter celebration bursts balloons with it |
+| `src/motion.ts` | Whether the player asked for less motion. The one place `prefers-reduced-motion` is read |
 | `src/layout.ts` | Composes a level's layout from its cast, and all tunable constants |
 | `src/scenery.ts` | Generates the background for a layout |
 | `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |
@@ -80,7 +83,7 @@ Chrome binary and honours `CHROME_BIN`.
 | `scripts/slices.mjs` | Judges a cut from pixels: whole, fair, grabbable. Shared by the two above |
 | `scripts/slice-recipes.mjs` | Searches for where to cut every animal, and writes the table |
 | `scripts/check-docs.mjs` | Enforces that Markdown cross-references resolve |
-| `scripts/shot.mjs` | End-to-end drag test in headless Chromium |
+| `scripts/shot.mjs` | End-to-end drag and touch test in headless Chromium |
 | `scripts/shot-sheet.mjs` | Packs the run's screenshots into one image to attach to a pull request |
 | `scripts/tools.mjs` | Resolves the external art tools, with one clear message when they are missing |
 | `vite.config.ts` | Build configuration. `base` is relative, so one bundle works both at a server root and under the Pages path: see [decision 20260728T103610](../../docs/decisions/20260728T103610-deploy-to-github-pages.md) |

@@ -4,10 +4,22 @@
 
 A drag-and-drop shape puzzle for toddlers. Animals wait in a tray; each one is
 dragged onto the matching animal-shaped hole in the landscape. The game grows as
-it goes - thirty levels in six chapters of five, starting with a single huge
-animal so the first win comes quickly, then adding pieces and taking a little
-forgiveness away as it climbs. Finish one level and a big arrow leads to the
-next; finish the last and the arrow starts the game over.
+it goes - thirty levels in six chapters of five, starting with a screenful of
+bubbles to pop and a single huge animal to drag, so the first win comes quickly,
+then adding pieces and taking a little forgiveness away as it climbs. Finish one
+level and a big arrow leads to the next; finish the last and the arrow starts
+the game over.
+
+**The first chapter needs no dragging.** Pinching a shape, carrying it and
+letting go somewhere else is a chain of three things a one-year-old can do none
+of, so levels 1, 3 and 5 are pure cause and effect: touch a thing, a thing
+happens. Bubbles rise and burst under a finger; bushes hide an animal until they
+are touched; a sun spins, a cloud drifts and a duck waggles when they are
+poked. There is nothing to aim, nothing to be wrong about and nothing to get
+stuck on - the level simply ends when enough things have been touched - and
+levels 2 and 4 are the smallest drags the game can ask for, waiting for whenever
+the child is ready. See
+[decision 20260729T072100](docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md).
 
 **Every puzzle is dealt fresh.** Which animals turn up and the order they stand
 in are drawn at random each time a puzzle starts, so the same animals are
@@ -60,11 +72,10 @@ toy that will not start is worse than a toy that forgets. See
 **Some of the thirty levels are still stand-ins.** The whole ramp lives in one
 table, [`src/levels.ts`](src/levels.ts), and each level names the kind of puzzle
 it wants: matching animals to holes, cutting one animal into slices, building a
-picture out of shapes, a jigsaw, and
-so on. The first three are built; the rest are not. A level naming one that is not is
-played as a matching puzzle of about the right size instead, so the level is
-always a real, finishable level, and building the kind later needs no change to
-the table. See
+picture out of shapes, something to touch, a jigsaw, and so on. Four are built;
+jigsaws and shatter are not. A level naming one that is not is played as a
+matching puzzle of about the right size instead, so the level is always a real,
+finishable level, and building the kind later needs no change to the table. See
 [decision 20260728T205627](docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md).
 
 **There is a door for grown-ups.** Nothing on the play surface is a menu or a

@@ -22,6 +22,7 @@ interface PuzzleKind {
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean;
   settle?(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): void;
   isComplete(puzzle: Puzzle): boolean;
+  play?(puzzle: Puzzle, layout: Layout, host: ActivityHost): () => void;
 }
 ```
 
@@ -39,6 +40,12 @@ are cut from rather than the host assuming one hole per piece.
 ends with an empty tray - a cause-and-effect level ends when enough things have
 been touched. `backdrop` is redrawn whenever the puzzle moves on, which is how a
 filled hole hides itself under the piece now covering it.
+
+`play` is the second way to be a kind, and the reason the rest of the contract
+is phrased the way it is. A kind that implements it is **played by touching
+rather than by dragging**: the host builds no tray pieces, starts no drag
+engine, and hands the kind a layer of its own to draw into plus a `touched(at)`
+callback to report a touch through. See "Levels played by touching" below.
 
 `settle` is optional and exists for one reason: `accepts` is the only moment the
 kind is told *where the finger let go*, and `target` is asked afterwards, again
@@ -157,11 +164,68 @@ the code:
   one falls outside its twin's snap radius, or a piece would appear to jump.
   `tests/polygon.test.ts` measures every scene for it.
 
+## Levels played by touching
+
+`src/kinds/play.ts` plays levels 1, 3 and 5: three cause-and-effect activities
+for a child too young to drag anything. **Touch a thing, a thing happens.**
+Which one a level runs is `options.activity` in the table, and every `play`
+level names one - `tests/play.test.ts` insists, because a level that fell back
+to a default would be a level nobody chose.
+
+- **bubbles** rise from the bottom of the screen and burst under a finger;
+- **peekaboo** hides each dealt animal behind a bush, and a touch uncovers it;
+- **alive** is a scene where everything answers - the sun spins, a cloud drifts
+  along, an animal waggles.
+
+Three rules run through all three, and they are the level rather than polish:
+
+**There is no way to be wrong.** Nothing is picked up, so nothing can be dropped
+anywhere; `accepts` returns false for everything it is offered. A touch that
+lands on nothing does nothing at all - never a buzz, never a wobble.
+
+**There is no way to get stuck.** `thingsFor` says how many things an activity
+puts on screen and `goalFor` is measured against it, so no level can ask for
+more touches than it gave the child things to touch - and for everything but
+peekaboo it asks for strictly fewer, because a child who has decided a
+particular cloud is not for them is not going to change their mind. A bubble
+that drifts away untouched is replaced at once.
+
+**The answer is immediate.** `pointerdown`, not click, and nothing waits for an
+animation before it answers. An animation may run *after* the answer; the sound,
+the sparkle and the progress happen in the tick the finger landed.
+
+Progress lives in a `touched` set on the puzzle rather than in `placed`, because
+`isComplete` is handed only the puzzle - and because the same puzzle object is
+passed to `play` again after a re-layout, so turning the tablet leaves an
+uncovered animal uncovered. `play` returns a teardown, called before the next
+board is mounted, so intervals and animations do not outlive the board they were
+drawing into.
+
+**The burst is `src/pop.ts`, not part of the bubbles.** A chapter celebration
+bursts balloons the same way (issue #9), and the feel of a pop should be one
+piece of code rather than two that drift apart. `releasePoppable` puts one
+floater on a layer and looks after its drift, its hit target and its removal;
+`popBurst` is the burst on its own, for anything that should look as though it
+popped. Both take `bubble` or `balloon` paint. Under `prefers-reduced-motion` a
+floater does not drift at all rather than collapsing to a millisecond, which
+would carry it off the top of the screen instantly and leave an empty sky:
+[decision 20260729T072100](../../docs/decisions/20260729T072100-reduced-motion-holds-still.md).
+
+An activity level is still **dealt a cast and given a layout** like any other -
+bubbles never draws its animals - because the layout is composed around a cast
+and the ramp reads the table's piece count. Its backdrop is the ordinary
+landscape with `tray: false`, and `alive` also passes `sky: false` so the
+scenery leaves the sun and clouds to the kind, which draws bigger ones a finger
+can reach.
+
+Chapter 1 alternates touch and drag rather than being all one or the other:
+[decision 20260729T072100](../../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md).
+
 ## The kind registry
 
 A level names the kind it wants by id. `resolveLevel` in `src/kinds/registry.ts`
-looks that id up, and some of them are not there yet: jigsaws, shatter and
-cause-and-effect play are each still to be built. A
+looks that id up, and some of them are not there yet: jigsaws and shatter are
+each still to be built. A
 level whose kind is missing is played by **shape-match** instead, at a piece
 count that follows its chapter rather than the missing kind's own numbers, so the
 ramp keeps climbing and the level is a real, finishable level. The stand-in is

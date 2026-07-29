@@ -35,3 +35,5 @@ and an argument nobody can see having changed is worth nothing.
 | [20260729T004500-silhouettes-checked-at-a-glance](20260729T004500-silhouettes-checked-at-a-glance.md) | Check silhouettes for distinctness at a glance |
 | [20260729T061500-slices-are-clipped-not-cut](20260729T061500-slices-are-clipped-not-cut.md) | Clip a slice out of an animal rather than cutting one |
 | [20260730T093000-two-shapes-the-same-are-the-same-piece](20260730T093000-two-shapes-the-same-are-the-same-piece.md) | Let identical shapes fill each other's shadows |
+| [20260729T072100-the-game-opens-with-something-to-touch](20260729T072100-the-game-opens-with-something-to-touch.md) | Open the game with something to touch |
+| [20260729T072100-reduced-motion-holds-still](20260729T072100-reduced-motion-holds-still.md) | Hold a floater still under reduced motion |

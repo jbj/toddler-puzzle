@@ -7,9 +7,9 @@ description: "What Animal Puzzle is for, the invariants that must not be weakene
 
 Animal Puzzle is a drag-and-drop animal shape puzzle for toddlers: a two-year-old
 matches large animal pieces to matching animal-shaped holes. A game is thirty
-levels long, in six chapters of five, and it grows as it goes - one animal to
-begin with, so the first win comes quickly, then more pieces, more kinds of
-puzzle, and a little less forgiveness as it climbs.
+levels long, in six chapters of five, and it grows as it goes - bubbles to pop
+and one animal to drag to begin with, so the first win comes quickly, then more
+pieces, more kinds of puzzle, and a little less forgiveness as it climbs.
 
 This file is the one to read before changing what the game *does*. It is not
 attached automatically, because most changes do not need it; read it whenever a
@@ -65,6 +65,13 @@ oversights until you know it, so the reason is written next to the rule.
   API. Why: there is nothing to download and nothing to fail to load.
 - Keep every target large; pieces stay well over a tenth of the canvas wide. Why:
   small hands need large things to grab.
+- Keep the opening chapter playable without a drag. Levels 1, 3 and 5 are
+  cause-and-effect levels - touch a thing, a thing happens - and they end when
+  enough things have been touched rather than when a tray is empty. Never make
+  one of them require aiming, carrying or letting go. Why: dragging is a chain
+  of three things a one-year-old can do none of, and a first screen they cannot
+  work is a closed door rather than a gentle beginning. See
+  [decision 20260729T072100](../../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md).
 
 ## What the invariants add up to
 
@@ -77,6 +84,15 @@ out of reach. A wrong drop plays a soft, warm tone rather than a buzzer. The
 mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
 [decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md).
+
+**The way in needs no dragging.** The opening chapter alternates: levels 1, 3
+and 5 are cause and effect - bubbles that burst under a finger, bushes that
+uncover an animal, a scene where the sun and the clouds and the animals all
+answer - and levels 2 and 4 are the smallest drags the game can ask for. A
+one-year-old who cannot yet pinch, carry and let go still wins something, and
+finds the drag waiting whenever they are ready for it. The mechanics are in
+[`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); the reasoning is
+[decision 20260729T072100](../../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md).
 
 **The game only ever moves forward.** There is no menu and no difficulty picker
 in front of the child: the thirty levels are always played in the same order, the

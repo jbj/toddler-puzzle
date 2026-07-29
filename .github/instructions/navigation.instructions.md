@@ -14,11 +14,15 @@ falling out of the game by accident. The rules of a level live elsewhere - see
 ## Forward only
 
 A game is thirty levels long, in six chapters of five, and it starts on level 1
-with a single huge animal. What each level holds is the table in `src/levels.ts`,
-not anything here; see
+with a screenful of bubbles to pop - a level that asks for a finger and nothing
+else, because dragging is beyond many one-year-olds and a first screen they
+cannot work is a closed door. What each level holds is the table in
+`src/levels.ts`, not anything here; see
 [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md). Finishing a
 level clears the tray and puts one big button in it, which leads to the next
-level; the button after the last level starts the whole game over
+level - a level played by touching has no tray to clear, and the same button
+appears in the same place. The button after the last level starts the whole game
+over
 (`nextLevel` in `src/levels.ts` wraps). So the only way to go is forward and
 there is never a menu to get lost in.
 
@@ -122,17 +126,28 @@ what the code has to keep true is this.
   back to the tray. Never a buzzer, and never leaving the piece where it fell.
 - A piece that lands gets a sparkle burst; finishing a level gets a bigger one
   (`src/celebrate.ts`).
-- `prefers-reduced-motion` is honoured throughout: the settle transition and
+- On a level played by touching (`PuzzleKind.play`), the host does the same for
+  a touch: the kind reports one through `host.touched(at)` and gets a sparkle
+  there and a check for completion, so a bubble bursting and an animal landing
+  are answered the same way. Everything else about the response - the sound, the
+  spin, the bush going - belongs to the kind, and all of it happens in the tick
+  the finger landed. See
+  [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
+- `prefers-reduced-motion` is honoured throughout, and `prefersReducedMotion()`
+  in `src/motion.ts` is the one place that is asked: the settle transition and
   the sparkles collapse to 1ms rather than being removed, so the same code path
   still ends with the element in the right place, and the finish button's pulse
-  simply does not start.
+  simply does not start. A floating thing in `src/pop.ts` is the one exception -
+  it holds still instead, because collapsing its drift would carry it off screen
+  at once; see
+  [decision 20260729T072100](../../docs/decisions/20260729T072100-reduced-motion-holds-still.md).
 - Audio needs a gesture to start, so `unlockAudio` runs off the first pointer
   down rather than at load.
 
 ## Drag feel
 
 `src/drag.ts` is the pointer-event drag engine; `src/game.ts` owns what a drag
-means. Between them:
+means. Neither is started for a level played by touching. Between them:
 
 - The piece is held slightly above the finger, so a small hand does not cover
   the thing it is moving.

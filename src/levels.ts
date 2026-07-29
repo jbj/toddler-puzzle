@@ -12,7 +12,7 @@
  *
  * | Levels | Chapter | What it is |
  * | --- | --- | --- |
- * | 1-5 | First touches | Cause-and-effect play, and one to three huge pieces |
+ * | 1-5 | First touches | Cause-and-effect play, alternating with one or two huge pieces |
  * | 6-10 | Animals | Shape-match, three to six pieces, themed casts |
  * | 11-15 | Sliced animals | One or two animals, each cut into two to four slices |
  * | 16-20 | Shapes | Polygon and tangram scenes |
@@ -80,7 +80,23 @@ export interface LevelOptions {
   readonly grid?: { readonly columns: number; readonly rows: number };
   /** Which hand-authored scene a picture or tangram kind should cut up. */
   readonly scene?: string;
+  /**
+   * Which cause-and-effect activity a `play` level runs. Every `play` level
+   * names one; the table's own tests insist on it, because a level that fell
+   * back to a default would be a level nobody chose.
+   */
+  readonly activity?: ActivityId;
 }
+
+/**
+ * The cause-and-effect activities of the first chapter (`kinds/play.ts`). They
+ * are levels a one-year-old can play before they can drag anything: touch a
+ * thing, a thing happens, and the level ends when enough things have been
+ * touched.
+ */
+export const ACTIVITIES = ["bubbles", "peekaboo", "alive"] as const;
+
+export type ActivityId = (typeof ACTIVITIES)[number];
 
 export interface LevelSpec {
   /** 1-based position in the thirty. */
@@ -123,18 +139,41 @@ export const MAX_SNAP_FORGIVENESS = 1.5;
  * thirds of a piece by the last chapter.
  */
 export const LEVELS: readonly LevelSpec[] = [
-  // Chapter 1: first touches. Huge pieces, almost no aim required.
+  // Chapter 1: first touches. The chapter alternates: something to touch,
+  // something to drag, and back. Dragging is beyond many one-year-olds, so the
+  // game opens on a level that asks for nothing but a finger, and every other
+  // level after it is one of those - a child who cannot drag yet still wins
+  // something on levels 1, 3 and 5, and finds the drag waiting whenever they
+  // are ready for it. See
+  // [decision 20260729T072100](../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md).
   {
     level: 1,
+    chapter: "first-touches",
+    kind: "play",
+    targets: 1,
+    pieces: 1,
+    snapForgiveness: 1.5,
+    options: { activity: "bubbles" },
+  },
+  {
+    level: 2,
     chapter: "first-touches",
     kind: "shape-match",
     targets: 1,
     pieces: 1,
     snapForgiveness: 1.5,
   },
-  { level: 2, chapter: "first-touches", kind: "play", targets: 2, pieces: 2, snapForgiveness: 1.5 },
   {
     level: 3,
+    chapter: "first-touches",
+    kind: "play",
+    targets: 2,
+    pieces: 2,
+    snapForgiveness: 1.45,
+    options: { activity: "peekaboo" },
+  },
+  {
+    level: 4,
     chapter: "first-touches",
     kind: "shape-match",
     targets: 2,
@@ -142,20 +181,13 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.45,
   },
   {
-    level: 4,
+    level: 5,
     chapter: "first-touches",
     kind: "play",
     targets: 3,
     pieces: 3,
-    snapForgiveness: 1.45,
-  },
-  {
-    level: 5,
-    chapter: "first-touches",
-    kind: "shape-match",
-    targets: 3,
-    pieces: 3,
     snapForgiveness: 1.4,
+    options: { activity: "alive" },
   },
 
   // Chapter 2: animals. The game as it has always been, growing to a full board.

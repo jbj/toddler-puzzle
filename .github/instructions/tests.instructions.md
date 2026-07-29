@@ -88,6 +88,20 @@ were shared out - including in reverse order, which is the arrangement an
 identity assignment would fail. Whether a scene *reads* as a house is not
 checked there; only a screenshot can see that.
 
+`tests/play.test.ts` covers the cause-and-effect levels, and it covers the two
+promises rather than the drawing, because those are properties of the rules and
+the drawing does not survive leaving the browser. **No way to be wrong**: the
+kind accepts no drop at all, wherever it is offered - dead centre on a hole
+included - and deals nothing into `placed`. **No way to get stuck**: for every
+activity and every cast size the goal is no more than the number of things the
+activity puts on screen, and for everything but peekaboo strictly fewer, so a
+child who ignores one thing can still finish; the level is not complete before
+the goal and never comes undone after it. It also holds the table to naming an
+activity on every `play` level, to naming each of them only once, and to opening
+the first chapter on one. Whether a bubble is big enough to hit, whether a touch
+registers and whether the level can actually be finished by touching are all
+`npm run shot`'s.
+
 `tests/progress.test.ts` covers what is remembered between sittings, and is
 mostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level
@@ -129,17 +143,27 @@ square.
 ## What `npm run shot` covers
 
 `npm run shot` is an end-to-end check: it serves the built app, drives real
-pointer drags over the Chrome DevTools Protocol, and plays the whole first
-chapter through, then jumps by `?level=` to the busiest board of animals, to a
-picture built out of shapes and to the last level - asserting that pieces snap,
-that a bad drop does *not* stick,
-that each level hands over to the next, that a level whose kind is not built yet
-is still a complete playable level, that the boards grow rather than shrink as a
-chapter goes on, that the chapter dots track the chapter, that rotating to
+pointer drags and real taps over the Chrome DevTools Protocol, and plays the
+whole first chapter through, then jumps by `?level=` to the busiest board of
+animals, to a picture built out of shapes and to the last level - asserting that
+pieces snap, that a bad drop does *not* stick, that each level hands over to the
+next, that a level whose kind is not built yet is still a complete playable
+level, that the chapter dots track the chapter, that rotating to
 portrait preserves progress, that reopening the game resumes on the level the
 child stopped on while a level played from `?level=` leaves that alone, that the
 last level loops back to the first, and
 that different seeds deal different puzzles while one seed always deals the same.
+
+The first chapter is also where the levels played by touching are exercised, and
+they cannot be checked any other way: three of the five are activities, and what
+the run plays through is that a tap on a thing registers *every* time (it counts
+the ones that do not and insists on none), that the level finishes on taps
+alone, that nothing waits in a tray and no hole is cut, that every bubble is
+more than a tenth of the board across, that a tap on empty sky changes nothing
+at all, that popping the bubbles never empties the sky, that a scene puts more
+things on screen than it asks for, and that re-dealing a touch level takes the
+old board's bubbles away with it rather than adding to them. See
+[`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 
 The picture levels are also where the interchangeable-shapes rule is exercised
 end to end, which no unit test can do: the run finds two identical shapes in a

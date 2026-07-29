@@ -2,7 +2,10 @@
  * The background landscape, generated from a Layout.
  *
  * This is drawn in code rather than shipped as a fixed-size SVG so that both
- * orientations share one piece of art and stay in sync automatically.
+ * orientations share one piece of art and stay in sync automatically. Two parts
+ * of it are optional, because a level with nothing in its tray and a level that
+ * draws its own answering sun both want the same landscape with one thing left
+ * off it; see `SceneryOptions`.
  */
 import type { Layout } from "./layout";
 
@@ -37,9 +40,26 @@ function flowers(width: number, groundY: number): string {
     .join("");
 }
 
-export function renderScenery(layout: Layout): string {
+export interface SceneryOptions {
+  /**
+   * Paint the tray band across the top. False for a level with nothing waiting
+   * in a tray - a cause-and-effect level is touched where it stands - and the
+   * sky then runs the whole height of the canvas instead of a sand-coloured
+   * band sitting over an empty shelf.
+   */
+  readonly tray?: boolean;
+  /**
+   * Draw the sun and the clouds. False for a level that draws its own because
+   * they answer a finger (`kinds/play.ts`), so the sky is not furnished twice.
+   */
+  readonly sky?: boolean;
+}
+
+export function renderScenery(layout: Layout, options: SceneryOptions = {}): string {
   const { width, height } = layout.canvas;
   const { sceneTop, horizon, bands } = layout;
+  const { tray = true, sky = true } = options;
+  const skyTop = tray ? sceneTop : 0;
 
   const bandMarkup = bands
     .map((band, index) => {
@@ -65,6 +85,31 @@ export function renderScenery(layout: Layout): string {
     )
     .join("");
 
+  const trayBand = tray
+    ? `<rect x="0" y="0" width="${width}" height="${sceneTop}" fill="#f6ead0" />
+       <rect x="0" y="${sceneTop}" width="${width}" height="10" fill="#d9c398" />`
+    : "";
+
+  const skyFurniture = sky
+    ? `
+    <g transform="translate(${width - 108} ${skyTop + 74})">
+      <circle r="46" fill="#ffd23f" />
+      <circle r="46" fill="none" stroke="#f6b820" stroke-width="5" />
+    </g>
+
+    <g fill="#ffffff" opacity="0.92">
+      <g transform="translate(${width * 0.16} ${Math.round(skyTop + (horizon - skyTop) * 0.29)})">
+        <circle cx="0" cy="0" r="30" /><circle cx="34" cy="8" r="24" /><circle cx="-32" cy="10" r="22" />
+        <rect x="-32" y="0" width="66" height="22" rx="11" />
+      </g>
+      <g transform="translate(${width * 0.55} ${Math.round(skyTop + (horizon - skyTop) * 0.19)})">
+        <circle cx="0" cy="0" r="24" /><circle cx="28" cy="6" r="19" /><circle cx="-26" cy="8" r="17" />
+        <rect x="-26" y="0" width="54" height="18" rx="9" />
+      </g>
+    </g>
+  `
+    : "";
+
   return `
     <defs>
       <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -77,26 +122,9 @@ export function renderScenery(layout: Layout): string {
       </linearGradient>
     </defs>
 
-    <rect x="0" y="0" width="${width}" height="${sceneTop}" fill="#f6ead0" />
-
-    <rect x="0" y="${sceneTop}" width="${width}" height="${height - sceneTop}" fill="url(#sky)" />
-    <rect x="0" y="${sceneTop}" width="${width}" height="10" fill="#d9c398" />
-
-    <g transform="translate(${width - 108} ${sceneTop + 74})">
-      <circle r="46" fill="#ffd23f" />
-      <circle r="46" fill="none" stroke="#f6b820" stroke-width="5" />
-    </g>
-
-    <g fill="#ffffff" opacity="0.92">
-      <g transform="translate(${width * 0.16} ${Math.round(sceneTop + (horizon - sceneTop) * 0.29)})">
-        <circle cx="0" cy="0" r="30" /><circle cx="34" cy="8" r="24" /><circle cx="-32" cy="10" r="22" />
-        <rect x="-32" y="0" width="66" height="22" rx="11" />
-      </g>
-      <g transform="translate(${width * 0.55} ${Math.round(sceneTop + (horizon - sceneTop) * 0.19)})">
-        <circle cx="0" cy="0" r="24" /><circle cx="28" cy="6" r="19" /><circle cx="-26" cy="8" r="17" />
-        <rect x="-26" y="0" width="54" height="18" rx="9" />
-      </g>
-    </g>
+    <rect x="0" y="${skyTop}" width="${width}" height="${height - skyTop}" fill="url(#sky)" />
+    ${trayBand}
+    ${skyFurniture}
 
     ${bandMarkup}
     ${crests}

@@ -5,13 +5,10 @@
 import type { Point } from "./geometry";
 import { replayArrow } from "./icons";
 import type { Layout } from "./layout";
+import { prefersReducedMotion } from "./motion";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const SPARKLE_COLOURS = ["#ffd23f", "#ff8fa3", "#8ce0ff", "#c9a7f5", "#ffffff"];
-
-const prefersReducedMotion = (): boolean =>
-  typeof window !== "undefined" &&
-  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
 function sparkle(
   center: Point,

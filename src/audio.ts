@@ -105,6 +105,31 @@ export function playReturn(): void {
   tone({ frequency: 320, duration: 0.14, gain: 0.07, type: "triangle" });
 }
 
+/**
+ * A bubble bursting under a finger. Short, soft and a little high: the sound
+ * has to arrive with the burst rather than after it, so there is no attack to
+ * speak of and nothing to wait for. `pitch` multiplies it, so a screenful of
+ * bubbles does not pop on one note.
+ */
+export function playPop(pitch = 1): void {
+  tone({ frequency: 720 * pitch, duration: 0.09, gain: 0.13 });
+  tone({ frequency: 1080 * pitch, delay: 0.02, duration: 0.11, gain: 0.06 });
+}
+
+/**
+ * One note of a pentatonic scale, for something in a cause-and-effect level
+ * answering a touch. Pentatonic because there is no wrong note in it: whichever
+ * order a toddler pokes the scene in, what comes back is in tune.
+ */
+const PLINK_NOTES = [523.25, 587.33, 659.25, 783.99, 880];
+
+/** One note back, for a thing that has just answered a finger. */
+export function playPlink(step = 0): void {
+  const notes = PLINK_NOTES.length;
+  const note = PLINK_NOTES[((step % notes) + notes) % notes] as number;
+  tone({ frequency: note, duration: 0.22, gain: 0.12 });
+}
+
 /** Rising arpeggio when a puzzle is finished; longer for the last level. */
 export function playFanfare(grand = false): void {
   const notes = grand
