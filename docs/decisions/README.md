@@ -37,3 +37,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260729T072100-the-game-opens-with-something-to-touch](20260729T072100-the-game-opens-with-something-to-touch.md) | Open the game with something to touch |
 | [20260729T072100-reduced-motion-holds-still](20260729T072100-reduced-motion-holds-still.md) | Hold a floater still under reduced motion |
 | [20260729T090200-two-shapes-the-same-are-the-same-piece](20260729T090200-two-shapes-the-same-are-the-same-piece.md) | Let identical shapes fill each other's shadows |
+| [20260729T101500-every-piece-needs-something-in-it](20260729T101500-every-piece-needs-something-in-it.md) | Measure that no piece of a picture is featureless |

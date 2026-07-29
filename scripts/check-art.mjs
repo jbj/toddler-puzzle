@@ -1,6 +1,8 @@
 /**
  * Art contract check.
  *
+ * Two kinds of artwork, checked for two different things.
+ *
  * Every animal SVG has to satisfy a few invariants that are easy to break by
  * hand and annoying to spot by eye. This checks them mechanically:
  *
@@ -16,6 +18,11 @@
  *     glance, because a toddler matches the outline before the detail and a
  *     cast this size is past being judged by eye.
  *
+ * Every picture scene has to satisfy one that cannot be seen in the file at
+ * all: it gets cut into rectangles, and *every* rectangle has to have something
+ * in it. That is measured rather than eyeballed, at every grid the level table
+ * cuts a picture at.
+ *
  *   npm run art:check
  *
  * Needs rsvg-convert and ImageMagick, same as `npm run art`.
@@ -24,6 +31,20 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  gridName,
+  gridsInLevels,
+  MIN_FEATURE,
+  percent as sharePercent,
+  PICTURE_HEIGHT,
+  PICTURE_WIDTH,
+  rasterise,
+  registeredPictures,
+  sceneFiles,
+  scenesDir,
+  scenesInLevels,
+  scoreGrid,
+} from "./pictures.mjs";
 import {
   AREA_TOLERANCE,
   cellMasks,
@@ -385,6 +406,107 @@ for (const file of files) {
 
   checkSliceRecipes(id, silhouette, drawnPng);
 }
+
+// --- the picture scenes ---------------------------------------------------
+
+/**
+ * A scene is not judged on its structure, mostly - `src/pictures.ts` throws on
+ * a scene it cannot safely inline, and `tests/pictures.test.ts` loads every one
+ * of them, so the markup rules have a single home and are already in
+ * `npm run verify`. What is judged here is the thing no amount of reading the
+ * file can tell you: whether the picture survives being cut into rectangles.
+ *
+ * Every grid the level table uses is tried, not only the busiest one. A cell of
+ * a 2x2 board is a quarter of the picture and contains its neighbours' content
+ * too, so it is nearly free to pass; a scene that fails there has a quarter of
+ * itself empty, which is worth knowing separately from a 4x3 piece being thin.
+ */
+function checkScenes() {
+  const scenes = sceneFiles();
+  const registered = registeredPictures();
+  const grids = gridsInLevels();
+
+  if (scenes.length === 0) {
+    console.log("\nscenes");
+    check("there are scenes to cut up", false, `nothing in ${scenesDir}`);
+    return;
+  }
+
+  for (const scene of scenes) {
+    const svg = readFileSync(scene.path, "utf8");
+    console.log(`\n${scene.id} (scene)`);
+
+    const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1];
+    const wanted = `0 0 ${PICTURE_WIDTH} ${PICTURE_HEIGHT}`;
+    check(
+      "uses the picture box",
+      viewBox === wanted,
+      `viewBox is "${viewBox}", wanted "${wanted}"`,
+    );
+
+    check(
+      'wraps its drawing in <g id="scene">',
+      /<g\s+id="scene"\s*>/.test(svg),
+      "everything the picture draws goes inside that one group",
+    );
+
+    check(
+      "is registered in PICTURE_IDS",
+      registered.includes(scene.id),
+      "add it to src/pictures.ts",
+    );
+
+    const raster = rasterise(scene.path, scratch, `scene-${scene.id}`);
+    check(
+      "paints its whole box",
+      raster.opacity === 1,
+      "a gap in the picture becomes a piece with a hole in it - " +
+        "give the scene a background that covers the box",
+    );
+
+    for (const grid of grids) {
+      const cells = scoreGrid(raster.pixels, raster.width, raster.height, grid);
+      const empty = cells.filter((cell) => cell.feature < MIN_FEATURE);
+      const thinnest = cells.reduce((worst, cell) => (cell.feature < worst.feature ? cell : worst));
+      const named = empty
+        .slice(0, 3)
+        .map(
+          (cell) =>
+            `column ${cell.column + 1}, row ${cell.row + 1} is only ` +
+            `${sharePercent(cell.feature)} something`,
+        );
+      if (empty.length > named.length) named.push(`and ${empty.length - named.length} more`);
+      check(
+        `every piece has something in it at ${gridName(grid)}` +
+          ` (thinnest ${sharePercent(thinnest.feature)}` +
+          ` at column ${thinnest.column + 1}, row ${thinnest.row + 1})`,
+        empty.length === 0,
+        `a piece needs ${sharePercent(MIN_FEATURE)}: ${named.join("; ")}` +
+          ` - run \`npm run art -- ${scene.id}\` and look at the ${gridName(grid)} grid`,
+      );
+    }
+  }
+
+  console.log("");
+  const ids = scenes.map((scene) => scene.id);
+  const undrawn = registered.filter((id) => !ids.includes(id));
+  check(
+    "every registered scene has artwork",
+    undrawn.length === 0,
+    `missing: ${undrawn.join(", ")}`,
+  );
+
+  // The level table is allowed to run ahead of the code, but not ahead of the
+  // art: a level naming a scene nobody drew is a level that cannot be played.
+  const unknown = scenesInLevels().filter((id) => !ids.includes(id));
+  check(
+    "every scene the level table names has artwork",
+    unknown.length === 0,
+    `levels ask for: ${unknown.join(", ")}`,
+  );
+}
+
+checkScenes();
 
 const orphans = registered.filter((id) => !files.includes(`${id}.svg`));
 console.log("");

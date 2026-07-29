@@ -1,7 +1,7 @@
 ---
 name: "Artwork"
-description: "The animal SVG contract, the overhang budget, foot levels, reviewing the render, and how to add an animal."
-applyTo: "src/assets/animals/*.svg,src/assets.ts,src/slice-recipes.json,scripts/check-art.mjs,scripts/slices.mjs,scripts/slice-recipes.mjs,scripts/preview.mjs"
+description: "The animal SVG contract, the scene contract for pictures that get cut up, the overhang budget, foot levels, reviewing the render, and how to add either."
+applyTo: "src/assets/animals/*.svg,src/assets/scenes/*.svg,src/assets.ts,src/pictures.ts,src/slice-recipes.json,scripts/check-art.mjs,scripts/pictures.mjs,scripts/slices.mjs,scripts/slice-recipes.mjs,scripts/preview.mjs"
 ---
 
 # Artwork
@@ -10,6 +10,11 @@ Every animal is one hand-authored SVG. `npm run art:check` is the mechanised
 form of everything below, so run it; but it checks that the art obeys the
 contract, not that the art is any good, which is why the steps here begin and
 end with looking at it.
+
+The same is true of a **picture scene** - the whole hand-drawn pictures that a
+later chapter cuts into jigsaw pieces. Their contract is different enough to
+have its own section, [picture scenes](#picture-scenes), near the end; the parts
+about rendering and looking apply to both.
 
 ## You have to look at the render
 
@@ -257,11 +262,89 @@ overhang stays inside its budget. The rule lives in
    start turning up on its own. To change what a level holds, see
    [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 
+## Picture scenes
+
+The animals above are one kind of art in this repository; the other is a
+**scene** - a whole hand-drawn picture that a later chapter cuts into pieces.
+They live in `src/assets/scenes/`, are handed to the game by `src/pictures.ts`,
+and are checked by the same `npm run art:check`.
+
+A scene is a different job from an animal. Nobody looks at a scene; they look at
+a *piece* of one, and the question a two-year-old asks of it is "where does this
+bit go?". So the section above still applies - render it, look at it, expect
+several rounds - and one rule is added that has no equivalent for an animal.
+
+### The scene contract
+
+- **`viewBox="0 0 480 360"`**, exactly. Every grid the level table uses (2x2,
+  3x2, 3x3, 4x3) divides that into whole units, so a piece boundary never lands
+  mid-pixel. `PICTURE_BOX` in `src/pictures.ts` is the same numbers.
+- **One `<g id="scene">` wrapper** around everything drawn. What is inside it is
+  what the game inlines, possibly several times in one document.
+- **Nothing inside may carry an `id`**, and nothing may point outside itself: no
+  `href`, no `url(...)`, no `<image>`, `<use>`, `<script>` or `<foreignObject>`,
+  and no `<defs>`, gradients, clip paths, masks or filters. Two scenes inlined
+  into one page must not be able to collide, and a piece must not be able to
+  depend on markup that the cutter did not copy. In practice this means flat
+  filled shapes, which is what a toddler's picture wants anyway.
+- **No text.** The player cannot read.
+- **The whole box is painted, opaquely.** A transparent patch becomes a piece
+  with a hole in it.
+- **No detail so fine it vanishes at piece size.** A hairline or a two-unit dot
+  is invisible on a 4x3 piece; it costs authoring effort and buys nothing.
+- **Something in every piece.** This is the one that fails, and it has its own
+  heading below.
+
+`src/pictures.ts` enforces the markup rules and throws on a scene it cannot hand
+out safely; `npm run art:check` enforces the box, the wrapper, the registration
+and everything only pixels can answer.
+
+### Every piece has to have something in it
+
+`npm run art:check` cuts each scene at **every grid the level table uses** and
+measures each cell: it finds the colour the cell is mostly made of and counts
+how much of the cell is more than a little different from it. A cell under
+**10%** fails, and the check names the column and row.
+
+The measurement is deliberately coarse - the render is averaged down to 240x180
+before anything is counted - because that is how the "no fine detail" rule is
+enforced rather than merely stated. A speck cannot carry a piece.
+
+**When it fails, the fix is the picture.** Open `npm run art -- <scene>`, look
+at the render with the grid over it, find the named cell and put something in
+it: one big flat shape in a colour the background is not. A cloud, a bird, a
+bush, a stone. Do not lower the floor, do not add a gradient - a gradient
+"passes" nothing here on purpose - and do not add fine detail, which the
+measurement cannot see and neither can the child. The reasoning is [decision
+20260729T101500](../../docs/decisions/20260729T101500-every-piece-needs-something-in-it.md).
+
+The thing to keep in mind while drawing is that a big empty sky, a big empty
+sea, or a big empty field is the enemy. Spread the interest to the corners.
+
+### Adding a scene
+
+1. Draw `src/assets/scenes/<id>.svg` to the contract above. Start by deciding
+   what lives in each of the twelve cells of a 4x3 grid, not by drawing a
+   landscape and hoping.
+2. Register the id in `PICTURE_IDS` and `SOURCES` in `src/pictures.ts`, with a
+   label a grown-up would recognise.
+3. Render it and look: `npm run art -- <id>` writes `.art/<id>-large.png` plus
+   one image per grid with the cut lines drawn over it. Judge the picture, then
+   judge each piece of it on its own.
+4. Compare it with the others: `npm run art -- scenes`, then open
+   `.art/scene-sheet.png`.
+5. Run `npm run art:check`. It reports the thinnest cell of every grid, so it is
+   also the tool for telling how much room a scene has left.
+
+A scene the level table does not name is allowed - the library may run ahead of
+the ramp - but a scene the table *does* name must exist, and the check says so.
+
 ## Before calling art finished
 
 - run `npm run art:check`;
 - run `npm run art -- <name>` and actually look at the large render - the current
-  one, from after your last edit;
+  one, from after your last edit (for a scene, `npm run art -- <id>`, and look at
+  the gridded renders as well as the plain one);
 - read it against the pitfalls above: one consistent viewpoint, marks that meet
   the outline where they are meant to, even margins where they are meant to be
   even;
@@ -275,5 +358,8 @@ it rasterises each animal and checks that nothing is clipped by the art box,
 that no undeclared detail strays outside the silhouette and declared overhangs
 stay within budget, that `FOOT_LEVEL` matches where the feet actually are, that no two animals in one
 theme read the same at a glance, and that every committed slice recipe still
-cuts the animal it was measured from into whole, fair, grabbable pieces.
+cuts the animal it was measured from into whole, fair, grabbable pieces. It
+rasterises each scene too, and checks that it uses the picture box, paints all
+of it, and has something in every piece at every grid the level table cuts it
+at.
 It needs `rsvg-convert` and ImageMagick, the same tools `npm run art` uses.

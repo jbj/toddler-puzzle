@@ -38,9 +38,11 @@ export default tseslint.config(
   },
 
   // The review and check harnesses are plain Node scripts, not part of the
-  // bundle, so they are linted without type information.
+  // bundle, so they are linted without type information. A test written as
+  // `.mjs` is here for the same reason: it exercises one of those scripts,
+  // which the game's tsconfig does not cover.
   {
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "tests/**/*.mjs"],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: globals.node,

@@ -6,6 +6,7 @@ package-lock.json
 # The animal SVGs are hand-authored and laid out for reading as artwork.
 # `npm run art:check` is what keeps them honest, not a formatter.
 src/assets/animals
+src/assets/scenes
 
 # The prose is hand-wrapped and deliberately worded. Reflowing tables and
 # swapping *emphasis* for _emphasis_ costs readability and gains nothing.

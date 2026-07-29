@@ -62,6 +62,17 @@ sends the displaced petal to the shadow that was freed. Being told "no" for a
 correct move is the one thing this game never does. See
 [decision 20260729T090200](docs/decisions/20260729T090200-two-shapes-the-same-are-the-same-piece.md).
 
+**There are pictures waiting to be cut up.** Levels 21-30 want jigsaws, and a
+jigsaw needs a picture: four hand-drawn scenes - a farmyard, a rockpool, a
+jungle path, a night sky - are drawn and checked, ahead of the code that cuts
+them. The hard part is not drawing a nice picture, it is drawing one whose
+*pieces* are all worth looking at: a lovely wide beach cuts into four squares of
+identical blue, and a two-year-old holding one of them has been given a puzzle
+with no information in it. So `npm run art:check` cuts each scene at every grid
+the level table uses and fails any piece that is more or less all one colour,
+naming the row and column. See
+[decision 20260729T101500](docs/decisions/20260729T101500-every-piece-needs-something-in-it.md).
+
 **It picks up where it left off.** Thirty levels is more than one sitting, so
 the level being played is kept in `localStorage` and the next visit resumes
 there. A browser that will not store anything - private browsing on an iPad

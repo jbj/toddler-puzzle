@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" width="480" height="360">
+  <!--
+    Rockpool. Three broad bands - sky, sea, sand - and one big thing standing in
+    every quarter of them, because a band on its own cuts into pieces that are
+    all the same stripe.
+  -->
+  <g id="scene">
+    <!-- sky, sea, wet sand, dry sand -->
+    <rect x="0" y="0" width="480" height="136" fill="#b9e3ff" />
+    <rect x="0" y="130" width="480" height="92" fill="#2f8fd0" />
+    <rect x="0" y="214" width="480" height="146" fill="#f2e2b6" />
+    <path d="M0 218 C60 236 120 210 180 224 C240 238 300 214 360 226 C410 236 450 220 480 214 L480 246 L0 246 Z" fill="#ddc793" />
+
+    <!-- waves -->
+    <g fill="none" stroke="#8fd0f2" stroke-width="7" stroke-linecap="round">
+      <path d="M26 152 C46 142 66 162 88 152" />
+      <path d="M232 148 C252 138 272 158 294 148" />
+      <path d="M118 194 C140 184 160 204 182 194" />
+      <path d="M320 190 C342 180 362 200 384 190" />
+    </g>
+
+    <!-- sun, top left -->
+    <circle cx="66" cy="54" r="38" fill="#ffd63d" stroke="#e8a81c" stroke-width="5" />
+
+    <!-- kite, top middle -->
+    <path d="M186 22 L222 62 L186 106 L150 62 Z" fill="#ef6f8e" stroke="#c94b6c" stroke-width="5" />
+    <path d="M186 22 L186 106" stroke="#c94b6c" stroke-width="4" />
+    <path d="M186 106 C178 114 196 118 188 128" fill="none" stroke="#7d5433" stroke-width="5" />
+    <ellipse cx="180" cy="112" rx="10" ry="7" fill="#ffd63d" />
+    <ellipse cx="194" cy="122" rx="10" ry="7" fill="#ffd63d" />
+
+    <!-- cloud, top middle right -->
+    <g fill="#ffffff">
+      <ellipse cx="300" cy="52" rx="42" ry="24" />
+      <circle cx="274" cy="50" r="20" />
+      <circle cx="324" cy="44" r="24" />
+    </g>
+
+    <!-- lighthouse, right -->
+    <path d="M412 96 L458 96 L468 224 L402 224 Z" fill="#f5f2ea" stroke="#b9b2a2" stroke-width="4" />
+    <path d="M414 116 L456 116 L459 148 L411 148 Z" fill="#d9534f" />
+    <path d="M418 168 L462 168 L465 200 L415 200 Z" fill="#d9534f" />
+    <rect x="408" y="80" width="54" height="20" rx="6" fill="#3b4a5a" />
+    <rect x="418" y="52" width="34" height="30" fill="#ffd63d" stroke="#3b4a5a" stroke-width="5" />
+    <path d="M404 48 L466 48 L448 30 L422 30 Z" fill="#3b4a5a" />
+
+    <!-- boat on the water -->
+    <path d="M118 196 L242 196 L222 224 L138 224 Z" fill="#d9534f" stroke="#9c3a32" stroke-width="5" />
+    <rect x="174" y="128" width="10" height="68" fill="#7d5433" />
+    <path d="M188 132 L230 190 L188 190 Z" fill="#ffffff" stroke="#b9b2a2" stroke-width="4" />
+    <path d="M170 140 L134 190 L170 190 Z" fill="#ffd63d" stroke="#e8a81c" stroke-width="4" />
+
+    <!-- rock in the water -->
+    <path d="M286 200 C292 176 316 168 332 180 C348 172 366 186 362 202 Z" fill="#a2aab4" stroke="#7c848f" stroke-width="4" />
+
+    <!-- rockpool, bottom left -->
+    <ellipse cx="62" cy="300" rx="76" ry="46" fill="#59c0e0" stroke="#2f8fd0" stroke-width="5" />
+    <ellipse cx="40" cy="288" rx="28" ry="13" fill="#9adcf0" />
+    <g fill="#a2aab4" stroke="#7c848f" stroke-width="4">
+      <ellipse cx="18" cy="252" rx="34" ry="22" />
+      <ellipse cx="104" cy="262" rx="32" ry="20" />
+      <ellipse cx="128" cy="330" rx="30" ry="22" />
+    </g>
+    <circle cx="52" cy="308" r="12" fill="#f2745f" />
+
+    <!-- starfish, bottom middle -->
+    <path
+      d="M196 250 L214 292 L258 296 L224 324 L234 350 L196 330 L158 350 L168 324 L134 296 L178 292 Z"
+      fill="#f2745f"
+      stroke="#c4503c"
+      stroke-width="5"
+      stroke-linejoin="round"
+    />
+    <circle cx="196" cy="304" r="10" fill="#ffc9b6" />
+
+    <!-- bucket and spade, bottom middle right -->
+    <path d="M272 272 L340 272 L330 340 L282 340 Z" fill="#e05a4f" stroke="#a83c34" stroke-width="5" />
+    <rect x="268" y="262" width="76" height="14" rx="7" fill="#f7897f" stroke="#a83c34" stroke-width="4" />
+    <path d="M352 344 L352 286" stroke="#7d5433" stroke-width="9" stroke-linecap="round" />
+    <path d="M338 288 L368 288 L360 262 L346 262 Z" fill="#ffd63d" stroke="#e8a81c" stroke-width="4" />
+
+    <!-- shells and a crab, bottom right -->
+    <path d="M398 342 C398 314 416 296 438 296 C460 296 478 314 478 342 Z" fill="#ffd0bd" stroke="#d99c85" stroke-width="5" />
+    <g fill="none" stroke="#d99c85" stroke-width="4">
+      <path d="M438 296 L410 340" />
+      <path d="M438 296 L438 342" />
+      <path d="M438 296 L466 340" />
+    </g>
+    <!-- crab, sitting on the sand where the wet ends -->
+    <g stroke="#b34526" stroke-width="6" stroke-linecap="round">
+      <path d="M398 264 L378 282" />
+      <path d="M406 270 L392 292" />
+      <path d="M450 264 L470 282" />
+      <path d="M442 270 L456 292" />
+      <path d="M396 248 L374 252" />
+      <path d="M452 248 L474 252" />
+    </g>
+    <circle cx="370" cy="256" r="13" fill="#e5673b" stroke="#b34526" stroke-width="5" />
+    <circle cx="478" cy="256" r="13" fill="#e5673b" stroke="#b34526" stroke-width="5" />
+    <ellipse cx="424" cy="248" rx="38" ry="25" fill="#e5673b" stroke="#b34526" stroke-width="5" />
+    <circle cx="412" cy="240" r="6" fill="#2b3440" />
+    <circle cx="436" cy="240" r="6" fill="#2b3440" />
+    <path d="M410 258 C418 264 430 264 438 258" fill="none" stroke="#b34526" stroke-width="4" stroke-linecap="round" />
+  </g>
+</svg>

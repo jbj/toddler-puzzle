@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" width="480" height="360">
+  <!--
+    Night sky. The scene most at risk of cutting into featureless pieces - a
+    night sky is one colour with specks in it - so nothing here is a speck. The
+    stars are as big as a fingertip on the board, the moon fills a piece on its
+    own, and the darks are kept far enough apart in colour to be told apart by
+    somebody who cannot yet name any of them.
+  -->
+  <g id="scene">
+    <!-- the sky, and the ground under it -->
+    <rect x="0" y="0" width="480" height="360" fill="#1f2a5c" />
+
+    <!-- moon, top right -->
+    <circle cx="420" cy="64" r="46" fill="#f7f0c8" />
+    <g fill="#e4d9a4">
+      <circle cx="404" cy="50" r="11" />
+      <circle cx="436" cy="78" r="9" />
+      <circle cx="430" cy="40" r="6" />
+    </g>
+
+    <!-- stars, big enough to be a piece's worth of something -->
+    <g fill="#ffe58a">
+      <path d="M44.0 16.0 L50.5 33.1 L68.7 34.0 L54.5 45.4 L59.3 63.0 L44.0 53.0 L28.7 63.0 L33.5 45.4 L19.3 34.0 L37.5 33.1 Z" />
+      <path d="M98.0 70.0 L102.7 81.5 L115.1 82.4 L105.6 90.5 L108.6 102.6 L98.0 96.0 L87.4 102.6 L90.4 90.5 L80.9 82.4 L93.3 81.5 Z" />
+      <path d="M28.0 89.0 L31.5 99.1 L42.3 99.4 L33.7 105.9 L36.8 116.1 L28.0 110.0 L19.2 116.1 L22.3 105.9 L13.7 99.4 L24.5 99.1 Z" />
+      <path d="M96.0 4.0 L101.3 16.7 L115.0 17.8 L104.6 26.8 L107.8 40.2 L96.0 33.0 L84.2 40.2 L87.4 26.8 L77.0 17.8 L90.7 16.7 Z" />
+      <path d="M152.0 20.0 L157.9 35.9 L174.8 36.6 L161.5 47.1 L166.1 63.4 L152.0 54.0 L137.9 63.4 L142.5 47.1 L129.2 36.6 L146.1 35.9 Z" />
+      <path d="M210.0 60.0 L214.7 71.5 L227.1 72.4 L217.6 80.5 L220.6 92.6 L210.0 86.0 L199.4 92.6 L202.4 80.5 L192.9 72.4 L205.3 71.5 Z" />
+      <path d="M178.0 86.0 L182.1 96.3 L193.2 97.1 L184.7 104.2 L187.4 114.9 L178.0 109.0 L168.6 114.9 L171.3 104.2 L162.8 97.1 L173.9 96.3 Z" />
+      <path d="M138.0 91.0 L141.5 101.1 L152.3 101.4 L143.7 107.9 L146.8 118.1 L138.0 112.0 L129.2 118.1 L132.3 107.9 L123.7 101.4 L134.5 101.1 Z" />
+      <path d="M198.0 1.0 L202.1 12.3 L214.2 12.7 L204.7 20.2 L208.0 31.8 L198.0 25.0 L188.0 31.8 L191.3 20.2 L181.8 12.7 L193.9 12.3 Z" />
+      <path d="M286.0 86.0 L290.1 96.3 L301.2 97.1 L292.7 104.2 L295.4 114.9 L286.0 109.0 L276.6 114.9 L279.3 104.2 L270.8 97.1 L281.9 96.3 Z" />
+      <path d="M296.0 106.0 L299.5 115.1 L309.3 115.7 L301.7 121.9 L304.2 131.3 L296.0 126.0 L287.8 131.3 L290.3 121.9 L282.7 115.7 L292.5 115.1 Z" />
+      <path d="M366.0 126.0 L369.5 135.1 L379.3 135.7 L371.7 141.9 L374.2 151.3 L366.0 146.0 L357.8 151.3 L360.3 141.9 L352.7 135.7 L362.5 135.1 Z" />
+    </g>
+
+    <!-- a cloud drifting under the stars -->
+    <g fill="#5a6aa8">
+      <ellipse cx="304" cy="46" rx="52" ry="24" />
+      <circle cx="268" cy="44" r="22" />
+      <circle cx="334" cy="36" r="26" />
+    </g>
+
+    <!-- the ground -->
+    <path d="M0 250 C60 238 108 258 176 250 C244 242 300 262 356 252 C412 242 450 232 480 226 L480 360 L0 360 Z" fill="#2d4a35" />
+
+    <!-- pine tree, left -->
+    <rect x="52" y="206" width="18" height="52" fill="#6b5138" />
+    <path d="M61 120 L98 186 L24 186 Z" fill="#2f6b45" />
+    <path d="M61 154 L104 218 L18 218 Z" fill="#3a8253" />
+
+    <!-- cottage, middle, with the lights on -->
+    <rect x="134" y="182" width="126" height="86" fill="#e8dcc0" stroke="#b9ab8c" stroke-width="4" />
+    <path d="M120 186 L197 128 L274 186 Z" fill="#8c4a4a" stroke="#6d2c2c" stroke-width="4" />
+    <rect x="184" y="216" width="34" height="52" fill="#8c4a4a" stroke="#6d2c2c" stroke-width="4" />
+    <rect x="146" y="202" width="28" height="28" fill="#ffd63d" stroke="#b98f1c" stroke-width="4" />
+    <rect x="228" y="202" width="28" height="28" fill="#ffd63d" stroke="#b98f1c" stroke-width="4" />
+    <rect x="238" y="142" width="18" height="34" fill="#8c4a4a" />
+
+    <!-- small tree beside the cottage -->
+    <rect x="330" y="212" width="16" height="48" fill="#6b5138" />
+    <circle cx="338" cy="196" r="38" fill="#2f6b45" />
+    <circle cx="312" cy="212" r="22" fill="#3a8253" />
+
+    <!-- big tree, right, with an owl in it -->
+    <rect x="428" y="204" width="20" height="58" fill="#6b5138" />
+    <circle cx="438" cy="180" r="42" fill="#2f6b45" />
+    <circle cx="404" cy="200" r="26" fill="#3a8253" />
+    <ellipse cx="438" cy="186" rx="22" ry="26" fill="#c99a5e" stroke="#8f6a38" stroke-width="4" />
+    <g fill="#f7f0c8">
+      <circle cx="430" cy="176" r="8" />
+      <circle cx="447" cy="176" r="8" />
+    </g>
+    <g fill="#2b3440">
+      <circle cx="430" cy="176" r="4" />
+      <circle cx="447" cy="176" r="4" />
+    </g>
+    <path d="M433 186 L443 186 L438 195 Z" fill="#e8a81c" />
+
+    <!-- pond, with the moon in it -->
+    <ellipse cx="58" cy="308" rx="74" ry="42" fill="#2b5f8f" stroke="#1d4468" stroke-width="5" />
+    <ellipse cx="44" cy="298" rx="24" ry="11" fill="#cfe0f5" />
+    <ellipse cx="70" cy="322" rx="34" ry="8" fill="#7fb0da" />
+
+    <!-- fence, and bushes beside the path -->
+    <g fill="#7d6a52" stroke="#5b4c3a" stroke-width="4">
+      <rect x="268" y="284" width="16" height="66" />
+      <rect x="322" y="284" width="16" height="66" />
+      <rect x="376" y="284" width="16" height="66" />
+      <rect x="260" y="296" width="140" height="14" />
+      <rect x="260" y="326" width="140" height="14" />
+    </g>
+    <g fill="#4e8455">
+      <ellipse cx="152" cy="322" rx="44" ry="30" />
+      <ellipse cx="212" cy="336" rx="34" ry="24" />
+      <ellipse cx="446" cy="318" rx="42" ry="30" />
+    </g>
+    <g fill="#f7f0c8">
+      <circle cx="140" cy="310" r="9" />
+      <circle cx="172" cy="326" r="8" />
+      <circle cx="446" cy="306" r="9" />
+      <circle cx="466" cy="330" r="8" />
+    </g>
+  </g>
+</svg>

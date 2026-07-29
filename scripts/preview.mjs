@@ -8,14 +8,23 @@
  *
  *   node scripts/preview.mjs           every animal, as a contact sheet
  *   node scripts/preview.mjs rabbit    one animal, large enough to judge detail
+ *   node scripts/preview.mjs scenes    every picture scene, with its cut grid
+ *   node scripts/preview.mjs farmyard  one scene, large, at every grid
  *
  * The contact sheet is too small to see whether details line up with the
  * outline; review a single animal large before calling its art finished.
+ *
+ * A scene is reviewed the same way and for the same reason, but what has to be
+ * looked at is different: a scene is cut into rectangles, so it is drawn with
+ * the cut lines over it and judged a cell at a time. A cell with nothing in it
+ * is a piece a child cannot place, which `npm run art:check` measures - this is
+ * where you see what the measurement meant.
  */
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { gridName, gridsInLevels, sceneFiles, withGrid } from "./pictures.mjs";
 import { magick, requireArtTools, rsvg } from "./tools.mjs";
 
 requireArtTools();
@@ -38,11 +47,84 @@ function silhouetteOnly(svg) {
   return svg.slice(0, openTagEnd + 1) + style + svg.slice(openTagEnd + 1);
 }
 
-function render(svgText, outPath, background) {
+function render(svgText, outPath, background, width, height) {
   const tmp = join(outDir, "_tmp.svg");
   writeFileSync(tmp, svgText);
-  rsvg(["-w", String(CELL), "-h", String(CELL), "-b", background, tmp, "-o", outPath]);
+  rsvg([
+    "-w",
+    String(width ?? CELL),
+    "-h",
+    String(height ?? CELL),
+    "-b",
+    background,
+    tmp,
+    "-o",
+    outPath,
+  ]);
 }
+
+// --- scenes ---------------------------------------------------------------
+
+/**
+ * The picture scenes, drawn with the grid they get cut at.
+ *
+ * One scene is shown large and once per grid, because a scene that works at
+ * 2x2 can still hand out an empty piece at 4x3; the whole set is shown at the
+ * busiest grid only, which is the one that decides.
+ */
+function reviewScenes(wanted) {
+  const scenes = sceneFiles().filter((scene) => wanted === "scenes" || scene.id === wanted);
+  const grids = gridsInLevels();
+  const busiest = grids[grids.length - 1];
+  const width = wanted === "scenes" ? 480 : 760;
+  const height = (width * 3) / 4;
+  const columns = [];
+
+  for (const scene of scenes) {
+    const svg = readFileSync(scene.path, "utf8");
+    const views = [];
+    const draw = (text, name) => {
+      const png = join(outDir, `${scene.id}-${name}.png`);
+      render(text, png, "#ffffff", width, height);
+      views.push(png);
+      return png;
+    };
+    draw(svg, "plain");
+    for (const grid of wanted === "scenes" ? [busiest] : grids) {
+      draw(withGrid(svg, grid), `grid-${gridName(grid)}`);
+    }
+
+    const column = join(outDir, `${scene.id}-scene.png`);
+    magick([
+      "-background",
+      "white",
+      "-fill",
+      "#333",
+      "-pointsize",
+      "24",
+      `label:${scene.id}`,
+      ...views,
+      "-append",
+      column,
+    ]);
+    columns.push(column);
+  }
+
+  if (columns.length === 0) {
+    console.error(`No scene named "${wanted}" in ${join(root, "src/assets/scenes")}`);
+    process.exit(1);
+  }
+  const sheet = join(outDir, wanted === "scenes" ? "scene-sheet.png" : `${wanted}-large.png`);
+  magick([...columns, "+append", "-bordercolor", "white", "-border", "8", sheet]);
+  console.log(sheet);
+}
+
+if (only && (only === "scenes" || sceneFiles().some((scene) => scene.id === only))) {
+  reviewScenes(only);
+  process.exit(0);
+}
+
+// --- animals --------------------------------------------------------------
 
 const files = readdirSync(animalsDir)
   .filter((f) => f.endsWith(".svg"))

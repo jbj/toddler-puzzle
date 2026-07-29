@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" width="480" height="360">
+  <!--
+    Jungle path. The hard scene of the four: a jungle is green everywhere, and
+    green everywhere cuts into pieces nobody can tell apart. So the greens are
+    kept few and far apart - a dark canopy, a light understorey, a mid ground -
+    and every piece is given something that is not green: a trunk, the path, a
+    flower, a patch of sky.
+  -->
+  <g id="scene">
+    <!-- canopy, understorey, ground -->
+    <rect x="0" y="0" width="480" height="360" fill="#7ec24f" />
+    <rect x="0" y="0" width="480" height="126" fill="#2f6b3a" />
+    <path d="M0 236 C60 224 110 244 176 238 C242 232 296 250 356 242 C410 234 448 222 480 216 L480 360 L0 360 Z" fill="#5f9a4a" />
+
+    <!-- a gap in the canopy, with the sky and the sun through it -->
+    <ellipse cx="176" cy="46" rx="60" ry="40" fill="#bfe6ff" />
+    <circle cx="176" cy="42" r="24" fill="#ffe58a" />
+
+    <!-- canopy leaves, hanging into the gap and along the top -->
+    <g fill="#2f6b3a">
+      <ellipse cx="30" cy="120" rx="44" ry="26" />
+      <ellipse cx="196" cy="124" rx="46" ry="24" />
+      <ellipse cx="360" cy="122" rx="50" ry="26" />
+      <ellipse cx="466" cy="118" rx="38" ry="22" />
+    </g>
+    <g fill="#4e9a51">
+      <ellipse cx="44" cy="96" rx="46" ry="26" />
+      <ellipse cx="128" cy="82" rx="40" ry="24" />
+      <ellipse cx="232" cy="88" rx="42" ry="24" />
+      <ellipse cx="326" cy="72" rx="48" ry="28" />
+      <ellipse cx="432" cy="94" rx="50" ry="28" />
+    </g>
+    <g fill="#7ec24f">
+      <ellipse cx="80" cy="58" rx="38" ry="22" />
+      <ellipse cx="286" cy="34" rx="44" ry="24" />
+      <ellipse cx="398" cy="44" rx="40" ry="22" />
+      <ellipse cx="18" cy="26" rx="36" ry="22" />
+    </g>
+
+    <!-- a hanging vine with a fruit on it, right of the gap -->
+    <path d="M250 96 C244 124 258 142 252 170" fill="none" stroke="#3d7b40" stroke-width="7" stroke-linecap="round" />
+    <circle cx="252" cy="182" r="19" fill="#f2903c" stroke="#c26a1e" stroke-width="4" />
+
+    <!-- a bird on the canopy edge, top right -->
+    <ellipse cx="430" cy="34" rx="30" ry="20" fill="#ef6f8e" stroke="#c94b6c" stroke-width="4" />
+    <circle cx="456" cy="24" r="13" fill="#ef6f8e" stroke="#c94b6c" stroke-width="4" />
+    <path d="M466 22 L480 28 L466 34 Z" fill="#ffd63d" />
+    <circle cx="458" cy="21" r="4" fill="#2b3440" />
+    <path d="M406 40 C414 56 434 58 442 46 Z" fill="#4f9fd4" />
+
+    <!-- distant trunks, so the understorey is not a flat band -->
+    <g fill="#6b9a52">
+      <rect x="206" y="126" width="16" height="104" />
+      <rect x="440" y="126" width="14" height="100" />
+    </g>
+
+    <!-- big trees -->
+    <rect x="34" y="112" width="42" height="126" fill="#8a5a3b" />
+    <path d="M34 220 C22 232 14 240 8 246 L96 246 C88 238 82 230 76 220 Z" fill="#6b4429" />
+    <rect x="292" y="104" width="38" height="132" fill="#8a5a3b" />
+    <path d="M292 220 C282 230 274 238 268 244 L352 244 C346 238 340 230 330 220 Z" fill="#6b4429" />
+
+    <!-- ferns and bushes in the understorey -->
+    <g fill="#3d7b40">
+      <ellipse cx="150" cy="196" rx="48" ry="34" />
+      <ellipse cx="212" cy="212" rx="36" ry="26" />
+      <ellipse cx="410" cy="188" rx="52" ry="38" />
+      <ellipse cx="462" cy="214" rx="34" ry="26" />
+    </g>
+    <g fill="#4e9a51">
+      <ellipse cx="122" cy="176" rx="30" ry="20" />
+      <ellipse cx="386" cy="164" rx="32" ry="20" />
+    </g>
+
+    <!-- a big flower on the bush, middle -->
+    <g fill="#ef6f8e" stroke="#c94b6c" stroke-width="4">
+      <circle cx="150" cy="152" r="18" />
+      <circle cx="182" cy="166" r="18" />
+      <circle cx="170" cy="196" r="18" />
+      <circle cx="136" cy="190" r="18" />
+      <circle cx="126" cy="162" r="18" />
+    </g>
+    <circle cx="154" cy="174" r="18" fill="#ffd63d" stroke="#e8a81c" stroke-width="4" />
+
+    <!-- the path, crossing the whole floor -->
+    <path
+      d="M0 300 C70 292 110 268 176 262 C246 256 300 274 360 268 C412 262 448 244 480 232 L480 288 C444 300 410 320 356 326 C296 332 240 314 178 320 C114 326 66 348 0 356 Z"
+      fill="#dcb877"
+      stroke="#c49b5c"
+      stroke-width="5"
+    />
+
+    <!-- stones on the path, and things growing beside it -->
+    <ellipse cx="86" cy="326" rx="30" ry="18" fill="#a2aab4" stroke="#7c848f" stroke-width="4" />
+    <ellipse cx="266" cy="296" rx="26" ry="16" fill="#a2aab4" stroke="#7c848f" stroke-width="4" />
+
+    <!-- mushrooms, bottom middle -->
+    <rect x="196" y="332" width="16" height="26" fill="#f2e2b6" />
+    <path d="M172 336 C172 314 190 300 204 300 C218 300 236 314 236 336 Z" fill="#d9534f" stroke="#a83c34" stroke-width="4" />
+    <g fill="#ffffff">
+      <circle cx="192" cy="320" r="7" />
+      <circle cx="216" cy="316" r="6" />
+    </g>
+
+    <!-- leafy flowers, bottom right -->
+    <g stroke="#3d7b40" stroke-width="7" stroke-linecap="round">
+      <path d="M400 358 L400 322" />
+      <path d="M440 356 L440 306" />
+    </g>
+    <circle cx="400" cy="314" r="18" fill="#ffd63d" stroke="#e8a81c" stroke-width="4" />
+    <circle cx="440" cy="298" r="20" fill="#f2f2f2" stroke="#c9c9c9" stroke-width="4" />
+    <circle cx="440" cy="298" r="8" fill="#ffd63d" />
+  </g>
+</svg>

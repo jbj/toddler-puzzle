@@ -116,6 +116,21 @@ is injected, so none of it needs a browser; the DOM-facing ends are covered by
 `npm run shot`, which reloads the page and checks the game comes back where it
 was.
 
+`tests/pictures.test.ts` covers the jigsaw scene library: that every registered
+scene loads and comes back with artwork safe to inline more than once in one
+document, that every scene the level table names resolves to one, that an
+unknown id throws saying which id, and that the picture box divides evenly by
+every grid the table cuts at - the property the whole cutter rests on.
+
+`tests/scene-cells.test.mjs` covers the measure behind "every piece has
+something in it", which is the one piece of real logic in the art scripts. It is
+written as plain ESM rather than TypeScript because it imports
+`scripts/pictures.mjs`, which the game's tsconfig does not cover. It feeds the
+measure pixels rather than pictures: a flat wash scores nothing, two halves
+score a half, a speck scores a speck, two shades of the same green score nothing
+(the measure is not a variance, on purpose), and the cut tiles the box exactly
+once with no pixel counted twice or missed.
+
 `tests/grownups.test.ts` covers the two parts of the grown-up panel that do not
 need a browser: the hold that opens it, and the level map. The hold is a state
 machine with the clock passed in, so two hundred taps - none of which may open

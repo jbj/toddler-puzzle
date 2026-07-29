@@ -35,8 +35,8 @@ expecting the formatter to.
 | `npm run build` | Type-check, then production build into `dist/` |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run docs:check` | Checks that every cross-reference between Markdown files still resolves |
-| `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large |
-| `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level), that no two in one theme read alike, and that its committed slice recipes still cut it well |
+| `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large; `npm run art -- scenes` renders the picture scenes, and `npm run art -- farmyard` one scene with its cut grids over it |
+| `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level), that no two in one theme read alike, and that its committed slice recipes still cut it well; and every scene against the scene contract, including that no piece of it is featureless at any grid the levels cut at |
 | `npm run art:slices` | Re-measures where every animal is cut and rewrites `src/slice-recipes.json`. Run it after redrawing an animal |
 | `npm run shot` | Drives real drags in headless Chromium and screenshots the result (run `npm run build` first) |
 | `npm run shot:sheet` | Rebuilds `.art/shots/contact-sheet.png` from the last run's screenshots |
@@ -64,13 +64,15 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/slices.ts` | Rebuilds a slice's cell from a recipe, and cuts an animal into pieces |
 | `src/slice-recipes.json` | Where each animal is cut, measured offline and committed |
 | `src/kinds/polygon.ts` | One picture built out of plain shapes, any two the same interchangeable |
-| `src/scenes.ts` | The picture catalogue: geometric forms, generated, and what makes two of them the same |
+| `src/scenes.ts` | The shape-picture catalogue: geometric forms, generated, and what makes two of them the same. Not the jigsaw scenes - those are `src/pictures.ts` |
 | `src/kinds/play.ts` | Cause and effect: the bubbles, the peekaboo bushes and the scene that answers |
 | `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - a chapter celebration bursts balloons with it |
 | `src/motion.ts` | Whether the player asked for less motion. The one place `prefers-reduced-motion` is read |
 | `src/layout.ts` | Composes a level's layout from its cast, and all tunable constants |
 | `src/scenery.ts` | Generates the background for a layout |
 | `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |
+| `src/pictures.ts` | Loads and validates the picture scenes, as artwork safe to inline and cut up |
+| `src/assets/scenes/` | The hand-drawn scenes a jigsaw or shatter level cuts into pieces |
 | `src/board.ts` | Builds the SVG scene graph for one level |
 | `src/icons.ts` | The hand-drawn SVG icons used by the chrome around the puzzle |
 | `src/drag.ts` | Pointer-event drag engine |
@@ -78,8 +80,9 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/grownups.ts` | The grown-up panel: the hold that opens it, the level map, the switches |
 | `src/audio.ts` | Web Audio sound synthesis |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
-| `scripts/preview.mjs` | Renders the art for review, as a contact sheet or one animal large |
-| `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG |
+| `scripts/preview.mjs` | Renders the art for review: a contact sheet, one animal large, or a scene under its cut grids |
+| `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG and every scene |
+| `scripts/pictures.mjs` | Judges a scene from pixels: the grids the levels cut at, and whether every piece has something in it |
 | `scripts/slices.mjs` | Judges a cut from pixels: whole, fair, grabbable. Shared by the two above |
 | `scripts/slice-recipes.mjs` | Searches for where to cut every animal, and writes the table |
 | `scripts/check-docs.mjs` | Enforces that Markdown cross-references resolve |
