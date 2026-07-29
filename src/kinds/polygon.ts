@@ -35,7 +35,7 @@
  * Two parts count as identical when their form and size match, and `scenes.ts`
  * guarantees that two such parts are painted identically as well - otherwise
  * swapping them would change the picture. See
- * [decision 20260730T093000](../../docs/decisions/20260730T093000-two-shapes-the-same-are-the-same-piece.md).
+ * [decision 20260729T090200](../../docs/decisions/20260729T090200-two-shapes-the-same-are-the-same-piece.md).
  */
 import { boxCenter, distance, type Point, type Size } from "../geometry";
 import { boxOf, holeOf, inkSnapRadius, type Layout } from "../layout";

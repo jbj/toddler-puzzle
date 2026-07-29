@@ -140,7 +140,7 @@ shape headed for it. Congruence is geometry alone (`signatureOf`), mirrored
 forms deliberately do not match, and a scene must paint congruent parts
 identically or a swap would change the picture. This is the rule to read before
 touching the kind:
-[decision 20260730T093000](../../docs/decisions/20260730T093000-two-shapes-the-same-are-the-same-piece.md).
+[decision 20260729T090200](../../docs/decisions/20260729T090200-two-shapes-the-same-are-the-same-piece.md).
 
 **Adding a scene** means an entry in `SCENES` and nothing else; `SCENE_SIZES`
 and the level table's piece counts are what decide when it can be dealt. Three

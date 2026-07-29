@@ -34,4 +34,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260729T000652-a-door-for-grown-ups](20260729T000652-a-door-for-grown-ups.md) | Put the settings behind a two-second hold |
 | [20260729T004500-silhouettes-checked-at-a-glance](20260729T004500-silhouettes-checked-at-a-glance.md) | Check silhouettes for distinctness at a glance |
 | [20260729T061500-slices-are-clipped-not-cut](20260729T061500-slices-are-clipped-not-cut.md) | Clip a slice out of an animal rather than cutting one |
-| [20260730T093000-two-shapes-the-same-are-the-same-piece](20260730T093000-two-shapes-the-same-are-the-same-piece.md) | Let identical shapes fill each other's shadows |
+| [20260729T090200-two-shapes-the-same-are-the-same-piece](20260729T090200-two-shapes-the-same-are-the-same-piece.md) | Let identical shapes fill each other's shadows |

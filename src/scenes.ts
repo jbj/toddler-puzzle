@@ -10,7 +10,7 @@
  *
  * A scene is authored inside one 240x240 box, and every part carries that whole
  * box (`kinds/polygon.ts` explains why). Three rules hold for all of them, and
- * `tests/scenes.test.ts` holds them to it:
+ * `tests/polygon.test.ts` holds them to it:
  *
  *  - **parts never overlap.** They may touch and they may leave gaps - the sky
  *    showing between a sail and a hull is fine - but two pieces on top of each
