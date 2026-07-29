@@ -66,16 +66,16 @@ function render(svgText, outPath, background, width, height) {
 // --- scenes ---------------------------------------------------------------
 
 /**
- * The picture scenes, drawn with the grid they get cut at.
+ * The picture scenes, drawn with the grids they get cut at.
  *
- * One scene is shown large and once per grid, because a scene that works at
- * 2x2 can still hand out an empty piece at 4x3; the whole set is shown at the
- * busiest grid only, which is the one that decides.
+ * Every scene is shown whole and then once per grid, on the sheet as well as
+ * on its own, because a scene that works at 2x2 can still hand out an empty
+ * piece at 4x3 - and the piece is what the child is actually given. Only the
+ * scale differs: one scene gets more width to itself than four do.
  */
 function reviewScenes(wanted) {
   const scenes = sceneFiles().filter((scene) => wanted === "scenes" || scene.id === wanted);
   const grids = gridsInLevels();
-  const busiest = grids[grids.length - 1];
   const width = wanted === "scenes" ? 480 : 760;
   const height = (width * 3) / 4;
   const columns = [];
@@ -90,7 +90,7 @@ function reviewScenes(wanted) {
       return png;
     };
     draw(svg, "plain");
-    for (const grid of wanted === "scenes" ? [busiest] : grids) {
+    for (const grid of grids) {
       draw(withGrid(svg, grid), `grid-${gridName(grid)}`);
     }
 

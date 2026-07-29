@@ -273,5 +273,7 @@ export function scoreGrid(pixels, width, height, grid) {
   }));
 }
 
-/** A share, as the whole percent a human can act on. */
-export const percent = (share) => `${(share * 100).toFixed(0)}%`;
+/** A share, as a percent a human can act on - rounded *down*, so a number
+ * printed next to a failure is never flattering: a cell at 9.6% reads "9%"
+ * rather than looking as if it met a floor of 10%. */
+export const percent = (share) => `${Math.floor(share * 100)}%`;

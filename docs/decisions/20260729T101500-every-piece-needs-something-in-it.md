@@ -54,8 +54,8 @@ box is a single blended pixel here and cannot carry a cell on its own.
 corner. Much above it and an honest patch of sky with a cloud in it would be
 banned - and a picture with no sky in it is not a picture. The four scenes drawn
 against this check clear it with room: the tightest cell of the four at 4x3 is
-the night sky's top-left corner at 17%, and the other three sit between 26% and
-31%. The floor is not set from those numbers - it is set from what a piece needs
+the night sky's top-left corner at 16%, and the other three sit between 26% and
+30%. The floor is not set from those numbers - it is set from what a piece needs
 - but the gap between them is what says the floor is a floor rather than a
 ceiling everybody is pressed against.
 
@@ -65,7 +65,7 @@ The check is what made the night sky drawable at all. A night sky is one colour
 with specks in it, which is this failure in its purest form; knowing the number
 turned "draw some stars" into "the stars have to be a fingertip across and there
 have to be several of them in that corner". It is still the tightest scene in
-the library - its worst cell sits at 17% against the others' 26% and up - and it
+the library - its worst cell sits at 16% against the others' 26% and up - and it
 is the one to look at first when a rule here seems excessive.
 
 Two things the check deliberately does not do:
