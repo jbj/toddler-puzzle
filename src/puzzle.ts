@@ -42,6 +42,13 @@ export interface Puzzle {
   /** The pieces in play, in layout order. */
   readonly pieces: readonly PieceShape[];
   /**
+   * What those pieces are aimed at: the shapes the layout stands in the scene,
+   * one hole each, in layout order. Usually the pieces themselves - one animal,
+   * one hole - but a sliced level aims several slices at one animal, so a kind
+   * says which shapes the holes are cut from rather than the host assuming.
+   */
+  readonly targets: readonly PieceShape[];
+  /**
    * Pieces the host has settled into place. The host records an accepted drop
    * here; what that means for the level is `isComplete`'s business.
    */

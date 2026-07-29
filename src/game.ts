@@ -32,7 +32,7 @@ import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
 import { enableDragging } from "./drag";
 import { boxCenter, shuffle, type Point, type Size } from "./geometry";
 import { resolveLevel } from "./kinds/registry";
-import { boxOf, chooseLayout, type Layout } from "./layout";
+import { boxOf, chooseLayout, trayHome, type Layout } from "./layout";
 import { LEVEL_COUNT, levelSpec, nextLevel, type LevelSpec } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
 import { createProgressStore, type ProgressStore } from "./progress";
@@ -126,7 +126,7 @@ export function createGame(
 
   const isPlaced = (piece: PieceId): boolean => puzzle.placed.has(piece);
 
-  const homeOf = (piece: PieceId): Point => layout.traySlots[stateOf(piece).slot] as Point;
+  const homeOf = (piece: PieceId): Point => trayHome(layout, piece, stateOf(piece).slot);
 
   const restingPlace = (piece: PieceId): Point =>
     isPlaced(piece) ? kind.target(puzzle, layout, piece) : homeOf(piece);
@@ -215,7 +215,7 @@ export function createGame(
     kind = resolved.kind;
     level = resolved.spec;
     puzzle = kind.deal({ level, shapes }, random);
-    layout = chooseLayout(viewport(), level, puzzle.pieces);
+    layout = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
     board = mount(layout);
     state.clear();
     const slots = shuffle(
@@ -272,7 +272,7 @@ export function createGame(
 
   /** Rebuild for a new orientation, keeping progress intact. */
   function relayout(): void {
-    const next = chooseLayout(viewport(), level, puzzle.pieces);
+    const next = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
     if (next.id === layout.id) return;
     layout = next;
     board = mount(layout);

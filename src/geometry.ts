@@ -48,6 +48,16 @@ export function scaleSize(size: Size, scale: number): Size {
   return { width: size.width * scale, height: size.height * scale };
 }
 
+/** `rect` scaled by `scale`, origin and all. */
+export function scaleRect(rect: Rect, scale: number): Rect {
+  return {
+    x: rect.x * scale,
+    y: rect.y * scale,
+    width: rect.width * scale,
+    height: rect.height * scale,
+  };
+}
+
 /** Centre of a box of `size` whose top-left corner is `topLeft`. */
 export function boxCenter(topLeft: Point, size: Size): Point {
   return { x: topLeft.x + size.width / 2, y: topLeft.y + size.height / 2 };
@@ -94,6 +104,24 @@ export function clampToCanvas(topLeft: Point, size: Size, logical: Size): Point 
   return {
     x: Math.min(Math.max(topLeft.x, 0), logical.width - size.width),
     y: Math.min(Math.max(topLeft.y, 0), logical.height - size.height),
+  };
+}
+
+/**
+ * The same, for a piece whose drawing is smaller than its box. `ink` is where
+ * the drawing sits inside the box, so what is held on canvas is the part a
+ * child can see and grab rather than the empty box around it. A slice cut from
+ * the corner of an animal would otherwise be stopped a whole animal short of
+ * the edge it was being dragged to.
+ *
+ * Identical to `clampToCanvas` for a piece that fills its box.
+ */
+export function clampInkToCanvas(topLeft: Point, ink: Rect, logical: Size): Point {
+  // The `+ 0` is not a no-op: `-ink.x` is negative zero when the ink starts at
+  // the box's own edge, and a negative zero would reach the transform string.
+  return {
+    x: Math.min(Math.max(topLeft.x, -ink.x), logical.width - ink.x - ink.width) + 0,
+    y: Math.min(Math.max(topLeft.y, -ink.y), logical.height - ink.y - ink.height) + 0,
   };
 }
 

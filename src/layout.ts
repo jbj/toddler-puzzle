@@ -11,12 +11,18 @@
  * into a phone held upright would leave the pieces far too small to grab.
  *
  * Nothing here is placed by hand. A layout is composed for whatever cast it is
- * given: the pieces are split into rows of ground and rows of tray, the biggest
- * slot that leaves room for both is chosen, and the ground lines are then set
- * from how far the dealt pieces actually reach above and below their own
- * anchors. That last part is why layouts are built when a puzzle starts rather
- * than up front - the cast is random, and a giraffe stands taller in its box
- * than a turtle does.
+ * given: the targets are split into rows of ground and the pieces into rows of
+ * tray, the biggest slot that leaves room for both is chosen, and the ground
+ * lines are then set from how far the dealt targets actually reach above and
+ * below their own anchors. That last part is why layouts are built when a
+ * puzzle starts rather than up front - the cast is random, and a giraffe stands
+ * taller in its box than a turtle does.
+ *
+ * Targets and pieces are usually the same shapes, one hole per piece. They part
+ * company when a kind fills one target with several pieces - a sliced animal -
+ * and the two are then composed from their own counts. A piece is measured for
+ * the tray by its *ink* rather than by its box, so a tray of eight slices is
+ * not laid out as though it held eight whole animals.
  *
  * Composing rather than tabulating is what keeps the invariants true instead of
  * merely tested: a hole cannot land off canvas or under the tray, two snap zones
@@ -26,9 +32,9 @@
  *
  * All values are in logical canvas units; geometry.ts maps them to pixels.
  */
-import { fitScale, scaleSize, type Point, type Size } from "./geometry";
+import { fitScale, scaleRect, scaleSize, type Point, type Rect, type Size } from "./geometry";
 import { isVouchedLevel, type LevelSpec } from "./levels";
-import { assertUniquePieceIds, type PieceId, type PieceShape } from "./piece";
+import { assertUniquePieceIds, inkOf, type PieceId, type PieceShape } from "./piece";
 
 /**
  * How close a piece's centre must get to its hole's centre to snap in, as a
@@ -76,6 +82,13 @@ export interface PieceBox {
   /** The piece's rendered bounds, as a piece and as its hole alike. */
   readonly size: Size;
   /**
+   * Where inside that box the piece actually draws, in logical units relative
+   * to the box's top-left. The whole box for a piece that fills it; a small
+   * corner of it for a slice cut out of a bigger drawing. This is what the tray
+   * and the canvas clamp measure, because it is the part a child can see.
+   */
+  readonly ink: Rect;
+  /**
    * How near this piece's centre must get to its target's centre to count as
    * in. `SNAP_FRACTION` of the piece's *smaller* side, times the level's
    * `snapForgiveness`, so the circle is generous for a big piece and
@@ -101,6 +114,7 @@ function pieceBox(shape: PieceShape, slotSize: number, forgiveness: number): Pie
   return {
     scale,
     size,
+    ink: scaleRect(inkOf(shape), scale),
     snapRadius: Math.round(Math.min(size.width, size.height) * SNAP_FRACTION * forgiveness),
   };
 }
@@ -109,24 +123,36 @@ export interface Layout {
   readonly id: "landscape" | "portrait";
   /** The level this was composed for, as it is being played. */
   readonly level: LevelSpec;
-  /** The level's pieces, in layout order. */
+  /** The level's pieces - what waits in the tray - in layout order. */
   readonly pieces: readonly PieceShape[];
+  /**
+   * What the pieces are aimed at: the shapes that stand in the scene, one per
+   * hole, in layout order. Usually the pieces themselves; a sliced level stands
+   * whole animals here and aims several slices at each of them.
+   */
+  readonly targets: readonly PieceShape[];
   readonly canvas: Size;
-  /** The square every piece is drawn to fit inside, hole and tray slot alike. */
+  /** The square every target is drawn to fit inside, and every piece with it. */
   readonly slotSize: number;
-  /** What each of this level's pieces measures, and how forgiving it is. */
+  /** What each of this level's pieces and targets measures, and how forgiving. */
   readonly boxes: ReadonlyMap<PieceId, PieceBox>;
   /** Top of the scene; the tray occupies everything above it. */
   readonly sceneTop: number;
   /** Where the ground starts, i.e. the horizon. */
   readonly horizon: number;
   readonly bands: readonly GroundBand[];
-  /** Only the pieces of this level have holes. */
+  /** Only the targets of this level have holes, keyed by the target's id. */
   readonly holes: ReadonlyMap<PieceId, Point>;
+  /**
+   * The tray's cells, top-left first. A cell holds whichever piece was shuffled
+   * into it, by its ink rather than by its box: use `trayHome` to place one.
+   */
   readonly traySlots: readonly Point[];
+  /** How big a tray cell is: enough for the ink of any piece in this level. */
+  readonly trayCell: Size;
   /**
    * The lines the pieces stand on, top to bottom - one per row of the scene.
-   * Every piece's anchor lands on one of these, whatever height its own anchor
+   * Every target's anchor lands on one of these, whatever height its own anchor
    * sits at inside its box.
    */
   readonly groundLines: readonly number[];
@@ -134,12 +160,16 @@ export interface Layout {
   readonly decorLines: readonly number[];
 }
 
-/** The hole a piece belongs in. Throws rather than silently misplacing it. */
-export function holeOf(layout: Layout, piece: PieceId): Point {
-  const hole = layout.holes.get(piece);
+/**
+ * The hole a target is cut for. Throws rather than silently misplacing it: a
+ * piece that is not itself a target - a slice of an animal - has no hole of its
+ * own, and its kind is expected to ask for the target it belongs to.
+ */
+export function holeOf(layout: Layout, target: PieceId): Point {
+  const hole = layout.holes.get(target);
   if (!hole) {
     throw new Error(
-      `Piece "${piece}" has no hole in the level ${layout.level.level} ${layout.id} layout.`,
+      `Piece "${target}" has no hole in the level ${layout.level.level} ${layout.id} layout.`,
     );
   }
   return hole;
@@ -156,6 +186,30 @@ export function boxOf(layout: Layout, piece: PieceId): PieceBox {
   return box;
 }
 
+/**
+ * Where a piece waiting in tray cell `slot` sits: its box top-left, placed so
+ * that its *ink* is centred in the cell. Which piece is in which cell is
+ * shuffled when the puzzle starts, so a cell is a place rather than a position
+ * and it is the piece that has to be fitted to it.
+ *
+ * For a piece that fills its box this is simply the cell's own corner, which is
+ * what an animal has always got.
+ */
+export function trayHome(layout: Layout, piece: PieceId, slot: number): Point {
+  const cell = layout.traySlots[slot];
+  if (!cell) {
+    throw new Error(
+      `Level ${layout.level.level} ${layout.id} layout has no tray cell ${slot}; ` +
+        `it has ${layout.traySlots.length}.`,
+    );
+  }
+  const { ink } = boxOf(layout, piece);
+  return {
+    x: cell.x + (layout.trayCell.width - ink.width) / 2 - ink.x,
+    y: cell.y + (layout.trayCell.height - ink.height) / 2 - ink.y,
+  };
+}
+
 /** A line of pieces standing on the ground at `groundY`. */
 interface SceneRow {
   readonly groundY: number;
@@ -170,8 +224,10 @@ interface TrayRow {
 
 interface Arrangement {
   readonly canvas: Size;
-  /** The square a piece of any proportions is drawn to fit inside. */
+  /** The square a target of any proportions is drawn to fit inside. */
   readonly slotSize: number;
+  /** How big a tray cell is: enough for the ink of any piece in the cast. */
+  readonly trayCell: Size;
   readonly sceneTop: number;
   readonly horizon: number;
   readonly bands: readonly GroundBand[];
@@ -216,36 +272,47 @@ function fromArrangement(
   id: Layout["id"],
   level: LevelSpec,
   pieces: readonly PieceShape[],
+  targets: readonly PieceShape[],
   arrangement: Arrangement,
 ): Layout {
-  assertUniquePieceIds(pieces, `buildLayout(${JSON.stringify(id)}, level ${level.level}, pieces)`);
-  const { canvas, slotSize, sceneRows, trayRows } = arrangement;
-  if (total(sceneRows) !== pieces.length || total(trayRows) !== pieces.length) {
+  const where = `buildLayout(${JSON.stringify(id)}, level ${level.level}, pieces)`;
+  assertUniquePieceIds(pieces, where);
+  assertUniquePieceIds(targets, `${where} targets`);
+  const { canvas, slotSize, trayCell, sceneRows, trayRows } = arrangement;
+  if (total(sceneRows) !== targets.length || total(trayRows) !== pieces.length) {
     throw new Error(
-      `Level ${level.level} ${id} layout must hold ${pieces.length} pieces, but has ` +
-        `${total(sceneRows)} holes and ${total(trayRows)} tray slots.`,
+      `Level ${level.level} ${id} layout must hold ${targets.length} targets and ` +
+        `${pieces.length} pieces, but has ${total(sceneRows)} holes and ` +
+        `${total(trayRows)} tray slots.`,
     );
   }
 
+  // Targets and pieces share one scale, because a piece has to arrive drawn the
+  // size of the hole it drops into. Where they are the same shapes - the usual
+  // case - this simply measures each of them once.
   const boxes = new Map<PieceId, PieceBox>(
-    pieces.map((shape) => [shape.id, pieceBox(shape, slotSize, level.snapForgiveness)]),
+    [...targets, ...pieces].map((shape) => [
+      shape.id,
+      pieceBox(shape, slotSize, level.snapForgiveness),
+    ]),
   );
 
   const holes = new Map<PieceId, Point>();
   let next = 0;
   for (const row of sceneRows) {
     for (const x of spreadX(row.count, slotSize, canvas.width, arrangement.sceneMargin)) {
-      const shape = pieces[next++] as PieceShape;
+      const shape = targets[next++] as PieceShape;
       const box = boxes.get(shape.id) as PieceBox;
       holes.set(shape.id, standing(shape, box, x, slotSize, row.groundY));
     }
   }
 
-  // Tray slots are nominal squares rather than per-piece boxes: which piece
-  // waits in which slot is shuffled when the puzzle starts, so a slot has to
-  // hold whatever turns up. Every piece fits inside one by construction.
+  // Tray cells are nominal rather than per-piece: which piece waits in which
+  // cell is shuffled when the puzzle starts, so a cell has to hold whatever
+  // turns up. It is sized for the largest ink in the cast, and `trayHome`
+  // centres each piece's own ink inside it.
   const traySlots = trayRows.flatMap((row) =>
-    spreadX(row.count, slotSize, canvas.width, arrangement.trayMargin).map((x) => ({
+    spreadX(row.count, trayCell.width, canvas.width, arrangement.trayMargin).map((x) => ({
       x,
       y: row.top,
     })),
@@ -255,6 +322,7 @@ function fromArrangement(
     id,
     level,
     pieces,
+    targets,
     canvas,
     slotSize,
     boxes,
@@ -263,6 +331,7 @@ function fromArrangement(
     bands: arrangement.bands,
     holes,
     traySlots,
+    trayCell,
     groundLines: sceneRows.map((row) => row.groundY),
     decorLines: arrangement.decorLines,
   };
@@ -345,6 +414,15 @@ const COMPOSITION = {
    * cannot be composed above it is refused rather than laid out unplayably.
    */
   minSlot: 0.105,
+  /**
+   * The smallest a *piece* may draw, on its longer side, as a fraction of the
+   * canvas width. The same rule as `minSlot` for anything that fills its box,
+   * and the one that bites for a slice: a slice keeps its animal's box, so its
+   * slot says nothing about how much of it there is to grab. Slightly below
+   * `minSlot` because a quarter of an animal is inevitably smaller than a whole
+   * one, and the recipes already refuse a slice too thin to pick up.
+   */
+  minPieceInk: 0.085,
 } as const;
 
 /** `count` pieces over `rows` rows, as evenly as possible, fullest row first. */
@@ -373,29 +451,64 @@ interface Plan {
   /** Per scene row, the worst reach above and below its ground line, at slot size 1. */
   readonly rises: readonly number[];
   readonly drops: readonly number[];
+  /** A tray cell's sides, as fractions of the slot size. */
+  readonly cell: Size;
   readonly slotSize: number;
+  /**
+   * How much of a slot the *smallest* piece of the cast draws on its longer
+   * side. One for a cast that fills its boxes; a fraction for a cast of slices,
+   * which is what keeps them from being composed too small to grab.
+   */
+  readonly smallest: number;
 }
 
-/** The widest slot `count` of them fit across the canvas side by side. */
-function widthLimit(width: number, count: number): number {
+/**
+ * How big a tray cell has to be, in slot units, to hold the ink of any piece in
+ * the cast - and how little the least of them draws. A piece is scaled by the
+ * longer side of its authored box, so both of these are constants of the cast
+ * rather than of the size it ends up at.
+ */
+function inkShares(pieces: readonly PieceShape[]): { cell: Size; smallest: number } {
+  const shares = pieces.map((shape) => {
+    const scale = 1 / Math.max(shape.box.width, shape.box.height);
+    const ink = inkOf(shape);
+    return { width: ink.width * scale, height: ink.height * scale };
+  });
+  return {
+    cell: {
+      width: Math.max(...shares.map((one) => one.width)),
+      height: Math.max(...shares.map((one) => one.height)),
+    },
+    smallest: Math.min(...shares.map((one) => Math.max(one.width, one.height))),
+  };
+}
+
+/**
+ * The widest slot `count` cells fit across the canvas side by side, where a
+ * cell is `size` slots wide. The margins and the gap stay in slot units, so
+ * shrinking the cells spreads them out rather than crowding them together.
+ */
+function widthLimit(width: number, count: number, size = 1): number {
   const { sideMargin, columnGap } = COMPOSITION;
-  return width / (count + (count - 1) * columnGap + 2 * sideMargin);
+  return width / (count * size + (count - 1) * columnGap + 2 * sideMargin);
 }
 
 function planFor(
   view: View,
   pieces: readonly PieceShape[],
+  targets: readonly PieceShape[],
   sceneRowCount: number,
   trayRowCount: number,
 ): Plan {
-  const sceneCounts = splitRows(pieces.length, sceneRowCount);
+  const sceneCounts = splitRows(targets.length, sceneRowCount);
   const trayCounts = splitRows(pieces.length, trayRowCount);
+  const { cell, smallest } = inkShares(pieces);
 
   const rises: number[] = [];
   const drops: number[] = [];
   let taken = 0;
   for (const count of sceneCounts) {
-    const reaches = pieces.slice(taken, taken + count).map(reach);
+    const reaches = targets.slice(taken, taken + count).map(reach);
     taken += count;
     rises.push(Math.max(...reaches.map((one) => one.rise)));
     drops.push(Math.max(...reaches.map((one) => one.drop)));
@@ -407,18 +520,18 @@ function planFor(
     rises.reduce((sum, rise, index) => sum + rise + (drops[index] as number), 0) +
     (sceneRowCount - 1) * COMPOSITION.rowGap +
     COMPOSITION.footRoom;
-  const trayHeight = trayRowCount + (trayRowCount + 1) * COMPOSITION.trayPad;
+  const trayHeight = trayRowCount * cell.height + (trayRowCount + 1) * COMPOSITION.trayPad;
 
   const { width, height } = view.canvas;
   const slotSize = Math.floor(
     Math.min(
       (height * (1 - COMPOSITION.skyShare)) / (sceneHeight + trayHeight),
       widthLimit(width, Math.max(...sceneCounts)),
-      widthLimit(width, Math.max(...trayCounts)),
+      widthLimit(width, Math.max(...trayCounts), cell.width),
       COMPOSITION.maxSlot * Math.min(width, height),
     ),
   );
-  return { sceneCounts, trayCounts, rises, drops, slotSize };
+  return { sceneCounts, trayCounts, rises, drops, cell, slotSize, smallest };
 }
 
 /**
@@ -436,13 +549,15 @@ function compose(view: View, plan: Plan): Arrangement {
   const depths = plan.rises.map((rise, index) => (rise + (plan.drops[index] as number)) * slotSize);
   const rowGap = scaled(COMPOSITION.rowGap);
   const trayRowCount = plan.trayCounts.length;
+  const trayCell = { width: scaled(plan.cell.width), height: scaled(plan.cell.height) };
 
   // Tray sits at the top, sized to fit its rows with padding.
-  const trayNeed = trayRowCount * slotSize + (trayRowCount + 1) * scaled(COMPOSITION.trayPad);
+  const trayNeed =
+    trayRowCount * trayCell.height + (trayRowCount + 1) * scaled(COMPOSITION.trayPad);
   const sceneTop = Math.round(trayNeed);
-  const trayPad = (sceneTop - trayRowCount * slotSize) / (trayRowCount + 1);
+  const trayPad = (sceneTop - trayRowCount * trayCell.height) / (trayRowCount + 1);
   const trayRows = plan.trayCounts.map((count, index) => ({
-    top: Math.round(trayPad + index * (slotSize + trayPad)),
+    top: Math.round(trayPad + index * (trayCell.height + trayPad)),
     count,
   }));
 
@@ -487,6 +602,7 @@ function compose(view: View, plan: Plan): Arrangement {
   return {
     canvas,
     slotSize,
+    trayCell,
     sceneTop,
     horizon,
     bands: [
@@ -520,25 +636,44 @@ function idealRows(count: number, span: number, width: number): number {
  * shape suits the canvas wins. Which split that is is therefore worked out
  * rather than declared - a wide canvas spends its width on one long row, an
  * upright one stacks shallower rows and gives the tray the height it saves.
+ *
+ * `targets` is what stands in the scene and `pieces` is what waits in the tray.
+ * They are usually the same shapes, one hole per piece; a sliced level has
+ * fewer targets than pieces, and the two are laid out from their own counts.
  */
-function arrange(view: View, pieces: readonly PieceShape[]): Arrangement {
+function arrange(
+  view: View,
+  pieces: readonly PieceShape[],
+  targets: readonly PieceShape[],
+): Arrangement {
   const count = pieces.length;
   if (count < 1) throw new Error(`A ${view.id} layout needs at least one piece.`);
+  if (targets.length < 1) throw new Error(`A ${view.id} layout needs at least one target.`);
 
   const { width, height } = view.canvas;
   const traySpan = COMPOSITION.trayShare * height;
-  const wantedSceneRows = idealRows(count, height * (1 - COMPOSITION.skyShare) - traySpan, width);
+  const wantedSceneRows = idealRows(
+    targets.length,
+    height * (1 - COMPOSITION.skyShare) - traySpan,
+    width,
+  );
   const wantedTrayRows = idealRows(count, traySpan, width);
 
   const plans: Plan[] = [];
-  for (let sceneRows = 1; sceneRows <= count; sceneRows++) {
+  for (let sceneRows = 1; sceneRows <= targets.length; sceneRows++) {
     for (let trayRows = 1; trayRows <= count; trayRows++) {
-      plans.push(planFor(view, pieces, sceneRows, trayRows));
+      plans.push(planFor(view, pieces, targets, sceneRows, trayRows));
     }
   }
 
+  // Two floors, and for a cast that fills its boxes they are the same floor: a
+  // slot too narrow to aim at, and a piece that draws too little of its slot to
+  // pick up. A slice fails the second one long before the first.
   const smallest = COMPOSITION.minSlot * width;
-  const viable = plans.filter((plan) => plan.slotSize >= smallest);
+  const smallestInk = COMPOSITION.minPieceInk * width;
+  const viable = plans.filter(
+    (plan) => plan.slotSize >= smallest && plan.slotSize * plan.smallest >= smallestInk,
+  );
   if (viable.length === 0) {
     throw new Error(
       `${count} pieces do not fit the ${view.id} canvas without dropping below ` +
@@ -568,6 +703,11 @@ function arrange(view: View, pieces: readonly PieceShape[]): Arrangement {
  * front because the cast is random and the ground lines follow it: each shape's
  * anchor sits at a different height inside its box.
  *
+ * `targets` is what stands in the scene, one hole each, and defaults to the
+ * pieces themselves - which is the usual arrangement, and the only one there
+ * was until slices arrived. A kind that fills one target with several pieces
+ * passes its targets in; nothing else about the composition changes.
+ *
  * The level is passed whole rather than by number: the composition reads its
  * `snapForgiveness`, and everything downstream - the board, the dots, an error
  * message - wants to know which level and chapter it is looking at.
@@ -576,8 +716,9 @@ export function buildLayout(
   id: Layout["id"],
   level: LevelSpec,
   pieces: readonly PieceShape[],
+  targets: readonly PieceShape[] = pieces,
 ): Layout {
-  return fromArrangement(id, level, pieces, arrange(VIEWS[id], pieces));
+  return fromArrangement(id, level, pieces, targets, arrange(VIEWS[id], pieces, targets));
 }
 
 /**
@@ -590,6 +731,7 @@ export function buildLevelLayout(
   id: Layout["id"],
   level: LevelSpec,
   pieces: readonly PieceShape[],
+  targets: readonly PieceShape[] = pieces,
 ): Layout {
   // Levels are vouched for rather than trusted, so a spec invented out of thin
   // air cannot put a board on screen that no level in the table describes -
@@ -605,7 +747,12 @@ export function buildLevelLayout(
       `Level ${level.level} deals ${level.pieces} pieces, but was given ${pieces.length}.`,
     );
   }
-  return buildLayout(id, level, pieces);
+  if (targets.length !== level.targets) {
+    throw new Error(
+      `Level ${level.level} has ${level.targets} targets, but was given ${targets.length}.`,
+    );
+  }
+  return buildLayout(id, level, pieces, targets);
 }
 
 /** Portrait reflow kicks in once the viewport is taller than it is wide. */
@@ -613,10 +760,12 @@ export function chooseLayout(
   viewport: Size,
   level: LevelSpec,
   pieces: readonly PieceShape[],
+  targets: readonly PieceShape[] = pieces,
 ): Layout {
   return buildLevelLayout(
     viewport.height > viewport.width ? "portrait" : "landscape",
     level,
     pieces,
+    targets,
   );
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
 import {
   boxCenter,
+  clampInkToCanvas,
   clampToCanvas,
   distance,
   fitScale,
@@ -18,6 +19,7 @@ import {
   buildLevelLayout,
   chooseLayout,
   holeOf,
+  trayHome,
   type Layout,
 } from "../src/layout";
 import { resolveLevel } from "../src/kinds/registry";
@@ -123,6 +125,51 @@ const castFor = (count: number, run: number): PieceShape[] => {
 };
 
 /**
+ * A cast where several pieces aim at one target: one or two animals, each dealt
+ * as `slices` pieces that keep the animal's whole box - they have to, or they
+ * would not assemble - and draw only their own part of it.
+ *
+ * The parts are a plain grid rather than the real recipes, which is what makes
+ * this a layout check rather than a slicing one: a real slice's drawing sits
+ * inside the grid cell it was cut from, so a grid is the worst case the
+ * composition has to hold for.
+ */
+function slicedCast(
+  animals: number,
+  slices: number,
+  random: () => number,
+): { pieces: PieceShape[]; targets: PieceShape[] } {
+  const targets = animalCast(animals, random);
+  const columns = slices > 2 ? 2 : slices;
+  const rows = Math.ceil(slices / columns);
+  const pieces = targets.flatMap((animal) =>
+    Array.from({ length: slices }, (_, index) => ({
+      ...animal,
+      id: pieceId(`slice:${animal.id}:${index}`),
+      inked: {
+        x: ((index % columns) * animal.box.width) / columns,
+        y: (Math.floor(index / columns) * animal.box.height) / rows,
+        width: animal.box.width / columns,
+        height: animal.box.height / rows,
+      },
+    })),
+  );
+  return { pieces, targets };
+}
+
+/** Every shape of sliced level the table asks for, in both orientations. */
+const SLICED: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
+  [1, 2].flatMap((animals) =>
+    [2, 3, 4].flatMap((slices) =>
+      Array.from({ length: RUNS }, (_, run) => {
+        const { pieces, targets } = slicedCast(animals, slices, seededRandom(run + animals * 7));
+        return buildLayout(id, MOST_FORGIVING, pieces, targets);
+      }),
+    ),
+  ),
+);
+
+/**
  * Every composition the thirty levels could ask for: each piece count, in both
  * orientations, over a spread of casts of both kinds. Layouts are composed
  * rather than tabulated, so what is worth checking is the properties they
@@ -137,12 +184,22 @@ const COMPOSED: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
 /** A representative handful, for checks that do not need all of them. */
 const LAYOUTS: readonly Layout[] = COMPOSED.filter((_, index) => index % 17 === 0);
 
-/** Each piece of a layout with the target it belongs in and its bounds there. */
+/** Each target standing in a layout's scene, with its hole and its bounds. */
 const placementsOf = (layout: Layout) =>
-  layout.pieces.map((shape) => ({
+  layout.targets.map((shape) => ({
     shape,
     hole: holeOf(layout, shape.id),
     box: boxOf(layout, shape.id),
+  }));
+
+/** Each piece waiting in the tray, with the cell it was dealt into. */
+const waitingOf = (layout: Layout) =>
+  layout.pieces.map((shape, index) => ({
+    shape,
+    box: boxOf(layout, shape.id),
+    // Slot order is shuffled when a puzzle starts, so a piece could be in any
+    // of them; taking them in order visits every pairing across the sweep.
+    home: trayHome(layout, shape.id, index),
   }));
 
 /**
@@ -259,6 +316,33 @@ describe("clampToCanvas", () => {
   });
 });
 
+describe("clampInkToCanvas", () => {
+  const BOX = { x: 0, y: 0, width: 190, height: 190 };
+
+  it("matches the plain clamp for a piece that fills its box", () => {
+    for (const corner of [
+      { x: -500, y: -500 },
+      { x: 9999, y: 9999 },
+      { x: 300, y: 200 },
+    ]) {
+      const inked = clampInkToCanvas(corner, BOX, CANVAS);
+      expect(inked).toEqual(clampToCanvas(corner, PIECE, CANVAS));
+    }
+  });
+
+  it("lets a piece drawn in a corner of its box reach the far corner", () => {
+    // A slice cut from the bottom-right of an animal. Clamped by its box it
+    // would stop a whole animal short of the top-left corner - out of reach of
+    // the very hole it belongs in.
+    const corner = { x: 120, y: 120, width: 120, height: 120 };
+    expect(clampInkToCanvas({ x: -999, y: -999 }, corner, CANVAS)).toEqual({ x: -120, y: -120 });
+    expect(clampInkToCanvas({ x: 9999, y: 9999 }, corner, CANVAS)).toEqual({
+      x: CANVAS.width - 240,
+      y: CANVAS.height - 240,
+    });
+  });
+});
+
 describe("boxCenter", () => {
   it("halves each side separately, so the centre is inside the piece", () => {
     expect(boxCenter({ x: 10, y: 20 }, { width: 300, height: 100 })).toEqual({ x: 160, y: 70 });
@@ -358,8 +442,12 @@ describe("buildLevelLayout", () => {
 const PROMISES = {
   "gives every piece a target, a box and a tray slot": (layout) => {
     const wanted = layout.pieces.length;
-    if (layout.holes.size !== wanted) return `${layout.holes.size} targets for ${wanted} pieces`;
-    if (layout.boxes.size !== wanted) return `${layout.boxes.size} boxes for ${wanted} pieces`;
+    const aimed = layout.targets.length;
+    if (layout.holes.size !== aimed) return `${layout.holes.size} holes for ${aimed} targets`;
+    const measured = new Set([...layout.pieces, ...layout.targets].map((shape) => shape.id));
+    if (layout.boxes.size !== measured.size) {
+      return `${layout.boxes.size} boxes for ${measured.size} pieces and targets`;
+    }
     if (layout.traySlots.length !== wanted) {
       return `${layout.traySlots.length} tray slots for ${wanted} pieces`;
     }
@@ -370,7 +458,7 @@ const PROMISES = {
   // true for a piece of any proportions, not only for a square animal.
   "fits every piece inside the slot, whatever its proportions": (layout) =>
     firstComplaint(
-      placementsOf(layout).map(({ shape, box }) => {
+      [...placementsOf(layout), ...waitingOf(layout)].map(({ shape, box }) => {
         const { width, height } = box.size;
         if (width > layout.slotSize + 0.5 || height > layout.slotSize + 0.5) {
           return `${shape.id} is ${width}x${height} in a ${layout.slotSize} slot`;
@@ -434,27 +522,46 @@ const PROMISES = {
   },
 
   "keeps every tray slot on canvas, within the tray": (layout) => {
-    // A slot holds whichever piece is shuffled into it, so it is measured at
-    // the full slot size rather than at any one piece's bounds.
+    // A cell holds whichever piece is shuffled into it, so it is measured at
+    // the full cell rather than at any one piece's bounds.
+    const { width, height } = layout.trayCell;
     for (const slot of layout.traySlots) {
-      if (slot.x < 0 || slot.x + layout.slotSize > layout.canvas.width) {
+      if (slot.x < 0 || slot.x + width > layout.canvas.width) {
         return `a tray slot at ${Math.round(slot.x)} runs off the side`;
       }
-      if (slot.y < 0 || slot.y + layout.slotSize > layout.sceneTop) {
+      if (slot.y < 0 || slot.y + height > layout.sceneTop) {
         return `a tray slot at ${Math.round(slot.y)} is outside the tray`;
       }
     }
     return null;
   },
 
+  // Where a piece actually ends up, which for a piece smaller than its box is
+  // not the cell's own corner: the ink is centred in the cell and the empty
+  // part of the box hangs outside it.
+  "keeps every waiting piece's drawing inside the tray": (layout) =>
+    firstComplaint(
+      waitingOf(layout).map(({ shape, box, home }) => {
+        const left = home.x + box.ink.x;
+        const top = home.y + box.ink.y;
+        if (left < 0 || left + box.ink.width > layout.canvas.width) {
+          return `${shape.id} waits off the side of the canvas`;
+        }
+        if (top < 0 || top + box.ink.height > layout.sceneTop) {
+          return `${shape.id} waits outside the tray`;
+        }
+        return null;
+      }),
+    ),
+
   "keeps tray slots from overlapping each other": (layout) => {
     const slots = layout.traySlots;
+    const { width, height } = layout.trayCell;
     for (let i = 0; i < slots.length; i++) {
       for (let j = i + 1; j < slots.length; j++) {
         const a = slots[i]!;
         const b = slots[j]!;
-        const apart =
-          Math.abs(a.x - b.x) >= layout.slotSize || Math.abs(a.y - b.y) >= layout.slotSize;
+        const apart = Math.abs(a.x - b.x) >= width || Math.abs(a.y - b.y) >= height;
         if (!apart) return `two tray slots overlap near ${Math.round(a.x)},${Math.round(a.y)}`;
       }
     }
@@ -462,11 +569,12 @@ const PROMISES = {
   },
 
   "keeps every tray slot out of every target's snap zone": (layout) => {
-    for (const slot of layout.traySlots) {
+    for (const [slot] of layout.traySlots.entries()) {
       for (const { shape, hole, box } of placementsOf(layout)) {
         // Measured with that piece's own bounds at both ends: this is where the
         // piece would sit if it were the one left waiting in that slot.
-        const gap = distance(boxCenter(slot, box.size), boxCenter(hole, box.size));
+        const waiting = trayHome(layout, shape.id, slot);
+        const gap = distance(boxCenter(waiting, box.size), boxCenter(hole, box.size));
         if (gap <= box.snapRadius) return `${shape.id} would snap home from its tray slot`;
       }
     }
@@ -475,10 +583,19 @@ const PROMISES = {
 
   // A piece narrower than a tenth of the canvas is a fiddly target for a small
   // hand, however many pieces the level asks for.
-  "keeps every piece big enough for a toddler to grab": (layout) =>
-    layout.slotSize / layout.canvas.width > 0.1
-      ? null
-      : `a ${layout.slotSize} slot on a ${layout.canvas.width} canvas is too small to grab`,
+  "keeps every piece big enough for a toddler to grab": (layout) => {
+    if (layout.slotSize / layout.canvas.width <= 0.1) {
+      return `a ${layout.slotSize} slot on a ${layout.canvas.width} canvas is too small to grab`;
+    }
+    // The slot is what a target is drawn to; what a hand has to find is the
+    // piece's own drawing, which for a slice is a fraction of that.
+    return firstComplaint(
+      waitingOf(layout).map(({ shape, box }) => {
+        const drawn = Math.max(box.ink.width, box.ink.height) / layout.canvas.width;
+        return drawn > 0.08 ? null : `${shape.id} draws ${(drawn * 100).toFixed(1)}% of the canvas`;
+      }),
+    );
+  },
 } satisfies Record<string, (layout: Layout) => string | null>;
 
 const PROMISED = Object.entries(PROMISES);
@@ -576,6 +693,81 @@ describe("composed layouts", () => {
       );
       expect(() => buildLayout(id, MOST_FORGIVING, [])).toThrow(/at least one piece/i);
     }
+  });
+});
+
+describe("layouts where several pieces fill one target", () => {
+  it("composes every sliced level shape, in both orientations", () => {
+    expect(SLICED).toHaveLength(ORIENTATIONS.length * 2 * 3 * RUNS);
+  });
+
+  it.each(PROMISED)("%s, for one or two animals in two to four slices", (_name, promise) => {
+    expect(complaintsFrom(SLICED, promise)).toEqual([]);
+  });
+
+  it("cuts one hole per animal, not one per slice", () => {
+    for (const layout of SLICED) {
+      expect(layout.holes.size).toBe(layout.targets.length);
+      expect(layout.holes.size).toBeLessThan(layout.pieces.length);
+      expect(layout.traySlots).toHaveLength(layout.pieces.length);
+    }
+  });
+
+  it("draws every slice at its own animal's scale", () => {
+    // The whole reason a slice keeps the animal's box: assembled at one scale
+    // on one origin, the slices are the animal again, without any arithmetic.
+    for (const layout of SLICED) {
+      for (const target of layout.targets) {
+        const whole = boxOf(layout, target.id);
+        const slices = layout.pieces.filter((piece) => piece.id.startsWith(`slice:${target.id}:`));
+        expect(slices.length).toBeGreaterThan(1);
+        for (const slice of slices) {
+          expect(boxOf(layout, slice.id).scale).toBe(whole.scale);
+          expect(boxOf(layout, slice.id).size).toEqual(whole.size);
+        }
+      }
+    }
+  });
+
+  it("stands a bigger animal than a board of that many whole animals would", () => {
+    // A tray of slices is packed by what each slice draws, not by the animal's
+    // box around it, which is what leaves the animal room to be big enough that
+    // a quarter of it is still worth grabbing.
+    for (const id of ORIENTATIONS) {
+      for (const slices of [2, 3, 4]) {
+        const { pieces, targets } = slicedCast(2, slices, seededRandom(slices));
+        const sliced = buildLayout(id, MOST_FORGIVING, pieces, targets);
+        const whole = buildLayout(id, MOST_FORGIVING, animalCast(pieces.length, seededRandom(1)));
+        // Never smaller, and strictly bigger once the board is busy enough for
+        // the tray to have been what held the animals down.
+        expect(sliced.slotSize).toBeGreaterThanOrEqual(whole.slotSize);
+        if (pieces.length >= 6) expect(sliced.slotSize).toBeGreaterThan(whole.slotSize);
+      }
+    }
+  });
+
+  it("centres each piece's drawing in the tray cell it was dealt into", () => {
+    for (const layout of SLICED) {
+      for (const [slot] of layout.traySlots.entries()) {
+        for (const piece of layout.pieces) {
+          const home = trayHome(layout, piece.id, slot);
+          const { ink } = boxOf(layout, piece.id);
+          const cell = layout.traySlots[slot]!;
+          expect(home.x + ink.x + ink.width / 2).toBeCloseTo(cell.x + layout.trayCell.width / 2);
+          expect(home.y + ink.y + ink.height / 2).toBeCloseTo(cell.y + layout.trayCell.height / 2);
+        }
+      }
+    }
+  });
+
+  it("refuses a level whose cast does not match its targets", () => {
+    const level = LEVELS.find((one) => one.targets !== one.pieces)!;
+    const { pieces, targets } = slicedCast(level.targets, level.pieces / level.targets, () => 0.5);
+    expect(() => buildLevelLayout("landscape", level, pieces, targets)).not.toThrow();
+    expect(() => buildLevelLayout("landscape", level, pieces, targets.slice(1))).toThrow(
+      /targets/i,
+    );
+    expect(() => buildLevelLayout("landscape", level, pieces.slice(1), targets)).toThrow(/pieces/i);
   });
 });
 

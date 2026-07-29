@@ -78,6 +78,11 @@ function buildPiece(shape: PieceShape, scale: number): SVGGElement {
  *  - `fill="transparent"` is a paint and so is hit-testable, where
  *    `fill="none"` would not be, and leaving `pointer-events` alone lets
  *    `.piece.is-placed` in style.css go on switching the whole piece off.
+ *
+ * A shape that declares its own `inked` bounds is taken at its word rather than
+ * measured. A slice is drawn by clipping a whole animal, and `getBBox` does not
+ * see a clip: measuring one would hand every slice of an animal the same
+ * animal-sized grab box, and three of those in a tray would fight over a press.
  */
 function fitGrabBox(piece: SVGGElement, shape: PieceShape): void {
   const art = piece.querySelector(".art");
@@ -85,7 +90,7 @@ function fitGrabBox(piece: SVGGElement, shape: PieceShape): void {
 
   // In the element's own units, i.e. before its `scale()`. Measured rather than
   // declared per animal, so redrawing one moves its grab box with it.
-  const drawn = art.getBBox();
+  const drawn = shape.inked ?? art.getBBox();
   // An unmeasurable piece keeps the artwork it already had to be grabbed by,
   // which is no worse than having no grab box at all.
   if (drawn.width <= 0 || drawn.height <= 0) return;

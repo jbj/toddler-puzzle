@@ -47,10 +47,13 @@ export const shapeMatch: PuzzleKind = {
   id: ID,
 
   deal({ level, shapes }: Deal, random: () => number): Puzzle {
+    const pieces = dealPieces(level, shapes, random);
     return {
       kind: ID,
       level,
-      pieces: dealPieces(level, shapes, random),
+      pieces,
+      // One animal, one hole: every piece is its own target.
+      targets: pieces,
       placed: new Set<PieceId>(),
     };
   },

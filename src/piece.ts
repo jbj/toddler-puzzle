@@ -7,7 +7,7 @@
  * (`assets.ts`); a jigsaw cutter or a polygon builder can be another without
  * anything downstream having to learn about them.
  */
-import type { Point, Size } from "./geometry";
+import type { Point, Rect, Size } from "./geometry";
 import type { ThemeId } from "./themes";
 
 /**
@@ -37,6 +37,18 @@ export interface PieceShape {
   /** The box `outline` and `artwork` are authored in (240x240 for animals). */
   readonly box: Size;
   /**
+   * Where inside that box the piece actually draws anything, in box units.
+   * Left out, a piece is taken to fill its box, which is what an animal does.
+   *
+   * A piece cut out of a bigger drawing cannot: every slice of one animal has
+   * to keep the animal's box and scale, or the slices would not assemble, so a
+   * slice's box is mostly empty. Everything that measures the piece as a *thing
+   * to grab and to look at* - the tray, the canvas clamp, the grab box - reads
+   * this instead of the box, so a tray of eight slices is not laid out as
+   * though it held eight whole animals.
+   */
+  readonly inked?: Rect;
+  /**
    * Where the piece "sits" within its box, in box units. Standing an animal on
    * a ground line is the special case where the anchor is at its feet.
    */
@@ -51,6 +63,11 @@ export interface PieceShape {
    * because a jigsaw slice or a triangle has no theme to be in.
    */
   readonly themes?: readonly ThemeId[];
+}
+
+/** Where a shape draws, in its own box units: what it declared, or all of it. */
+export function inkOf(shape: PieceShape): Rect {
+  return shape.inked ?? { x: 0, y: 0, width: shape.box.width, height: shape.box.height };
 }
 
 /**

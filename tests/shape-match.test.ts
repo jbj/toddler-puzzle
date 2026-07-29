@@ -60,7 +60,7 @@ function castsFor(level: LevelSpec): PieceShape[][] {
 
 /** A puzzle standing on a given cast, as if the kind had dealt exactly that. */
 function puzzleOf(level: LevelSpec, cast: readonly PieceShape[]): Puzzle {
-  return { kind: shapeMatch.id, level, pieces: cast, placed: new Set() };
+  return { kind: shapeMatch.id, level, pieces: cast, targets: cast, placed: new Set() };
 }
 
 /**
