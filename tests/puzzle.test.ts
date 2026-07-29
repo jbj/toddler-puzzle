@@ -1179,6 +1179,88 @@ describe("how big the board gets", () => {
 });
 
 /**
+ * The board on an iPad, driven at the real viewport sizes rather than reasoned
+ * about. `chooseLayout` picks an orientation from the viewport and then composes
+ * on one of two fixed canvases; the canvas letterboxes into the viewport with
+ * `xMidYMid meet`. An iPad is nearer 1:1.4 than the portrait canvas's 1:1.7, so
+ * portrait pillarboxes - the floors are canvas-relative and still hold, but the
+ * board does not fill the screen. This measures that waste as a number rather
+ * than letting it drift, and proves a piece stays grabbably large in *device*
+ * pixels once the letterbox scale is applied. Split View and Slide Over are the
+ * narrow widths a multitasking iPad can hand the game, and the case most likely
+ * to break a layout, so they are swept too.
+ */
+describe("on an iPad", () => {
+  const dealt = (level: LevelSpec, run: number): Puzzle =>
+    kindFor(level).deal({ level, shapes: SHAPES }, seededRandom(level.level * 101 + run));
+
+  const DEALS = 8;
+
+  /**
+   * `name`, the viewport in CSS points, the orientation the game must pick, and
+   * the least of the screen the board may cover once it has letterboxed. The
+   * coverage floors are measured from this suite, shaded down a hair; a smaller
+   * number than the one measured is a finding to look at, not to paper over.
+   */
+  const IPAD_VIEWPORTS: readonly (readonly [
+    string,
+    { width: number; height: number },
+    "landscape" | "portrait",
+    number,
+  ])[] = [
+    ["mini portrait", { width: 768, height: 1024 }, "portrait", 0.785],
+    ["mini landscape", { width: 1024, height: 768 }, "landscape", 0.93],
+    ['11" portrait', { width: 834, height: 1194 }, "portrait", 0.845],
+    ['11" landscape', { width: 1194, height: 834 }, "landscape", 0.99],
+    ['13" portrait', { width: 1024, height: 1366 }, "portrait", 0.785],
+    ['13" landscape', { width: 1366, height: 1024 }, "landscape", 0.93],
+    // Split View one-third and Slide Over: far narrower than the device, and
+    // always taller than wide, so the game reflows to portrait.
+    ["split view narrow", { width: 375, height: 1024 }, "portrait", 0.61],
+    ["slide over", { width: 320, height: 768 }, "portrait", 0.7],
+  ];
+
+  for (const [name, viewport, orientation, coverageFloor] of IPAD_VIEWPORTS) {
+    it(`picks ${orientation} for ${name} and keeps a grabbable board`, () => {
+      const level = levelSpec(1);
+      const chosen = chooseLayout(viewport, level, dealt(level, 0).pieces);
+      expect(chosen.id).toBe(orientation);
+
+      let worstCoverage = Infinity;
+      for (const spec of LEVELS) {
+        for (let run = 0; run < DEALS; run++) {
+          const puzzle = dealt(spec, run);
+          if (puzzle.pieces.length === 0) continue;
+          const layout = buildLevelLayout(orientation, spec, puzzle.pieces, puzzle.targets);
+          const scale = fitScale(viewport, layout.canvas);
+          const shown = {
+            width: layout.canvas.width * scale,
+            height: layout.canvas.height * scale,
+          };
+
+          // The whole board is on screen: `meet` never crops, so a piece can
+          // never be scrolled to or hidden behind the address bar.
+          expect(shown.width).toBeLessThanOrEqual(viewport.width + 1);
+          expect(shown.height).toBeLessThanOrEqual(viewport.height + 1);
+
+          // A piece stays over a tenth of the short side of the screen once the
+          // letterbox scale is applied - the "large things for small hands"
+          // invariant, measured in device pixels rather than canvas units.
+          const shortSide = Math.min(viewport.width, viewport.height);
+          expect(layout.slotSize * scale).toBeGreaterThanOrEqual(0.1 * shortSide);
+
+          worstCoverage = Math.min(
+            worstCoverage,
+            (shown.width * shown.height) / (viewport.width * viewport.height),
+          );
+        }
+      }
+      expect(worstCoverage).toBeGreaterThanOrEqual(coverageFloor);
+    });
+  }
+});
+
+/**
  * Every animal is authored square, so the layout would happily go on assuming
  * one square piece size until the first jigsaw piece or triangle arrived. These
  * stand-ins are deliberately not square, in both directions.

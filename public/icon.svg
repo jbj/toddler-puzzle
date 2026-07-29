@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img"
+     aria-label="Animal Puzzle">
+  <!-- Full-bleed background so the icon is safe as a maskable icon: the motif
+       sits well inside the central safe zone, and the sky fills the corners a
+       launcher may round or crop. Hand-authored SVG; the project ships no
+       binary assets. See the iPad decision record. -->
+  <rect width="512" height="512" fill="#8ecae6"/>
+  <ellipse cx="256" cy="452" rx="150" ry="26" fill="#77b3cf"/>
+  <!-- A friendly bear, drawn from simple rounded forms. -->
+  <g>
+    <circle cx="168" cy="150" r="52" fill="#b98a5a"/>
+    <circle cx="168" cy="150" r="26" fill="#d8b48a"/>
+    <circle cx="344" cy="150" r="52" fill="#b98a5a"/>
+    <circle cx="344" cy="150" r="26" fill="#d8b48a"/>
+    <circle cx="256" cy="268" r="150" fill="#c69a68"/>
+    <ellipse cx="256" cy="318" rx="96" ry="82" fill="#e7cfa8"/>
+    <circle cx="204" cy="234" r="20" fill="#3a2c1e"/>
+    <circle cx="308" cy="234" r="20" fill="#3a2c1e"/>
+    <circle cx="211" cy="227" r="6" fill="#ffffff"/>
+    <circle cx="315" cy="227" r="6" fill="#ffffff"/>
+    <ellipse cx="256" cy="300" rx="30" ry="24" fill="#5a4130"/>
+    <path d="M256 324 v26 M256 350 q-26 20 -52 6 M256 350 q26 20 52 6"
+          fill="none" stroke="#5a4130" stroke-width="9"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

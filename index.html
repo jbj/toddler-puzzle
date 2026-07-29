@@ -7,6 +7,24 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#8ecae6" />
+
+    <!-- Add-to-home-screen, so a toddler on an iPad gets the game fullscreen
+         with no address bar or tab strip to poke. `mobile-web-app-capable` and
+         its older Apple twin both say "run as an app"; `black-translucent` puts
+         the sky under the status bar, which the safe-area padding in style.css
+         then keeps the controls out from under. Hrefs are relative so one
+         build works at a server root and under the Pages sub-path. The icon is
+         hand-authored SVG - the project ships no binary assets - so iOS may
+         fall back to a page snapshot on the home screen; see the iPad decision
+         record. -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Animals" />
+
     <title>Animal Puzzle</title>
   </head>
   <body>

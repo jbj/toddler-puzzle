@@ -1,0 +1,20 @@
+{
+  "name": "Animal Puzzle",
+  "short_name": "Animals",
+  "description": "A drag-and-drop animal shape puzzle for toddlers.",
+  "start_url": ".",
+  "scope": ".",
+  "id": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#8ecae6",
+  "theme_color": "#8ecae6",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

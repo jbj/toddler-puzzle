@@ -1820,6 +1820,69 @@ try {
   check(`the game comes back by itself when the network does (level ${cameBack})`, cameBack === 16);
   check("and on the kind that was missing", (await kindName()) === "polygon");
   await shot("36-chunk-arrived-after-reconnect");
+
+  // --- the iPad, at its real sizes ------------------------------------------
+  // iPad is the target device. The board is one of two fixed canvases scaled to
+  // the viewport with `meet`, so the device's aspect ratio only chooses
+  // portrait or landscape and the rest is letterbox. That is easy to reason
+  // about wrongly, so this drives Chromium to the real iPad point sizes and
+  // looks: the whole board on screen, a piece still a tenth of the short side
+  // once the letterbox scale is applied, and how much of the screen is left as
+  // letterbox. A 4:3 iPad in portrait pillarboxes the 1:1.7 canvas - the floors
+  // hold, but the sides go spare - which is a thing to see rather than to hide.
+  // Split View is the narrow width a multitasking iPad can hand the game, and
+  // the case most likely to break a layout. See the iPad decision record.
+  await send("Network.setBlockedURLs", { urls: [] });
+  await setOffline(false);
+  const iPads = [
+    ["ipad-mini-portrait", 768, 1024, "portrait"],
+    ["ipad-mini-landscape", 1024, 768, "landscape"],
+    ["ipad-11-portrait", 834, 1194, "portrait"],
+    ["ipad-11-landscape", 1194, 834, "landscape"],
+    ["ipad-13-portrait", 1024, 1366, "portrait"],
+    ["ipad-13-landscape", 1366, 1024, "landscape"],
+    ["ipad-split-view", 375, 1024, "portrait"],
+  ];
+  for (const [name, width, height, orientation] of iPads) {
+    await setViewport(width, height);
+    await goToLevel(10);
+    check(`${name}: picks the ${orientation} layout`, (await layoutName()) === orientation);
+    const board = await evaluate(`
+      (() => {
+        const stage = document.querySelector('#stage');
+        const r = stage.getBoundingClientRect();
+        const vb = stage.viewBox.baseVal;
+        // The SVG element fills the screen; the board is drawn inside it,
+        // letterboxed by preserveAspectRatio="meet". Measure the drawn board,
+        // not the element, or the coverage is always 100%.
+        const scale = Math.min(r.width / vb.width, r.height / vb.height);
+        const drawn = { width: vb.width * scale, height: vb.height * scale };
+        const pieces = [...document.querySelectorAll('.piece .grab-box')].map((el) => {
+          const b = el.getBoundingClientRect();
+          return Math.max(b.width, b.height);
+        });
+        return {
+          fits: r.width <= window.innerWidth + 1 && r.height <= window.innerHeight + 1,
+          coverage: (drawn.width * drawn.height) / (window.innerWidth * window.innerHeight),
+          shortSide: Math.min(window.innerWidth, window.innerHeight),
+          smallestPiece: pieces.length ? Math.min(...pieces) : 0,
+        };
+      })()
+    `);
+    check(`${name}: the whole board is on screen`, board.fits === true);
+    check(
+      `${name}: a piece stays big enough to grab (${((board.smallestPiece / board.shortSide) * 100).toFixed(0)}% of the short side)`,
+      board.smallestPiece > 0 && board.smallestPiece / board.shortSide >= 0.1,
+    );
+    // Portrait on a 4:3 iPad pillarboxes the 1:1.7 canvas, so the sides go
+    // spare; landscape nearly fills. Reported so the letterbox is a number a
+    // reviewer can see next to the screenshot, not a surprise.
+    check(
+      `${name}: board covers ${(board.coverage * 100).toFixed(0)}% of the screen`,
+      board.coverage >= 0.55,
+    );
+    await shot(`37-${name}`);
+  }
 } finally {
   browser.close();
   server.close();

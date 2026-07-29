@@ -26,6 +26,14 @@ body {
   width: 100%;
   height: 100%;
   display: block;
+
+  /* Keep the whole board - and the reset button and chapter dots that sit at
+     the bottom of the SVG canvas - clear of the notch and the home indicator.
+     The board letterboxes inside this box, so insetting the box lifts it off
+     the unsafe edges; the sky behind fills the gap. `env(...)` is zero on a
+     screen with no inset, so a phone or a desktop is unchanged. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
 }
 
 #stage {
@@ -162,8 +170,11 @@ body {
 .grownups-key {
   --fill: 0;
   position: fixed;
-  right: 12px;
-  bottom: 12px;
+  /* Beyond the safe-area inset, so the button clears the home indicator and the
+     rounded corner on an iPad. `env(...)` is zero without an inset, so this is
+     the plain 12px everywhere else. */
+  right: calc(12px + env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
   z-index: 10;
   padding: 4px;
   border: 0;
@@ -219,7 +230,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  /* Safe-area on top of the base padding, so a tall sheet on an iPad does not
+     tuck its edges under the notch or the home indicator. Zero without an
+     inset. */
+  padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+    calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
   background: rgba(16, 32, 40, 0.55);
   overflow: auto;
 }
