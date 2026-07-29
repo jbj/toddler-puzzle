@@ -477,6 +477,22 @@ const nightHasFallen = () =>
 `);
 
 /**
+ * What a finger could land on in the celebration itself, waiting a moment for
+ * something to arrive. A celebration is allowed a tick with a thin sky - a
+ * balloon leaves the top the instant before its replacement clears the bottom -
+ * but not a second of an empty one, which is why the wait is short.
+ */
+async function somethingToTouch(within = 1200) {
+  const deadline = Date.now() + within;
+  for (;;) {
+    const things = await celebrationThings();
+    if (things.length > 0) return things;
+    if (Date.now() >= deadline) return things;
+    await sleep(100);
+  }
+}
+
+/**
  * Tap the things a celebration is offering, one at a time, and report what
  * answered. Every tap is on something that was on screen when it was aimed at,
  * so a tap that does not register is the celebration failing to answer a finger.
@@ -485,7 +501,7 @@ async function playCelebration(taps) {
   let answered = 0;
   let missed = 0;
   for (let tap = 0; tap < taps; tap++) {
-    const things = await celebrationThings();
+    const things = await somethingToTouch();
     if (things.length === 0) throw new Error("The celebration has nothing to touch.");
     const thing = things[tap % things.length];
     const before = await celebrationPlayed();
@@ -957,6 +973,17 @@ try {
   await sleep(2000);
   const topUp = await celebrationThings();
   check(`the sky fills itself back up (${topUp.length})`, topUp.length >= 4);
+  // And goes on having something in it. Seven balloons released together reach
+  // the top together, so a replacement that only starts when one leaves opens a
+  // hole of a second or two - which is what a child who looked away would come
+  // back to. Watched across a stretch rather than sampled once, because that
+  // hole is exactly the kind of thing a single sample walks straight past.
+  let thinnestSky = Infinity;
+  for (let look = 0; look < 24; look++) {
+    thinnestSky = Math.min(thinnestSky, (await celebrationThings()).length);
+    await sleep(250);
+  }
+  check(`the sky is never empty while the party runs (${thinnestSky} at worst)`, thinnestSky >= 2);
   check("the celebration never takes the level away", (await levelNumber()) === 5);
   check("the way onwards is still there after playing", (await finishButtons()) === 1);
   await shot("07c-chapter1-balloons-popped");

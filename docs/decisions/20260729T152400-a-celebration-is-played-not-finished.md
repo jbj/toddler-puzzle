@@ -114,6 +114,16 @@ and is not: a bubble is a level, paced so a child has time to aim, and a
 replacement that took four seconds to climb into reach would leave the sky empty
 for four seconds - which is the one thing a celebration must not do.
 
+For the same reason a floater gives up its place in the sky part way through its
+journey (`TUNING.handOnAt`) rather than when it leaves the edge. Releasing seven
+balloons together and replacing each one only as it escapes sounds right and is
+not: they were released together, so they reach the top together, and the sky
+goes from full to empty and back with a hole of a second or two in the middle.
+That hole is invisible in a screenshot and obvious to a child who looked away.
+Handing the place on at just over half way keeps a continuous stream instead of
+a wave. `scripts/shot.mjs` watches the sky across six seconds rather than
+sampling it once, because one sample walks straight past exactly this.
+
 Under `prefers-reduced-motion` the moment still happens and is calmer: floaters
 hold still, as they already do everywhere (see
 [20260729T072100](20260729T072100-reduced-motion-holds-still.md)), the parade

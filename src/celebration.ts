@@ -148,6 +148,14 @@ const TUNING = {
   petalsAtOnce: 9,
   petalSpeed: 0.05,
   petalSway: 0.1,
+  /**
+   * How far through its journey a floater gives up its place in the sky, so
+   * that its replacement is on its way while it is still there to be popped.
+   * Anything close to 1 lets a handful released together reach the edge
+   * together and leave a hole behind them - and an empty screen is the one
+   * thing a celebration must never show a child who looked away for a moment.
+   */
+  handOnAt: 0.55,
   /** How wide a parading animal is drawn. */
   paradeWidth: 0.19,
   /** How fast one walks, in logical units per millisecond. */
@@ -210,6 +218,8 @@ interface Party {
   arriving(): boolean;
   /** A repeating timer, cleared when the board goes. */
   every(ms: number, run: () => void): void;
+  /** A one-shot timer, cleared when the board goes. */
+  after(ms: number, run: () => void): void;
   /** Something else to let go of when the board goes. */
   onStop(run: () => void): void;
 }
@@ -307,6 +317,7 @@ function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsA
   const { width, height } = layout.canvas;
   const still = prefersReducedMotion();
   const afloat = new Set<Poppable>();
+  let holding = 0;
   let minted = 0;
 
   function release(): void {
@@ -326,6 +337,24 @@ function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsA
         ? height * (0.45 + lane * 0.5)
         : height + radius * (0.05 + random() * 0.35);
     const ceiling = -radius * 2.4;
+    const climb = (startY - ceiling) / TUNING.balloonSpeed;
+
+    holding++;
+    let handedOn = false;
+    /**
+     * Give up this balloon's place in the sky. Called when it bursts, when it
+     * leaves the top, and - the point of the whole thing - part way up, so that
+     * its replacement is already climbing while it is still there to be popped.
+     * Without that, seven balloons released together all reach the top together
+     * and leave a hole of a second or two behind them, which is precisely the
+     * empty screen a celebration must never show.
+     */
+    function handOn(): void {
+      if (handedOn) return;
+      handedOn = true;
+      holding--;
+      topUp();
+    }
 
     const balloon: Poppable = releasePoppable(layer, {
       at: { x, y: startY },
@@ -338,7 +367,7 @@ function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsA
         : {
             drift: {
               to: { x, y: ceiling },
-              ms: (startY - ceiling) / TUNING.balloonSpeed,
+              ms: climb,
               sway: (random() - 0.5) * 2 * width * TUNING.balloonSway,
             },
           }),
@@ -347,24 +376,25 @@ function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsA
         unlockAudio();
         playPop((width * TUNING.balloonRadius) / radius);
         party.answer(at);
-        topUp();
+        handOn();
       },
       onEscape: () => {
         afloat.delete(balloon);
-        topUp();
+        handOn();
       },
     });
     afloat.add(balloon);
+    if (!still) party.after(climb * TUNING.handOnAt, handOn);
   }
 
   /**
-   * However many have gone, that many arrive - until the half-minute is up, at
-   * which point the sky simply stops refilling. What is still afloat goes on
-   * bursting for as long as the child wants it to.
+   * However many have handed on their place, that many arrive - until the
+   * half-minute is up, at which point the sky simply stops refilling. What is
+   * still afloat goes on bursting for as long as the child wants it to.
    */
   function topUp(): void {
     if (!party.arriving()) return;
-    while (afloat.size < options.at) release();
+    while (holding < options.at) release();
   }
 
   topUp();
@@ -388,6 +418,7 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
   const { width, height } = layout.canvas;
   const still = prefersReducedMotion();
   const falling = new Set<Poppable>();
+  let holding = 0;
   let minted = 0;
 
   function release(): void {
@@ -404,6 +435,17 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
         ? height * (0.62 - lane * 0.6)
         : -radius * (1.2 + random() * 0.8);
     const floorY = height + radius * 2.4;
+    const fall = (floorY - startY) / TUNING.petalSpeed;
+
+    holding++;
+    let handedOn = false;
+    /** As for a balloon: give up the place part way down, not at the bottom. */
+    function handOn(): void {
+      if (handedOn) return;
+      handedOn = true;
+      holding--;
+      topUp();
+    }
 
     const petal: Poppable = releasePoppable(layer, {
       at: { x, y: startY },
@@ -416,7 +458,7 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
         : {
             drift: {
               to: { x, y: floorY },
-              ms: (floorY - startY) / TUNING.petalSpeed,
+              ms: fall,
               sway: (random() - 0.5) * 2 * width * TUNING.petalSway,
             },
           }),
@@ -427,19 +469,20 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
         // the pentatonic scale instead of the bubble's pop.
         playPlink(party.answered());
         party.answer(at);
-        topUp();
+        handOn();
       },
       onEscape: () => {
         falling.delete(petal);
-        topUp();
+        handOn();
       },
     });
     falling.add(petal);
+    if (!still) party.after(fall * TUNING.handOnAt, handOn);
   }
 
   function topUp(): void {
     if (!party.arriving()) return;
-    while (falling.size < options.at) release();
+    while (holding < options.at) release();
   }
 
   topUp();
@@ -837,6 +880,7 @@ export function createCelebration(id: CelebrationId): Celebration {
     endless,
     mount(stage: CelebrationStage): () => void {
       const timers: number[] = [];
+      const waits: number[] = [];
       const stops: (() => void)[] = [];
 
       stage.layer.dataset["celebration"] = id;
@@ -854,6 +898,9 @@ export function createCelebration(id: CelebrationId): Celebration {
         every(ms: number, run: () => void) {
           timers.push(window.setInterval(run, ms));
         },
+        after(ms: number, run: () => void) {
+          waits.push(window.setTimeout(run, ms));
+        },
         onStop(run: () => void) {
           stops.push(run);
         },
@@ -863,6 +910,7 @@ export function createCelebration(id: CelebrationId): Celebration {
 
       return () => {
         for (const timer of timers) window.clearInterval(timer);
+        for (const wait of waits) window.clearTimeout(wait);
         for (const stop of stops) stop();
         stage.layer.replaceChildren();
         delete stage.layer.dataset["celebration"];

@@ -78,7 +78,10 @@ The rules a celebration has to keep:
   four seconds already has the way on; and new things go on arriving unasked for
   `CELEBRATION_SPAN_MS`, so a child who touches nothing is not looking at an
   empty screen. When the span runs out only the *arriving* stops - whatever is on
-  screen goes on answering for as long as the child stays.
+  screen goes on answering for as long as the child stays. A floater hands its
+  place on part way through its journey rather than at the edge
+  (`TUNING.handOnAt`), so a handful released together cannot reach the edge
+  together and leave a hole behind them.
 - **The button arrives rather than sitting there - but only on a chapter end,
   and only the first time.** It holds back for `FINISH_BUTTON_BEAT_MS`
   (`src/celebration.ts` explains the number) and then fades up, because after
