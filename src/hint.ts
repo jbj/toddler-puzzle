@@ -96,7 +96,7 @@ export interface IdleHint {
 export interface IdleHintOptions {
   /** Put the hint on the board. Asked when the wait runs out, never before. */
   readonly show: () => void;
-  /** Take it off again. Called even when nothing is showing; must not care. */
+  /** Take it off again. Called only when a hint is actually on the board. */
   readonly hide: () => void;
   /** Injectable so the wait can be played out without waiting. */
   readonly setTimer?: (run: () => void, ms: number) => number;

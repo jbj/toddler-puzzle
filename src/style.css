@@ -106,8 +106,9 @@ body {
 
 /* Reduced motion keeps the invitation and drops the movement: a child who
    needs the hint still needs it, so it appears and holds instead of pulsing.
-   `is-still` comes from motion.ts, which is the one place the question is
-   asked, and the media query says the same thing to the stylesheet. */
+   `is-still` is put on by hint.ts when it draws, from the answer motion.ts
+   gives, since motion.ts is the one place the question is asked. The media
+   query below says the same thing again for a browser that never asks. */
 .hint.is-still .hint-mark {
   animation: none;
   opacity: 0.85;

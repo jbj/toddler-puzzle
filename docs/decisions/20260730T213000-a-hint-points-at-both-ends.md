@@ -83,7 +83,19 @@ Two consequences worth expecting rather than discovering:
   is an interaction, every interaction takes the hint down, and a re-layout stops
   it outright. The glow is always computed from the board as it stands.
 
+Two things that look like bugs in the single-target version are not, and both
+took tracing to establish, so they are written down here rather than left to be
+re-discovered. `target` reads `placeIndex(scene, piece)`, which is defined for
+every piece from the moment the scene is dealt, so it is never undefined for a
+piece nobody has touched. And the glow cannot be seen to *jump*: a swap only
+happens on a drop, a drop is an interaction, and an interaction takes the hint
+down - so it is recomputed between showings rather than moving under the child's
+eye. What was actually wrong with pointing at one place was subtler than either:
+the single glow was a *partial* truth rather than a false one - dropping on the
+glowed twin works and dropping on its twin works too - and a partial truth is
+still read as "that one" by a child with no way to second-guess it.
 
+### Stroke only, never a fill
 
 This is the failure mode the issue calls out by name: a hint must not look like a
 target that has already been filled.
