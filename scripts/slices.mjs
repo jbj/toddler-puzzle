@@ -68,6 +68,64 @@ export const AREA_TOLERANCE = 0.35;
  */
 export const MIN_INSCRIBED = 15;
 
+/**
+ * How far a slice's declared ink is pushed out past the pixels it was measured
+ * from, in art units, and how far the checker will then let it sit from the
+ * pixels it re-measures.
+ *
+ * Two rasterisers do not agree to the pixel. The mask is a 1920-pixel render
+ * averaged down to 240 and then thresholded, so an edge whose eight-by-eight
+ * block lands near half covered flips a whole art unit on a different
+ * resampling filter - measured at up to two units on this animal set, and CI's
+ * older librsvg and ImageMagick found exactly those two units on three recipes
+ * that were exact here.
+ *
+ * So the box is not measured exactly, it is measured and then pushed out by
+ * more than that disagreement, and the checker asks the two questions that
+ * actually matter separately:
+ *
+ *   - does the declared box *contain* everything the slice draws? This is the
+ *     one that matters to a child: the grab box is the declared box, and a
+ *     drawing outside it is a piece of the animal that cannot be picked up. A
+ *     pad makes it true on any rasteriser rather than on a lucky one;
+ *   - is it still honestly a *slice's* box? Within `INK_SLACK` of the pixels,
+ *     so it cannot quietly become the whole animal's box - which is what the
+ *     check exists to catch, and which is wrong by fifty units, not by eight.
+ *
+ * The pad is twice the disagreement that was actually measured, and the slack
+ * is twice the pad, so both halves have as much room again as the worst case
+ * observed. Four units out of two hundred and forty is under two percent of the
+ * animal, and it is spent on the forgiving side: a grab box a whisker larger
+ * than the drawing is exactly the error this game prefers to make.
+ */
+export const INK_PAD = 4;
+export const INK_SLACK = 8;
+
+/** Push a measured box out by `INK_PAD`, without leaving the art box. */
+export function padInk(rect) {
+  const left = Math.max(0, rect.x - INK_PAD);
+  const top = Math.max(0, rect.y - INK_PAD);
+  const right = Math.min(GRID, rect.x + rect.width + INK_PAD);
+  const bottom = Math.min(GRID, rect.y + rect.height + INK_PAD);
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/**
+ * Whether a declared box covers `ink` and is no more than `INK_SLACK` bigger
+ * than it on any edge. Both halves have to hold; see `INK_PAD`.
+ */
+export function inkFits(declared, ink) {
+  if (ink === null) return false;
+  const [x, y, width, height] = declared;
+  const slack = (a, b) => a - b >= 0 && a - b <= INK_SLACK;
+  return (
+    slack(ink.x, x) &&
+    slack(ink.y, y) &&
+    slack(x + width, ink.x + ink.width) &&
+    slack(y + height, ink.y + ink.height)
+  );
+}
+
 /** A 0/1 mask of the rendered PNG, downsampled to the measuring grid. */
 export function maskPixels(png, scratch, name) {
   const raw = join(scratch, `${name}.gray`);
@@ -340,7 +398,7 @@ export function recipeFor(silhouette, drawn, count) {
   const boxes = cellMasks(new Uint8Array(GRID * GRID).fill(1), cut.cuts);
   const ink = boxes.map((cell) => inkBounds(intersect(drawn, cell)));
   if (ink.some((box) => box === null)) return null;
-  return { cuts: cut.cuts, ink: ink.map(asTuple) };
+  return { cuts: cut.cuts, ink: ink.map((box) => asTuple(padInk(box))) };
 }
 
 /**

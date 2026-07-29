@@ -167,6 +167,14 @@ the table also records what each slice actually draws, and the tray and the grab
 box read that instead of the box. See
 [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 
+That recorded box is deliberately a few units bigger than the pixels it was
+measured from, and the check asks whether it *covers* the drawing rather than
+whether it matches it. Two rasterisers do not agree to the pixel - CI's librsvg
+and ImageMagick found two units of disagreement on three recipes that were exact
+here - and the way to be right on both is a box with room in it, not a tighter
+comparison. Which way the room goes is the point: the box is the child's grab
+box, so it may be a whisker larger than the drawing and may never be smaller.
+
 ## Reading differently from the animal next to it
 
 Two animals that a level can deal together have to be *told apart* at a glance,

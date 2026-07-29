@@ -29,6 +29,7 @@ import {
   cellMasks,
   GRID,
   inkBounds,
+  inkFits,
   intersect,
   isConnected,
   inscribedRadius,
@@ -267,12 +268,9 @@ function checkSliceRecipes(id, silhouettePng, drawnPng) {
       if (radius < MIN_INSCRIBED) {
         faults.push(`slice ${index} is only ${radius.toFixed(1)} units fat`);
       }
-      const drifted =
-        ink === null ||
-        [ink.x, ink.y, ink.width, ink.height].some(
-          (value, at) => Math.abs(value - declared[at]) > 1,
-        );
-      if (drifted) faults.push(`slice ${index} draws somewhere else than its declared ink`);
+      if (!inkFits(declared, ink)) {
+        faults.push(`slice ${index} draws somewhere else than its declared ink`);
+      }
     }
     check(label, faults.length === 0, faults.length === 0 ? "" : `${faults.join("; ")}`);
     if (faults.length > 0) console.log(`      ${suggestedRecipe(silhouette, drawn, count)}`);
