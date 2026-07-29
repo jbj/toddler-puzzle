@@ -481,16 +481,40 @@ export function dealPieces(
   shapes: readonly PieceShape[],
   random: () => number = Math.random,
 ): readonly PieceShape[] {
+  return deal(level, level.pieces, shapes, random);
+}
+
+/**
+ * Deal this level's *targets*: the shapes the holes are cut from. The same deal
+ * as `dealPieces`, for the count that says how many things there are to fill.
+ *
+ * Usually the two are the same number and a kind only needs one of them. A
+ * sliced level is where they part company: it deals one or two animals here and
+ * cuts each into the slices that fill them, so what goes in the tray is not
+ * what the scene is holes for.
+ */
+export function dealTargets(
+  level: LevelSpec,
+  shapes: readonly PieceShape[],
+  random: () => number = Math.random,
+): readonly PieceShape[] {
+  return deal(level, level.targets, shapes, random);
+}
+
+function deal(
+  level: LevelSpec,
+  count: number,
+  shapes: readonly PieceShape[],
+  random: () => number,
+): readonly PieceShape[] {
   assertUniquePieceIds(shapes, "dealPieces()");
-  if (level.pieces > shapes.length) {
-    throw new Error(
-      `Level ${level.level} needs ${level.pieces} pieces but only ${shapes.length} exist.`,
-    );
+  if (count > shapes.length) {
+    throw new Error(`Level ${level.level} needs ${count} pieces but only ${shapes.length} exist.`);
   }
-  if (level.theme === undefined) return shuffle(shapes, random).slice(0, level.pieces);
+  if (level.theme === undefined) return shuffle(shapes, random).slice(0, count);
 
   const themed = shuffle(castOf(level.theme, shapes), random);
-  if (themed.length >= level.pieces) return themed.slice(0, level.pieces);
+  if (themed.length >= count) return themed.slice(0, count);
 
   // Short of a full board: take the whole theme and make the number up from
   // the rest, then shuffle the two together so the animals that came in to
@@ -500,5 +524,5 @@ export function dealPieces(
     shapes.filter((shape) => !inTheme.has(shape)),
     random,
   );
-  return shuffle([...themed, ...spare].slice(0, level.pieces), random);
+  return shuffle([...themed, ...spare].slice(0, count), random);
 }

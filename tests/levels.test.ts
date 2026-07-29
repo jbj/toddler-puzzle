@@ -243,10 +243,22 @@ describe("dealPieces", () => {
 });
 
 describe("themed casts", () => {
-  /** How many animals a level needs from its theme, as it is played today. */
+  /** Every level that names a theme, as it is played today. */
   const themedLevels = LEVELS.map((level) => resolveLevel(level, SHAPES.length).spec).filter(
     (spec) => spec.theme !== undefined,
   );
+
+  /**
+   * The animals a level actually puts on the board, asked of the kind that
+   * plays it rather than read off the table. `pieces` is not the answer for
+   * every kind: a sliced level deals two animals and eight pieces, and it is
+   * the two that have to come out of the theme - the other six are quarters of
+   * them, and belong to no theme at all.
+   */
+  const animalsFor = (spec: LevelSpec, run: number): readonly PieceShape[] => {
+    const { kind } = resolveLevel(spec, SHAPES.length);
+    return kind.deal({ level: spec, shapes: SHAPES }, seededRandom(run)).targets;
+  };
 
   it("names a theme every animal can be grouped under", () => {
     for (const level of LEVELS) {
@@ -265,7 +277,7 @@ describe("themed casts", () => {
     for (const spec of themedLevels) {
       const cast = castOf(spec.theme as ThemeId, SHAPES);
       expect(cast.length, `level ${spec.level} (${spec.theme})`).toBeGreaterThanOrEqual(
-        spec.pieces,
+        animalsFor(spec, 0).length,
       );
     }
   });
@@ -273,7 +285,7 @@ describe("themed casts", () => {
   it("deals a themed level from that theme and nothing else", () => {
     for (const spec of themedLevels) {
       for (let run = 0; run < 20; run++) {
-        for (const shape of dealPieces(spec, SHAPES, seededRandom(run))) {
+        for (const shape of animalsFor(spec, run)) {
           expect(shape.themes, `level ${spec.level}`).toContain(spec.theme);
         }
       }
@@ -287,7 +299,7 @@ describe("themed casts", () => {
       const cast = castOf(spec.theme as ThemeId, SHAPES);
       const seen = new Set<string>();
       for (let run = 0; run < 300; run++) {
-        for (const shape of dealPieces(spec, SHAPES, seededRandom(run))) seen.add(shape.id);
+        for (const shape of animalsFor(spec, run)) seen.add(shape.id);
       }
       expect(seen.size, `level ${spec.level} (${spec.theme})`).toBe(cast.length);
     }
@@ -432,8 +444,8 @@ describe("the kind registry", () => {
         // `buildLevelLayout` rather than `buildLayout`: it refuses a level the
         // table does not vouch for, so this also proves a stand-in's spec is
         // still a level of the thirty rather than one invented in passing.
-        const layout = buildLevelLayout(id, spec, puzzle.pieces);
-        expect(layout.holes.size).toBe(spec.pieces);
+        const layout = buildLevelLayout(id, spec, puzzle.pieces, puzzle.targets);
+        expect(layout.holes.size).toBe(spec.targets);
       }
     }
   });

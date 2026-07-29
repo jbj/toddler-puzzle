@@ -37,6 +37,7 @@ import {
 } from "../levels";
 import type { PuzzleKind } from "../puzzle";
 import { shapeMatch } from "./shape-match";
+import { sliced } from "./sliced";
 
 /**
  * The most pieces a stand-in deals. Six animals is the busiest board the cast
@@ -59,6 +60,7 @@ export function registerKind(kind: PuzzleKind): void {
 }
 
 registerKind(shapeMatch);
+registerKind(sliced);
 
 /** Has this kind been built yet? */
 export const isKindRegistered = (id: PuzzleKindId): boolean => registry.has(id);

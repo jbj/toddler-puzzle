@@ -418,11 +418,16 @@ const COMPOSITION = {
    * The smallest a *piece* may draw, on its longer side, as a fraction of the
    * canvas width. The same rule as `minSlot` for anything that fills its box,
    * and the one that bites for a slice: a slice keeps its animal's box, so its
-   * slot says nothing about how much of it there is to grab. Slightly below
-   * `minSlot` because a quarter of an animal is inevitably smaller than a whole
-   * one, and the recipes already refuse a slice too thin to pick up.
+   * slot says nothing about how much of it there is to grab.
+   *
+   * Well below `minSlot`, because a quarter of an animal is a quarter the size
+   * of one and the floor for a whole animal would refuse every four-slice level
+   * in the table. It is a second opinion rather than the main defence: the
+   * recipes have already refused any slice too thin to pick up, measured on the
+   * slice itself rather than on the box around it (`scripts/slices.mjs`), and
+   * this only catches a board so busy that even a fat slice comes out small.
    */
-  minPieceInk: 0.085,
+  minPieceInk: 0.06,
 } as const;
 
 /** `count` pieces over `rows` rows, as evenly as possible, fullest row first. */

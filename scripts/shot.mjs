@@ -219,12 +219,23 @@ const emptySpotOn = (pieceId) =>
 `);
 
 /**
+ * Which hole a piece belongs in. Usually its own, because usually a piece is
+ * the whole of what fills a hole; the slices of one animal all aim at that
+ * animal's hole, and say so in their ids (`slice:<animal>:<of>:<index>`).
+ */
+const holeFor = (pieceId) => (pieceId.startsWith("slice:") ? pieceId.split(":")[1] : pieceId);
+
+/**
  * Drag a piece into its hole. `grabAt` picks it up somewhere other than the
  * middle - the drop moves by the same offset, so where it lands is unchanged.
  */
 async function dragAnimal(pieceId, { pauseAtHalfway, grabAt } = {}) {
-  const centre = await centreOf(`.piece[data-piece="${pieceId}"]`);
-  const hole = await centreOf(`.hole[data-piece="${pieceId}"]`);
+  // The grab box rather than the whole piece: it is the area a finger can
+  // actually pick up, and for a slice it is the only part of the piece that is
+  // anywhere near the drawing - the box around a slice is mostly the rest of
+  // the animal.
+  const centre = await centreOf(`.piece[data-piece="${pieceId}"] .grab-box`);
+  const hole = await centreOf(`.hole[data-piece="${holeFor(pieceId)}"]`);
   if (!centre || !hole) throw new Error(`Could not locate piece or hole for "${pieceId}".`);
 
   const from = grabAt ?? centre;
@@ -678,23 +689,45 @@ try {
   // to is exactly where they left it.
   await reopenTheGame();
   check("a level played from ?level= leaves the saved level alone", (await levelNumber()) === 6);
+  // --- level 14: one animal, arriving in four slices -----------------------
+  // The first level of the game that asks for a picture rather than a match:
+  // four pieces, one hole, and the hole stays visible underneath as the guide
+  // to what is being built.
+  await goToLevel(14);
+  check("jumps to level 14", (await levelNumber()) === 14);
+  check("the sliced kind plays its own levels", (await kindName()) === "sliced");
+  const sliceCast = await animalsOnBoard();
+  check("level 14 deals four slices", sliceCast.length === 4);
+  check("four slices, one hole", (await holeCount()) === 1);
+  check("every slice is a slice of the same animal", new Set(sliceCast.map(holeFor)).size === 1);
+  await shot("12-level14-sliced");
+
+  await dragAnimal(sliceCast[0]);
+  await dragAnimal(sliceCast[1]);
+  check("a slice settles into its animal's hole", (await placedCount()) === 2);
+  await shot("13-level14-half-built");
+
+  await solveRemaining();
+  check("the animal can be put back together", (await placedCount()) === 4);
+  await shot("14-level14-assembled");
+
   await goToLevel(30);
   check("jumps to the last level", (await levelNumber()) === 30);
   check("the last level is in the mastery chapter", (await chapterName()) === "mastery");
   const lastDots = await chapterDots();
   check(`every chapter dot filled on level 30 (${lastDots.filled})`, lastDots.filled === 6);
   const lastCount = await pieceCount();
-  await shot("12-level30-start");
+  await shot("15-level30-start");
 
   await solveRemaining();
   check("the last level can be completed", (await placedCount()) === lastCount);
   check("the last level offers a replay", (await finishLabel()) === "Play again");
-  await shot("13-level30-complete");
+  await shot("16-level30-complete");
 
   await pressFinishButton();
   check("play again loops back to level 1", (await levelNumber()) === 1);
   check("looping back clears the board", (await placedCount()) === 0);
-  await shot("14-looped-back");
+  await shot("17-looped-back");
 
   // --- a fresh deal every time ---------------------------------------------
   await evaluate(`document.querySelector('.reset-button').dispatchEvent(
@@ -713,7 +746,7 @@ try {
   const deals = new Set();
   for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
-  await shot("15-another-deal");
+  await shot("18-another-deal");
 } finally {
   socket.close();
   chrome.kill();
