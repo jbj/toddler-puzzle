@@ -37,7 +37,7 @@ import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
 import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
 import { enableDragging } from "./drag";
 import { boxCenter, shuffle, type Point, type Size } from "./geometry";
-import { resolveLevel } from "./kinds/registry";
+import { kindFor } from "./kinds/registry";
 import { boxOf, chooseLayout, trayHome, type Layout } from "./layout";
 import { LEVEL_COUNT, levelSpec, nextLevel, type LevelSpec } from "./levels";
 import type { PieceId, PieceShape } from "./piece";
@@ -223,18 +223,13 @@ export function createGame(
    * never a change to how far the child has got. A level a grown-up chose from
    * the panel is recorded as somewhere the child is rather than somewhere they
    * reached, so reading the level map never fills the level map in.
-   *
-   * The level is resolved every time rather than once, because a level whose
-   * kind is not built yet is played by a stand-in, and the stand-in has a piece
-   * count of its own; see `kinds/registry.ts`.
    */
   function startPuzzle(): void {
     complete = false;
     if (arrival === "chosen") progress.jumpToLevel(levelNumber);
     else progress.reachLevel(levelNumber);
-    const resolved = resolveLevel(levelSpec(levelNumber), shapes.length);
-    kind = resolved.kind;
-    level = resolved.spec;
+    level = levelSpec(levelNumber);
+    kind = kindFor(level);
     puzzle = kind.deal({ level, shapes }, random);
     layout = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
     board = mount(layout);

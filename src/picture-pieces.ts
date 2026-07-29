@@ -1,0 +1,142 @@
+/**
+ * A cut-up picture as pieces: the frame, and one clipped piece per cell.
+ *
+ * The half the two picture chapters share. A jigsaw cuts rows and columns
+ * (`jigsaw.ts`) and a shatter cuts irregular shards (`shatter.ts`), and once
+ * either of them has decided where the lines go, what happens next is the same
+ * thing and should be one piece of code: **a piece is the scene's own markup
+ * through a clip path**, and the frame is the whole scene as the single thing
+ * to fill.
+ *
+ * Nothing here intersects artwork with anything. One hand-drawn scene serves a
+ * 2x2 jigsaw, a 4x3 jigsaw and an eight-piece shatter without being redrawn,
+ * two neighbours cannot draw the same pixel differently, and the guide under
+ * the empty frame is drawn from the very paths the pieces are clipped with.
+ *
+ * Every piece keeps the *whole* picture box and the picture's own anchor. Two
+ * things follow, and they are the two things both chapters need:
+ *
+ *  - laid out, every piece gets the same scale and the same origin, so a piece
+ *    settles into the picture rather than being placed in it;
+ *  - what a piece draws is a corner of a box it mostly leaves empty, so `inked`
+ *    is what the tray packs by and what a hand has to find.
+ */
+import type { Point, Rect, Size } from "./geometry";
+import { pieceId, type PieceShape } from "./piece";
+import type { Picture } from "./pictures";
+
+/** One piece of a cut-up picture: what to call it, and where it is. */
+export interface CutCell {
+  /** What tells this piece from the others of the same picture, in its id. */
+  readonly name: string;
+  /** The closed path the piece is clipped out of the picture with. */
+  readonly outline: string;
+  /** Everything the piece draws, in picture-box units. */
+  readonly ink: Rect;
+}
+
+/** A picture cut up: the whole thing to build it in, and the pieces to build. */
+export interface PicturePieces {
+  /** The picture itself: the single target, with one hole cut for it. */
+  readonly frame: PieceShape;
+  /** One piece per cell, in the order the cutter made them. */
+  readonly pieces: readonly PieceShape[];
+}
+
+/**
+ * The id the frame of a cut-up picture is known by. The way it was cut is part
+ * of it, so a shattered farmyard and a jigsawed one are never the same piece.
+ */
+export const pictureFrameId = (picture: Picture, kind: string): string => `${kind}:${picture.id}`;
+
+/** An id that is safe to interpolate into an SVG `id` attribute. */
+const clipId = (piece: string): string => `cut-${piece.replaceAll(":", "-")}`;
+
+/**
+ * Where a picture stands: the middle of its bottom edge. Every piece carries
+ * it, exactly as every slice carries its animal's anchor, so the layout gives
+ * the whole cast one scale and one origin and the picture assembles itself.
+ */
+const anchorOf = (box: Size): Point => ({ x: box.width / 2, y: box.height });
+
+/** A picture and the cells it was cut into, as a puzzle's worth of shapes. */
+export function picturePieces(
+  picture: Picture,
+  kind: string,
+  cells: readonly CutCell[],
+): PicturePieces {
+  const { box } = picture;
+  const anchor = anchorOf(box);
+  const frame = pictureFrameId(picture, kind);
+
+  const pieces = cells.map((cell, index): PieceShape => {
+    const id = `${frame}:${cell.name}`;
+    const clip = clipId(id);
+    return {
+      id: pieceId(id),
+      outline: cell.outline,
+      artwork: `<g class="picture-piece">
+        <defs><clipPath id="${clip}"><path d="${cell.outline}" /></clipPath></defs>
+        <g clip-path="url(#${clip})">
+          ${picture.artwork}
+          <path class="cut" d="${cell.outline}" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="7" />
+        </g>
+      </g>`,
+      box,
+      inked: cell.ink,
+      anchor,
+      label: `${picture.label}, piece ${index + 1} of ${cells.length}`,
+    };
+  });
+
+  return {
+    frame: {
+      id: pieceId(frame),
+      outline: `M0 0 H${box.width} V${box.height} H0 Z`,
+      artwork: picture.artwork,
+      box,
+      anchor,
+      label: picture.label,
+    },
+    pieces,
+  };
+}
+
+/**
+ * The empty frame, with the picture showing faintly through it and every cut
+ * drawn on. Three layers, and each is doing a job:
+ *
+ *  - the picture itself, dimmed, so the child can see what they are making;
+ *  - one outline per piece, so they can see where each piece goes - the *same*
+ *    path the piece is clipped out of, so a piece covers its own line exactly;
+ *  - the border, so the picture reads as a thing to fill even before any of it
+ *    is filled.
+ *
+ * Dimmed rather than hidden while it is being filled, and gone once it is full:
+ * a rim peeking out from under a finished picture is untidy, but the guide
+ * under a half-built one is the whole point. A picture with nothing underneath
+ * is a memory game; at two years old the game is to see where a piece goes.
+ */
+export function pictureGuide(
+  frame: PieceShape,
+  pieces: readonly PieceShape[],
+  place: { readonly origin: Point; readonly scale: number; readonly filled: boolean },
+): string {
+  const cells = pieces
+    .map(
+      (piece) =>
+        `<path class="cell" data-piece="${piece.id}" d="${piece.outline}"
+           fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="5" />`,
+    )
+    .join("");
+  return `
+    <g class="hole" data-piece="${frame.id}"
+       transform="translate(${place.origin.x} ${place.origin.y}) scale(${place.scale})"
+       style="opacity: ${place.filled ? 0 : 1}">
+      <path d="${frame.outline}" fill="#1f3b34" opacity="0.3" />
+      <g opacity="0.34">${frame.artwork}</g>
+      ${cells}
+      <path d="${frame.outline}" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="8" />
+    </g>
+  `;
+}

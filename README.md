@@ -77,8 +77,22 @@ The hard part was not drawing a nice picture, it was drawing one whose
 identical blue, and a two-year-old holding one of them has been given a puzzle
 with no information in it. So `npm run art:check` cuts each scene at every grid
 the level table uses and fails any piece that is more or less all one colour,
-naming the row and column. See
+naming the row and column. A shatter has no grid to cut at, so the same promise
+is asked of the picture instead: slide a square the size of the smallest shard
+allowed over the scene, and the emptiest place it can sit still has to have
+something in it. See
 [decision 20260729T101500](docs/decisions/20260729T101500-every-piece-needs-something-in-it.md).
+
+**The same picture, broken instead of cut.** Levels 26 and 28 shatter a scene
+into irregular convex shards rather than cutting it on a grid. It looks harder
+and is easier: every shard is a different shape, so a child can match it by its
+outline instead of by what is drawn on it - the skill the shape-match levels
+have been building all along. The shards come from recursive half-plane splits
+rather than a Voronoi diagram, so convexity is free, and the partition is
+*searched* rather than tried: a minimum area, a minimum inscribed radius and a
+maximum spread are enforced on every shard and every region on the way to one,
+by backtracking until a plan clears them all. See
+[decision 20260729T124500](docs/decisions/20260729T124500-a-shard-is-a-thing-to-hold.md).
 
 **It picks up where it left off.** Thirty levels is more than one sitting, so
 the level being played is kept in `localStorage` and the next visit resumes
@@ -87,13 +101,14 @@ throws at the sight of it - simply starts at level 1 again, silently, because a
 toy that will not start is worse than a toy that forgets. See
 [decision 20260728T212500](docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
 
-**Some of the thirty levels are still stand-ins.** The whole ramp lives in one
-table, [`src/levels.ts`](src/levels.ts), and each level names the kind of puzzle
-it wants: matching animals to holes, cutting one animal into slices, building a
-picture out of shapes, something to touch, a jigsaw, and so on. Five are built;
-shatter is not. A level naming one that is not is played as a
-matching puzzle of about the right size instead, so the level is always a real,
-finishable level, and building the kind later needs no change to the table. See
+**The whole ramp is one table.** [`src/levels.ts`](src/levels.ts) holds all
+thirty levels, and each one names the kind of puzzle it wants: matching animals
+to holes, cutting one animal into slices, building a picture out of shapes,
+something to touch, a jigsaw, a shattered picture. All six are built, so the
+table now describes exactly the game that exists. For most of the project's life
+it ran ahead of the code - a level naming a kind nobody had written yet was
+played as a matching puzzle of about the right size, so the ramp was always
+visible and always finishable. See
 [decision 20260728T205627](docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md).
 
 **There is a door for grown-ups.** Nothing on the play surface is a menu or a

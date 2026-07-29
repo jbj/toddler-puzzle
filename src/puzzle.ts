@@ -8,10 +8,9 @@
  *
  * Which kind plays a given level comes from the level table (`levels.ts`) by
  * way of the registry (`kinds/registry.ts`). Shape-match
- * (`kinds/shape-match.ts`) is the first implementation and, until the others
- * are built, the stand-in for all of them. A jigsaw cutter, a tangram or a
- * cause-and-effect level can be another without the host learning anything
- * about them.
+ * (`kinds/shape-match.ts`) was the first implementation; sliced animals,
+ * polygon scenes, cause-and-effect play, jigsaws and shattered pictures are the
+ * others, and none of them taught the host anything about itself.
  *
  * There are two ways to be a kind. Most of them are *dragged*: pieces wait in
  * the tray and the host's drag engine offers each drop to `accepts`. A kind
@@ -27,8 +26,8 @@ import type { PieceId, PieceShape } from "./piece";
 /** What the host asks for when it wants a level dealt. */
 export interface Deal {
   /**
-   * The level as it will be played - the table's record, or the stand-in the
-   * registry substituted for it. `level.pieces` is how many to deal.
+   * The level as it will be played: the table's record. `level.pieces` is how
+   * many to deal.
    */
   readonly level: LevelSpec;
   /** The shapes on offer. A kind may deal from these or cut its own. */

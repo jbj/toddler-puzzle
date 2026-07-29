@@ -44,6 +44,9 @@ import {
   scenesDir,
   scenesInLevels,
   scoreGrid,
+  shardWindow,
+  shatterCountsInLevels,
+  worstWindow,
 } from "./pictures.mjs";
 import {
   AREA_TOLERANCE,
@@ -425,6 +428,7 @@ function checkScenes() {
   const scenes = sceneFiles();
   const registered = registeredPictures();
   const grids = gridsInLevels();
+  const shatters = shatterCountsInLevels();
 
   if (scenes.length === 0) {
     console.log("\nscenes");
@@ -483,6 +487,23 @@ function checkScenes() {
         empty.length === 0,
         `a piece needs ${sharePercent(MIN_FEATURE)}: ${named.join("; ")}` +
           ` - run \`npm run art -- ${scene.id}\` and look at the ${gridName(grid)} grid`,
+      );
+    }
+
+    // And the same promise for the kind with no grid to score. A shatter's
+    // shards are dealt fresh, so what is checked is the picture rather than a
+    // partition: nowhere in it is there a patch the size of the smallest shard
+    // allowed with nothing in it. See docs/decisions/20260729T124500.
+    for (const count of shatters) {
+      const side = shardWindow(count);
+      const worst = worstWindow(raster.pixels, raster.width, raster.height, side);
+      check(
+        `nowhere is empty at the size of a shard of ${count}` +
+          ` (emptiest ${sharePercent(worst.feature)})`,
+        worst.feature >= MIN_FEATURE,
+        `a shard needs ${sharePercent(MIN_FEATURE)}: the ${side}x${side} patch at ` +
+          `${worst.left},${worst.top} is only ${sharePercent(worst.feature)} something` +
+          ` - run \`npm run art -- ${scene.id}\` and put something in that corner`,
       );
     }
   }

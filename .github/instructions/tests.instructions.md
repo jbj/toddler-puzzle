@@ -135,6 +135,18 @@ straight - because those are what keep the busiest board's pieces big enough to
 grab. What a cut-up picture actually looks like is `npm run shot`'s, which plays
 a jigsaw level and finishes it.
 
+`tests/shatter.test.ts` covers the irregular partition and the kind that plays
+it, and almost all of it is a **sweep**: every count from two to twelve, many
+seeds each, because a partition is a search and one deal proves nothing about
+the next. What is swept is exactly what the kind promises - shards convex to
+floating point (normalise the turn by the side lengths, or a collinear vertex
+from a split edge reads as a notch at minus 1e-14), tiling the box to nine
+decimal places, every cut walked once forwards and once backwards, and all four
+floors: area share, fatness, spread, and no two shards alike. Reproducibility
+from a seed is checked both ways round: the same seed twice gives the same
+shards, and two seeds give different ones. What a shattered picture actually
+looks like is `npm run shot`'s, which plays level 26 and finishes it.
+
 `tests/scene-cells.test.mjs` covers the measure behind "every piece has
 something in it", which is the one piece of real logic in the art scripts. It is
 written as plain ESM rather than TypeScript because it imports

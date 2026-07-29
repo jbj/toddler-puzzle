@@ -11,11 +11,10 @@
  * naming a kind nobody has built must still be playable, and must still be the
  * level it was - its number, its chapter, its forgiveness.
  */
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalThemes } from "../src/assets";
 import { seededRandom } from "../src/geometry";
-import { MAX_STAND_IN_PIECES, isKindRegistered, resolveLevel } from "../src/kinds/registry";
-import { shapeMatch } from "../src/kinds/shape-match";
+import { isKindRegistered, kindFor } from "../src/kinds/registry";
 import { buildLevelLayout } from "../src/layout";
 import {
   CHAPTERS,
@@ -99,10 +98,10 @@ describe("the level table", () => {
 
   it("keeps targets and pieces equal except where a target holds several", () => {
     // A sliced level fills one animal with several slices, a polygon level
-    // builds one picture out of several shapes and a jigsaw level fills one
-    // frame with the pieces it was cut into; for everything else two numbers
-    // that disagree would be a typo.
-    const many = new Set(["sliced", "polygon", "jigsaw"]);
+    // builds one picture out of several shapes, and a jigsaw or shatter level
+    // fills one frame with the pieces it was cut into; for everything else two
+    // numbers that disagree would be a typo.
+    const many = new Set(["sliced", "polygon", "jigsaw", "shatter"]);
     for (const level of LEVELS) {
       if (many.has(level.kind)) continue;
       expect(level.targets, `level ${level.level}`).toBe(level.pieces);
@@ -128,6 +127,17 @@ describe("the level table", () => {
       const grid = level.options?.grid;
       expect(grid, `level ${level.level}`).toBeTruthy();
       expect(Math.min(grid!.columns, grid!.rows), `level ${level.level}`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("stands exactly one picture in a shatter level, and enough shards to be one", () => {
+    // A shatter is one picture in several irregular shards, and unlike a jigsaw
+    // there is no grid to name: how many pieces is the whole instruction.
+    for (const level of LEVELS.filter((one) => one.kind === "shatter")) {
+      expect(level.targets, `level ${level.level}`).toBe(1);
+      expect(level.options?.scene, `level ${level.level}`).toBeTruthy();
+      expect(level.options?.grid, `level ${level.level}`).toBeUndefined();
+      expect(level.pieces, `level ${level.level}`).toBeGreaterThanOrEqual(2);
     }
   });
 
@@ -270,9 +280,7 @@ describe("dealPieces", () => {
 
 describe("themed casts", () => {
   /** Every level that names a theme, as it is played today. */
-  const themedLevels = LEVELS.map((level) => resolveLevel(level, SHAPES.length).spec).filter(
-    (spec) => spec.theme !== undefined,
-  );
+  const themedLevels = LEVELS.filter((spec) => spec.theme !== undefined);
 
   /**
    * The animals a level actually puts on the board, asked of the kind that
@@ -282,8 +290,7 @@ describe("themed casts", () => {
    * them, and belong to no theme at all.
    */
   const animalsFor = (spec: LevelSpec, run: number): readonly PieceShape[] => {
-    const { kind } = resolveLevel(spec, SHAPES.length);
-    return kind.deal({ level: spec, shapes: SHAPES }, seededRandom(run)).targets;
+    return kindFor(spec).deal({ level: spec, shapes: SHAPES }, seededRandom(run)).targets;
   };
 
   it("names a theme every animal can be grouped under", () => {
@@ -396,121 +403,38 @@ describe("themed casts", () => {
 });
 
 describe("the kind registry", () => {
-  it("knows shape-match and none of the kinds still to be built", () => {
-    expect(isKindRegistered("shape-match")).toBe(true);
+  it("has a kind registered for every level of the thirty", () => {
     for (const level of LEVELS) {
-      const { kind, standIn } = resolveLevel(level, SHAPES.length);
-      expect(standIn).toBe(!isKindRegistered(level.kind));
-      // Until the other kinds exist there is one kind, so every level is
-      // playable either way.
-      expect(kind.id).toBe(standIn ? shapeMatch.id : level.kind);
+      expect(isKindRegistered(level.kind), `level ${level.level}`).toBe(true);
+      expect(kindFor(level).id, `level ${level.level}`).toBe(level.kind);
     }
   });
 
-  it("plays a level whose kind exists exactly as the table wrote it", () => {
-    const own = LEVELS.filter((level) => isKindRegistered(level.kind));
-    expect(own.length).toBeGreaterThan(0);
-    for (const level of own) {
-      const resolved = resolveLevel(level, SHAPES.length);
-      expect(resolved.spec).toBe(level);
-      expect(resolved.standIn).toBe(false);
-    }
+  it("refuses a level naming a kind nobody wrote", () => {
+    const nonsense = { ...levelSpec(1), kind: "kaleidoscope" as LevelSpec["kind"] };
+    expect(() => kindFor(nonsense)).toThrow(/no kind is registered/i);
   });
 
-  it("stands in for a missing kind without losing the level", () => {
-    const missing = LEVELS.filter((level) => !isKindRegistered(level.kind));
-    expect(missing.length).toBeGreaterThan(0);
-    for (const level of missing) {
-      const { spec, standIn } = resolveLevel(level, SHAPES.length);
-      expect(standIn).toBe(true);
-      expect(spec.kind).toBe(shapeMatch.id);
-      // The level keeps its place in the game and how forgiving it is.
-      expect(spec.level).toBe(level.level);
-      expect(spec.chapter).toBe(level.chapter);
-      expect(spec.snapForgiveness).toBe(level.snapForgiveness);
-      // A stand-in is a shape-match board: one hole per piece, no grid to cut.
-      expect(spec.targets).toBe(spec.pieces);
-      expect(spec.options).toBeUndefined();
-    }
-  });
-
-  it("keeps the stand-in climbing rather than following the missing kind", () => {
-    // A stand-in board grows with the chapter it is in, so the ramp goes on
-    // climbing instead of dropping back to two pieces at level 11 where the
-    // sliced levels start.
-    let previous = 0;
-    for (const level of LEVELS.filter((one) => !isKindRegistered(one.kind))) {
-      const { spec } = resolveLevel(level, SHAPES.length);
-      expect(spec.pieces, `level ${level.level}`).toBeGreaterThanOrEqual(previous);
-      expect(spec.pieces).toBeLessThanOrEqual(MAX_STAND_IN_PIECES);
-      previous = spec.pieces;
-    }
-    expect(previous).toBe(MAX_STAND_IN_PIECES);
-  });
-
-  it("never asks for more pieces than there are shapes to deal", () => {
-    for (const available of [1, 2, 3, 10]) {
-      for (const level of LEVELS) {
-        const { spec, standIn } = resolveLevel(level, available);
-        if (!standIn) continue;
-        expect(spec.pieces).toBeGreaterThanOrEqual(1);
-        expect(spec.pieces).toBeLessThanOrEqual(available);
-      }
-    }
-  });
-
-  it("deals and lays out every level of the thirty, stand-in or not", () => {
-    // The whole ramp has to be playable today, which is the point of the
-    // stand-in: no level in the table may be one nothing can put on screen.
+  it("deals and lays out every level of the thirty", () => {
+    // The whole ramp has to be playable: no level in the table may be one
+    // nothing can put on screen.
     for (const level of LEVELS) {
-      const { kind, spec } = resolveLevel(level, SHAPES.length);
-      const puzzle = kind.deal({ level: spec, shapes: SHAPES }, seededRandom(spec.level));
-      expect(puzzle.pieces).toHaveLength(spec.pieces);
+      const kind = kindFor(level);
+      const puzzle = kind.deal({ level, shapes: SHAPES }, seededRandom(level.level));
+      expect(puzzle.pieces).toHaveLength(level.pieces);
       for (const id of ["landscape", "portrait"] as const) {
         // `buildLevelLayout` rather than `buildLayout`: it refuses a level the
-        // table does not vouch for, so this also proves a stand-in's spec is
-        // still a level of the thirty rather than one invented in passing.
-        const layout = buildLevelLayout(id, spec, puzzle.pieces, puzzle.targets);
-        expect(layout.holes.size).toBe(spec.targets);
+        // table does not vouch for.
+        const layout = buildLevelLayout(id, level, puzzle.pieces, puzzle.targets);
+        expect(layout.holes.size).toBe(level.targets);
       }
     }
   });
 
-  it("vouches for a stand-in's level, and for nothing invented", () => {
+  it("vouches for the table's levels, and for nothing invented", () => {
     // A `LevelSpec` is a plain record, so the only thing separating a level of
     // the thirty from one written out by hand is that the table vouches for it.
-    // A stand-in has to be on the right side of that line; an edited copy of a
-    // real level has to be on the wrong one, however plausible it looks.
-    for (const level of LEVELS) {
-      expect(isVouchedLevel(level)).toBe(true);
-      expect(isVouchedLevel(resolveLevel(level, SHAPES.length).spec)).toBe(true);
-    }
+    for (const level of LEVELS) expect(isVouchedLevel(level)).toBe(true);
     expect(isVouchedLevel({ ...levelSpec(1), snapForgiveness: 9 })).toBe(false);
-  });
-
-  it("retires a stand-in the moment the real kind is registered", async () => {
-    // Registering is the whole handover: the table does not change, and the
-    // level goes back to being played by its own kind. Done against a freshly
-    // imported registry so the rest of the suite still sees the real one.
-    vi.resetModules();
-    // The table comes from the fresh graph too: it is the module that vouches
-    // for a level, and the fresh one has never seen the levels imported above.
-    const fresh = await import("../src/kinds/registry");
-    const table = await import("../src/levels");
-    const missing = table.LEVELS.find((level) => !fresh.isKindRegistered(level.kind));
-    if (!missing) {
-      // Not a failure: it means every kind in the table has been built, and
-      // this test - along with the stand-in itself - can go.
-      throw new Error("Every kind is registered; delete the stand-in and its tests.");
-    }
-
-    expect(fresh.resolveLevel(missing, SHAPES.length).standIn).toBe(true);
-    const built = { ...shapeMatch, id: missing.kind };
-    fresh.registerKind(built);
-
-    const resolved = fresh.resolveLevel(missing, SHAPES.length);
-    expect(resolved.standIn).toBe(false);
-    expect(resolved.kind).toBe(built);
-    expect(resolved.spec).toBe(missing);
   });
 });

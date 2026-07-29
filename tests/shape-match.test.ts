@@ -7,7 +7,7 @@ import { shapeMatch } from "../src/kinds/shape-match";
 import { pieceId, type PieceShape } from "../src/piece";
 import type { Puzzle } from "../src/puzzle";
 
-/** The levels shape-match plays in its own right, rather than as a stand-in. */
+/** The levels shape-match plays. */
 const ANIMAL_LEVELS = LEVELS.filter((level) => level.kind === shapeMatch.id);
 
 /**

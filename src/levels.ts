@@ -25,9 +25,8 @@
  * one, which is what keeps the game from going stale after three plays.
  * `?seed=` replays a deal exactly by handing the same `random` in.
  *
- * One of the kinds this table names is not built yet. A level whose kind is
- * missing is played as a shape-match stand-in rather than being skipped; see
- * `kinds/registry.ts`.
+ * Every kind this table names is built and registered (`kinds/registry.ts`),
+ * and the tests hold the two to each other.
  */
 import { shuffle } from "./geometry";
 import { assertUniquePieceIds, type PieceShape } from "./piece";
@@ -51,10 +50,9 @@ export const CHAPTERS: readonly ChapterId[] = [
 ];
 
 /**
- * Every kind of puzzle the ramp names, whether or not it has been built. The
- * table is allowed to run ahead of the code: a level naming a kind that is not
- * registered yet is played as a stand-in (`kinds/registry.ts`), so the whole
- * curve can be declared once and each kind can arrive on its own.
+ * Every kind of puzzle the ramp names. Each one is registered by the kind that
+ * implements it (`kinds/registry.ts`), and a level naming one that is not is a
+ * mistake the tests catch.
  */
 export type PuzzleKindId = "play" | "shape-match" | "sliced" | "polygon" | "jigsaw" | "shatter";
 
@@ -67,10 +65,10 @@ export type PuzzleKindId = "play" | "shape-match" | "sliced" | "polygon" | "jigs
 export type { ThemeId } from "./themes";
 
 /**
- * Per-kind hints. A kind reads the ones it understands and ignores the rest,
- * and the stand-in ignores all of them - a shape-match board has no grid and no
- * scene. Anything a kind cannot work out for itself belongs here rather than in
- * the kind, so the curve stays tunable from this file.
+ * Per-kind hints. A kind reads the ones it understands and ignores the rest - a
+ * shape-match board has no grid and no scene. Anything a kind cannot work out
+ * for itself belongs here rather than in the kind, so the curve stays tunable
+ * from this file.
  */
 export interface LevelOptions {
   /**
@@ -386,7 +384,9 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 26,
     chapter: "mastery",
     kind: "shatter",
-    targets: 6,
+    // One picture to fill, in six irregular shards. Like a jigsaw, the target
+    // is the whole scene and the pieces are the cuts of it.
+    targets: 1,
     pieces: 6,
     snapForgiveness: 1,
     options: { scene: "farmyard" },
@@ -404,7 +404,7 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 28,
     chapter: "mastery",
     kind: "shatter",
-    targets: 8,
+    targets: 1,
     pieces: 8,
     snapForgiveness: 1,
     options: { scene: "jungle-path" },
@@ -439,36 +439,18 @@ export function levelSpec(level: number): LevelSpec {
 }
 
 /**
- * Every level this module vouches for: the thirty, and anything a kind derived
- * from one of them. A `LevelSpec` is a plain record, so nothing stops code
- * elsewhere writing one out - and a board composed from an invented level is a
- * board whose difficulty came from somewhere other than the table, which is the
- * one thing the table is for. Membership rather than equality, because a
- * stand-in genuinely has different numbers from the record it stands in for.
+ * Every level this module vouches for: the thirty themselves. A `LevelSpec` is
+ * a plain record, so nothing stops code elsewhere writing one out - and a board
+ * composed from an invented level is a board whose difficulty came from
+ * somewhere other than the table, which is the one thing the table is for.
+ * Membership rather than equality, so a record that merely *looks* like a level
+ * of the thirty does not pass for one.
  */
 const VOUCHED = new WeakSet<LevelSpec>(LEVELS);
 
-/** Is this a level of the thirty, or one derived from one of them? */
+/** Is this one of the thirty? */
 export function isVouchedLevel(spec: LevelSpec): boolean {
   return VOUCHED.has(spec);
-}
-
-/**
- * Vouch for a level built from one of the thirty. The kind registry's stand-in
- * is the only caller: it plays a level with different numbers from the table's,
- * and the board that puts up is still a board the table describes. Going
- * through here is what lets `buildLevelLayout` tell that from a spec somebody
- * invented, without the layout having to know what a stand-in is.
- */
-export function derivedFrom(original: LevelSpec, derived: LevelSpec): LevelSpec {
-  if (!VOUCHED.has(original)) {
-    throw new Error(`Level ${original.level} is not one of the ${LEVEL_COUNT}.`);
-  }
-  if (derived.level !== original.level) {
-    throw new Error(`Level ${original.level} cannot derive level ${derived.level}.`);
-  }
-  VOUCHED.add(derived);
-  return derived;
 }
 
 /** Levels are numbered from 1; the level after the last one is the first again. */
@@ -500,8 +482,8 @@ export function castOf(theme: ThemeId, shapes: readonly PieceShape[]): readonly 
  * always on the left.
  *
  * A level with a `theme` is dealt from that theme's cast first. If the theme is
- * too small for the level - a cast half-drawn, or a stand-in asking for a
- * busier board than the theme has animals - the rest of the level is topped up
+ * too small for the level - a cast half-drawn, or a level asking for a busier
+ * board than the theme has animals - the rest of the level is topped up
  * from everything else rather than throwing or dealing a short board. **A
  * mostly-themed level is a far better failure than a broken one**, and the
  * child cannot read the theme's name anywhere on screen to notice.

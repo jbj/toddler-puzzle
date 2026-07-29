@@ -15,7 +15,17 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { cellFeature, cellsOf, DISTINCT, MIN_FEATURE, scoreGrid } from "../scripts/pictures.mjs";
+import {
+  cellFeature,
+  cellsOf,
+  DISTINCT,
+  MIN_FEATURE,
+  scoreGrid,
+  SHARD_AREA_SHARE,
+  shardWindow,
+  worstWindow,
+} from "../scripts/pictures.mjs";
+import { MIN_AREA_SHARE } from "../src/shatter";
 
 const WIDTH = 40;
 const HEIGHT = 30;
@@ -125,5 +135,41 @@ describe("where the pieces fall", () => {
     expect(at(3, 0)).toBe(0);
     // The middle row straddles the horizon, so every piece of it has both.
     expect(at(2, 1)).toBeGreaterThan(MIN_FEATURE);
+  });
+});
+
+describe("the emptiest patch a shard could land on", () => {
+  it("agrees with the partition about how small a shard may be", () => {
+    // The check script cannot import the game's source, so it carries its own
+    // copy of the floor. This is the thing that stops the copy drifting.
+    expect(SHARD_AREA_SHARE).toBe(MIN_AREA_SHARE);
+  });
+
+  it("measures a window the size of the smallest shard allowed", () => {
+    // Half the art box across, six shards: an even shard is a fifteenth of the
+    // measured area, the floor is 0.7 of that, and the window is its side.
+    const side = shardWindow(6);
+    expect(side).toBeGreaterThan(60);
+    expect(side).toBeLessThan(90);
+    // More shards, smaller window.
+    expect(shardWindow(12)).toBeLessThan(side);
+  });
+
+  it("finds the empty corner of a picture with one thing in it", () => {
+    const pixels = paint((x, y) => (x < 8 && y < 8 ? [255, 220, 60] : [190, 230, 255]));
+    const worst = worstWindow(pixels, WIDTH, HEIGHT, 10, 2);
+    expect(worst.feature).toBe(0);
+    expect(worst.left).toBeGreaterThanOrEqual(8);
+  });
+
+  it("passes a picture with something everywhere", () => {
+    // Stripes: every window of ten straddles a boundary.
+    const pixels = paint((x, y) => (Math.floor(y / 5) % 2 ? [190, 230, 255] : [40, 120, 60]));
+    expect(worstWindow(pixels, WIDTH, HEIGHT, 10, 2).feature).toBeGreaterThan(MIN_FEATURE);
+  });
+
+  it("refuses a window that does not fit", () => {
+    const pixels = paint(() => [190, 230, 255]);
+    expect(() => worstWindow(pixels, WIDTH, HEIGHT, HEIGHT + 1)).toThrow(/does not fit/);
   });
 });

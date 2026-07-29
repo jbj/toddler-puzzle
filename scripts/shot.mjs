@@ -226,14 +226,15 @@ const emptySpotOn = (pieceId) =>
 const holeFor = (pieceId) => (pieceId.startsWith("slice:") ? pieceId.split(":")[1] : pieceId);
 
 /**
- * What to aim a piece at. A jigsaw's hole is the whole picture, whose middle is
- * only one piece's home, so a jigsaw piece aims at the cut its own outline made
- * in the guide (`.cell[data-piece=...]` in `src/kinds/jigsaw.ts`) - which is the
- * same path the piece is clipped from, so aiming its drawing at that cut aims it
- * at where the drawing belongs.
+ * What to aim a piece at. A cut-up picture's hole is the whole picture, whose
+ * middle is only one piece's home, so a piece of one aims at the cut its own
+ * outline made in the guide (`.cell[data-piece=...]`, minted by
+ * `src/picture-pieces.ts` for both the jigsaw and the shatter) - which is the
+ * same path the piece is clipped from, so aiming its drawing at that cut aims
+ * it at where the drawing belongs.
  */
 const targetSelector = (pieceId) =>
-  pieceId.startsWith("jigsaw:") && pieceId.split(":").length > 2
+  /^(jigsaw|shatter):/.test(pieceId) && pieceId.split(":").length > 2
     ? `.cell[data-piece="${pieceId}"]`
     : `.hole[data-piece="${holeFor(pieceId)}"]`;
 
@@ -312,7 +313,7 @@ const guideIsShowing = () =>
   evaluate(`Number(getComputedStyle(document.querySelector('.hole')).opacity) > 0.5`);
 const levelNumber = () => evaluate(`Number(document.querySelector('#stage').dataset.level)`);
 const chapterName = () => evaluate(`document.querySelector('#stage').dataset.chapter`);
-/** Which kind is actually playing: a level's own, or the stand-in for it. */
+/** Which kind is playing. */
 const kindName = () => evaluate(`document.querySelector('#stage').dataset.kind`);
 const layoutName = () => evaluate(`document.querySelector('#stage').dataset.layout`);
 /** The chapter dots: how many there are, and how many are filled in. */
@@ -1047,18 +1048,35 @@ try {
   check("the guide goes once the picture is whole", !(await guideIsShowing()));
   await shot("25-level21-built");
 
-  // --- a kind that is not built yet -----------------------------------------
-  // Shatter does not exist, so level 26 is played by the shape-match stand-in
-  // (src/kinds/registry.ts). It has to be a real, complete level: that is the
-  // whole point of standing in rather than skipping.
+  // --- level 26: a picture broken into shards -------------------------------
+  // The other way of cutting a picture up. A jigsaw's pieces are all the same
+  // rectangle, so the game is to read the picture; a shatter's are all
+  // different shapes, so the game is to match an outline - which is why this
+  // one is worth looking at rather than only counting. The shots are the only
+  // place a partition of splinters would show.
   await goToLevel(26);
   check("jumps to level 26", (await levelNumber()) === 26);
-  check("an unbuilt kind is played by the stand-in", (await kindName()) === "shape-match");
-  const standInCount = await pieceCount();
-  check(`the stand-in deals a real board (${standInCount} pieces)`, standInCount > 0);
-  check("the stand-in cuts a hole for each piece", (await holeCount()) === standInCount);
+  check("level 26 is a shatter", (await kindName()) === "shatter");
+  const shardCount = await pieceCount();
+  check(`a shattered picture deals six shards (${shardCount})`, shardCount === 6);
+  check("six shards, one picture to build them in", (await holeCount()) === 1);
+  check("every shard has a cut of its own in the guide", (await cutsInGuide()) === shardCount);
+  check("the picture shows under the empty frame", await guideIsShowing());
+  await shot("26-level26-shatter");
+
+  const [firstShard] = await unplacedAnimals();
+  const itsPlace = await centreOf(`.cell[data-piece="${firstShard}"]`);
+  await dragAnimal(firstShard);
+  check("a shard is taken by its own place", (await placedCount()) === 1);
+  const shardAt = await centreOf(`.piece[data-piece="${firstShard}"] .cut`);
+  const shardOff = Math.hypot(shardAt.x - itsPlace.x, shardAt.y - itsPlace.y);
+  check(`a shard settles into the cut it came from (${shardOff.toFixed(1)}px out)`, shardOff < 6);
+  await shot("27-level26-first-shard");
+
   await solveRemaining();
-  check("a stand-in level can be completed", (await placedCount()) === standInCount);
+  check("a shatter can be finished", (await placedCount()) === shardCount);
+  check("the guide goes once the picture is whole", !(await guideIsShowing()));
+  await shot("28-level26-built");
 
   await goToLevel(30);
   check("jumps to the last level", (await levelNumber()) === 30);
@@ -1066,19 +1084,19 @@ try {
   const lastDots = await chapterDots();
   check(`every chapter dot filled on level 30 (${lastDots.filled})`, lastDots.filled === 6);
   const lastCount = await pieceCount();
-  await shot("26-level30-start");
+  await shot("29-level30-start");
 
   await solveRemaining();
   check("the last level can be completed", (await placedCount()) === lastCount);
   check("the last level offers a replay", (await finishLabel()) === "Play again");
-  await shot("27-level30-complete");
+  await shot("30-level30-complete");
 
   await pressFinishButton();
   check("play again loops back to level 1", (await levelNumber()) === 1);
   check("looping back clears the board", (await placedCount()) === 0);
   check("looping back starts the bubbles again", (await activityName()) === "bubbles");
   check("looping back forgets what was touched", (await activityProgress()).touched === 0);
-  await shot("28-looped-back");
+  await shot("31-looped-back");
 
   // --- a fresh deal every time ---------------------------------------------
   // Reset on a touch level has to take the old bubbles away with it, or the
@@ -1108,7 +1126,7 @@ try {
   const deals = new Set();
   for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
-  await shot("29-another-deal");
+  await shot("32-another-deal");
 
   // --- a touch level held the other way up ---------------------------------
   // A tablet gets turned. A touch level has no tray to reflow, so what has to
@@ -1129,7 +1147,7 @@ try {
     "portrait keeps every target big enough to hit",
     Math.min(...turned.map((thing) => thing.size)) / turnedStage >= 0.1,
   );
-  await shot("30-portrait-alive");
+  await shot("33-portrait-alive");
   const turnedPlay = await playActivity();
   check(
     `a touch level finishes in portrait too (${turnedPlay.taps} taps)`,

@@ -19,7 +19,9 @@
  * they can already see rather than filling in a blank rectangle. A jigsaw with
  * nothing underneath is a memory game; at two years old the game is to see
  * where a piece goes, and the guide is what makes that possible. It fades only
- * once the last piece is home, exactly as a sliced animal's hole does.
+ * once the last piece is home, exactly as a sliced animal's hole does. The
+ * guide is drawn by `picture-pieces.ts`, because a shattered picture wants the
+ * same one.
  *
  * The other difference from slices is where a piece may be dropped. A slice is
  * accepted anywhere on its animal, because a quarter of a duck has no home of
@@ -33,6 +35,7 @@ import { boxCenter, distance, shuffle, type Point } from "../geometry";
 import { boxOf, holeOf, inkSnapRadius, type Layout } from "../layout";
 import type { Grid } from "../jigsaw";
 import { jigsawShapes } from "../jigsaw";
+import { pictureGuide } from "../picture-pieces";
 import type { LevelSpec } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
 import { pictureFor, type Picture } from "../pictures";
@@ -79,41 +82,14 @@ function pictureOf(level: LevelSpec): Picture {
   return pictureFor(scene);
 }
 
-/**
- * The frame, with the picture showing faintly through it and every cut drawn
- * on. Three layers, and each is doing a job:
- *
- *  - the picture itself, dimmed, so the child can see what they are making;
- *  - one outline per piece, so they can see where each piece goes - the *same*
- *    path the piece is clipped out of, so a piece covers its own line exactly;
- *  - the border, so the picture reads as a thing to fill even before any of it
- *    is filled.
- *
- * Dimmed rather than hidden while it is being filled, and gone once it is full:
- * a rim peeking out from under a finished picture is untidy, but the guide
- * under a half-built one is the whole point.
- */
+/** The empty frame, with the picture and every cut showing faintly under it. */
 function frame(puzzle: JigsawPuzzle, layout: Layout, filled: boolean): string {
   const { frame: picture } = puzzle;
-  const { scale } = boxOf(layout, picture.id);
-  const origin = holeOf(layout, picture.id);
-  const cells = puzzle.pieces
-    .map(
-      (piece) =>
-        `<path class="cell" data-piece="${piece.id}" d="${piece.outline}"
-           fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="5" />`,
-    )
-    .join("");
-  return `
-    <g class="hole" data-piece="${picture.id}"
-       transform="translate(${origin.x} ${origin.y}) scale(${scale})"
-       style="opacity: ${filled ? 0 : 1}">
-      <path d="${picture.outline}" fill="#1f3b34" opacity="0.3" />
-      <g opacity="0.34">${picture.artwork}</g>
-      ${cells}
-      <path d="${picture.outline}" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="8" />
-    </g>
-  `;
+  return pictureGuide(picture, puzzle.pieces, {
+    origin: holeOf(layout, picture.id),
+    scale: boxOf(layout, picture.id).scale,
+    filled,
+  });
 }
 
 /** Where a piece's drawing sits, given the top-left of its box. */

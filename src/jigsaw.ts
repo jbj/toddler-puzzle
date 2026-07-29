@@ -17,7 +17,9 @@
  * artwork with anything: a piece is `<g clip-path>` around the scene's own
  * markup, exactly as a slice is an animal through its cell (`slices.ts`). So
  * one hand-drawn scene serves a 2x2 board and a 4x3 board without being
- * redrawn, and two neighbours cannot draw the same pixel differently.
+ * redrawn, and two neighbours cannot draw the same pixel differently. That half
+ * is `picture-pieces.ts`, because it is the same for a picture cut into shards
+ * (`shatter.ts`): the cutter decides where the lines go and nothing else.
  *
  * Everything else is care about size. The tab is a share of the *cell*, so a
  * 4x3 grid gets small tabs on small pieces rather than tabs bigger than the
@@ -27,7 +29,7 @@
  * the grab box and the layout's own floors measure it by.
  */
 import type { Point, Rect, Size } from "./geometry";
-import { pieceId, type PieceShape } from "./piece";
+import { pictureFrameId, picturePieces, type PicturePieces } from "./picture-pieces";
 import type { Picture } from "./pictures";
 
 /** How a picture is cut up: whole columns and rows of the picture box. */
@@ -315,79 +317,32 @@ function inkOfCell(rect: Rect, edges: readonly Edge[], tab: number): Rect {
   };
 }
 
-/** An id that is safe to interpolate into an SVG `id` attribute. */
-const clipId = (piece: string): string => `cut-${piece.replaceAll(":", "-")}`;
-
 /** A picture cut up: the whole thing to build it in, and the pieces to build. */
-export interface JigsawShapes {
-  /** The picture itself: the single target, with one hole cut for it. */
-  readonly frame: PieceShape;
-  /** One piece per cell, in reading order. */
-  readonly pieces: readonly PieceShape[];
-}
+export type JigsawShapes = PicturePieces;
 
-/** The id the frame of a cut-up picture is known by. */
-export const frameId = (picture: Picture): string => `jigsaw:${picture.id}`;
-
-/**
- * Where a picture stands: the middle of its bottom edge. Every piece carries
- * it, exactly as every slice carries its animal's anchor, so the layout gives
- * the whole cast one scale and one origin and the picture assembles itself.
- */
-const anchorOf = (box: Size): Point => ({ x: box.width / 2, y: box.height });
+/** The id the frame of a jigsawed picture is known by. */
+export const frameId = (picture: Picture): string => pictureFrameId(picture, "jigsaw");
 
 /**
  * A picture as a puzzle's worth of shapes.
  *
- * Every piece keeps the *whole* picture box and the picture's anchor, and draws
- * the scene's own artwork through its own outline. Two things follow, and they
- * are the two things this chapter needs:
- *
- *  - laid out, every piece gets the same scale and the same origin, so a piece
- *    settles into the picture rather than being placed in it;
- *  - what a piece draws is a cell of a box it mostly leaves empty, so `inked`
- *    is what the tray packs by and what a hand has to find.
+ * The cutter's part is the cells; what a cell becomes is `picture-pieces.ts`,
+ * which the shatter chapter shares - a piece is the scene's own artwork through
+ * its own outline, whichever way the outline was arrived at.
  */
 export function jigsawShapes(
   picture: Picture,
   grid: Grid,
   random: () => number = Math.random,
 ): JigsawShapes {
-  const { box } = picture;
-  const anchor = anchorOf(box);
-  const cells = jigsawCut(box, grid, random);
-  const count = cells.length;
-
-  const pieces = cells.map((cell, index): PieceShape => {
-    const id = `${frameId(picture)}:${grid.columns}x${grid.rows}:${cell.row}-${cell.column}`;
-    const clip = clipId(id);
-    const outline = edgePath(cell.edges);
-    return {
-      id: pieceId(id),
-      outline,
-      artwork: `<g class="jigsaw-piece">
-        <defs><clipPath id="${clip}"><path d="${outline}" /></clipPath></defs>
-        <g clip-path="url(#${clip})">
-          ${picture.artwork}
-          <path class="cut" d="${outline}" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="7" />
-        </g>
-      </g>`,
-      box,
-      inked: cell.ink,
-      anchor,
-      label: `${picture.label}, piece ${index + 1} of ${count}`,
-    };
-  });
-
-  return {
-    frame: {
-      id: pieceId(frameId(picture)),
-      outline: `M0 0 H${box.width} V${box.height} H0 Z`,
-      artwork: picture.artwork,
-      box,
-      anchor,
-      label: picture.label,
-    },
-    pieces,
-  };
+  const cells = jigsawCut(picture.box, grid, random);
+  return picturePieces(
+    picture,
+    "jigsaw",
+    cells.map((cell) => ({
+      name: `${grid.columns}x${grid.rows}:${cell.row}-${cell.column}`,
+      outline: edgePath(cell.edges),
+      ink: cell.ink,
+    })),
+  );
 }

@@ -42,3 +42,13 @@ now rather than when its kind lands.
 The count of levels standing in is a progress bar for the project: when
 `tests/levels.test.ts` says none are, the game the table describes is the game
 that exists.
+
+## Superseded
+
+All six kinds are built. `shatter` was the last
+([20260729T124500](20260729T124500-a-shard-is-a-thing-to-hold.md)), and the
+stand-in machinery went with it: `kindFor` now resolves a level's kind or
+throws, there is no `standIn` flag, and no level plays as anything but itself.
+The record stays because the scaffold was the right shape for the six weeks it
+held the table up, and the next time a table runs ahead of its code this is the
+argument for letting it.

@@ -39,3 +39,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260729T090200-two-shapes-the-same-are-the-same-piece](20260729T090200-two-shapes-the-same-are-the-same-piece.md) | Let identical shapes fill each other's shadows |
 | [20260729T101500-every-piece-needs-something-in-it](20260729T101500-every-piece-needs-something-in-it.md) | Measure that no piece of a picture is featureless |
 | [20260729T114500-every-cut-is-made-once](20260729T114500-every-cut-is-made-once.md) | Make every jigsaw cut once and give it to both neighbours |
+| [20260729T124500-a-shard-is-a-thing-to-hold](20260729T124500-a-shard-is-a-thing-to-hold.md) | Cut a picture into shards that are things to hold |

@@ -105,6 +105,67 @@ export function gridsInLevels() {
   return [...found.values()].sort((a, b) => a.columns * a.rows - b.columns * b.rows);
 }
 
+/**
+ * Every piece count the level table shatters a picture into, smallest first.
+ *
+ * A shatter has no grid to read: how many shards is the whole instruction, and
+ * the more of them there are the smaller the smallest one is.
+ */
+export function shatterCountsInLevels() {
+  const source = readFileSync(join(root, "src/levels.ts"), "utf8");
+  const counts = new Set();
+  for (const [, body] of source.matchAll(
+    /\{([^{}]*kind:\s*"shatter"[^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g,
+  )) {
+    const pieces = body.match(/pieces:\s*(\d+)/);
+    if (pieces) counts.add(Number(pieces[1]));
+  }
+  if (counts.size === 0) throw new Error("could not find a shatter level in src/levels.ts");
+  return [...counts].sort((a, b) => a - b);
+}
+
+/**
+ * The smallest a shard may be, as a share of an even one. Must match
+ * `MIN_AREA_SHARE` in `src/shatter.ts`; `tests/scene-cells.test.mjs` holds the
+ * two together, because this file cannot import the game's own source.
+ */
+export const SHARD_AREA_SHARE = 0.7;
+
+/**
+ * The side, in measured pixels, of the smallest square a shard of a
+ * `count`-piece shatter could cover - a shard at the area floor, at its most
+ * compact. What a scene has to be able to fill anywhere.
+ */
+export function shardWindow(count) {
+  const area = (SHARD_AREA_SHARE * PICTURE_WIDTH * PICTURE_HEIGHT) / count;
+  return Math.round(Math.sqrt(area) / (PICTURE_WIDTH / MEASURE_WIDTH));
+}
+
+/**
+ * The emptiest square of this size anywhere in the picture, scored the same way
+ * a grid cell is.
+ *
+ * The shatter's answer to "no featureless cell". A grid has a handful of cells
+ * and they can all be scored; a shatter's cells are dealt fresh and never twice
+ * the same, so the promise cannot be made about a partition - it has to be made
+ * about the *picture*: wherever a shard the size of the smallest one allowed
+ * lands, there is something in it. Squares rather than the shards themselves,
+ * and a square is the most compact a shard of that area can be, so a real shard
+ * always covers at least one whole square of this size somewhere inside it.
+ */
+export function worstWindow(pixels, width, height, side, step = 6) {
+  let worst = null;
+  for (let top = 0; top + side <= height; top += step) {
+    for (let left = 0; left + side <= width; left += step) {
+      const cell = { left, top, right: left + side, bottom: top + side };
+      const { feature } = cellFeature(pixels, width, height, cell);
+      if (!worst || feature < worst.feature) worst = { ...cell, feature };
+    }
+  }
+  if (!worst) throw new Error(`window of ${side} does not fit in ${width}x${height}`);
+  return worst;
+}
+
 /** A grid, as a human reads it. */
 export const gridName = ({ columns, rows }) => `${columns}x${rows}`;
 

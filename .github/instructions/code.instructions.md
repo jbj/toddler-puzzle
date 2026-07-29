@@ -58,7 +58,7 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/levels.ts` | The thirty levels: the whole difficulty ramp, in one table, and the deal |
 | `src/themes.ts` | The themed casts a level can deal from: farm, sea, jungle, vehicles |
 | `src/progress.ts` | What is remembered between sittings: the level, and the grown-up settings |
-| `src/kinds/registry.ts` | Resolves a level's kind, standing in for the kinds not built yet |
+| `src/kinds/registry.ts` | Resolves a level's kind by id, and refuses one nobody registered |
 | `src/kinds/shape-match.ts` | The animal-and-hole game, as one `PuzzleKind` |
 | `src/kinds/sliced.ts` | One animal in two to four slices, assembled in one hole |
 | `src/slices.ts` | Rebuilds a slice's cell from a recipe, and cuts an animal into pieces |
@@ -67,6 +67,9 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/scenes.ts` | The shape-picture catalogue: geometric forms, generated, and what makes two of them the same. Not the jigsaw scenes - those are `src/pictures.ts` |
 | `src/kinds/jigsaw.ts` | One picture cut into interlocking pieces, rebuilt over a guide of itself |
 | `src/jigsaw.ts` | The cutter: every internal cut minted once and handed to both its neighbours |
+| `src/kinds/shatter.ts` | One picture broken into irregular convex shards, no two alike |
+| `src/shatter.ts` | The shatterer: recursive half-plane splits, searched until every shard clears the floors |
+| `src/picture-pieces.ts` | Mints a frame, the clipped pieces and the dimmed guide. Shared by both cut-up-picture kinds |
 | `src/kinds/play.ts` | Cause and effect: the bubbles, the peekaboo bushes and the scene that answers |
 | `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - a chapter celebration bursts balloons with it |
 | `src/motion.ts` | Whether the player asked for less motion. The one place `prefers-reduced-motion` is read |

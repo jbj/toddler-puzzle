@@ -1,7 +1,7 @@
 ---
 name: "Puzzle kinds and layout"
 description: "The PuzzleKind contract the host plugs into, the thirty-level table and the kind registry, and how a level's layout is generated."
-applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/slices.ts,src/jigsaw.ts,src/scenes.ts,src/scenery.ts,src/board.ts"
+applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/slices.ts,src/jigsaw.ts,src/shatter.ts,src/picture-pieces.ts,src/scenes.ts,src/scenery.ts,src/board.ts"
 ---
 
 # Puzzle kinds and layout
@@ -222,6 +222,58 @@ the scene and the cell that cannot take it. Adding a scene is
 [`art.instructions.md`](art.instructions.md); nothing in the kind or the cutter
 knows how many scenes there are.
 
+## Shattered pictures
+
+`src/kinds/shatter.ts` plays levels 26 and 28: the same hand-drawn scenes, cut
+the other way. Instead of rows and columns the picture is broken into irregular
+convex shards, `options.pieces` of them, no two alike. Counter-intuitively this
+is the *easier* of the two picture kinds, and the reason is the whole point of
+it: **every shard is a different shape, so a child can match by outline** - the
+skill six chapters of shape-match have been building - rather than by reading
+what is drawn on the piece. A partition whose shards all look alike has lost the
+kind. The reasoning is
+[decision 20260729T124500](../../docs/decisions/20260729T124500-a-shard-is-a-thing-to-hold.md).
+
+The cutter is `src/shatter.ts`. It **splits by half-planes, recursively** -
+never Voronoi, whose near neighbours give slivers and whose even ones give
+blobs. A convex polygon cut by a line gives two convex polygons, so readable
+shapes are a property of the construction and not something checked afterwards.
+
+Four floors decide whether a candidate cut is allowed, and each catches
+something the others miss. Do not loosen one because another looks like it
+covers it, and do not tighten them either - they were tried tighter and the
+search began to fail:
+
+- `MIN_AREA_SHARE` / `MAX_AREA_SHARE` - a shard is between 0.7 and 1.35 of an
+  even share, so none is a crumb and none shrinks the rest;
+- `MIN_FATNESS` - inradius over the square root of area, the **minimum
+  inscribed radius** in scale-free form. Nothing much thinner than three to one;
+- `MAX_SPREAD` - the bounding box's longest side over the square root of area.
+  This is the one that is really about the tray: the board is scaled by the
+  biggest piece, so one long shard makes every other shard small.
+
+All three are applied to the *intermediate* regions too, against the pieces they
+still owe. And they are met by **searching, not by trying**: the partition is
+planned on plain polygons with backtracking, and only a plan whose every leaf
+clears every floor is replayed onto the mesh. Greedy splitting gets stuck about
+a quarter of the time at eight pieces. Among the candidates that pass, one is
+picked at random - taking the roomiest drifts towards a grid.
+
+The mesh keeps both jigsaw rules unchanged: every internal cut minted once and
+handed to both neighbours, and cutting by clipping. When a cut lands mid-edge
+that edge is split in the neighbour too, so the shards tile the box exactly. The
+minting itself - frame, clip paths, the white `class="cut"` outline, the dimmed
+guide - is `src/picture-pieces.ts`, shared with the jigsaw so the two kinds
+cannot drift apart. `targets: 1`, and a shard is measured against its own place
+like a jigsaw piece, so `.cell[data-piece="..."]` in the guide is what a
+screenshot aims at.
+
+The scene contract's "every piece has something in it" has no grid to be scored
+against here, so it is asked of the **picture** instead: `npm run art:check`
+slides a square the size of the smallest shard allowed over every scene and
+insists the emptiest position still clears a tenth. Adding a shatter level at a
+new piece count re-runs that measurement at the new size.
+
 ## Levels played by touching
 
 `src/kinds/play.ts` plays levels 1, 3 and 5: three cause-and-effect activities
@@ -281,19 +333,17 @@ Chapter 1 alternates touch and drag rather than being all one or the other:
 
 ## The kind registry
 
-A level names the kind it wants by id. `resolveLevel` in `src/kinds/registry.ts`
-looks that id up, and one of them is not there yet: shatter is still to be
-built. A level whose kind is missing is played by **shape-match** instead, at a piece
-count that follows its chapter rather than the missing kind's own numbers, so the
-ramp keeps climbing and the level is a real, finishable level. The stand-in is
-deliberately visible: `resolveLevel` returns `standIn: true` and the board's
-`data-kind` says which kind is actually playing. See
-[decision 20260728T205627](../../docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md).
+A level names the kind it wants by id, and `kindFor(level)` in
+`src/kinds/registry.ts` looks that id up. All six are built, so it either
+returns the kind or throws: there is no fallback, and a kind id that is not in
+`PuzzleKindId` does not compile. For most of this project's life an unregistered
+kind was played by shape-match instead so that the table could run ahead of the
+code; that scaffold came down when the last kind landed
+([decision 20260728T205627](../../docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md)).
 
-Building a kind is one call - `registerKind(myKind)` in
-`src/kinds/registry.ts` - and the levels that named it start playing it. Do not edit `LEVELS`
-to switch a kind on, and do not remove the stand-in until every id in
-`PuzzleKindId` is registered.
+Adding a kind is one call - `registerKind(myKind)` in `src/kinds/registry.ts` -
+and the levels that named it start playing it. Do not edit `LEVELS` to switch a
+kind on.
 
 ## Layout
 

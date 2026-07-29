@@ -23,12 +23,12 @@ import {
   trayHome,
   type Layout,
 } from "../src/layout";
-import { resolveLevel } from "../src/kinds/registry";
 import { LEVELS, LEVEL_COUNT, dealPieces, levelSpec, type LevelSpec } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
 import { SCENES, sceneShapes, scenesOf } from "../src/scenes";
 import { jigsawShapes } from "../src/jigsaw";
 import { loadPictures } from "../src/pictures";
+import { shatterShapes } from "../src/shatter";
 
 const CANVAS = { width: 1000, height: 700 };
 const PIECE = { width: 190, height: 190 };
@@ -206,6 +206,29 @@ const JIGSAW: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
       const { frame, pieces } = jigsawShapes(picture, grid, seededRandom(level.level));
       return buildLevelLayout(id, level, pieces, [frame]);
     }),
+  ),
+);
+
+/** The levels a picture is shattered for. */
+const SHATTER_LEVELS = LEVELS.filter((level) => level.kind === "shatter");
+
+/** How many deals of a shattered level the sweep composes. */
+const SHATTER_DEALS = 8;
+
+/**
+ * Every shatter level, over every scene in the library, dealt several times in
+ * both orientations - the real cut rather than a stand-in, because no two
+ * shatters are alike and it is the largest shard of a deal that decides how big
+ * a tray cell has to be. One layout of one lucky deal would prove nothing.
+ */
+const SHATTER: readonly Layout[] = ORIENTATIONS.flatMap((id) =>
+  SHATTER_LEVELS.flatMap((level) =>
+    loadPictures().flatMap((picture) =>
+      Array.from({ length: SHATTER_DEALS }, (_, deal) => {
+        const { frame, pieces } = shatterShapes(picture, level.pieces, seededRandom(deal));
+        return buildLevelLayout(id, level, pieces, [frame]);
+      }),
+    ),
   ),
 );
 
@@ -673,9 +696,8 @@ describe("composed layouts", () => {
     // composition cannot honour is a level that must not be in the table.
     const levels = ORIENTATIONS.flatMap((id) =>
       LEVELS.flatMap((level) => {
-        const { spec } = resolveLevel(level, SHAPES.length);
         return Array.from({ length: RUNS }, (_, run) =>
-          buildLayout(id, spec, castFor(spec.pieces, run)),
+          buildLayout(id, level, castFor(level.pieces, run)),
         );
       }),
     );
@@ -927,6 +949,52 @@ describe("layouts for a picture cut into jigsaw pieces", () => {
         return Math.max(ink.width, ink.height) / layout.canvas.width;
       });
       expect(Math.min(...drawn), `level ${layout.level.level} ${layout.id}`).toBeGreaterThan(0.09);
+    }
+  });
+});
+
+describe("layouts for a picture shattered into irregular shards", () => {
+  it("composes every scene at every shatter level, in both orientations", () => {
+    expect(SHATTER).toHaveLength(
+      ORIENTATIONS.length * SHATTER_LEVELS.length * loadPictures().length * SHATTER_DEALS,
+    );
+  });
+
+  it.each(PROMISED)("%s, for every shatter in the level table", (_name, promise) => {
+    expect(complaintsFrom(SHATTER, promise)).toEqual([]);
+  });
+
+  it("cuts one hole for the whole picture, not one per shard", () => {
+    for (const layout of SHATTER) {
+      expect(layout.holes.size).toBe(1);
+      expect(layout.traySlots).toHaveLength(layout.pieces.length);
+      expect(layout.pieces.length).toBeGreaterThan(1);
+    }
+  });
+
+  it("draws every shard of a picture at the picture's own scale", () => {
+    for (const layout of SHATTER) {
+      const whole = boxOf(layout, layout.targets[0]!.id);
+      for (const piece of layout.pieces) {
+        expect(boxOf(layout, piece.id).scale).toBe(whole.scale);
+        expect(boxOf(layout, piece.id).size).toEqual(whole.size);
+      }
+    }
+  });
+
+  it("stands a picture big enough that the smallest shard is worth grabbing", () => {
+    // The trap this kind sets that a jigsaw does not: the shards of one deal
+    // are different sizes, the tray packs by the biggest, and the smallest is
+    // what a small hand has to find. The floors in `shatter.ts` are what hold
+    // them close enough together for this to pass, so lowering one lowers this.
+    // The bar is above the composition's own floor of `minPieceInk` rather than
+    // at it, so a shard is not merely legal but comfortably grabbable.
+    for (const layout of SHATTER) {
+      const drawn = layout.pieces.map((piece) => {
+        const { ink } = boxOf(layout, piece.id);
+        return Math.max(ink.width, ink.height) / layout.canvas.width;
+      });
+      expect(Math.min(...drawn), `level ${layout.level.level} ${layout.id}`).toBeGreaterThan(0.085);
     }
   });
 });
