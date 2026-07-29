@@ -487,10 +487,35 @@ async function somethingToTouch(within = 1200) {
   for (;;) {
     const things = await celebrationThings();
     if (things.length > 0) return things;
-    if (Date.now() >= deadline) return things;
+    if (Date.now() >= deadline) {
+      // An empty sky is a real failure, and a rare one, so say enough about it
+      // to diagnose from a log rather than from a guess.
+      console.log("EMPTY SKY", JSON.stringify(await celebrationReport()));
+      return things;
+    }
     await sleep(100);
   }
 }
+
+/** Everything worth knowing about a celebration that has stopped offering. */
+const celebrationReport = () =>
+  evaluate(`
+  (() => {
+    const layer = document.querySelector('#stage .celebration');
+    const stage = document.querySelector('#stage').getBoundingClientRect();
+    return {
+      level: document.querySelector('#stage')?.dataset.level ?? null,
+      celebration: layer?.dataset.celebration ?? null,
+      played: layer?.dataset.played ?? null,
+      children: layer ? layer.childElementCount : -1,
+      stage: [Math.round(stage.x), Math.round(stage.y), Math.round(stage.width), Math.round(stage.height)],
+      things: [...(layer?.querySelectorAll('[data-touch]') ?? [])].map((el) => {
+        const r = el.getBoundingClientRect();
+        return [el.dataset.touch, Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
+      }),
+    };
+  })()
+`);
 
 /**
  * Tap the things a celebration is offering, one at a time, and report what
