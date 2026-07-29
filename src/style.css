@@ -22,6 +22,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* The safe-area insets, resolved once. Every rule that clears the notch or the
+   home indicator reads these vars rather than `env(...)` directly, for one
+   reason: headless Chromium reports every inset as zero, so a rule written
+   against `env(...)` cannot be told apart from a misspelt one - `env(...bottm)`
+   would ship green. The shot run overrides these custom properties with a real
+   inset and checks the controls actually move, which is only possible because
+   the sites read a variable it can set. The `, 0px` fallback keeps a phone or a
+   desktop, where the inset is genuinely absent, at zero. */
+:root {
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-right: env(safe-area-inset-right, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+  --inset-left: env(safe-area-inset-left, 0px);
+}
+
 #app {
   width: 100%;
   height: 100%;
@@ -30,10 +45,9 @@ body {
   /* Keep the whole board - and the reset button and chapter dots that sit at
      the bottom of the SVG canvas - clear of the notch and the home indicator.
      The board letterboxes inside this box, so insetting the box lifts it off
-     the unsafe edges; the sky behind fills the gap. `env(...)` is zero on a
-     screen with no inset, so a phone or a desktop is unchanged. */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+     the unsafe edges; the sky behind fills the gap. Zero on a screen with no
+     inset, so a phone or a desktop is unchanged. */
+  padding: var(--inset-top) var(--inset-right) var(--inset-bottom) var(--inset-left);
 }
 
 #stage {
@@ -171,10 +185,10 @@ body {
   --fill: 0;
   position: fixed;
   /* Beyond the safe-area inset, so the button clears the home indicator and the
-     rounded corner on an iPad. `env(...)` is zero without an inset, so this is
-     the plain 12px everywhere else. */
-  right: calc(12px + env(safe-area-inset-right));
-  bottom: calc(12px + env(safe-area-inset-bottom));
+     rounded corner on an iPad. Zero without an inset, so this is the plain 12px
+     everywhere else. */
+  right: calc(12px + var(--inset-right));
+  bottom: calc(12px + var(--inset-bottom));
   z-index: 10;
   padding: 4px;
   border: 0;
@@ -233,8 +247,8 @@ body {
   /* Safe-area on top of the base padding, so a tall sheet on an iPad does not
      tuck its edges under the notch or the home indicator. Zero without an
      inset. */
-  padding: calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
-    calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  padding: calc(16px + var(--inset-top)) calc(16px + var(--inset-right))
+    calc(16px + var(--inset-bottom)) calc(16px + var(--inset-left));
   background: rgba(16, 32, 40, 0.55);
   overflow: auto;
 }

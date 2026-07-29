@@ -33,6 +33,7 @@ const MIME = {
   ".js": "text/javascript",
   ".css": "text/css",
   ".svg": "image/svg+xml",
+  ".webmanifest": "application/manifest+json",
 };
 
 rmSync(shotsDir, { recursive: true, force: true });
@@ -1883,6 +1884,139 @@ try {
     );
     await shot(`37-${name}`);
   }
+
+  // --- the safe-area insets, forced to a real value -------------------------
+  // Headless Chromium reports every safe-area inset as zero, so a rule written
+  // against `env(safe-area-inset-*)` cannot be told apart from a misspelt one:
+  // `env(...bottm)` resolves to the same zero and ships green. So the CSS reads
+  // custom properties (`var(--inset-bottom)` and friends) that resolve to the
+  // env value on a device and to zero here - and this forces those properties
+  // to the iPad's 34px home-indicator inset and checks the controls actually
+  // move by it. If a consuming rule stops reading the variable, its element
+  // stops moving and this fails. The screenshot is a frame of the button
+  // sitting clear of where the home indicator would be.
+  const HOME_INDICATOR = 34;
+  await setViewport(834, 1194);
+  await goToLevel(10);
+  const beforeInset = await evaluate(`
+    (() => {
+      const key = document.querySelector('.grownups-key').getBoundingClientRect();
+      const app = getComputedStyle(document.querySelector('#app'));
+      const panel = getComputedStyle(document.querySelector('.grownups-panel'));
+      return {
+        keyBottom: key.bottom,
+        appPadBottom: parseFloat(app.paddingBottom),
+        panelPadBottom: parseFloat(panel.paddingBottom),
+      };
+    })()
+  `);
+  await evaluate(`
+    (() => {
+      const root = document.documentElement.style;
+      root.setProperty('--inset-top', '${HOME_INDICATOR}px');
+      root.setProperty('--inset-right', '${HOME_INDICATOR}px');
+      root.setProperty('--inset-bottom', '${HOME_INDICATOR}px');
+      root.setProperty('--inset-left', '${HOME_INDICATOR}px');
+      return true;
+    })()
+  `);
+  await sleep(150);
+  const afterInset = await evaluate(`
+    (() => {
+      const key = document.querySelector('.grownups-key').getBoundingClientRect();
+      const app = getComputedStyle(document.querySelector('#app'));
+      const panel = getComputedStyle(document.querySelector('.grownups-panel'));
+      return {
+        keyBottom: key.bottom,
+        appPadBottom: parseFloat(app.paddingBottom),
+        panelPadBottom: parseFloat(panel.paddingBottom),
+      };
+    })()
+  `);
+  // The grown-ups button reads `calc(12px + var(--inset-bottom))`, so its bottom
+  // edge lifts by the whole inset.
+  check(
+    `safe-area: the grown-ups button lifts by the inset (moved ${(beforeInset.keyBottom - afterInset.keyBottom).toFixed(0)}px)`,
+    Math.abs(beforeInset.keyBottom - afterInset.keyBottom - HOME_INDICATOR) <= 1,
+  );
+  // `#app` insets the whole board off the unsafe edges: its bottom padding is the
+  // raw inset.
+  check(
+    `safe-area: the board is inset by the home indicator (padding ${afterInset.appPadBottom.toFixed(0)}px)`,
+    Math.abs(afterInset.appPadBottom - beforeInset.appPadBottom - HOME_INDICATOR) <= 1,
+  );
+  // The grown-ups sheet reads `calc(16px + var(--inset-bottom))`, so its padding
+  // grows by the inset too.
+  check(
+    `safe-area: the grown-ups sheet padding grows by the inset (${afterInset.panelPadBottom.toFixed(0)}px)`,
+    Math.abs(afterInset.panelPadBottom - beforeInset.panelPadBottom - HOME_INDICATOR) <= 1,
+  );
+  await shot("37-ipad-safe-area-forced");
+  await evaluate(`
+    (() => {
+      const root = document.documentElement.style;
+      for (const p of ['--inset-top', '--inset-right', '--inset-bottom', '--inset-left']) {
+        root.removeProperty(p);
+      }
+      return true;
+    })()
+  `);
+
+  // --- the manifest, as a browser fetches it --------------------------------
+  // A `?raw` import in the unit test proves the source file has the right words;
+  // it cannot prove the built site serves a manifest a browser will accept. A
+  // wrong MIME type, a bad `start_url`, or a `public/` file that never got
+  // copied into `dist/` are all silent no-ops on a device and invisible to a
+  // source import. So fetch it the way the browser does - from the built site
+  // over the server - and parse it there.
+  const manifestCheck = await evaluate(`
+    (async () => {
+      const link = document.querySelector('link[rel="manifest"]');
+      if (!link) return { error: 'no <link rel="manifest">' };
+      const res = await fetch(link.href);
+      if (!res.ok) return { error: 'status ' + res.status };
+      const type = res.headers.get('content-type') || '';
+      let manifest;
+      try { manifest = await res.json(); }
+      catch (e) { return { error: 'not JSON: ' + e.message }; }
+      return {
+        type,
+        display: manifest.display,
+        startUrl: new URL(manifest.start_url, link.href).pathname,
+        scope: new URL(manifest.scope, link.href).pathname,
+        icons: (manifest.icons || []).length,
+      };
+    })()
+  `);
+  check(
+    `manifest: the built site serves it as JSON (${manifestCheck.type || manifestCheck.error})`,
+    !manifestCheck.error && /json/.test(manifestCheck.type),
+  );
+  check(
+    `manifest: it launches fullscreen (display=${manifestCheck.display})`,
+    manifestCheck.display === "fullscreen",
+  );
+  check(
+    `manifest: start_url is inside scope (${manifestCheck.startUrl} in ${manifestCheck.scope})`,
+    typeof manifestCheck.startUrl === "string" &&
+      typeof manifestCheck.scope === "string" &&
+      manifestCheck.startUrl.startsWith(manifestCheck.scope),
+  );
+  check(`manifest: it names at least one icon (${manifestCheck.icons})`, manifestCheck.icons >= 1);
+  // The icon is a public asset; a browser fetches it lazily, so a broken path is
+  // silent. Fetch it here to prove `dist/` actually holds it.
+  const iconCheck = await evaluate(`
+    (async () => {
+      const link = document.querySelector('link[rel="icon"]');
+      if (!link) return { error: 'no <link rel="icon">' };
+      const res = await fetch(link.href);
+      return { ok: res.ok, type: res.headers.get('content-type') || '' };
+    })()
+  `);
+  check(
+    `manifest: the home-screen icon is served (${iconCheck.type || iconCheck.error})`,
+    !iconCheck.error && iconCheck.ok === true && /svg/.test(iconCheck.type),
+  );
 } finally {
   browser.close();
   server.close();
