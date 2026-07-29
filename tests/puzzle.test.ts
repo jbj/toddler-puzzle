@@ -262,12 +262,23 @@ const placementsOf = (layout: Layout) =>
     box: boxOf(layout, shape.id),
   }));
 
+/**
+ * The cell cut for a piece. A missing one is a broken layout rather than a
+ * failed promise, and saying which piece here is the difference between that
+ * and an undefined turning up as a NaN three checks later.
+ */
+const cellFor = (layout: Layout, id: PieceShape["id"]): Rect => {
+  const cell = layout.trayCells.get(id);
+  if (!cell) throw new Error(`The layout cut no tray cell for "${id}".`);
+  return cell;
+};
+
 /** Each piece waiting in the tray, with the cell that was cut for it. */
 const waitingOf = (layout: Layout) =>
   layout.pieces.map((shape) => ({
     shape,
     box: boxOf(layout, shape.id),
-    cell: layout.trayCells.get(shape.id) as Rect,
+    cell: cellFor(layout, shape.id),
     home: trayHome(layout, shape.id),
   }));
 
@@ -600,7 +611,7 @@ const PROMISES = {
     return null;
   },
 
-  "keeps every tray cell on canvas, on one of the tray's shelves": (layout) => {
+  "keeps every tray cell on canvas, on one of the tray's bands": (layout) => {
     const canvas = { x: 0, y: 0, ...layout.canvas };
     for (const { shape, cell } of waitingOf(layout)) {
       if (!inside(cell, canvas)) return `${shape.id}'s cell runs off the canvas`;

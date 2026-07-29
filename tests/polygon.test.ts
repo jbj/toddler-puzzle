@@ -226,7 +226,9 @@ function spot(scene: Scene, layout: Layout, piece: number, place: number) {
  */
 const idOf = (puzzle: Puzzle, index: number): PieceId => {
   const { homeOf } = puzzle as unknown as { homeOf: ReadonlyMap<PieceId, number> };
-  return puzzle.pieces.find((shape) => homeOf.get(shape.id) === index)!.id;
+  const piece = puzzle.pieces.find((shape) => homeOf.get(shape.id) === index);
+  if (!piece) throw new Error(`No piece was dealt for scene part ${index}.`);
+  return piece.id;
 };
 
 describe("the polygon kind", () => {
