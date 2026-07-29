@@ -60,7 +60,7 @@ flower four petals, and a child who puts a petal on the wrong petal-shaped
 shadow has done something visibly right - so the game takes it, and quietly
 sends the displaced petal to the shadow that was freed. Being told "no" for a
 correct move is the one thing this game never does. See
-[decision 20260730T093000](docs/decisions/20260730T093000-two-shapes-the-same-are-the-same-piece.md).
+[decision 20260729T090200](docs/decisions/20260729T090200-two-shapes-the-same-are-the-same-piece.md).
 
 **It picks up where it left off.** Thirty levels is more than one sitting, so
 the level being played is kept in `localStorage` and the next visit resumes

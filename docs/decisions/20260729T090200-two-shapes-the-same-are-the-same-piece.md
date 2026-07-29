@@ -1,4 +1,4 @@
-# 20260730T093000. Two shapes the same are the same piece
+# 20260729T090200. Two shapes the same are the same piece
 
 ## Context
 
@@ -37,11 +37,13 @@ until the arbitrary assignment happens to line up.
 either shadow.**
 
 Congruence is decided by geometry alone. `signatureOf` in `src/scenes.ts` mints
-a string out of a part's form and its measurements - `square:88`,
-`circle:64`, `triangle:up:96x72` - and two parts with the same signature are
-the same piece as far as the child is concerned. Mirrored forms deliberately do
-not match: a left fin and a right fin are two different shapes, and putting one
-where the other goes would leave the fish looking wrong.
+a string out of a part's form and its measurements - every field of the form,
+sorted by name, as `key=value` - so a square of 88 is `form=square,size=88`, a
+64-wide circle is `diameter=64,form=circle`, and a triangle pointing up is
+`form=triangle,height=72,point=up,width=96`. Two parts with the same signature
+are the same piece as far as the child is concerned. Mirrored forms deliberately
+do not match: a left fin and a right fin are two different shapes, and putting
+one where the other goes would leave the fish looking wrong.
 
 **A scene must paint congruent parts identically.** Same fill, same detail, same
 name. `tests/polygon.test.ts` enforces it. Without that rule the swap would
