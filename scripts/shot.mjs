@@ -434,6 +434,12 @@ const thingsToTouch = (scope = "#stage .activity") =>
       if (right <= left || bottom <= top) continue;
       const shown = ((right - left) * (bottom - top)) / (r.width * r.height);
       if (shown < 0.7) continue;
+      // What a finger could land on, not merely what is drawn. The button
+      // onwards sits above the celebration, so a balloon that drifts behind it
+      // genuinely cannot be popped - and a run that aimed there would press the
+      // button and take the level away instead, which is how this was found.
+      const hit = document.elementFromPoint((left + right) / 2, (top + bottom) / 2);
+      if (hit && hit.closest('[role="button"]')) continue;
       things.push({
         touch: el.dataset.touch,
         x: (left + right) / 2,
@@ -525,7 +531,11 @@ const celebrationReport = () =>
 async function playCelebration(taps) {
   let answered = 0;
   let missed = 0;
+  const startedOn = await levelNumber();
   for (let tap = 0; tap < taps; tap++) {
+    if ((await levelNumber()) !== startedOn) {
+      throw new Error(`Playing the celebration moved the game off level ${startedOn}.`);
+    }
     const things = await somethingToTouch();
     if (things.length === 0) throw new Error("The celebration has nothing to touch.");
     const thing = things[tap % things.length];
