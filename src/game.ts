@@ -148,6 +148,12 @@ export function createGame(
   let celebration: Celebration | null = null;
   let stopCelebration: (() => void) | null = null;
   let cancelFinishButton: (() => void) | null = null;
+  /**
+   * The pause between the last snap and the fanfare. Held so that re-dealing
+   * inside it - the reset button, pressed the instant the last piece lands -
+   * cannot raise a finish on a board that is not finished.
+   */
+  let finishTimer = 0;
 
   /** The last level of the set gets the finale and the replay arrow. */
   const isLastLevel = (): boolean => levelNumber === LEVEL_COUNT;
@@ -213,7 +219,7 @@ export function createGame(
     const chapterEnd = endsChapter(levelNumber);
     celebration = chapterEnd ? createCelebration(celebrationFor(level.chapter)) : null;
     // Let the last snap chime land before the fanfare starts.
-    window.setTimeout(() => {
+    finishTimer = window.setTimeout(() => {
       if (chapterEnd) playChapterFanfare(last);
       else playFanfare(false);
       showFinish(true);
@@ -296,6 +302,7 @@ export function createGame(
   function startPuzzle(): void {
     complete = false;
     celebration = null;
+    window.clearTimeout(finishTimer);
     if (arrival === "chosen") progress.jumpToLevel(levelNumber);
     else progress.reachLevel(levelNumber);
     level = levelSpec(levelNumber);
