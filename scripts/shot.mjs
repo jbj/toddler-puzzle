@@ -39,6 +39,63 @@ const MIME = {
 rmSync(shotsDir, { recursive: true, force: true });
 mkdirSync(shotsDir, { recursive: true });
 
+// --- coverage of the sample -----------------------------------------------
+// The run samples the thirty levels rather than playing them in order, which is
+// what keeps it fast - but a hand-written sample decays in silence. Add a
+// seventh kind, retune a chapter's kind out of the shots, or add a celebration
+// the run never reaches, and every check below would go on passing while the
+// harness tested less and less of the game. So the sample is held against the
+// table it is meant to sample: these record what the live app actually put on
+// screen as the run played, and the guard at the end of the run holds them
+// against what the source of truth says must be covered. See
+// docs/decisions/20260730T005900-guard-the-sample-against-the-table.md.
+const coveredKinds = new Set();
+const coveredChapters = new Set();
+const coveredCelebrations = new Set();
+
+/**
+ * What the sample must cover, read from the source of truth rather than written
+ * down here, so it cannot fall out of step with the table: add a kind, a chapter
+ * or a celebration and this grows, and the guard starts asking the sample to
+ * exercise it. Read as text because this script is plain node and cannot import
+ * the app's TypeScript module chain (`celebration.ts` alone pulls in audio and
+ * the DOM). The parse is aggregate and cross-checked against the live table by
+ * the guard, so it needs no production hook and costs the bundle nothing.
+ */
+function requiredCoverage() {
+  const levelsSrc = readFileSync(join(root, "src/levels.ts"), "utf8");
+  // The LEVELS array only; "chapter" and "kind" appear in the prose above it too.
+  const table = levelsSrc.slice(
+    levelsSrc.indexOf("export const LEVELS"),
+    levelsSrc.indexOf("export const LEVEL_COUNT"),
+  );
+  // Every row opens with these three fields, in this order and consecutive, so
+  // one pass reads the whole table. A row the parse missed would drop the level
+  // count below the live map and trip the guard's own sanity check.
+  const rows = [
+    ...table.matchAll(/level:\s*(\d+),\s*chapter:\s*"([^"]+)",\s*kind:\s*"([^"]+)"/g),
+  ].map((m) => ({ level: Number(m[1]), chapter: m[2], kind: m[3] }));
+
+  // Every celebration that exists, from its own union type. The finale is one of
+  // them; it is played at the end of the game rather than a chapter.
+  const celebrationSrc = readFileSync(join(root, "src/celebration.ts"), "utf8");
+  const union = celebrationSrc.slice(
+    celebrationSrc.indexOf("type CelebrationId"),
+    celebrationSrc.indexOf(";", celebrationSrc.indexOf("type CelebrationId")),
+  );
+  const celebrations = new Set([...union.matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+
+  // Kind and chapter -> the first level that would exercise it, so a miss can
+  // name the line to add rather than send someone hunting.
+  const kinds = new Map();
+  const chapters = new Map();
+  for (const row of rows) {
+    if (!kinds.has(row.kind)) kinds.set(row.kind, row.level);
+    if (!chapters.has(row.chapter)) chapters.set(row.chapter, row.level);
+  }
+  return { rows, kinds, chapters, celebrations };
+}
+
 // --- static server --------------------------------------------------------
 
 const server = createServer((req, res) => {
@@ -259,10 +316,34 @@ const cutsInGuide = () => evaluate(`document.querySelectorAll('.hole .cell').len
 /** Is the picture still showing under the frame it is being built in? */
 const guideIsShowing = () =>
   evaluate(`Number(getComputedStyle(document.querySelector('.hole')).opacity) > 0.5`);
-const levelNumber = () => evaluate(`Number(document.querySelector('#stage').dataset.level)`);
-const chapterName = () => evaluate(`document.querySelector('#stage').dataset.chapter`);
+/**
+ * The level on screen. Reads the chapter and kind alongside it in the same
+ * round-trip and records them as covered, so the coverage guard at the end of
+ * the run sees every kind and chapter the sample put up - however the run
+ * reached the level, and without a single extra request.
+ */
+const levelNumber = async () => {
+  const stage = await evaluate(`(() => {
+    const s = document.querySelector('#stage');
+    if (!s) return null;
+    return { level: Number(s.dataset.level), chapter: s.dataset.chapter ?? '', kind: s.dataset.kind ?? '' };
+  })()`);
+  if (!stage) return NaN;
+  if (stage.kind) coveredKinds.add(stage.kind);
+  if (stage.chapter) coveredChapters.add(stage.chapter);
+  return stage.level;
+};
+const chapterName = async () => {
+  const chapter = await evaluate(`document.querySelector('#stage').dataset.chapter`);
+  if (chapter) coveredChapters.add(chapter);
+  return chapter;
+};
 /** Which kind is playing. */
-const kindName = () => evaluate(`document.querySelector('#stage').dataset.kind`);
+const kindName = async () => {
+  const kind = await evaluate(`document.querySelector('#stage').dataset.kind`);
+  if (kind) coveredKinds.add(kind);
+  return kind;
+};
 const layoutName = () => evaluate(`document.querySelector('#stage').dataset.layout`);
 /** The chapter dots: how many there are, and how many are filled in. */
 const chapterDots = () =>
@@ -381,8 +462,13 @@ const thingsToTouch = (scope = "#stage .activity") =>
 // arriving for a child who has popped the lot. See src/celebration.ts.
 
 /** Which celebration is on screen, or "" if this level did not end a chapter. */
-const celebrationName = () =>
-  evaluate(`document.querySelector('#stage .celebration')?.dataset.celebration ?? ''`);
+const celebrationName = async () => {
+  const name = await evaluate(
+    `document.querySelector('#stage .celebration')?.dataset.celebration ?? ''`,
+  );
+  if (name) coveredCelebrations.add(name);
+  return name;
+};
 
 /** How many things the child has made answer, counted across a rotation. */
 const celebrationPlayed = () =>
@@ -2016,6 +2102,66 @@ try {
   check(
     `manifest: the home-screen icon is served (${iconCheck.type || iconCheck.error})`,
     !iconCheck.error && iconCheck.ok === true && /svg/.test(iconCheck.type),
+  );
+
+  // --- the sample still covers the game -------------------------------------
+  // Everything above samples the thirty levels rather than playing them in
+  // order, which is what keeps this run to a few minutes. But the sample is a
+  // hand-written list of level numbers, and a hand-written sample rots quietly:
+  // nothing above fails when a seventh kind is added, when a chapter's kind is
+  // retuned out of the shots, or when a celebration is never reached. The run
+  // would go on passing while exercising less and less of the game. So the
+  // sample is held against the table it is meant to sample - what must be
+  // covered read from the source of truth, what was covered taken from what the
+  // live app reported putting on screen as the run played. See
+  // docs/decisions/20260730T005900-guard-the-sample-against-the-table.md.
+  const required = requiredCoverage();
+
+  // Anti-vacuity first. A coverage check that requires nothing passes while
+  // inspecting nothing, so this earns the right to be trusted: the requirement
+  // is non-empty, the parse saw the whole table (its row count matches the live
+  // level map), and the app never reported a kind or chapter the parse did not
+  // know about - none of which an empty or garbled parse could survive.
+  await holdGrownUps();
+  const liveLevelCount = await evaluate(`document.querySelectorAll('.grownups-level').length`);
+  await pressInPanel(".grownups-done");
+  check(
+    `coverage: the table parses to a real requirement (${required.kinds.size} kinds, ${required.chapters.size} chapters, ${required.celebrations.size} celebrations)`,
+    required.kinds.size >= 2 && required.chapters.size >= 2 && required.celebrations.size >= 2,
+  );
+  check(
+    `coverage: the parse saw every level (${required.rows.length} parsed, ${liveLevelCount} in the level map)`,
+    liveLevelCount > 0 && required.rows.length === liveLevelCount,
+  );
+  const strays = [
+    ...[...coveredKinds].filter((k) => !required.kinds.has(k)),
+    ...[...coveredChapters].filter((c) => !required.chapters.has(c)),
+    ...[...coveredCelebrations].filter((c) => !required.celebrations.has(c)),
+  ];
+  check(
+    `coverage: everything the run saw is named by the table (${strays.join(", ") || "no strays"})`,
+    strays.length === 0,
+  );
+
+  // The guard itself: every kind, chapter and celebration the table names was
+  // put on screen by the sample. A miss names the thing and the level that would
+  // cover it, so closing the gap is a line rather than a hunt.
+  const missingKinds = [...required.kinds].filter(([kind]) => !coveredKinds.has(kind));
+  check(
+    `coverage: every puzzle kind is exercised (${missingKinds.map(([k, l]) => `${k} @ level ${l}`).join(", ") || `all ${required.kinds.size}`})`,
+    missingKinds.length === 0,
+  );
+  const missingChapters = [...required.chapters].filter(
+    ([chapter]) => !coveredChapters.has(chapter),
+  );
+  check(
+    `coverage: every chapter is exercised (${missingChapters.map(([c, l]) => `${c} @ level ${l}`).join(", ") || `all ${required.chapters.size}`})`,
+    missingChapters.length === 0,
+  );
+  const missingCelebrations = [...required.celebrations].filter((c) => !coveredCelebrations.has(c));
+  check(
+    `coverage: every celebration is played (${missingCelebrations.join(", ") || `all ${required.celebrations.size}`})`,
+    missingCelebrations.length === 0,
   );
 } finally {
   browser.close();

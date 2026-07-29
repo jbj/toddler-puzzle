@@ -47,3 +47,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260730T213000-a-hint-points-at-both-ends](20260730T213000-a-hint-points-at-both-ends.md) | Point an idle hint at the piece as well as its place |
 | [20260729T223500-a-chapter-is-warmed-before-it-is-needed](20260729T223500-a-chapter-is-warmed-before-it-is-needed.md) | Budget the bundle, and warm a chapter rather than fetch it |
 | [20260730T000400-the-home-screen-icon-is-svg](20260730T000400-the-home-screen-icon-is-svg.md) | Ship an SVG home-screen icon rather than a committed PNG |
+| [20260730T005900-guard-the-sample-against-the-table](20260730T005900-guard-the-sample-against-the-table.md) | Guard the shot run's sample against the level table |

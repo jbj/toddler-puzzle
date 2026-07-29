@@ -324,6 +324,18 @@ drags would take minutes; the table itself is swept in `tests/levels.test.ts`.
 Screenshots land in `.art/shots/`, alongside a `contact-sheet.png` that collects
 them into one image to drag into a pull request.
 
+The sample is a hand-written list of levels, so the run ends by **guarding it
+against the table**: it reads every kind and chapter from `src/levels.ts` and
+every celebration from `src/celebration.ts`, records what the running game
+actually put on screen as it played, and fails - naming the first level that
+would cover the gap - when the table names a kind, a chapter or a celebration no
+shot exercised. This is what stops the sample thinning in silence as the game
+grows: add a seventh kind and the guard insists a shot reach it, rather than the
+run going green while testing less. It guards its own honesty too - it proves the
+parse saw the whole table before trusting it, because a coverage check that
+requires nothing passes while inspecting nothing. It costs no screenshots. See
+[decision 20260730T005900](../../docs/decisions/20260730T005900-guard-the-sample-against-the-table.md).
+
 It is also the only place the grab boxes can be checked, since they are measured
 from rendered artwork: every piece has one, it covers the drawing without
 ballooning past it, and a piece picked up somewhere its artwork is *not* still
