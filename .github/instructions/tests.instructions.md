@@ -114,7 +114,8 @@ not have ends nothing rather than throwing. Whether a celebration is *played*,
 whether the way onwards is up while it runs, whether the sky refills and whether
 it survives a rotation are all `npm run shot`'s.
 
-`tests/progress.test.ts` covers what is remembered between sittings, and ismostly the unhappy paths, because that is what the storage layer is for: a
+`tests/progress.test.ts` covers what is remembered between sittings, and is
+mostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level
 number the table no longer has, a browser that throws on every call, and one
 that reads back yesterday's record but refuses every write - which resumes on it
@@ -236,8 +237,10 @@ way to find out whether they work. All six are reached and shot. The balloons
 are played hardest, because everything that could go wrong with a celebration
 can go wrong with them: the run checks the celebration goes up on finishing
 level 5 and not before, that every balloon is more than a tenth of the board
-across, that the way onwards is on screen while the party is running rather than
-after it, that five popped balloons all burst and are counted, that the sky
+across, that the celebration has the screen to itself for the first beat and
+answers a finger during it, that the way onwards then arrives on its own and
+stays for the rest of the party, that popped balloons all burst and are counted,
+that the sky
 fills itself back up, that the level does not change underneath the child, that
 nothing floats over the button out, and that turning the tablet keeps both the
 celebration and what has been played with. The finale then gets the same

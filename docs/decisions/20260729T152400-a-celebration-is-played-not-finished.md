@@ -34,23 +34,53 @@ so a balloon feels precisely like the bubbles a child learned the game on.
 things go on arriving unasked for thirty seconds, measured from the moment the
 celebration was raised. When that runs out, only the *arriving* stops: whatever
 is on screen goes on answering a finger for as long as the child stays. Nothing
-in a celebration ever changes the level. The way onwards is the same big button
-the child has pressed at the end of every level, and it goes up *with* the
-celebration rather than after it.
+in a celebration ever changes the level.
 
-That combination is what keeps a celebration from being a trap, and both ends of
-the trap are real. A child who pops every balloon in four seconds must not then
-be looking at an empty screen with nothing to do - so things keep arriving. A
-child who touches nothing must not be stuck watching - so the way out was there
-from the first instant. And a child mid-tap must not have the game taken away by
-a clock - so nothing advances by itself.
+That is what keeps a celebration from being a trap, and both ends of the trap
+are real. A child who pops every balloon in four seconds must not then be
+looking at an empty screen with nothing to do - so things keep arriving. A child
+who touches nothing must not be stuck watching - so the way out is up for all
+but the first moment. And a child mid-tap must not have the game taken away by a
+clock - so nothing advances by itself.
+
+**The way onwards arrives, about two seconds in, instead of sitting there.**
+This is the one thing in a celebration that is withheld, and it is withheld for
+a reason that has nothing to do with traps. By the end of chapter five the child
+has pressed that button twenty-five times. It is the most conditioned action in
+the game, and it is drawn as an enormous saturated yellow disc in the middle of
+the board - louder, on a still frame, than four blossoms drifting at the edges.
+Put it up in the same tick as the celebration and a good number of two-year-olds
+will press it before they have registered that anything else changed. For those
+children the feature would not exist. A conditioned response beats a novel
+stimulus when both arrive together; it does not beat one that got there first.
+
+So on a chapter end - and only there - the button holds back for
+`FINISH_BUTTON_BEAT_MS` and then fades up over about half a second, by which
+time balloons are already rising and one has usually been popped. Nothing is
+taken away by this. The celebration itself answers a finger from its very first
+frame, so the beat is never a wait for *permission to play*, only for permission
+to leave, and it costs a child who genuinely wants out under two seconds. The
+button is never an invisible hit target either: it is not in the document at all
+until it starts to show, and it can be pressed from the first frame of the fade.
+
+The beat is for a celebration that has just been raised. Turning the tablet
+re-mounts the celebration on a new board, and the button goes straight back
+where it was - a child who has already seen it should not have to watch it
+arrive twice, and the argument above is about the first moment only.
+
+Two seconds was chosen by looking at it rather than by picking a number:
+`.art/shots/07a-chapter1-first-instant.png` is the frame the child gets, and
+`07b` is the same celebration with the button caught mid-fade. Compare them. The
+first has one thing in it to do.
 
 **The finale never winds down at all.** After thirty levels the celebration is
 every other one at once - a rainbow across the whole board, balloons, blossom, a
 parade of the animals, fireworks anywhere a finger lands - and it goes on
 arriving for ever. The end of the game is a room to stay in rather than a wall to
 hit, and the "somewhere obvious to go from there" is the button the child has
-already pressed twenty-nine times, which starts the whole game again at the
+already pressed twenty-nine times - after the same beat as every other
+celebration, so the last thing thirty levels earns is a moment where the party
+is the only thing on the screen - which starts the whole game again at the
 bubbles. A child who cannot read can act on that; a menu of any kind, they
 cannot.
 

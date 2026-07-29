@@ -139,7 +139,13 @@ const TUNING = {
   balloonSpeed: 0.16,
   balloonSway: 0.06,
   petalRadius: 0.072,
-  petalsAtOnce: 6,
+  /**
+   * More than there are balloons, because blossom falls thicker than balloons
+   * rise and because a wide board with four petals on it reads as a fault
+   * rather than as a quiet moment. Petals fall slowly, so a full sky stays
+   * full: the number is what is on screen, not a rate.
+   */
+  petalsAtOnce: 9,
   petalSpeed: 0.05,
   petalSway: 0.1,
   /** How wide a parading animal is drawn. */
@@ -395,7 +401,7 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
     const startY = still
       ? radius * 1.5 + random() * Math.max(1, height - radius * 3)
       : opening
-        ? height * (0.5 - lane * 0.45)
+        ? height * (0.62 - lane * 0.6)
         : -radius * (1.2 + random() * 0.8);
     const floorY = height + radius * 2.4;
 
@@ -719,7 +725,7 @@ function rockets(party: Party): void {
     });
   }
 
-  launch();
+  if (party.arriving()) launch();
   party.every(TUNING.fireworkEvery, () => {
     if (!party.arriving()) return;
     launch();
@@ -860,6 +866,8 @@ export function createCelebration(id: CelebrationId): Celebration {
         for (const stop of stops) stop();
         stage.layer.replaceChildren();
         delete stage.layer.dataset["celebration"];
+        delete stage.layer.dataset["played"];
+        delete stage.layer.dataset["playedAt"];
       };
     },
   };

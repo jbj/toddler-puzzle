@@ -365,8 +365,23 @@ const finishLabel = () =>
     `document.querySelector('#stage .fx [role="button"]')?.getAttribute('aria-label') ?? ''`,
   );
 
+/**
+ * Wait for the way onwards to arrive. On an ordinary level it is there the
+ * instant the level is finished; at the end of a chapter it holds back for a
+ * beat so the celebration is the first thing seen. See FINISH_BUTTON_BEAT_MS.
+ */
+async function waitForFinishButton(within = 5000) {
+  const deadline = Date.now() + within;
+  while (Date.now() < deadline) {
+    if ((await finishButtons()) > 0) return true;
+    await sleep(100);
+  }
+  return false;
+}
+
 /** Press the big button that ends a level, then wait for the next board. */
 async function pressFinishButton() {
+  await waitForFinishButton();
   await evaluate(`document.querySelector('#stage .fx [role="button"]').dispatchEvent(
     new PointerEvent('pointerdown', { bubbles: true })
   )`);
@@ -889,14 +904,33 @@ try {
   check(`everything touched answered (${answers.missed} missed)`, answers.missed === 0);
   check("touching one thing twice does not undo it", done.touched <= alive.length);
 
-  check("the first chapter still offers the next puzzle", (await finishLabel()) === "Next puzzle");
-
   // --- the end of chapter 1: balloons ---------------------------------------
   // The first of the five chapter moments. It has to be bigger than the 700 ms
   // sparkle every other level ends with, and it has to be *played*: a
   // two-year-old will not sit through a cutscene, they will put a finger on it.
   check("finishing a chapter raises a celebration", (await celebrationName()) === "balloons");
   check("the celebration starts with nothing played with", (await celebrationPlayed()) === 0);
+  // The beat. By level 25 the big yellow button is the most conditioned thing on
+  // the screen, so at the end of a chapter it arrives rather than sitting there
+  // - and for that first moment the only thing on offer is something to play
+  // with.
+  check("the celebration has the screen to itself first", (await finishButtons()) === 0);
+  const openingBalloons = await celebrationThings();
+  check(
+    `there is already something to pop in that first moment (${openingBalloons.length})`,
+    openingBalloons.length >= 4,
+  );
+  await shot("07a-chapter1-first-instant");
+  // Popping works before the way out has arrived, or the beat would be a wait.
+  const early = await playCelebration(1);
+  check("the first instant already answers a finger", early.answered === 1);
+
+  check(
+    "the way onwards arrives on its own",
+    (await waitForFinishButton()) === true && (await finishButtons()) === 1,
+  );
+  check("the first chapter still offers the next puzzle", (await finishLabel()) === "Next puzzle");
+
   const balloons = await celebrationThings();
   check(`balloons are up to be popped (${balloons.length})`, balloons.length >= 4);
   const boardWidth = await evaluate(
@@ -907,7 +941,7 @@ try {
     `every balloon is a big target (${(narrowest * 100).toFixed(1)}% of the board)`,
     narrowest >= 0.1,
   );
-  // The way onwards is there from the first instant, not after the party. A
+  // The way onwards is up for the whole of the party after that one beat. A
   // child who pops everything in four seconds is never left with an empty
   // screen and no way out.
   check("the way onwards is up during the celebration", (await finishButtons()) === 1);
@@ -915,7 +949,8 @@ try {
 
   const bang = await playCelebration(5);
   check(`every balloon touched popped (${bang.missed} missed)`, bang.missed === 0);
-  check(`popping is counted (${bang.answered})`, (await celebrationPlayed()) === bang.answered);
+  const burst = early.answered + bang.answered;
+  check(`popping is counted (${burst})`, (await celebrationPlayed()) === burst);
   // Long enough for a replacement to have climbed into reach, and no longer:
   // the sky a child is looking at a second after popping the lot has to have
   // something in it.
@@ -1067,7 +1102,6 @@ try {
 
   await solveRemaining();
   check("dragging works in the portrait layout", (await placedCount()) === 6);
-  check("a middle level offers the next puzzle", (await finishLabel()) === "Next puzzle");
   await shot("13-portrait-complete");
 
   // --- the end of chapter 2: a parade ---------------------------------------
@@ -1075,6 +1109,7 @@ try {
   // and sings when it is poked. In portrait as it happens, which is the point:
   // a celebration is composed from the layout like everything else.
   check("finishing chapter 2 raises the parade", (await celebrationName()) === "parade");
+  check("the parade has the screen to itself first", (await finishButtons()) === 0);
   const marchers = await evaluate(
     `[...document.querySelectorAll('#stage .celebration [data-piece]')].map((el) => el.dataset.piece)`,
   );
@@ -1084,6 +1119,8 @@ try {
   );
   const hops = await playCelebration(3);
   check(`a poked animal answers (${hops.missed} missed)`, hops.missed === 0);
+  check("the parade lets the way onwards through", (await waitForFinishButton()) === true);
+  check("a middle level offers the next puzzle", (await finishLabel()) === "Next puzzle");
   await shot("13b-chapter2-parade");
 
   // --- level 30: the last one, and the loop back ---------------------------
@@ -1196,6 +1233,7 @@ try {
     `document.querySelectorAll('#stage .celebration .rainbow-arc').length`,
   );
   check(`an arc arrives even if nobody taps (${arcsAlone})`, arcsAlone > arcsAfter);
+  check("the rainbow lets the way onwards through", (await waitForFinishButton()) === true);
   await shot("22b-chapter4-rainbow");
 
   // --- level 21: a picture cut up -------------------------------------------
@@ -1270,9 +1308,11 @@ try {
   await solveRemaining();
   check("finishing chapter 3 raises the petals", (await celebrationName()) === "petals");
   const blossom = await celebrationThings();
-  check(`blossom is falling to be caught (${blossom.length})`, blossom.length >= 3);
+  check(`blossom is falling to be caught (${blossom.length})`, blossom.length >= 6);
+  check("the blossom has the screen to itself first", (await finishButtons()) === 0);
   const caught = await playCelebration(3);
   check(`a caught petal scatters (${caught.missed} missed)`, caught.missed === 0);
+  check("blossom lets the way onwards through", (await waitForFinishButton()) === true);
   await shot("28b-chapter3-petals");
 
   await goToLevel(25);
@@ -1297,6 +1337,7 @@ try {
     await tapAt(board25.x + fx * board25.w, board25.y + fy * board25.h);
   }
   check("a tap anywhere sets one off", (await celebrationPlayed()) === beforeBangs + 3);
+  check("the night lets the way onwards through", (await waitForFinishButton()) === true);
   await shot("28c-chapter5-fireworks");
 
   await goToLevel(30);
@@ -1309,7 +1350,6 @@ try {
 
   await solveRemaining();
   check("the last level can be completed", (await placedCount()) === lastCount);
-  check("the last level offers a replay", (await finishLabel()) === "Play again");
   await shot("30-level30-complete");
 
   // --- the finale -----------------------------------------------------------
@@ -1327,7 +1367,11 @@ try {
     `the finale offers several things at once (${[...kindsInFinale].sort().join(", ")})`,
     kindsInFinale.size >= 3,
   );
-  check("the finale offers a way out from the first instant", (await finishButtons()) === 1);
+  check(
+    "the finale offers a way out, once it has been seen",
+    (await waitForFinishButton()) === true,
+  );
+  check("the last level offers a replay", (await finishLabel()) === "Play again");
   await shot("30b-finale");
 
   const playedFinale = await playCelebration(6);

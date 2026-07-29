@@ -86,12 +86,51 @@ const BUTTON_ICON: Record<FinishButton, string> = {
   again: replayArrow(34, 15, "#7a5200"),
 };
 
+/**
+ * How long the way onward holds back when a chapter celebration is going up.
+ *
+ * By level 25 the child has pressed this button twenty-five times: it is the
+ * most conditioned action in the game, and it is a huge saturated yellow disc
+ * in the middle of the screen. Put it up at the same instant as four drifting
+ * blossoms and a good number of children will press it before they ever notice
+ * there was something to play with. So on a chapter end it arrives instead of
+ * being there - by which time balloons are already up and one may already have
+ * been popped - and the first thing the eye lands on is the thing to play with.
+ *
+ * Chosen by watching it rather than by picking a number; see
+ * `docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md`.
+ */
+export const FINISH_BUTTON_BEAT_MS = 1800;
+
 export function showFinishButton(
   fxLayer: SVGGElement,
   layout: Layout,
   kind: FinishButton,
   onPress: () => void,
-): void {
+  /**
+   * Hold the button back for this long, then fade it up. Zero - every ordinary
+   * level - puts it there at once, exactly as before.
+   */
+  arriveAfterMs = 0,
+): () => void {
+  if (arriveAfterMs > 0) {
+    const timer = window.setTimeout(() => {
+      const anchor = finishButton(layout, kind, onPress);
+      // Never an invisible hit target: it is in the document only once it has
+      // started to show, and it answers a finger from that first frame.
+      if (!prefersReducedMotion()) {
+        anchor.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 620, easing: "ease-out" });
+      }
+      fxLayer.append(anchor);
+    }, arriveAfterMs);
+    return () => window.clearTimeout(timer);
+  }
+
+  fxLayer.append(finishButton(layout, kind, onPress));
+  return () => {};
+}
+
+function finishButton(layout: Layout, kind: FinishButton, onPress: () => void): SVGGElement {
   const anchor = document.createElementNS(SVG_NS, "g");
   const { x, y } = layout.finishCenter;
   anchor.setAttribute("transform", `translate(${x} ${y})`);
@@ -121,5 +160,5 @@ export function showFinishButton(
   });
 
   anchor.append(button);
-  fxLayer.append(anchor);
+  return anchor;
 }

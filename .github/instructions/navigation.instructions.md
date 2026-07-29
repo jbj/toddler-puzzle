@@ -73,12 +73,21 @@ The rules a celebration has to keep:
   `PuzzleKind.play` is the shape: handed a layer, answers the finger itself,
   returns a teardown, keeps its progress outside the board so a rotation does not
   lose it.
-- **It cannot be a trap at either end.** The big button onwards goes up *with*
-  the celebration rather than after it, so a child who pops everything in four
-  seconds already has the way on; and new things go on arriving unasked for
+- **It cannot be a trap at either end.** The big button onwards goes up while
+  the celebration is still going, not after it, so a child who pops everything in
+  four seconds already has the way on; and new things go on arriving unasked for
   `CELEBRATION_SPAN_MS`, so a child who touches nothing is not looking at an
   empty screen. When the span runs out only the *arriving* stops - whatever is on
   screen goes on answering for as long as the child stays.
+- **The button arrives rather than sitting there - but only on a chapter end,
+  and only the first time.** It holds back for `FINISH_BUTTON_BEAT_MS`
+  (`src/celebration.ts` explains the number) and then fades up, because after
+  twenty-five presses it is the most conditioned thing on the screen and would
+  otherwise be pressed before the celebration is noticed. The celebration answers
+  a finger throughout that beat, so nothing is withheld except the way out. Do
+  not extend the beat to an ordinary level, where the button is the whole reward,
+  and do not re-run it after a rotation: `showFinish` takes a `fresh` flag for
+  exactly that.
 - **Nothing here ever changes the level by itself.** A clock that advanced the
   game would take it away mid-tap. The finale does not wind down at all: the end
   of thirty levels is a room to stay in, and the way out is the same button.

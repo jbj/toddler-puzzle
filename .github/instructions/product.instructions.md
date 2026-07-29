@@ -48,11 +48,13 @@ oversights until you know it, so the reason is written next to the rule.
   configure a toy.
 - Mark the end of a chapter and the end of the game, and make both of them
   something to play with rather than something to sit through. Never let a
-  celebration change the level by itself, and never let one start without the
-  button onwards already on screen. Why: thirty identical fanfares stop meaning
-  anything by level twenty, and a two-year-old will tap an animation rather than
-  wait for it - so a celebration that has to be finished is a trap and one that
-  can be left early is a gift. See
+  celebration change the level by itself, and never let one run for more than the
+  first moment without the button onwards on screen - that first moment is the
+  one thing the button waits for, because after twenty-five presses it would
+  otherwise be pressed before the celebration was noticed. Why: thirty identical
+  fanfares stop meaning anything by level twenty, and a two-year-old will tap an
+  animation rather than wait for it - so a celebration that has to be finished is
+  a trap and one that can be left early is a gift. See
   [decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md).
 - Keep everything a grown-up can change behind the two-second hold on the
   "Grown-ups" button, and keep the panel behind it plainly styled for an adult.
@@ -113,8 +115,9 @@ show a grown-up how far along the set is; they are not a control. See
 fifth level of every chapter finishes into a celebration - balloons, a parade of
 the animals just matched, blossom, a rainbow the child paints a tap at a time,
 fireworks - and level 30 finishes into all of them at once, which never winds
-down. Every one of them is played rather than watched, the button onwards is on
-screen throughout, and no clock ever moves the child on. The mechanics are in
+down. Every one of them is played rather than watched, the button onwards fades
+up a beat in and then stays for the rest of the party, and no clock ever moves
+the child on. The mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
 [decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md).
 

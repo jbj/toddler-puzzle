@@ -44,7 +44,12 @@ import {
   unlockAudio,
 } from "./audio";
 import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
-import { celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
+import {
+  FINISH_BUTTON_BEAT_MS,
+  celebrationBurst,
+  showFinishButton,
+  sparkleBurst,
+} from "./celebrate";
 import { celebrationFor, createCelebration, type Celebration } from "./celebration";
 import { enableDragging } from "./drag";
 import { boxCenter, type Point, type Size } from "./geometry";
@@ -142,6 +147,7 @@ export function createGame(
    */
   let celebration: Celebration | null = null;
   let stopCelebration: (() => void) | null = null;
+  let cancelFinishButton: (() => void) | null = null;
 
   /** The last level of the set gets the finale and the replay arrow. */
   const isLastLevel = (): boolean => levelNumber === LEVEL_COUNT;
@@ -210,7 +216,7 @@ export function createGame(
     window.setTimeout(() => {
       if (chapterEnd) playChapterFanfare(last);
       else playFanfare(false);
-      showFinish();
+      showFinish(true);
     }, 260);
   }
 
@@ -225,10 +231,17 @@ export function createGame(
    * them on by itself: a clock that changed the level would take the game away
    * mid-tap.
    *
-   * Called again after a re-layout, which is why it takes nothing and reads
-   * everything from the board that is standing now.
+   * The one qualification is a beat: on a chapter end the button *arrives*
+   * rather than sitting there, because after twenty-five presses it is the most
+   * conditioned thing on the screen and would otherwise be pressed before the
+   * celebration is noticed. See `FINISH_BUTTON_BEAT_MS`. The beat is for a
+   * celebration that has just started, so a tablet turned mid-party puts the
+   * button straight back where it was.
+   *
+   * Called again after a re-layout, which is why it takes only that one fact and
+   * reads everything else from the board that is standing now.
    */
-  function showFinish(): void {
+  function showFinish(fresh: boolean): void {
     celebrationBurst(board.fxLayer, layout);
     if (celebration) {
       stopCelebration = celebration.mount({
@@ -240,8 +253,12 @@ export function createGame(
         random,
       });
     }
-    showFinishButton(board.fxLayer, layout, isLastLevel() ? "again" : "next", () =>
-      goToLevel(nextLevel(levelNumber)),
+    cancelFinishButton = showFinishButton(
+      board.fxLayer,
+      layout,
+      isLastLevel() ? "again" : "next",
+      () => goToLevel(nextLevel(levelNumber)),
+      celebration && fresh ? FINISH_BUTTON_BEAT_MS : 0,
     );
   }
 
@@ -310,6 +327,8 @@ export function createGame(
     stopActivity = null;
     stopCelebration?.();
     stopCelebration = null;
+    cancelFinishButton?.();
+    cancelFinishButton = null;
 
     const touched = kind.play !== undefined;
     const built = buildBoard(root, next, { pieces: !touched });
@@ -372,7 +391,7 @@ export function createGame(
     render();
     // Including the celebration, which counts what has been played with outside
     // the board precisely so a turned tablet does not undo it.
-    if (complete) showFinish();
+    if (complete) showFinish(false);
   }
 
   let resizeTimer = 0;
