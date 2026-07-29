@@ -556,6 +556,15 @@ const soundIsOn = () =>
     `document.querySelector('.grownups-switch[data-setting="sound"]').getAttribute('aria-checked') === 'true'`,
   );
 
+/**
+ * Every option the panel offers, by the label a grown-up reads. A switch that
+ * does nothing is worse than no switch at all, so what is on this panel is
+ * checked rather than assumed - rotation mode was dropped
+ * (decision 20260730T203000) and its row went with it.
+ */
+const panelOptions = () =>
+  evaluate(`[...document.querySelectorAll('.grownups-option-label')].map((el) => el.textContent)`);
+
 /** The record as it actually sits in storage, which is what a reload will read. */
 const savedRecord = () =>
   evaluate(`JSON.parse(window.localStorage.getItem('animal-puzzle') ?? 'null')`);
@@ -997,6 +1006,11 @@ try {
   check(`the level map shows all thirty levels (${map.total})`, map.total === 30);
   check(`the map marks the six levels played (${map.reached})`, map.reached === 6);
   check("the map marks the level being played", map.current === 6);
+  const options = await panelOptions();
+  check(
+    `the panel offers exactly the options that do something (${options.join(", ")})`,
+    JSON.stringify(options) === JSON.stringify(["Sound", "Idle hints", "Start again"]),
+  );
   await shot("09-grownups-panel");
 
   // A level chosen here moves the child; it does not claim they got there.

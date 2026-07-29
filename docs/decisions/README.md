@@ -43,3 +43,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260729T152400-a-celebration-is-played-not-finished](20260729T152400-a-celebration-is-played-not-finished.md) | Play a chapter celebration rather than watch it |
 | [20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters](20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters.md) | Stand a lone picture's pieces in the gutters |
 | [20260730T183000-sounds-are-data-and-the-machine-listens](20260730T183000-sounds-are-data-and-the-machine-listens.md) | Write sounds as data and measure them offline |
+| [20260730T203000-no-rotation-mode](20260730T203000-no-rotation-mode.md) | Drop rotation mode rather than guess at the gesture |

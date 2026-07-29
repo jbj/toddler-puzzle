@@ -126,12 +126,17 @@ Three things about it are load-bearing:
   `clearProgress()`. The button on the play surface deals a fresh puzzle for the
   level being played; that is all it has ever done.
 
-The settings in the record - `sound`, `rotation` and `hints` - are set from the
-grown-up panel below. `sound` is wired: `applySettings` in `src/grownups.ts`
-calls `setSoundEnabled` in `src/audio.ts`, which every tone goes through, so off
-means silent whatever is played next. `rotation` (#14) and `hints` (#21) are
-stored and read back correctly and have no consumer yet; each is one line in
-`applySettings` when its consumer arrives. The reasoning for all of this is
+The settings in the record - `sound` and `hints` - are set from the grown-up
+panel below. `sound` is wired: `applySettings` in `src/grownups.ts` calls
+`setSoundEnabled` in `src/audio.ts`, which every tone goes through, so off means
+silent whatever is played next. `hints` (#21) is stored and read back correctly
+and has no consumer yet; it is one line in `applySettings` when its consumer
+arrives. There is no `rotation` setting: rotation mode was dropped rather than
+built, so the switch and the field went with it - see
+[decision 20260730T203000](../../docs/decisions/20260730T203000-no-rotation-mode.md).
+Dropping a field did not bump `STORAGE_VERSION`, because every field is read on
+its own and an unknown one is passed over; a record written when the switch
+existed still resumes on the right level. The reasoning for all of this is
 [decision 20260728T212500](../../docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
 
 ## The grown-up panel
@@ -166,6 +171,14 @@ what the code has to keep true is this.
   `reachLevel`, so reading the map never fills the map in. `createGame` returns
   the handle the panel drives (`chooseLevel`, `currentLevel`).
 - **Reset asks twice**, and is the only place progress can be cleared.
+- **Every option on it does something.** There is a switch for sound and a
+  choice of idle hint timing, and that is all. The rotation switch that used to
+  sit between them is gone with the feature - see
+  [decision 20260730T203000](../../docs/decisions/20260730T203000-no-rotation-mode.md)
+  - because a control a parent moves and nothing answers is worse than no
+  control. `npm run shot` reads the option labels off the panel and checks the
+  list, so one cannot creep back. An option that is genuinely stored ahead of
+  its consumer says so in its note, the way idle hints does.
 
 ## Sound
 
@@ -228,8 +241,6 @@ what the code has to keep true is this.
   the *ends* of the range and not only the first. The fifth firework and the
   smallest bubble are the brightest things the game can play, and listing only
   `firework(0)` hid three phrases that climbed to 3.5 kHz.
-- `playTurn` is the rotation click for #14, which is not built. It ships
-  measured and unwired; wire it where a piece turns.
 - Audio needs a gesture to start, so `unlockAudio` runs off the first pointer
   down rather than at load.
 

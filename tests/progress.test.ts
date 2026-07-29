@@ -111,12 +111,29 @@ describe("reading a stored record", () => {
       fakeStorage(
         stored({
           level: LEVEL_COUNT + 10,
-          settings: { sound: false, rotation: true, hints: "sooner" },
+          settings: { sound: false, hints: "sooner" },
         }),
       ),
     );
     expect(progress.level).toBe(1);
-    expect(progress.settings).toEqual({ sound: false, rotation: true, hints: "sooner" });
+    expect(progress.settings).toEqual({ sound: false, hints: "sooner" });
+  });
+
+  it("passes over a setting this build no longer has", () => {
+    // `rotation` was stored by every build up to the one that dropped rotation
+    // mode. A record written then is not a broken record, and reading one must
+    // not cost the child their level or a grown-up the settings that remain.
+    const progress = readProgress(
+      fakeStorage(
+        stored({
+          level: 9,
+          settings: { sound: false, rotation: true, hints: "sooner" },
+        }),
+      ),
+    );
+    expect(progress.level).toBe(9);
+    expect(progress.settings).toEqual({ sound: false, hints: "sooner" });
+    expect(progress.settings).not.toHaveProperty("rotation");
   });
 
   it("replaces a setting it does not recognise with the default", () => {
@@ -295,17 +312,17 @@ describe("the store", () => {
     const store = createProgressStore({ storage });
     expect(store.settings()).toEqual(DEFAULT_SETTINGS);
     store.reachLevel(5);
-    expect(store.updateSetting("rotation", true)).toEqual({ ...DEFAULT_SETTINGS, rotation: true });
+    expect(store.updateSetting("sound", false)).toEqual({ ...DEFAULT_SETTINGS, sound: false });
     expect(store.updateSetting("hints", "off")).toEqual({
       ...DEFAULT_SETTINGS,
-      rotation: true,
+      sound: false,
       hints: "off",
     });
     // Settings and progress live in one record and neither disturbs the other.
     expect(readProgress(storage)).toEqual({
       level: 5,
       furthest: 5,
-      settings: { sound: true, rotation: true, hints: "off" },
+      settings: { sound: false, hints: "off" },
     });
   });
 

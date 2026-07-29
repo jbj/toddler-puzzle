@@ -137,6 +137,11 @@ that reads back yesterday's record but refuses every write - which resumes on it
 all the same, and only says so through `persists`. Alongside those it covers the
 one thing that moves the record without the child moving: a level chosen from
 the grown-up panel's map, which is remembered without ever raising `furthest`.
+A record carrying a setting this build no longer has - `rotation`, dropped with
+the feature in
+[decision 20260730T203000](../../docs/decisions/20260730T203000-no-rotation-mode.md)
+- is covered there too, because removing a field must never cost a child their
+level.
 All of them have to end with
 a playable game on a real level, and none of them may throw. The storage object
 is injected, so none of it needs a browser; the DOM-facing ends are covered by
@@ -246,6 +251,8 @@ two-second hold opens it, the level map shows thirty squares with the six played
 ones filled, choosing a level deals it and is remembered without claiming the
 child reached it, a switch turned off survives closing the panel and then a
 whole reload of the page, and resetting asks once before starting the game over.
+It also reads the option labels off the panel and checks the list, which is how
+a switch that does nothing is kept off it.
 
 It is the only place the chapter celebrations can be *played*, which is the only
 way to find out whether they work. All six are reached and shot. The balloons

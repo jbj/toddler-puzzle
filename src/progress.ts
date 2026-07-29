@@ -39,27 +39,30 @@ export type HintTiming = "off" | "sooner" | "later";
 const HINT_TIMINGS: readonly HintTiming[] = ["off", "sooner", "later"];
 
 /**
- * What a grown-up can change. Deliberately tiny and deliberately flat: four
- * switches on one panel (#8), each of which a parent can understand without
- * being told what it does.
+ * What a grown-up can change. Deliberately tiny and deliberately flat: a
+ * handful of controls on one panel (#8), each of which a parent can understand
+ * without being told what it does.
+ *
+ * It is shorter than the plan first described, because rotation mode was
+ * dropped rather than built - see
+ * [decision 20260730T203000](../docs/decisions/20260730T203000-no-rotation-mode.md).
+ * A record stored while that switch existed still reads: an unknown field is
+ * ignored like any other, so nobody loses their level over it.
  */
 export interface Settings {
   /** Sound on. Off is for a quiet room, not for a preference about sound. */
   readonly sound: boolean;
-  /** Rotation mode (#14): pieces arrive turned, and are tapped round. */
-  readonly rotation: boolean;
   /** When an idle hint appears (#21). */
   readonly hints: HintTiming;
 }
 
 /**
  * What a child who has never played gets. Sound on because the tones are half
- * the reward; rotation off because it is the harder game; hints late because a
- * two-year-old who is still looking has not given up.
+ * the reward; hints late because a two-year-old who is still looking has not
+ * given up.
  */
 export const DEFAULT_SETTINGS: Settings = {
   sound: true,
-  rotation: false,
   hints: "later",
 };
 
@@ -88,6 +91,13 @@ export const STORAGE_KEY = "animal-puzzle";
  * Bumped when the meaning of a stored record changes - a level table retuned
  * enough that its numbers mean something else, say. An unrecognised version is
  * dropped whole rather than guessed at.
+ *
+ * Dropping a *field* is not that. Every field is read on its own and anything
+ * unrecognised is ignored, so a record written when there was a `rotation`
+ * switch reads today exactly as it should: the settings that still exist come
+ * back, the one that does not is passed over, and the child keeps their level.
+ * Bumping the version for that would have thrown away every player's place to
+ * tidy away one boolean.
  */
 export const STORAGE_VERSION = 1;
 
@@ -148,7 +158,6 @@ function readSettings(raw: Record<string, unknown> | null): Settings {
   const hints = raw["hints"];
   return {
     sound: typeof raw["sound"] === "boolean" ? raw["sound"] : DEFAULT_SETTINGS.sound,
-    rotation: typeof raw["rotation"] === "boolean" ? raw["rotation"] : DEFAULT_SETTINGS.rotation,
     hints: HINT_TIMINGS.includes(hints as HintTiming)
       ? (hints as HintTiming)
       : DEFAULT_SETTINGS.hints,

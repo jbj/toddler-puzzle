@@ -156,9 +156,9 @@ const CHAPTER_NAMES: Record<ChapterId, string> = {
  * One function rather than a handler per switch, so a setting cannot be applied
  * on the way in and forgotten on the way out.
  *
- * Only `sound` has anywhere to go yet. `rotation` is read by rotation mode
- * (#14) and `hints` by the idle hint (#21); both are stored and read back
- * correctly today, and both need a line here when their consumer arrives.
+ * Only `sound` has anywhere to go yet; `hints` is read by the idle hint (#21),
+ * which is stored and read back correctly today and needs a line here when its
+ * consumer arrives.
  */
 export function applySettings(settings: Settings): void {
   setSoundEnabled(settings.sound);
@@ -269,8 +269,14 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
   const optionSection = el("section", "grownups-section");
   optionSection.append(el("h3", "grownups-heading", "Options"));
 
-  /** A two-state switch for one boolean setting. */
-  function makeSwitch(setting: "sound" | "rotation"): HTMLButtonElement {
+  /**
+   * A two-state switch for one boolean setting. There is one of them today -
+   * rotation mode was dropped rather than built, see
+   * [decision 20260730T203000](../docs/decisions/20260730T203000-no-rotation-mode.md)
+   * - and it stays a factory because the next boolean setting should not have
+   * to invent this again.
+   */
+  function makeSwitch(setting: "sound"): HTMLButtonElement {
     const control = el("button", "grownups-switch");
     control.type = "button";
     control.setAttribute("role", "switch");
@@ -284,7 +290,6 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
   }
 
   const soundSwitch = makeSwitch("sound");
-  const rotationSwitch = makeSwitch("rotation");
 
   const hintChoices = el("div", "grownups-choices");
   hintChoices.setAttribute("role", "radiogroup");
@@ -306,11 +311,6 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
 
   optionSection.append(
     optionRow("Sound", "Tones when a piece is picked up, lands, or finishes.", soundSwitch),
-    optionRow(
-      "Rotation",
-      "Pieces arrive turned, and are tapped round. Not in play yet.",
-      rotationSwitch,
-    ),
     optionRow(
       "Idle hints",
       "A nudge when nothing has been touched for a while. Not in play yet.",
@@ -379,10 +379,7 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
     levelNote.textContent = `Playing level ${game.currentLevel()} of ${LEVEL_COUNT}. Filled squares are levels the child has played.`;
 
     const settings = record.settings;
-    for (const [key, control] of [
-      ["sound", soundSwitch],
-      ["rotation", rotationSwitch],
-    ] as const) {
+    for (const [key, control] of [["sound", soundSwitch]] as const) {
       const on = settings[key];
       control.setAttribute("aria-checked", String(on));
       control.classList.toggle("is-on", on);

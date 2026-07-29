@@ -454,12 +454,6 @@ const RETURN: Phrase = [
   voice(note(1), { to: note(0), duration: 0.16, gain: 0.07, type: "triangle" }),
 ];
 
-/** The rotation click: a soft wooden tap, nowhere near an impulse. */
-const TURN: Phrase = [
-  voice(note(2), { to: note(0), duration: 0.07, gain: 0.09, type: "triangle" }),
-  voice(note(9), { at: 0.01, duration: 0.06, gain: 0.04 }),
-];
-
 /**
  * A firework: a rise into three bright specks, rather than a bubble bursting.
  * `step` is which firework this is, and moves the specks along the ladder so
@@ -643,16 +637,6 @@ export function playFirework(step = 0): void {
   play(fireworkPhrase(step));
 }
 
-/**
- * A piece turning a quarter turn, for rotation mode (issue #14). Nothing calls
- * it yet - rotation is not built - and it is here so that when it is, the sound
- * is already part of the vocabulary rather than an eleventh envelope written in
- * a hurry.
- */
-export function playTurn(): void {
-  play(TURN);
-}
-
 /** Rising arpeggio when a level is finished, a step along the ladder each level. */
 export function playFanfare(level = 1): void {
   play(fanfarePhrase(level));
@@ -703,7 +687,6 @@ export const VOCABULARY: readonly Sound[] = [
   sound("plink-highest", "the fifth thing in a row answers", plinkPhrase(PLINK_ROOT + 4)),
   sound("firework", "a firework goes up and breaks", fireworkPhrase(0)),
   sound("firework-highest", "the fifth firework in a row", fireworkPhrase(4)),
-  sound("turn", "a piece is turned - issue #14, unwired", TURN),
   ...[1, 2, 3, 4, 5].map((level) =>
     sound(
       `fanfare-${level}`,

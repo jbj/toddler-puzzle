@@ -134,7 +134,6 @@ const CALLS: Record<string, () => void> = {
   playPop: () => audio.playPop(1),
   playPlink: () => audio.playPlink(0),
   playFirework: () => audio.playFirework(0),
-  playTurn: () => audio.playTurn(),
   playFanfare: () => audio.playFanfare(1),
   playChapterFanfare: () => audio.playChapterFanfare("balloons"),
 };
