@@ -1,7 +1,7 @@
 ---
 name: "Puzzle kinds and layout"
 description: "The PuzzleKind contract the host plugs into, the thirty-level table and the kind registry, and how a level's layout is generated."
-applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/scenery.ts,src/board.ts"
+applyTo: "src/kinds/**,src/puzzle.ts,src/layout.ts,src/slices.ts,src/scenery.ts,src/board.ts"
 ---
 
 # Puzzle kinds and layout
@@ -28,6 +28,11 @@ The animal game is one such kind, `src/kinds/shape-match.ts`, and the host
 cannot tell it from any other: it deals a random cast, draws the landscape with
 a hole cut for each piece, accepts a drop near a piece's *own* hole, and is done
 when every piece is standing in one.
+
+`Puzzle` carries `targets` beside `pieces`: what the layout stands in the scene,
+one hole each. For shape-match the two are the same list. For sliced animals
+they are not, which is the reason the field exists - a kind says what the holes
+are cut from rather than the host assuming one hole per piece.
 
 `isComplete` is part of the contract rather than assumed, because not every kind
 ends with an empty tray - a cause-and-effect level ends when enough things have
@@ -67,11 +72,38 @@ read differently at a glance, which `npm run art:check` enforces; see
 Retuning the ramp is a table edit and nothing else. Adding a level means adding a
 record; the layout follows, because nothing downstream knows a level count.
 
+## Sliced animals
+
+`src/kinds/sliced.ts` plays levels 11-15 and 27: one or two animals, each
+arriving in two to four pieces, each assembled in its own animal-shaped hole.
+It is the second kind, and the one worth reading before writing a third,
+because everything it needs that shape-match did not is now part of the
+contract.
+
+**A slice is the animal's artwork through a `clipPath`, never a cut-out shape.**
+`src/slices.ts` rebuilds one convex cell per slice by clipping the 240x240 art
+box with a few half-planes, and hands the animal's own `artwork` to a group
+clipped by it. Do not reach for a polygon boolean library: there are no runtime
+dependencies, and there is nothing here that needs one. See
+[decision 20260729T061500](../../docs/decisions/20260729T061500-slices-are-clipped-not-cut.md).
+
+**Every slice of an animal keeps that animal's box, anchor and outline**, so the
+layout gives them one scale and one origin and they assemble by construction.
+The hole is cut once, from the animal's own silhouette, and stays visible under
+a half-built animal as the guide to what is still missing. A slice is accepted
+anywhere near *its animal* rather than near the quarter of the hole it came out
+of, which is as forgiving as a whole-animal drop.
+
+**Where the cuts go is measured, not chosen.** `npm run art:slices` searches for
+them offline and writes `src/slice-recipes.json`; `npm run art:check` re-judges
+what is committed. That contract, and the numbers behind it, are in
+[`art.instructions.md`](art.instructions.md).
+
 ## The kind registry
 
 A level names the kind it wants by id. `resolveLevel` in `src/kinds/registry.ts`
-looks that id up, and most of them are not there yet: sliced animals, jigsaws,
-polygon shapes, shatter and cause-and-effect play are each still to be built. A
+looks that id up, and some of them are not there yet: jigsaws, polygon shapes,
+shatter and cause-and-effect play are each still to be built. A
 level whose kind is missing is played by **shape-match** instead, at a piece
 count that follows its chapter rather than the missing kind's own numbers, so the
 ramp keeps climbing and the level is a real, finishable level. The stand-in is
@@ -87,9 +119,11 @@ to switch a kind on, and do not remove the stand-in until every id in
 ## Layout
 
 Everything about a board is *composed* for the cast that was dealt:
-`buildLayout(id, level, pieces)` takes any number of pieces and works out how
-many stand on each ground line, how many wait in each tray row, and how big a
-slot they are all drawn to fit inside. There is no table of coordinates to keep
+`buildLayout(id, level, pieces, targets)` takes any number of pieces and works
+out how many targets stand on each ground line, how many pieces wait in each
+tray row, and how big a slot they are all drawn to fit inside. `targets`
+defaults to the pieces themselves, which is the ordinary one-hole-per-piece
+case. There is no table of coordinates to keep
 in step with anything, and nothing to add when a level wants a piece count no
 level has asked for before. `buildLevelLayout` is the same thing for a level of
 the thirty: it checks the cast is the size the level deals, and that the level is
@@ -136,6 +170,18 @@ composed into, and is then centred across it. Measure a piece with its
 `PieceBox`, never with `slotSize`: clamping a wide piece as though it were square
 would let it hang off the canvas on one axis and lock it out of reach on the
 other.
+
+A tray is packed by what a piece *draws*, not by the box it was authored in.
+`PieceShape.inked` is a piece's own bounds within its box, and a piece that
+leaves it out fills its box, which is what every animal does. A slice cannot:
+it keeps the whole animal's box so that the slices assemble, so its box is
+mostly empty. `trayCell` is therefore the largest ink in the cast rather than
+the slot, `trayHome` centres a piece's ink in its cell, `clampInkToCanvas` holds
+a dragged piece on canvas by its ink, and `fitGrabBox` believes a declared
+`inked` over `getBBox` - which cannot see a clip path and would hand every slice
+of an animal the same animal-sized grab box. `minPieceInk` is the floor for the
+drawing where `minSlot` is the floor for the slot; for a cast that fills its
+boxes they are the same floor.
 
 `spreadX` spaces each row evenly across the canvas, and each snap radius follows
 that piece's own smaller side, so a busier level automatically gets tighter, more
@@ -188,6 +234,8 @@ level could ask for, in both orientations, over random casts of animals and of
 pieces of no particular shape:
 
 - every piece has a target, a box and a tray slot;
+- several pieces may share one target, and every one of them is drawn at that
+  target's scale;
 - every piece fits the slot it was dealt into, whatever its proportions;
 - targets stay on canvas and clear of the tray;
 - every piece stands on one of the layout's ground lines;

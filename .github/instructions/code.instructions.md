@@ -36,7 +36,8 @@ expecting the formatter to.
 | `npm run test` | Unit tests (Vitest) |
 | `npm run docs:check` | Checks that every cross-reference between Markdown files still resolves |
 | `npm run art` | Renders the animal art to `.art/contact-sheet.png` for review; `npm run art -- rabbit` renders one animal large |
-| `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level) and that no two in one theme read alike |
+| `npm run art:check` | Checks every animal against the asset contract (structure, containment, foot level), that no two in one theme read alike, and that its committed slice recipes still cut it well |
+| `npm run art:slices` | Re-measures where every animal is cut and rewrites `src/slice-recipes.json`. Run it after redrawing an animal |
 | `npm run shot` | Drives real drags in headless Chromium and screenshots the result (run `npm run build` first) |
 | `npm run shot:sheet` | Rebuilds `.art/shots/contact-sheet.png` from the last run's screenshots |
 
@@ -59,6 +60,9 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/progress.ts` | What is remembered between sittings: the level, and the grown-up settings |
 | `src/kinds/registry.ts` | Resolves a level's kind, standing in for the kinds not built yet |
 | `src/kinds/shape-match.ts` | The animal-and-hole game, as one `PuzzleKind` |
+| `src/kinds/sliced.ts` | One animal in two to four slices, assembled in one hole |
+| `src/slices.ts` | Rebuilds a slice's cell from a recipe, and cuts an animal into pieces |
+| `src/slice-recipes.json` | Where each animal is cut, measured offline and committed |
 | `src/layout.ts` | Composes a level's layout from its cast, and all tunable constants |
 | `src/scenery.ts` | Generates the background for a layout |
 | `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |
@@ -71,6 +75,8 @@ Chrome binary and honours `CHROME_BIN`.
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `scripts/preview.mjs` | Renders the art for review, as a contact sheet or one animal large |
 | `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG |
+| `scripts/slices.mjs` | Judges a cut from pixels: whole, fair, grabbable. Shared by the two above |
+| `scripts/slice-recipes.mjs` | Searches for where to cut every animal, and writes the table |
 | `scripts/check-docs.mjs` | Enforces that Markdown cross-references resolve |
 | `scripts/shot.mjs` | End-to-end drag test in headless Chromium |
 | `scripts/shot-sheet.mjs` | Packs the run's screenshots into one image to attach to a pull request |

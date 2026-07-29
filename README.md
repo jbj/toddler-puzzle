@@ -26,6 +26,15 @@ silhouette to 48 pixels - coarser than the game ever draws one, because a glance
 is coarser than a look - and fails any pair that overlaps too much. See
 [decision 20260729T004500](docs/decisions/20260729T004500-silhouettes-checked-at-a-glance.md).
 
+**One animal can arrive in pieces.** Levels 11-15 hand the child a single animal
+cut into two, three or four slices, with one animal-shaped hole to build it in.
+The hole stays showing underneath until the last slice is home, so what is
+missing is always visible to somebody who cannot read. A slice is the animal's
+own artwork seen through a window rather than a shape cut out of it, which is
+why the parts meet exactly, and where each animal gets cut is measured from its
+pixels and committed rather than worked out as the game runs. See
+[decision 20260729T061500](docs/decisions/20260729T061500-slices-are-clipped-not-cut.md).
+
 **It picks up where it left off.** Thirty levels is more than one sitting, so
 the level being played is kept in `localStorage` and the next visit resumes
 there. A browser that will not store anything - private browsing on an iPad
@@ -36,7 +45,7 @@ toy that will not start is worse than a toy that forgets. See
 **Some of the thirty levels are still stand-ins.** The whole ramp lives in one
 table, [`src/levels.ts`](src/levels.ts), and each level names the kind of puzzle
 it wants: matching animals to holes, cutting one animal into slices, a jigsaw, and
-so on. Only some of those kinds are built. A level naming one that is not is
+so on. Matching and slicing are built; the rest are not. A level naming one that is not is
 played as a matching puzzle of about the right size instead, so the level is
 always a real, finishable level, and building the kind later needs no change to
 the table. See

@@ -1,7 +1,7 @@
 ---
 name: "Artwork"
 description: "The animal SVG contract, the overhang budget, foot levels, reviewing the render, and how to add an animal."
-applyTo: "src/assets/animals/*.svg,src/assets.ts,scripts/check-art.mjs,scripts/preview.mjs"
+applyTo: "src/assets/animals/*.svg,src/assets.ts,src/slice-recipes.json,scripts/check-art.mjs,scripts/slices.mjs,scripts/slice-recipes.mjs,scripts/preview.mjs"
 ---
 
 # Artwork
@@ -129,6 +129,44 @@ Take the value from `npm run art:check`, which measures where the animal
 actually stands. Do not estimate it by eye, and do not nudge it until the animal
 merely looks close.
 
+## Where an animal gets cut
+
+Levels 11-15 and 27 hand a child one animal in two to four slices. A slice is
+the animal's own artwork seen through a `clipPath`, never a shape cut out of it
+([decision 20260729T061500](../../docs/decisions/20260729T061500-slices-are-clipped-not-cut.md)),
+so nothing about the SVG contract changes. What changes is that **every animal
+now has to survive being cut three ways**, and where those cuts go is measured
+from the pixels rather than chosen.
+
+`npm run art:slices` does the measuring. It rasterises each silhouette, searches
+straight cuts arranged as a small binary tree, and writes
+`src/slice-recipes.json` - one entry per animal per slice count, holding the
+cuts and what each slice draws. A cut has to leave every slice:
+
+- **whole** - one connected piece. A cut that strands an ear or a foot as a
+  second island is rejected outright, however fair it is, because a child would
+  be holding a piece with a gap in it;
+- **fair** - within 35% of an equal share of the animal, measured against the
+  final share at every cut rather than only at the leaves, so a lopsided first
+  cut cannot be built on;
+- **grabbable** - at least a 15-unit circle fits inside it, out of the 240-unit
+  box. This is measured on the slice itself, not on the box around it.
+
+The numbers are `AREA_TOLERANCE`, `MIN_INSCRIBED` and the angle and offset steps
+in `scripts/slices.mjs`; that file is the only place they live, so the search
+and the check cannot disagree about what a good cut is.
+
+**The table is committed, exactly like `FOOT_LEVEL`.** `npm run art:check`
+re-judges every recipe against the current artwork and fails with the entry to
+paste in when one is missing or has gone stale. Redraw an animal and its
+recipes go with it: run `npm run art:slices`, look at a sliced level, and commit
+the table with the artwork. Never hand-edit a recipe to make a check pass.
+
+The other side of the ink is layout: a slice keeps the whole animal's box, so
+the table also records what each slice actually draws, and the tray and the grab
+box read that instead of the box. See
+[`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
+
 ## Reading differently from the animal next to it
 
 Two animals that a level can deal together have to be *told apart* at a glance,
@@ -197,13 +235,17 @@ overhang stays inside its budget. The rule lives in
    `src/assets.ts`. Every animal belongs to at least one theme; the check says so.
 5. Add its foot level to `FOOT_LEVEL` in `src/assets.ts`, from the value
    `npm run art:check` reports.
-6. Run `npm run art:check`. It verifies the structure, that the art is not
+6. Run `npm run art:slices` and commit `src/slice-recipes.json`. Nothing works
+   out where to cut a new animal at runtime, so an animal with no recipes cannot
+   be dealt into a sliced level.
+7. Run `npm run art:check`. It verifies the structure, that the art is not
    clipped by the art box, that nothing hangs outside the silhouette except
    declared overhangs, that the declared foot level matches the artwork, and that
-   the new silhouette reads differently from every other one in its theme.
+   the new silhouette reads differently from every other one in its theme, and
+   that it can be cut into two, three and four slices that a child can pick up.
    Passing it is the floor, not the finish line: it cannot see any of the
    pitfalls above.
-7. That's it - every animal in `ANIMAL_IDS` is in the draw, so the new one will
+8. That's it - every animal in `ANIMAL_IDS` is in the draw, so the new one will
    start turning up on its own. To change what a level holds, see
    [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 
@@ -223,6 +265,7 @@ overhang stays inside its budget. The rule lives in
 `npm run art:check` covers the artwork itself, which the unit tests can't see:
 it rasterises each animal and checks that nothing is clipped by the art box,
 that no undeclared detail strays outside the silhouette and declared overhangs
-stay within budget, that `FOOT_LEVEL` matches where the feet actually are, and
-that no two animals in one theme read the same at a glance.
+stay within budget, that `FOOT_LEVEL` matches where the feet actually are, that no two animals in one
+theme read the same at a glance, and that every committed slice recipe still
+cuts the animal it was measured from into whole, fair, grabbable pieces.
 It needs `rsvg-convert` and ImageMagick, the same tools `npm run art` uses.

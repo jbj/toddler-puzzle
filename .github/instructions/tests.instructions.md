@@ -63,6 +63,17 @@ cast and reshuffled rather than throwing. That last one is checked with a
 deliberately starved provider, because the fallback exists for a cast that
 changes under the table, not for the cast as it stands today.
 
+`tests/slices.test.ts` covers the sliced chapter, in two halves. The cells are
+arithmetic: every committed recipe is replayed and checked to *tile* the art box
+- areas summing to the box, and every sampled point in exactly one cell - because
+a gap is a stripe of the animal that no slice draws and an overlap is a stripe
+two slices both draw, and neither shows up in a screenshot of a duck that is
+almost right. The kind is rules: every slice of an animal keeps that animal's
+box, anchor and outline and aims at its one hole, a slice is accepted anywhere
+on its own animal and never on the other one, and the hole stays showing until
+the last slice arrives. Where the cuts actually *go* is not checked there - only
+`npm run art:check` can see whether a cut severed a leg.
+
 `tests/progress.test.ts` covers what is remembered between sittings, and is
 mostly the unhappy paths, because that is what the storage layer is for: a
 resumed level, a corrupt record, a version this build does not know, a level
@@ -88,6 +99,11 @@ filled only up to `furthest`, exactly one marked current, and the current one
 taken from the game rather than the record, because `?level=` plays a level the
 record was deliberately not told about. The DOM around both - the button, the
 sheet, the switches - is `npm run shot`'s.
+
+Every animal fills its box, so the layout suite also carries casts that do not:
+grid-cut stand-ins for slices, whose drawing is a corner of a box the size of a
+whole animal. They keep the tray honest about packing by ink rather than by
+slot, which is what stops eight slices composing an animal too small to see.
 
 Every animal is square, so the geometry and layout suites also carry a plank and
 a pole - pieces that are deliberately not square, in both directions. They keep
