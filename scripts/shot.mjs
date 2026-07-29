@@ -565,6 +565,14 @@ const soundIsOn = () =>
 const panelOptions = () =>
   evaluate(`[...document.querySelectorAll('.grownups-option-label')].map((el) => el.textContent)`);
 
+/**
+ * What each option says about itself. A note that admits the switch above it
+ * does nothing yet is the same failure as a switch that does nothing at all, so
+ * the admission is checked for rather than trusted to be removed by hand.
+ */
+const panelNotes = () =>
+  evaluate(`[...document.querySelectorAll('.grownups-option-note')].map((el) => el.textContent)`);
+
 /** The record as it actually sits in storage, which is what a reload will read. */
 const savedRecord = () =>
   evaluate(`JSON.parse(window.localStorage.getItem('animal-puzzle') ?? 'null')`);
@@ -651,6 +659,70 @@ async function goToLevel(level) {
 async function reopenTheGame() {
   await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?seed=${SEED}` });
   await sleep(900);
+}
+
+/** A tap on a part of the board with nothing on it: the smallest interaction. */
+async function tapEmptySpot() {
+  const spot = await emptySpotOnBoard();
+  if (!spot) throw new Error("Nowhere empty on the board to tap.");
+  await tapAt(spot.x, spot.y);
+}
+
+// --- the idle hint --------------------------------------------------------
+// After a stretch with nothing happening, a glow where the next piece wants to
+// go. Silent, and it never goes away by itself: touch anything and it goes.
+// See src/hint.ts.
+
+/** Must match `HINT_DELAY_MS.sooner` in src/hint.ts. */
+const HINT_SOONER_MS = 5000;
+
+/**
+ * How long this run gives a hint to appear. Deliberately much longer than the
+ * delay itself: a loaded machine can lose a second or two anywhere, and a check
+ * that fails for that reason teaches nobody anything.
+ */
+const HINT_WINDOW_MS = HINT_SOONER_MS + 2500;
+
+/**
+ * The hint as it stands on the board: which piece it is about, whether that
+ * piece is still waiting, and where its two ends have landed. Centres rather
+ * than boxes, because the mark is the piece's own outline *stroked*, so it is a
+ * few pixels bigger than the hole it is drawn over and only the middles are
+ * comparable.
+ */
+const hintOnBoard = () =>
+  evaluate(`
+  (() => {
+    const hint = document.querySelector('#stage .hint');
+    if (!hint) return null;
+    const middle = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2, width: r.width, height: r.height };
+    };
+    const piece = hint.dataset.piece;
+    const escaped = JSON.stringify(piece);
+    const pieceEl = document.querySelector('.piece[data-piece=' + escaped + ']');
+    const art = pieceEl?.querySelector('.art > path');
+    return {
+      piece,
+      marks: hint.querySelectorAll('.hint-mark').length,
+      filled: hint.querySelectorAll('[fill]:not([fill="none"])').length,
+      placed: pieceEl ? pieceEl.classList.contains('is-placed') : null,
+      bright: middle(hint.querySelector('.hint-mark:not(.is-quiet)')),
+      quiet: middle(hint.querySelector('.hint-mark.is-quiet')),
+      hole: middle(document.querySelector('.hole[data-piece=' + escaped + ']')),
+      waiting: middle(art),
+    };
+  })()
+`);
+
+const away = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/** Wait out a generous window and report whatever is glowing, or null. */
+async function hintAfterAWhile() {
+  await sleep(HINT_WINDOW_MS);
+  return hintOnBoard();
 }
 
 /** Drag every animal still in the tray into its hole. */
@@ -1011,6 +1083,13 @@ try {
     `the panel offers exactly the options that do something (${options.join(", ")})`,
     JSON.stringify(options) === JSON.stringify(["Sound", "Idle hints", "Start again"]),
   );
+  const unfulfilled = (await panelNotes()).filter((note) =>
+    /not in play|coming soon|not yet|does nothing/i.test(note),
+  );
+  check(
+    `no option admits to doing nothing (${unfulfilled.join(" / ") || "none does"})`,
+    unfulfilled.length === 0,
+  );
   await shot("09-grownups-panel");
 
   // A level chosen here moves the child; it does not claim they got there.
@@ -1049,6 +1128,57 @@ try {
   // Back where the rest of this run expects the child to be.
   await pressInPanel('.grownups-level[data-level="6"]');
   check("a grown-up can put the child back", (await levelNumber()) === 6);
+
+  // --- the idle hint --------------------------------------------------------
+  // The anti-frustration valve, and the one part of the game that happens when
+  // nothing happens - so it cannot be checked any other way than by leaving a
+  // real board alone in a real browser. Driven from the panel, on "Sooner", so
+  // the run waits seconds rather than a quarter of a minute. See src/hint.ts.
+  await holdGrownUps();
+  await pressInPanel('.grownups-choice[data-value="sooner"]');
+  await pressInPanel(".grownups-done");
+  check("nothing glows the instant the panel closes", (await hintOnBoard()) === null);
+
+  const glow = await hintAfterAWhile();
+  check(`a board left alone gets a hint (${glow ? glow.piece : "nothing glowed"})`, glow !== null);
+  if (glow) {
+    check(`the hint points at both ends (${glow.marks} marks)`, glow.marks === 2);
+    // A filled target in this game is an opaque animal in its hole. The hint is
+    // stroke only, so it cannot be mistaken for one.
+    check(`nothing about the hint is filled in (${glow.filled} filled shapes)`, glow.filled === 0);
+    check("the hint is about a piece still waiting", glow.placed === false);
+    const onTarget = glow.bright && glow.hole ? away(glow.bright, glow.hole) : Infinity;
+    const tolerance = glow.hole ? Math.max(glow.hole.width, glow.hole.height) * 0.08 : 0;
+    check(
+      `the bright end sits on that piece's hole (${onTarget.toFixed(1)}px out of ${tolerance.toFixed(1)} allowed)`,
+      onTarget <= tolerance,
+    );
+    const onPiece = glow.quiet && glow.waiting ? away(glow.quiet, glow.waiting) : Infinity;
+    check(
+      `the quiet end sits under the piece it means (${onPiece.toFixed(1)}px out of ${tolerance.toFixed(1)} allowed)`,
+      onPiece <= tolerance,
+    );
+  }
+  await shot("09b-idle-hint");
+
+  // Any interaction at all takes it down, including one that achieves nothing.
+  await tapEmptySpot();
+  check("a touch anywhere takes the hint away", (await hintOnBoard()) === null);
+  const again = await hintAfterAWhile();
+  check("and it comes back if the child goes quiet again", again !== null);
+
+  // A piece going home is progress, so the hint goes with it.
+  if (again) await dragAnimal(again.piece);
+  check("placing a piece takes the hint away", (await hintOnBoard()) === null);
+  check("the hinted piece was one that fitted", (await placedCount()) === 1);
+
+  // A level played by touching has no tray, no target and no wrong place: a
+  // finger anywhere already lands on something that answers, so there is
+  // nothing for a hint to point at. See docs/decisions/20260730T213000.
+  await goToLevel(3);
+  check("level 3 is played by touching", (await kindName()) === "play");
+  const onTouchLevel = await hintAfterAWhile();
+  check("a level played by touching is never hinted at", onTouchLevel === null);
 
   // --- level 10: the busiest board of animals ------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for
@@ -1115,7 +1245,17 @@ try {
   check(`a poked animal answers (${hops.missed} missed)`, hops.missed === 0);
   check("the parade lets the way onwards through", (await waitForFinishButton()) === true);
   check("a middle level offers the next puzzle", (await finishLabel()) === "Next puzzle");
+  // A celebration is never interrupted by a hint. The board it was armed
+  // against finished before the parade was built, and the hint went with it.
+  const duringParade = await hintAfterAWhile();
+  check("nothing is hinted at during a celebration", duringParade === null);
   await shot("13b-chapter2-parade");
+
+  // Hints back off, so the rest of the run's screenshots show the levels rather
+  // than a glow that happened to be due when the shutter went.
+  await holdGrownUps();
+  await pressInPanel('.grownups-choice[data-value="off"]');
+  await pressInPanel(".grownups-done");
 
   // --- level 30: the last one, and the loop back ---------------------------
   await setViewport(1280, 800);

@@ -127,12 +127,15 @@ Three things about it are load-bearing:
   level being played; that is all it has ever done.
 
 The settings in the record - `sound` and `hints` - are set from the grown-up
-panel below. `sound` is wired: `applySettings` in `src/grownups.ts` calls
-`setSoundEnabled` in `src/audio.ts`, which every tone goes through, so off means
-silent whatever is played next. `hints` (#21) is stored and read back correctly
-and has no consumer yet; it is one line in `applySettings` when its consumer
-arrives. There is no `rotation` setting: rotation mode was dropped rather than
-built, so the switch and the field went with it - see
+panel below, and `applySettings` in `src/grownups.ts` is the single place either
+of them reaches the game. `sound` calls `setSoundEnabled` in `src/audio.ts`,
+which every tone goes through, so off means silent whatever is played next.
+`hints` calls `setHintTiming` in `src/hint.ts`, which owns both the delays and
+the glow; see [the idle hint](#the-idle-hint) below. Both are answered on the
+board in front of the grown-up rather than at the next level, because the moment
+a switch is moved is usually the moment a child is stuck. There is no `rotation`
+setting: rotation mode was dropped rather than built, so the switch and the field
+went with it - see
 [decision 20260730T203000](../../docs/decisions/20260730T203000-no-rotation-mode.md).
 Dropping a field did not bump `STORAGE_VERSION`, because every field is read on
 its own and an unknown one is passed over; a record written when the switch
@@ -177,8 +180,8 @@ what the code has to keep true is this.
   [decision 20260730T203000](../../docs/decisions/20260730T203000-no-rotation-mode.md)
   - because a control a parent moves and nothing answers is worse than no
   control. `npm run shot` reads the option labels off the panel and checks the
-  list, so one cannot creep back. An option that is genuinely stored ahead of
-  its consumer says so in its note, the way idle hints does.
+  list, so one cannot creep back; it also reads the notes underneath and fails on
+  any that admits to doing nothing yet, so the two cannot drift apart.
 
 ## Sound
 
@@ -267,6 +270,59 @@ what the code has to keep true is this.
   A celebration follows the same rule: the parade stands in a row rather than
   walking, a rainbow appears without wiping itself on, and a firework bursts
   without climbing - the moment still happens, more calmly.
+- A stretch with nothing happening is answered too, by [the idle
+  hint](#the-idle-hint) below.
+
+## The idle hint
+
+`src/hint.ts` owns all of it: the delays, the rule for which piece, and the glow
+itself. After a stretch with no progress the board glows quietly where the next
+piece wants to go - silent, and never punitive. It is the anti-frustration valve
+at the young end, and it is what makes the later levels safe to be hard. The
+reasoning is
+[decision 20260730T213000](../../docs/decisions/20260730T213000-a-hint-points-at-both-ends.md);
+what the code has to keep true is this.
+
+- **It points at both ends.** The target the piece belongs in, brightly, and the
+  piece still waiting in the tray, faintly. A lone glow on a hole says something
+  goes here but not *which* thing, and the child this exists for may not yet have
+  worked out that pieces move at all.
+- **Both marks are the piece's own `outline`**, drawn from the same path the
+  piece and its hole are drawn from - at `kind.target(...)` for the bright end
+  and the piece's tray home for the quiet one. That is the one-path invariant
+  reused, and it is why the hint needs no per-kind knowledge: a slice glows the
+  whole animal it belongs to, a polygon glows the shadow it is aimed at *now*,
+  swaps included.
+- **Stroke only, never a fill.** A filled target in this game is an opaque
+  animal in its hole; an empty hole is a thin rim. A warm unfilled double stroke
+  is neither, so a hint can never be mistaken for a hole already filled.
+  `npm run shot` counts the filled shapes in a hint and expects none.
+- **Which piece, when nobody has touched anything.** `hintPiece` is one rule: the
+  last-touched piece if it is still unplaced, otherwise the first unplaced piece,
+  otherwise nothing. That covers the start of a level and the moment after a
+  placement without a special case, and it means "nobody has touched anything"
+  never means "no help". It is a pure function, so it is tested without a DOM.
+- **No hint on a level played by touching.** A `PuzzleKind.play` level has no
+  tray, no target and no wrong place, so the frustration this answers cannot
+  arise; and the host pointing into a layer the kind owns and animates would
+  point at something that has since moved.
+- **`stop()` latches, and that is the whole race guard.** A timer armed against a
+  board that is then replaced draws nothing, and a stray event on a torn-down
+  board re-arms nothing. `src/game.ts` stops the hint in exactly two places: the
+  `mount()` teardown, before `buildBoard` replaces the DOM, and `checkComplete`,
+  the moment the level is finished and *before* any celebration is built. That is
+  why a celebration is never interrupted by a glow.
+- **Any interaction restarts the wait**, including one that achieves nothing. A
+  `pointerdown` on the stage stirs the hint - registered *before* `enableDragging`
+  so that pressing a piece stirs first and the pick-up pauses second, leaving a
+  drag with nothing armed - and a drop stirs it again whether it was accepted or
+  refused.
+- **Reduced motion keeps the glow and drops the pulse.** A child who needs the
+  hint still needs it; `prefersReducedMotion()` in `src/motion.ts` makes it hold
+  at a steady opacity instead of breathing.
+- **It is drawn into `board.hintLayer`**, directly over the backdrop and under
+  everything else, so the glow sits on the hole and beneath the pieces.
+
 ## Drag feel
 
 `src/drag.ts` is the pointer-event drag engine; `src/game.ts` owns what a drag

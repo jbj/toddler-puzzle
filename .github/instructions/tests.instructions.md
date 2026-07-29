@@ -188,6 +188,20 @@ score a half, a speck scores a speck, two shades of the same green score nothing
 (the measure is not a variance, on purpose), and the cut tiles the box exactly
 once with no pixel counted twice or missed.
 
+`tests/hint.test.ts` covers the idle hint's rule without a DOM. The timer is a
+fake with the callback held rather than fired, which is the only way to ask the
+questions that matter: does a hint armed against a board that has since been
+replaced draw anything (no - `stop()` latches, and the latch is checked inside
+the callback), and does a stray event on a torn-down board re-arm it (no).
+Alongside that: the delays are ordered and `off` is nothing at all, a stir before
+the delay restarts the wait rather than queueing a second one, a pause takes a
+showing hint down and arms nothing until the next stir, a grown-up switching to
+"Off" takes a showing hint down at once and switching to "Sooner" re-arms a live
+one on the shorter clock, and `hintPiece` picks the last-touched piece while it
+is unplaced, the first unplaced one when it is not, nothing when the board is
+finished, and ignores a `lastTouched` left over from another board. What the
+glow *looks* like is `npm run shot`'s.
+
 `tests/grownups.test.ts` covers the two parts of the grown-up panel that do not
 need a browser: the hold that opens it, and the level map. The hold is a state
 machine with the clock passed in, so two hundred taps - none of which may open
@@ -252,7 +266,24 @@ ones filled, choosing a level deals it and is remembered without claiming the
 child reached it, a switch turned off survives closing the panel and then a
 whole reload of the page, and resetting asks once before starting the game over.
 It also reads the option labels off the panel and checks the list, which is how
-a switch that does nothing is kept off it.
+a switch that does nothing is kept off it - and reads the notes underneath for
+any that admits to doing nothing yet, which is how a label that does something
+and a description that says it does not are kept from drifting apart.
+
+It is the only place the idle hint can be seen at all, because the hint is what
+happens when *nothing* happens. The run drives the panel to "Sooner", closes it,
+and leaves a real board alone: a glow arrives within a window deliberately much
+longer than the delay (a loaded machine loses a second or two, and a check that
+fails for that reason teaches nobody anything), it has two marks, none of them
+filled - which is the whole reason it cannot be mistaken for a hole already
+filled - it names a piece still waiting, its bright end lands on that piece's
+hole and its quiet end under the piece itself, both within a few per cent of the
+hole's size, and every one of those checks prints the pixels it measured. Then a
+tap on an empty part of the board takes it away in the same tick, going quiet
+again brings it back, and placing a piece takes it away for good. A level played
+by touching is left alone for the same window and never glows, and neither does a
+chapter celebration. Hints go back off afterwards, so no later screenshot is
+quietly changed by a glow that happened to be due when the shutter went.
 
 It is the only place the chapter celebrations can be *played*, which is the only
 way to find out whether they work. All six are reached and shot. The balloons

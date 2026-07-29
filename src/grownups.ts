@@ -28,6 +28,7 @@
  */
 import { setSoundEnabled, unlockAudio } from "./audio";
 import type { GameHandle } from "./game";
+import { setHintTiming } from "./hint";
 import { CHAPTERS, LEVEL_COUNT, levelSpec, type ChapterId } from "./levels";
 import type { HintTiming, Progress, ProgressStore, Settings } from "./progress";
 
@@ -156,12 +157,13 @@ const CHAPTER_NAMES: Record<ChapterId, string> = {
  * One function rather than a handler per switch, so a setting cannot be applied
  * on the way in and forgotten on the way out.
  *
- * Only `sound` has anywhere to go yet; `hints` is read by the idle hint (#21),
- * which is stored and read back correctly today and needs a line here when its
- * consumer arrives.
+ * Both settings reach the game the same way: through the one function that
+ * owns the thing they change, so a switch moved mid-play is answered on the
+ * board in front of the grown-up who moved it.
  */
 export function applySettings(settings: Settings): void {
   setSoundEnabled(settings.sound);
+  setHintTiming(settings.hints);
 }
 
 const HINT_CHOICES: readonly { readonly value: HintTiming; readonly label: string }[] = [
@@ -313,7 +315,7 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
     optionRow("Sound", "Tones when a piece is picked up, lands, or finishes.", soundSwitch),
     optionRow(
       "Idle hints",
-      "A nudge when nothing has been touched for a while. Not in play yet.",
+      "A glow where the next piece goes, when nothing has been touched for a while.",
       hintChoices,
     ),
   );

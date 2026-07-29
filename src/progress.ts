@@ -31,8 +31,8 @@
 import { LEVEL_COUNT } from "./levels";
 
 /**
- * How long the game waits before nudging an idle child (#21). Stored now so the
- * grown-up panel has somewhere to write it; nothing reads it yet.
+ * How long the game waits before nudging an idle child (#21). Read by
+ * `hint.ts`, which owns both the delays and the glow.
  */
 export type HintTiming = "off" | "sooner" | "later";
 

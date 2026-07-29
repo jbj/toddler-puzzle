@@ -41,6 +41,12 @@ oversights until you know it, so the reason is written next to the rule.
 - Keep the snap radius deliberately generous, about two thirds of the piece being
   dropped. Do not tighten it as a cleanup. Why: near misses should count for a
   toddler.
+- Keep the idle hint silent, unrepeated and unearned: it is a glow and never a
+  sound, it never counts down or nags a second time, and it costs nothing to have
+  needed. Never let it point at a level played by touching, and never let it
+  arrive on top of a celebration. Why: this is the anti-frustration valve at the
+  young end, and it stops being one the moment it feels like being told off. See
+  [decision 20260730T213000](../../docs/decisions/20260730T213000-a-hint-points-at-both-ends.md).
 - Let the child's game move only forward: no menu, no difficulty picker, no
   settings, no failure state, and no score on the play surface. The chapter dots
   are an indicator for a grown-up, not a control, and `?level=` in the URL is a
@@ -90,10 +96,15 @@ is impossible to place an animal "wrongly". The snap radius is deliberately
 large - about two thirds of the piece being dropped, measured per piece rather
 than from one shared square - and any other drop drifts gently back to the tray.
 Pieces are clamped to the canvas by their own bounds, so one can never be dragged
-out of reach. A wrong drop plays a soft, warm tone rather than a buzzer. The
-mechanics are in
+out of reach. A wrong drop plays a soft, warm tone rather than a buzzer. And a
+child who stops getting anywhere is led rather than left: after a stretch with no
+progress the board glows quietly at both ends of the move it is waiting for - the
+piece, and where the piece goes - silently, with nothing lost and nothing said.
+The mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
-[decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md).
+[decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md)
+and
+[decision 20260730T213000](../../docs/decisions/20260730T213000-a-hint-points-at-both-ends.md).
 
 **The way in needs no dragging.** The opening chapter alternates: levels 1, 3
 and 5 are cause and effect - bubbles that burst under a finger, bushes that

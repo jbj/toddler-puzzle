@@ -89,6 +89,7 @@ SVG regardless if it is missing.
 | `src/grownups.ts` | The grown-up panel: the hold that opens it, the level map, the switches |
 | `src/audio.ts` | Every sound in the game, as data: one pentatonic ladder, voices, phrases, and the single gate the sound toggle sits on |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
+| `src/hint.ts` | The idle hint: how long a board is left alone, which piece it is about, and the glow at both ends |
 | `src/celebration.ts` | What the end of a chapter looks like, and what the end of the game looks like. Six celebrations, all played rather than watched |
 | `scripts/preview.mjs` | Renders the art for review: a contact sheet, one animal large, or a scene under its cut grids |
 | `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG and every scene |

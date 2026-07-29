@@ -20,6 +20,12 @@ export interface Board {
   /** Everything behind the pieces; the kind decides what goes in it. */
   readonly backdropLayer: SVGGElement;
   /**
+   * Where the idle hint glows (`hint.ts`). Directly over the backdrop, so the
+   * mark lands on the hole it was cut from, and under everything else, so the
+   * quiet end reads as a halo *behind* the piece still waiting in the tray.
+   */
+  readonly hintLayer: SVGGElement;
+  /**
    * Where a kind played by touch draws what the child can touch
    * (`PuzzleKind.play`). Empty for every kind that is played by dragging.
    */
@@ -179,6 +185,7 @@ export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOpti
   stage.dataset["kind"] = layout.level.kind;
 
   const backdropLayer = group("backdrop");
+  const hintLayer = group("hint-layer");
   const activityLayer = group("activity");
   const piecesLayer = group("pieces");
   const celebrationLayer = group("celebration");
@@ -198,6 +205,7 @@ export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOpti
   const resetButton = buildResetButton(layout.canvas.height);
   stage.append(
     backdropLayer,
+    hintLayer,
     activityLayer,
     piecesLayer,
     celebrationLayer,
@@ -215,6 +223,7 @@ export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOpti
   return {
     stage,
     backdropLayer,
+    hintLayer,
     activityLayer,
     piecesLayer,
     celebrationLayer,
