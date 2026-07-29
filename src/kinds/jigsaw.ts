@@ -165,7 +165,7 @@ export const jigsaw: PuzzleKind = {
    * box the size of the whole picture, so putting the box where the picture
    * goes puts the piece where it goes.
    */
-  target(puzzle: Puzzle, layout: Layout): Point {
+  target(puzzle: Puzzle, layout: Layout, _piece: PieceId): Point {
     return holeOf(layout, asJigsaw(puzzle).frame.id);
   },
 
