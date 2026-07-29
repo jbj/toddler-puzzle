@@ -400,7 +400,23 @@ const COMPOSITION = {
   trayShare: 0.32,
   /** Where the grass takes over, as a share of the ground below the horizon. */
   grassShare: 0.45,
-  /** The largest a slot may be, as a fraction of the canvas's shorter side. */
+  /**
+   * The largest a piece may *draw*, as a fraction of the canvas's shorter side.
+   *
+   * The cap is on the drawing rather than on the slot, and the two are only the
+   * same thing for a cast that fills its boxes. A slice keeps its whole
+   * animal's box but draws a corner of it, so capping its slot would cap the
+   * animal it is a quarter of and hand the child a quarter of that - which is
+   * how a four-slice level ends up as four crumbs under an acre of empty sky.
+   * Divided by what the cast actually draws, the same rule gives a sliced level
+   * a much bigger animal, which is exactly what it needs: a slice has to stay
+   * grabbable, and there is room for it when there are one or two animals on
+   * the board instead of six.
+   *
+   * The divisor is never above 1 - ink cannot leave the box it is measured in -
+   * so this only ever raises the ceiling, and for every animal in the game, all
+   * of which fill their boxes, it raises it by nothing at all.
+   */
   maxSlot: 0.3,
   /**
    * How much smaller than the biggest a composition may be and still be
@@ -418,16 +434,25 @@ const COMPOSITION = {
    * The smallest a *piece* may draw, on its longer side, as a fraction of the
    * canvas width. The same rule as `minSlot` for anything that fills its box,
    * and the one that bites for a slice: a slice keeps its animal's box, so its
-   * slot says nothing about how much of it there is to grab.
+   * slot says nothing about how much of it there is to grab. Below `minSlot`
+   * because a quarter of an animal is inevitably smaller than a whole one, and
+   * the recipes already refuse a slice too thin to pick up.
    *
-   * Well below `minSlot`, because a quarter of an animal is a quarter the size
-   * of one and the floor for a whole animal would refuse every four-slice level
-   * in the table. It is a second opinion rather than the main defence: the
-   * recipes have already refused any slice too thin to pick up, measured on the
-   * slice itself rather than on the box around it (`scripts/slices.mjs`), and
-   * this only catches a board so busy that even a fat slice comes out small.
+   * It had to come down from 0.085 for level 27, the busiest board in the
+   * table: eight slices of two animals, whose worst cast in landscape - a
+   * butterfly beside a pig - draws 0.0705. Every other sliced level clears
+   * 0.08, so this is the floor for one level rather than for the chapter, and
+   * it is set below the measured worst rather than on top of it, so that
+   * redrawing an animal a little thinner does not make a level refuse to
+   * start. That refusal is the thing to avoid: it is a child looking at a
+   * puzzle that will not open.
+   *
+   * Do not lower it to fit a board. It was lowered once, to 0.06, when the real
+   * problem was `maxSlot` capping a sliced animal by a box its slices do not
+   * fill; with that fixed the slices are half as big again and this went most
+   * of the way back up. A board that fails here is a board to make roomier.
    */
-  minPieceInk: 0.06,
+  minPieceInk: 0.065,
 } as const;
 
 /** `count` pieces over `rows` rows, as evenly as possible, fullest row first. */
@@ -533,7 +558,7 @@ function planFor(
       (height * (1 - COMPOSITION.skyShare)) / (sceneHeight + trayHeight),
       widthLimit(width, Math.max(...sceneCounts)),
       widthLimit(width, Math.max(...trayCounts), cell.width),
-      COMPOSITION.maxSlot * Math.min(width, height),
+      (COMPOSITION.maxSlot * Math.min(width, height)) / Math.max(cell.width, cell.height),
     ),
   );
   return { sceneCounts, trayCounts, rises, drops, cell, slotSize, smallest };

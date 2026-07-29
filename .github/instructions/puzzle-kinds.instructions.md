@@ -183,6 +183,15 @@ of an animal the same animal-sized grab box. `minPieceInk` is the floor for the
 drawing where `minSlot` is the floor for the slot; for a cast that fills its
 boxes they are the same floor.
 
+The ceiling works the same way round: `maxSlot` caps what a piece may *draw*,
+not the slot it is drawn inside. Capping the slot would cap a sliced level by
+the whole animal's box - the part a slice does not fill - and hand the child a
+quarter of an animal that was never allowed to be big in the first place, which
+is a small piece under an acre of empty sky. Divided by what the cast draws, the
+same number lets a one-animal, four-slice board stand an animal half as big
+again as a whole animal alone on the board would be, and changes nothing at all
+for a cast that fills its boxes.
+
 `spreadX` spaces each row evenly across the canvas, and each snap radius follows
 that piece's own smaller side, so a busier level automatically gets tighter, more
 accurate snapping instead of overlapping snap zones. Pieces shrink as the board

@@ -746,6 +746,32 @@ describe("layouts where several pieces fill one target", () => {
     }
   });
 
+  it("caps how big a piece is drawn rather than how big its box is", () => {
+    // A board of one whole animal is the biggest anything is ever drawn: with
+    // one piece nothing else is competing for the canvas, so the ceiling is the
+    // only thing holding it, and it is holding it exactly.
+    for (const id of ORIENTATIONS) {
+      const alone = buildLayout(
+        id,
+        MOST_FORGIVING,
+        animalCast(1, () => 0.5),
+      );
+      for (const layout of SLICED.filter((one) => one.id === id)) {
+        for (const piece of layout.pieces) {
+          const { ink } = boxOf(layout, piece.id);
+          expect(Math.max(ink.width, ink.height)).toBeLessThanOrEqual(alone.slotSize);
+        }
+      }
+      // And the ceiling is on the drawing, so a cast that draws a corner of its
+      // box goes past it: the animal a quarter-slice belongs to is drawn bigger
+      // than a whole animal alone on the board, which is the point - a quarter
+      // of a big animal is worth picking up and a quarter of a small one is not.
+      const { pieces, targets } = slicedCast(1, 4, seededRandom(3));
+      const sliced = buildLayout(id, MOST_FORGIVING, pieces, targets);
+      expect(sliced.slotSize).toBeGreaterThan(alone.slotSize);
+    }
+  });
+
   it("centres each piece's drawing in the tray cell it was dealt into", () => {
     for (const layout of SLICED) {
       for (const [slot] of layout.traySlots.entries()) {
