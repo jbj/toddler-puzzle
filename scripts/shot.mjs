@@ -685,10 +685,13 @@ const HINT_WINDOW_MS = HINT_SOONER_MS + 2500;
 
 /**
  * The hint as it stands on the board: which piece it is about, whether that
- * piece is still waiting, and where its two ends have landed. Centres rather
- * than boxes, because the mark is the piece's own outline *stroked*, so it is a
- * few pixels bigger than the hole it is drawn over and only the middles are
- * comparable.
+ * piece is still waiting, and where its ends have landed. Centres rather than
+ * boxes, because a mark is the piece's own outline *stroked*, so it is a few
+ * pixels bigger than the hole it is drawn over and only the middles compare.
+ *
+ * `brights` is a list, and `bright` the first of them: a kind with a *choice*
+ * of place is hinted at every place that would take the piece, so there is not
+ * always exactly one.
  */
 const hintOnBoard = () =>
   evaluate(`
@@ -710,6 +713,7 @@ const hintOnBoard = () =>
       filled: hint.querySelectorAll('[fill]:not([fill="none"])').length,
       placed: pieceEl ? pieceEl.classList.contains('is-placed') : null,
       bright: middle(hint.querySelector('.hint-mark:not(.is-quiet)')),
+      brights: [...hint.querySelectorAll('.hint-mark:not(.is-quiet)')].map(middle),
       quiet: middle(hint.querySelector('.hint-mark.is-quiet')),
       hole: middle(document.querySelector('.hole[data-piece=' + escaped + ']')),
       waiting: middle(art),
@@ -718,6 +722,31 @@ const hintOnBoard = () =>
 `);
 
 const away = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * Every free shadow on the board that wants the same shape as this piece -
+ * which, on a kind that treats identical shapes as interchangeable, is exactly
+ * the set of places a drop would be taken. Worked out from what the shadows
+ * *draw*, so it owes nothing to what the game says about itself.
+ */
+const placesFor = (piece) =>
+  evaluate(`
+  (() => {
+${SHAPE_KEY}
+    const art = document.querySelector(${JSON.stringify(`.piece[data-piece="${piece}"] .art > path`)});
+    if (!art) return null;
+    const wanted = key(art.getAttribute('d'));
+    const out = [];
+    for (const hole of document.querySelectorAll('#stage .hole')) {
+      if (Number(hole.style.opacity) === 0) continue;
+      const path = hole.querySelector('path');
+      if (!path || key(path.getAttribute('d')) !== wanted) continue;
+      const r = hole.getBoundingClientRect();
+      out.push({ x: r.x + r.width / 2, y: r.y + r.height / 2, width: r.width, height: r.height });
+    }
+    return out;
+  })()
+`);
 
 /** Wait out a generous window and report whatever is glowing, or null. */
 async function hintAfterAWhile() {
@@ -740,9 +769,16 @@ async function solveRemaining() {
  * first point of each is taken as its origin - the arcs of a circle are already
  * relative, so they compare as they stand.
  */
-const twinShapes = () =>
-  evaluate(`
-  (() => {
+/**
+ * A snippet, not a function: the page needs this inside each `evaluate`, and two
+ * copies of a shape-comparison rule would be two chances to compare differently.
+ *
+ * Two paths are the same shape when they match once the first point of each is
+ * taken as its origin - the arcs of a circle are already relative, so they
+ * compare as they stand. Names are no help: a fish has two fins called the same
+ * thing, one pointing up and one down, which are not interchangeable at all.
+ */
+const SHAPE_KEY = `
     const key = (d) => {
       const tokens = d.match(/[A-Za-z]|-?[\\d.]+/g) ?? [];
       const out = [];
@@ -765,6 +801,12 @@ const twinShapes = () =>
       }
       return out.join(' ');
     };
+`;
+
+const twinShapes = () =>
+  evaluate(`
+  (() => {
+${SHAPE_KEY}
     const groups = new Map();
     for (const piece of document.querySelectorAll('.piece')) {
       const path = piece.querySelector('.art > path');
@@ -1330,6 +1372,55 @@ try {
   const [oneShape, itsTwin] = (await twinShapes()) ?? [];
   check("a picture of six shapes has two the same in it", Boolean(oneShape && itsTwin));
   const twinShadow = await centreOf(`.hole[data-piece="${itsTwin}"]`);
+
+  // A hint here must offer *both* shadows a twin could fill. Naming one of two
+  // equally right places would teach a rule the game does not have - and the
+  // child being hinted at is the least able to find that out. So hints go back
+  // on for one check, aimed at a piece with a twin by touching it first.
+  const ownShadow = await centreOf(`.hole[data-piece="${oneShape}"]`);
+  await holdGrownUps();
+  await pressInPanel('.grownups-choice[data-value="sooner"]');
+  await pressInPanel(".grownups-done");
+  const grabbed = await drawingCentreOf(oneShape);
+  await tapAt(grabbed.x, grabbed.y);
+  check("a drag that goes nowhere leaves the board alone", (await placedCount()) === 0);
+  const choice = await hintAfterAWhile();
+  check(
+    `the hint follows the piece last touched (${choice ? choice.piece : "nothing glowed"})`,
+    choice?.piece === oneShape,
+  );
+  const offered = choice?.brights ?? [];
+  const couldTake = (await placesFor(oneShape)) ?? [];
+  check(
+    `every place that would take it is offered, and nothing else (${offered.length} bright for ${couldTake.length} free places)`,
+    couldTake.length > 1 && offered.length === couldTake.length,
+  );
+  for (const [name, shadow] of [
+    ["its own", ownShadow],
+    ["its twin's", twinShadow],
+  ]) {
+    let closest = null;
+    let nearest = Infinity;
+    for (const mark of offered) {
+      const gap = away(mark, shadow);
+      if (gap < nearest) {
+        nearest = gap;
+        closest = mark;
+      }
+    }
+    // Measured against the mark's own size: it is the shadow's outline
+    // *stroked*, so it is bigger than the shadow but concentric with it.
+    const room = closest ? Math.max(closest.width, closest.height) * 0.12 : 0;
+    check(
+      `${name} shadow is one of the places offered (${nearest.toFixed(1)}px out of ${room.toFixed(1)} allowed)`,
+      nearest <= room,
+    );
+  }
+  await shot("19b-idle-hint-every-place");
+  await holdGrownUps();
+  await pressInPanel('.grownups-choice[data-value="off"]');
+  await pressInPanel(".grownups-done");
+
   await dragAnimal(oneShape, { onto: itsTwin });
   check("a shape is taken by its twin's shadow", (await placedCount()) === 1);
   const landed = await drawingCentreOf(oneShape);

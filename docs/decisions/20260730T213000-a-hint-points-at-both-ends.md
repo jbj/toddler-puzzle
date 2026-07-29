@@ -42,12 +42,48 @@ makes it impossible for a piece to drift out of alignment with its hole.
 Reusing it means the hint contains no per-kind knowledge whatsoever and cannot
 drift out of alignment either. It also means it does the right thing for kinds it
 was never written for: a slice glows the whole animal it belongs to, which is
-exactly the region `accepts` will take it in; a polygon glows the shadow it is
-aimed at *now*, swaps included; a jigsaw piece glows its own place in the
-picture. Adding a kind gets a working hint for free, as long as the kind
-implements `target` honestly.
+exactly the region `accepts` will take it in, and a jigsaw piece glows its own
+place in the picture. Adding a kind gets a working hint for free, as long as the
+kind answers honestly about where the piece may go - which is the next section.
 
-### Stroke only, never a fill
+### Where a kind has a choice, it glows all of it
+
+The first version of this pointed at `kind.target(piece)` and nothing else. That
+is wrong for the polygon kind, and wrong in a way worth naming.
+
+That kind treats congruent parts as interchangeable on purpose: a piece is
+accepted by *any* free place whose signature matches it, and `settle` writes down
+which one the finger chose (see
+[decision 20260729T090200](20260729T090200-two-shapes-the-same-are-the-same-piece.md)).
+`placeOf` is a bijection seeded at deal time, so `target` always answers - but
+for a piece that has not been dropped yet, what it answers is merely where the
+deal happened to aim it. A sunflower has five identical petals. Glowing one of
+them says "that one", when the truth is "any of these five".
+
+The child would not be *punished* for ignoring it - nothing in this game punishes
+anything - but they would have been taught a rule the game does not have, and the
+child being hinted at is by definition the one with the least basis to discover
+it was a lie. A hint that has to be second-guessed is not a hint.
+
+So the contract grew `openTargets`, the mirror image of `settle`: the same choice
+that has to be written down has to be pointed at. A kind that implements one must
+implement the other; every other kind leaves both out and the host falls back to
+`target` alone. The polygon kind returns one point per free congruent place,
+which is exactly the set `chosen` picks from - so the hint cannot point somewhere
+a drop would be refused, and cannot fail to point somewhere it would be taken.
+
+Two consequences worth expecting rather than discovering:
+
+- **A hint can be five glows.** On a fresh sunflower the whole flower lights up.
+  That looks like a lot, and it is exactly true: every one of those places will
+  take the piece. It is also self-correcting - as twins fill up the set shrinks,
+  so the hint sharpens on its own as the picture comes together.
+- **It cannot go stale.** A hint showing while another piece is placed would be
+  pointing at an assignment that has just changed. It cannot happen: a placement
+  is an interaction, every interaction takes the hint down, and a re-layout stops
+  it outright. The glow is always computed from the board as it stands.
+
+
 
 This is the failure mode the issue calls out by name: a hint must not look like a
 target that has already been filled.
@@ -130,7 +166,8 @@ The latching is covered by tests that hold the callback and fire it *after*
 - `src/hint.ts` is the one home for the feature: the delays, the state machine,
   `hintPiece`, and the markup. Nothing about hinting lives in a kind.
 - A new `PuzzleKind` gets a working hint without writing one, and gets none on a
-  touch-played level without asking for that either.
+  touch-played level without asking for that either. The one thing it must do is
+  implement `openTargets` if it implements `settle`.
 - The delays - 5s for "Sooner", 14s for "Later", the default - are argued rather
   than observed. They are one constant each in `src/hint.ts` and are the first
   thing to change if a real two-year-old finds them wrong.

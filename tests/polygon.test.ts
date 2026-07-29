@@ -373,6 +373,58 @@ describe("the polygon kind", () => {
     }
   });
 
+  it("offers a hint every place a piece would be taken, not just the one it is aimed at", () => {
+    // The reason `openTargets` exists. This kind accepts a piece into *any*
+    // free congruent shadow, so a hint that glowed only the one it happens to
+    // be aimed at would teach a rule the game does not have - and the child
+    // being hinted at is in no position to discover the rule was a lie.
+    for (const scene of SCENES) {
+      const level = POLYGON_LEVELS.find((one) => one.pieces === scene.parts.length)!;
+      const puzzle = dealScene(level, scene.id);
+      const layout = buildLevelLayout("landscape", level, puzzle.pieces, puzzle.targets);
+      // Pieces are dealt in a random order, so a part is looked up rather than
+      // counted off the tray.
+      for (const [index, part] of scene.parts.entries()) {
+        const piece = idOf(puzzle, index);
+        const open = openFor(puzzle, layout, piece);
+        const congruent = scene.parts.filter((other) => signatureOf(other) === signatureOf(part));
+        expect(open, `${scene.id} ${piece}`).toHaveLength(congruent.length);
+        // Nothing offered would be refused, and where it is aimed now is
+        // always among them - so the hint is never a superset of the truth,
+        // and never a subset of it either.
+        for (const at of open) {
+          expect(polygon.accepts(puzzle, layout, piece, at), `${scene.id} ${piece}`).toBe(true);
+        }
+        expect(open).toContainEqual(polygon.target(puzzle, layout, piece));
+      }
+    }
+  });
+
+  it("stops offering a place once a piece is standing in it", () => {
+    for (const scene of SCENES) {
+      const pairs = twins(scene);
+      if (pairs.length === 0) continue;
+      const level = POLYGON_LEVELS.find((one) => one.pieces === scene.parts.length)!;
+      const { a, b } = pairs[0]!;
+      const puzzle = dealScene(level, scene.id);
+      const layout = buildLevelLayout("landscape", level, puzzle.pieces, puzzle.targets);
+      const first = idOf(puzzle, a);
+      const second = idOf(puzzle, b);
+
+      const before = openFor(puzzle, layout, second);
+      expect(before.length, scene.id).toBeGreaterThan(1);
+      expect(before).toContainEqual(spot(scene, layout, b, a));
+
+      const at = spot(scene, layout, a, a);
+      polygon.settle?.(puzzle, layout, first, at);
+      puzzle.placed.add(first);
+
+      const after = openFor(puzzle, layout, second);
+      expect(after, scene.id).toHaveLength(before.length - 1);
+      expect(after).not.toContainEqual(spot(scene, layout, b, a));
+    }
+  });
+
   it("finishes a picture however the identical pieces were shared out", () => {
     for (const scene of SCENES) {
       const level = POLYGON_LEVELS.find((one) => one.pieces === scene.parts.length)!;
@@ -411,8 +463,23 @@ describe("the polygon kind", () => {
   });
 });
 
-/** Which place a drop would take, or null: `accepts` with the answer showing. */
-function accepted(puzzle: Puzzle, layout: Layout, piece: number, at: { x: number; y: number }) {
+/**
+ * Everywhere a hint would point for this piece. `openTargets` is optional on
+ * the contract, so this insists the kind that has a choice of place implements
+ * it rather than quietly testing nothing.
+ */
+function openFor(puzzle: Puzzle, layout: Layout, piece: PieceId) {
+  if (!polygon.openTargets)
+    throw new Error("A kind with a choice of place must offer openTargets.");
+  return polygon.openTargets(puzzle, layout, piece);
+}
+
+/** Which place a drop would take, or null: `accepts` with the answer showing. */ function accepted(
+  puzzle: Puzzle,
+  layout: Layout,
+  piece: number,
+  at: { x: number; y: number },
+) {
   const id = idOf(puzzle, piece);
   if (!polygon.accepts(puzzle, layout, id, at)) return null;
   const before = polygon.target(puzzle, layout, id);

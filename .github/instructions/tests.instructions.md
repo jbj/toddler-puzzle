@@ -85,8 +85,12 @@ filled refuses even a dead-centre drop, congruent shadows sit far enough apart
 that such a drop cannot jump to a twin, the piece displaced by a swap is
 expected somewhere else afterwards, and a picture finishes however the twins
 were shared out - including in reverse order, which is the arrangement an
-identity assignment would fail. Whether a scene *reads* as a house is not
-checked there; only a screenshot can see that.
+identity assignment would fail. `openTargets` is held to the same rule as the
+drop: for every part of every scene it offers exactly one point per congruent
+place, every point it offers would actually be accepted, the place the piece is
+aimed at now is always among them, and a place stops being offered the moment
+something is standing in it. Whether a scene *reads* as a house is not checked
+there; only a screenshot can see that.
 
 `tests/play.test.ts` covers the cause-and-effect levels, and it covers the two
 promises rather than the drawing, because those are properties of the rules and
@@ -284,6 +288,16 @@ again brings it back, and placing a piece takes it away for good. A level played
 by touching is left alone for the same window and never glows, and neither does a
 chapter celebration. Hints go back off afterwards, so no later screenshot is
 quietly changed by a glow that happened to be due when the shutter went.
+
+The polygon level is where the *choice* of place is checked, and it is checked
+end to end because only the browser can prove the host asks `openTargets` rather
+than quietly falling back to `target`. The run finds two identical shapes, taps
+one of them - a drag that goes nowhere, which is an interaction all the same -
+and waits: the hint must be about the piece last touched, and must glow every
+free shadow that would take it. The count it is held to is worked out from the
+page, by comparing what the shadows *draw* against what the piece draws, so the
+check cannot be satisfied by a number somebody wrote down. Both the piece's own
+shadow and its twin's are then checked to be among the places offered.
 
 It is the only place the chapter celebrations can be *played*, which is the only
 way to find out whether they work. All six are reached and shot. The balloons

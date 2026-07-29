@@ -19,6 +19,7 @@ interface PuzzleKind {
   deal(deal: Deal, random: () => number): Puzzle;
   backdrop(puzzle: Puzzle, layout: Layout): string;
   target(puzzle: Puzzle, layout: Layout, piece: PieceId): Point;
+  openTargets?(puzzle: Puzzle, layout: Layout, piece: PieceId): readonly Point[];
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean;
   settle?(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): void;
   isComplete(puzzle: Puzzle): boolean;
@@ -54,6 +55,17 @@ choice to make about a drop - which of two identical shadows the child aimed at
 - has to write that choice down while it can, and `settle` is the call between
 `accepts` and the host placing the piece where it does so. Only the polygon kind
 implements it; a kind whose drop has one possible meaning should leave it out.
+
+`openTargets` is `settle`'s mirror image, and **a kind that implements one must
+implement the other**. `settle` writes down which of several equally right
+places the child chose; `openTargets` says what all of them were, so the idle
+hint can glow every one. A kind that offered only `target` there would have the
+hint name one of several right answers, which teaches the child a rule the game
+does not have - and the child being hinted at is the least equipped to find out
+it was a lie. It returns the same top-left points `target` does, one per place,
+and is never empty for an unplaced piece. Most kinds have no choice to offer and
+leave it out; the host then falls back to `target` alone. See
+[decision 20260730T213000](../../docs/decisions/20260730T213000-a-hint-points-at-both-ends.md).
 
 What the host does insist on is that the game stays forgiving: a drop the kind
 refuses drifts gently back to the tray with a soft tone, never off screen. A
@@ -148,6 +160,13 @@ forms deliberately do not match, and a scene must paint congruent parts
 identically or a swap would change the picture. This is the rule to read before
 touching the kind:
 [decision 20260729T090200](../../docs/decisions/20260729T090200-two-shapes-the-same-are-the-same-piece.md).
+
+The rule reaches the idle hint too, through `openTargets`: a piece with four
+congruent petals free glows at all four, because all four are right and picking
+one to name would be inventing a rule. The set shrinks as its twins fill up, so
+the hint sharpens by itself as the picture comes together, and `npm run shot`
+counts the glows against the free congruent shadows it finds for itself rather
+than against a number written down here.
 
 **Adding a scene** means an entry in `SCENES` and nothing else; `SCENE_SIZES`
 and the level table's piece counts are what decide when it can be dealt. Three

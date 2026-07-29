@@ -232,13 +232,17 @@ export function createGame(
   function showHint(): void {
     const shape = hintPiece(puzzle.pieces, puzzle.placed, lastTouched);
     if (!shape) return;
-    drawHint(
-      board.hintLayer,
-      shape,
-      boxOf(layout, shape.id).scale,
+    // Every place this piece would be taken, not just the one it is aimed at:
+    // a kind that lets two identical shapes fill either of two identical
+    // shadows must not be reported as though it had made up its mind.
+    const targets = kind.openTargets?.(puzzle, layout, shape.id) ?? [
       kind.target(puzzle, layout, shape.id),
-      homeOf(shape.id),
-    );
+    ];
+    drawHint(board.hintLayer, shape, {
+      scale: boxOf(layout, shape.id).scale,
+      targets,
+      waiting: homeOf(shape.id),
+    });
   }
 
   /**

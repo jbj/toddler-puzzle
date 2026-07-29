@@ -293,6 +293,14 @@ what the code has to keep true is this.
   reused, and it is why the hint needs no per-kind knowledge: a slice glows the
   whole animal it belongs to, a polygon glows the shadow it is aimed at *now*,
   swaps included.
+- **A kind with a choice of place glows every one of them.** The bright end is
+  `kind.openTargets(...)` where a kind offers it, falling back to `target` where
+  it does not. A polygon piece is accepted into *any* free congruent shadow, so
+  a hint that named one of four free petals would teach a rule the game does not
+  have - and a child being hinted at is the least able to discover it was a lie.
+  A kind that implements `settle` must implement `openTargets`: the same choice
+  that has to be written down has to be pointed at. See
+  [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 - **Stroke only, never a fill.** A filled target in this game is an opaque
   animal in its hole; an empty hole is a thin rim. A warm unfilled double stroke
   is neither, so a hint can never be mistaken for a hole already filled.

@@ -224,27 +224,28 @@ export function hintMark(shape: PieceShape, mark: HintMark): SVGGElement {
 }
 
 /**
- * Draw the whole hint into its layer: the target end, and the quiet end under
- * the piece still waiting in the tray. The layer is cleared first, so showing a
- * hint twice cannot stack two of them.
+ * Draw the whole hint into its layer: a bright mark on every place the piece
+ * would be taken, and a quiet one under the piece still waiting in the tray.
+ * The layer is cleared first, so showing a hint twice cannot stack two of them.
+ *
+ * `targets` is a list rather than a point because some kinds have a *choice* of
+ * place, and pointing at one of several equally right ones would teach a rule
+ * the game does not have. See `PuzzleKind.openTargets`.
  */
 export function drawHint(
   layer: SVGGElement,
   shape: PieceShape,
-  scale: number,
-  target: Point,
-  waiting: Point,
+  options: { readonly scale: number; readonly targets: readonly Point[]; readonly waiting: Point },
 ): void {
   clearHint(layer);
+  const { scale, targets, waiting } = options;
   const group = document.createElementNS(SVG_NS, "g");
   group.setAttribute("class", "hint");
   group.dataset["piece"] = shape.id;
   group.style.pointerEvents = "none";
   if (prefersReducedMotion()) group.classList.add("is-still");
-  group.append(
-    hintMark(shape, { at: waiting, scale, quiet: true }),
-    hintMark(shape, { at: target, scale, quiet: false }),
-  );
+  group.append(hintMark(shape, { at: waiting, scale, quiet: true }));
+  for (const at of targets) group.append(hintMark(shape, { at, scale, quiet: false }));
   layer.append(group);
 }
 
