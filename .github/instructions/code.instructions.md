@@ -138,6 +138,7 @@ Why each of those stops the run rather than being written down and hoped for is
 | `src/kinds/shatter.ts` | One picture broken into irregular convex shards, no two alike |
 | `src/shatter.ts` | The shatterer: recursive half-plane splits, searched until every shard clears the floors |
 | `src/picture-pieces.ts` | Mints a frame, the clipped pieces and the dimmed guide. Shared by both cut-up-picture kinds |
+| `src/cut.ts` | How a piece of a bigger drawing is cut out and edged: the two clips - the cut, and the cut spread by a hair for once the drawing is whole - and the white line that fades once the piece is home. Shared by the slicer and both cut-up-picture kinds |
 | `src/kinds/play.ts` | Cause and effect: the bubbles, the peekaboo bushes and the scene that answers |
 | `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - a chapter celebration bursts balloons with it |
 | `src/motion.ts` | Whether the player asked for less motion. The one place `prefers-reduced-motion` is read |

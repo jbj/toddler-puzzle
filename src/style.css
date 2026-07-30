@@ -78,6 +78,35 @@ body {
   pointer-events: none;
 }
 
+/* A piece cut out of a bigger drawing wears its cut edge in white, so a piece
+   in the tray reads as a piece of something rather than as a smudge of it. Once
+   it is home the edge has said everything it had to say, and what is left to
+   see is the picture - so it fades out as the piece settles, and the parts that
+   are in place read as one drawing. Placed pieces only: in the tray and under a
+   finger the edge stays. `cut.ts` draws it, and holds the other half of this:
+   a piece overlaps its neighbours by a hair, so there is no seam under the
+   line this takes away. */
+.piece.is-placed .cut {
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+
+/* The other half of that bargain. A piece of a cut-up drawing is clipped to the
+   line it was cut along while the drawing is being built, and to a hair past it
+   once the drawing is whole - so neighbours overlap by about a pixel instead of
+   meeting exactly, and the pale seam that partial coverage leaves down every
+   join closes at the moment the guide behind it goes. Only then: a loose piece
+   would show a sliver of its neighbour's drawing outside its own white edge,
+   and a piece placed early would spill over the empty cell beside it. `cut.ts`
+   draws both clips and hangs them here. */
+.cut-art {
+  clip-path: var(--cut-exact);
+}
+
+#stage.is-complete .cut-art {
+  clip-path: var(--cut-spread);
+}
+
 .hole {
   pointer-events: none;
 }
@@ -157,6 +186,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .piece.is-settling {
+    transition-duration: 1ms;
+  }
+
+  .piece.is-placed .cut {
     transition-duration: 1ms;
   }
 }

@@ -237,6 +237,7 @@ export function createGame(
   /** Push current state into the DOM, e.g. after a fresh puzzle or a re-layout. */
   function render(): void {
     renderBackdrop();
+    showComplete();
     // A level played by touch has no pieces on the board to place: what there
     // is to see, the kind drew for itself when the board was mounted.
     if (kind.play) return;
@@ -289,10 +290,22 @@ export function createGame(
     });
   }
 
+  /**
+   * Tell the board the puzzle is whole. The only thing that reads it is the
+   * artwork of a drawing that was cut up: a slice or a piece of a picture is
+   * clipped to its own cut while there is still a gap to fill, and to a hair
+   * past it once there is not, so the joins close as the last piece lands
+   * (`.cut-art` in `style.css` and `cut.ts`).
+   */
+  function showComplete(): void {
+    board.stage.classList.toggle("is-complete", complete);
+  }
+
   function checkComplete(): void {
     if (complete || !kind.isComplete(puzzle)) return;
 
     complete = true;
+    showComplete();
     // A finished level is never hinted at. This runs before the celebration is
     // built, so nothing can glow underneath one.
     hint?.stop();
