@@ -67,8 +67,15 @@ describe("the web-app manifest", () => {
   });
 
   it("keeps public/ free of binary assets", () => {
-    for (const path of Object.keys(publicFiles)) {
-      expect(/\.(svg|webmanifest|json|xml|txt|ico)$/.test(path)).toBe(true);
+    const paths = Object.keys(publicFiles);
+    // A bare loop over a glob is a vacuous pass if the glob finds nothing: zero
+    // iterations, zero assertions, green having inspected nothing. Assert it
+    // actually saw the files, and name them, before trusting the loop below.
+    expect(paths.length, `public/ glob matched nothing: [${paths.join(", ")}]`).toBeGreaterThan(0);
+    for (const path of paths) {
+      // No `.ico`: it is a binary format, and this test exists to keep binaries
+      // out - the audience downloads nothing that could fail to load.
+      expect(/\.(svg|webmanifest|json|xml|txt)$/.test(path)).toBe(true);
     }
   });
 });
