@@ -95,6 +95,13 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
       `--user-data-dir=${profileDir}`,
       "--no-sandbox",
       "--disable-gpu",
+      // Headless is not silent. `shot.mjs` plays the game for real - it pops
+      // bubbles, drops pieces and runs celebrations - so a check that is
+      // supposed to be a background chore comes out of the laptop speakers.
+      // This mutes the browser's *output device* only; `check-audio.mjs`
+      // measures an `OfflineAudioContext`, which renders into a buffer and
+      // never reaches an output device, so its samples are unchanged.
+      "--mute-audio",
       "--hide-scrollbars",
       "--force-device-scale-factor=1",
       `--window-size=${windowSize}`,

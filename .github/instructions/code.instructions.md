@@ -71,6 +71,13 @@ expecting the formatter to.
 `npm run audio` also wants `rsvg-convert` to rasterise its sheet, and writes the
 SVG regardless if it is missing.
 
+Both browser checks run silent: `scripts/chrome.mjs` launches Chromium with
+`--mute-audio`. `npm run shot` plays the game for real, so without it a check
+somebody started in the background sings its way through the levels out of the
+laptop speakers. The flag mutes the browser's *output device* only, so
+`npm run audio:check`, which measures an `OfflineAudioContext` rendered into a
+buffer that never reaches a device, still hears every sound unchanged.
+
 `CHROME_BIN` is only needed when the browser is not called `chromium` - that is
 the default, and CI sets the variable because a runner has `google-chrome`.
 Setting it to a full path on a machine where `chromium` is already on `PATH`
