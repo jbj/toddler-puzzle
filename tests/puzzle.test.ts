@@ -15,6 +15,7 @@ import {
   type Rect,
 } from "../src/geometry";
 import {
+  FINISH_RADIUS,
   GRAB_PADDING,
   boxOf,
   buildLayout,
@@ -665,6 +666,22 @@ const PROMISES = {
     return null;
   },
 
+  // The button that ends a level used to be guaranteed a place by the sky above
+  // the scene. A picture composed to fill the room the tray leaves it can have
+  // no sky at all, so this is now something to hold rather than something that
+  // falls out. It may sit *over* the picture - by then every piece is placed,
+  // and a placed piece answers no touch - but not half off the canvas.
+  "keeps the whole finish button on canvas": (layout) => {
+    const { x, y } = layout.finishCenter;
+    if (x - FINISH_RADIUS < 0 || x + FINISH_RADIUS > layout.canvas.width) {
+      return `finish button at x ${x} runs off the side`;
+    }
+    if (y - FINISH_RADIUS < 0 || y + FINISH_RADIUS > layout.canvas.height) {
+      return `finish button at y ${y} runs off the top or bottom`;
+    }
+    return null;
+  },
+
   "keeps every tray cell out of every target's snap zone": (layout) => {
     // Measured from what each piece *draws* at both ends, which is what a kind
     // whose pieces share one big box snaps by, and the same circle as the box
@@ -857,16 +874,24 @@ describe("layouts where several pieces fill one target", () => {
   });
 
   it("caps how big a piece is drawn rather than how big its box is", () => {
-    // A board of one whole animal is the biggest anything is ever drawn: with
-    // one piece nothing else is competing for the canvas, so the ceiling is the
-    // only thing holding it, and it is holding it exactly.
+    // A board of one whole animal is the biggest anything is ever drawn where
+    // targets share the canvas: the ceiling is a share of the canvas, so with
+    // one piece nothing else is competing for it and it is held exactly.
+    //
+    // The ceiling is off a lone picture, which is held by the room the tray
+    // leaves it instead - see `centres a lone picture in the room the tray
+    // leaves it` below, and the picture levels in `BOARD_FLOORS` - so this asks
+    // only the boards where the scene is a landscape with more than one thing
+    // standing in it.
     for (const id of ORIENTATIONS) {
       const alone = buildLayout(
         id,
         MOST_FORGIVING,
         animalCast(1, () => 0.5),
       );
-      for (const layout of SLICED.filter((one) => one.id === id)) {
+      const shared = SLICED.filter((one) => one.id === id && one.targets.length > 1);
+      expect(shared.length).toBeGreaterThan(0);
+      for (const layout of shared) {
         for (const piece of layout.pieces) {
           const { ink } = boxOf(layout, piece.id);
           expect(Math.max(ink.width, ink.height)).toBeLessThanOrEqual(alone.slotSize);
@@ -879,6 +904,32 @@ describe("layouts where several pieces fill one target", () => {
       const { pieces, targets } = slicedCast(1, 4, seededRandom(3));
       const sliced = buildLayout(id, MOST_FORGIVING, pieces, targets);
       expect(sliced.slotSize).toBeGreaterThan(alone.slotSize);
+    }
+  });
+
+  it("centres a lone picture in the room the tray leaves it", () => {
+    // A picture being rebuilt is the board rather than a creature standing in
+    // one, so it is not stood on a ground line with sky over it and grass under
+    // it: it takes the room the tray leaves, keeps a little air at each end so
+    // it reads as a picture rather than something wedged against the edges, and
+    // sits in the middle of what is left. The buttons may sit over it, which is
+    // why the air is small - a placed piece is never pressed, so there is
+    // nothing for a button to be confused with.
+    const lone = [...SLICED, ...POLYGON, ...JIGSAW, ...SHATTER].filter(
+      (one) => one.targets.length === 1 && one.pieces.length > 1,
+    );
+    expect(lone.length).toBeGreaterThan(0);
+    for (const layout of lone) {
+      const target = layout.targets[0]!;
+      const { size } = boxOf(layout, target.id);
+      const top = holeOf(layout, target.id).y;
+      const above = top - layout.sceneTop;
+      const below = layout.canvas.height - (top + size.height);
+      const air = 0.02 * layout.canvas.height;
+      // A unit either way for the ground line being rounded to a whole one.
+      expect(above).toBeGreaterThanOrEqual(air - 1);
+      expect(below).toBeGreaterThanOrEqual(air - 1);
+      expect(Math.abs(above - below)).toBeLessThanOrEqual(1);
     }
   });
 
@@ -1067,66 +1118,66 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * pull request that does it has to say which invariant bought the loss.
  */
 const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number, number])[] = [
-  [1, "landscape", 0.203, 0.203],
+  [1, "landscape", 0.204, 0.204],
   [1, "portrait", 0.291, 0.291],
-  [2, "landscape", 0.203, 0.203],
+  [2, "landscape", 0.204, 0.204],
   [2, "portrait", 0.291, 0.291],
-  [3, "landscape", 0.203, 0.203],
+  [3, "landscape", 0.204, 0.204],
   [3, "portrait", 0.291, 0.291],
-  [4, "landscape", 0.203, 0.203],
+  [4, "landscape", 0.204, 0.204],
   [4, "portrait", 0.291, 0.291],
-  [5, "landscape", 0.203, 0.203],
-  [5, "portrait", 0.265, 0.265],
-  [6, "landscape", 0.203, 0.203],
-  [6, "portrait", 0.265, 0.265],
-  [7, "landscape", 0.203, 0.203],
+  [5, "landscape", 0.204, 0.204],
+  [5, "portrait", 0.266, 0.266],
+  [6, "landscape", 0.204, 0.204],
+  [6, "portrait", 0.266, 0.266],
+  [7, "landscape", 0.204, 0.204],
   [7, "portrait", 0.274, 0.274],
-  [8, "landscape", 0.203, 0.203],
-  [8, "portrait", 0.278, 0.278],
-  [9, "landscape", 0.164, 0.164],
-  [9, "portrait", 0.265, 0.265],
-  [10, "landscape", 0.137, 0.137],
-  [10, "portrait", 0.265, 0.265],
-  [11, "landscape", 0.226, 0.166],
-  [11, "portrait", 0.323, 0.239],
-  [12, "landscape", 0.263, 0.138],
-  [12, "portrait", 0.391, 0.197],
-  [13, "landscape", 0.226, 0.116],
-  [13, "portrait", 0.323, 0.163],
-  [14, "landscape", 0.266, 0.128],
-  [14, "portrait", 0.406, 0.19],
-  [15, "landscape", 0.214, 0.089],
-  [15, "portrait", 0.35, 0.143],
-  [16, "landscape", 0.203, 0.095],
-  [16, "portrait", 0.291, 0.135],
-  [17, "landscape", 0.244, 0.097],
-  [17, "portrait", 0.349, 0.139],
-  [18, "landscape", 0.244, 0.097],
-  [18, "portrait", 0.349, 0.139],
-  [19, "landscape", 0.262, 0.087],
-  [19, "portrait", 0.388, 0.129],
-  [20, "landscape", 0.408, 0.115],
-  [20, "portrait", 0.556, 0.158],
-  [21, "landscape", 0.336, 0.167],
-  [21, "portrait", 0.517, 0.258],
-  [22, "landscape", 0.336, 0.167],
-  [22, "portrait", 0.517, 0.258],
-  [23, "landscape", 0.377, 0.145],
-  [23, "portrait", 0.553, 0.214],
-  [24, "landscape", 0.377, 0.145],
-  [24, "portrait", 0.553, 0.214],
-  [25, "landscape", 0.311, 0.103],
-  [25, "portrait", 0.562, 0.187],
-  [26, "landscape", 0.341, 0.137],
-  [26, "portrait", 0.471, 0.201],
-  [27, "landscape", 0.193, 0.074],
-  [27, "portrait", 0.364, 0.137],
-  [28, "landscape", 0.262, 0.085],
-  [28, "portrait", 0.491, 0.166],
-  [29, "landscape", 0.311, 0.103],
-  [29, "portrait", 0.562, 0.187],
-  [30, "landscape", 0.311, 0.09],
-  [30, "portrait", 0.515, 0.149],
+  [8, "landscape", 0.204, 0.204],
+  [8, "portrait", 0.279, 0.279],
+  [9, "landscape", 0.165, 0.165],
+  [9, "portrait", 0.266, 0.266],
+  [10, "landscape", 0.138, 0.138],
+  [10, "portrait", 0.266, 0.266],
+  [11, "landscape", 0.319, 0.22],
+  [11, "portrait", 0.617, 0.407],
+  [12, "landscape", 0.35, 0.163],
+  [12, "portrait", 0.585, 0.285],
+  [13, "landscape", 0.227, 0.117],
+  [13, "portrait", 0.324, 0.167],
+  [14, "landscape", 0.366, 0.152],
+  [14, "portrait", 0.64, 0.291],
+  [15, "landscape", 0.225, 0.093],
+  [15, "portrait", 0.351, 0.143],
+  [16, "landscape", 0.365, 0.17],
+  [16, "portrait", 0.637, 0.319],
+  [17, "landscape", 0.335, 0.134],
+  [17, "portrait", 0.703, 0.267],
+  [18, "landscape", 0.335, 0.134],
+  [18, "portrait", 0.703, 0.267],
+  [19, "landscape", 0.425, 0.131],
+  [19, "portrait", 0.673, 0.224],
+  [20, "landscape", 0.481, 0.136],
+  [20, "portrait", 0.726, 0.206],
+  [21, "landscape", 0.38, 0.19],
+  [21, "portrait", 0.718, 0.359],
+  [22, "landscape", 0.38, 0.19],
+  [22, "portrait", 0.718, 0.359],
+  [23, "landscape", 0.428, 0.165],
+  [23, "portrait", 0.701, 0.271],
+  [24, "landscape", 0.428, 0.165],
+  [24, "portrait", 0.701, 0.271],
+  [25, "landscape", 0.458, 0.153],
+  [25, "portrait", 0.734, 0.245],
+  [26, "landscape", 0.346, 0.151],
+  [26, "portrait", 0.614, 0.248],
+  [27, "landscape", 0.208, 0.08],
+  [27, "portrait", 0.384, 0.141],
+  [28, "landscape", 0.359, 0.115],
+  [28, "portrait", 0.66, 0.223],
+  [29, "landscape", 0.458, 0.153],
+  [29, "portrait", 0.734, 0.245],
+  [30, "landscape", 0.466, 0.135],
+  [30, "portrait", 0.775, 0.225],
 ];
 
 describe("how big the board gets", () => {

@@ -4,7 +4,7 @@
  */
 import type { Point } from "./geometry";
 import { replayArrow } from "./icons";
-import type { Layout } from "./layout";
+import { FINISH_RADIUS, type Layout } from "./layout";
 import { prefersReducedMotion } from "./motion";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -143,7 +143,7 @@ function finishButton(layout: Layout, kind: FinishButton, onPress: () => void): 
   button.setAttribute("aria-label", kind === "next" ? "Next puzzle" : "Play again");
   button.style.transformOrigin = "0 0";
   button.innerHTML = `
-    <circle r="82" fill="#ffd23f" stroke="#e0a615" stroke-width="7" />
+    <circle r="${FINISH_RADIUS}" fill="#ffd23f" stroke="#e0a615" stroke-width="7" />
     ${BUTTON_ICON[kind]}
   `;
 

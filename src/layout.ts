@@ -55,6 +55,18 @@ export const SNAP_FRACTION = 0.68;
 export const FINGER_LIFT = 34;
 
 /**
+ * The radius of the big button that ends a level, in logical units.
+ * `celebrate.ts` draws it; the layout has to know how big it is to place it
+ * somewhere the whole circle is on canvas, which is not automatic now that a
+ * picture composed to fill the room can leave no sky above itself.
+ */
+export const FINISH_RADIUS = 82;
+
+/** Hold a button's centre far enough from both ends of `extent` to fit inside it. */
+const onCanvas = (at: number, extent: number): number =>
+  Math.min(Math.max(at, FINISH_RADIUS), extent - FINISH_RADIUS);
+
+/**
  * How far a piece's grab area reaches past its artwork, as a fraction of the
  * shorter side of the authored box. A piece is picked up anywhere inside the
  * box around its drawing, not just where a finger lands on paint, and this is
@@ -422,6 +434,13 @@ const VIEWS: Record<Layout["id"], View> = {
  * zones apart and `footRoom` is what keeps a hole clear of the tray, so these
  * are the numbers to argue with rather than the coordinates that come out of
  * them.
+ *
+ * The air *inside the tray* - `sideMargin`, `columnGap` and `trayPad` where
+ * they surround a waiting piece - is scaled by what the cast draws before it is
+ * spent (`trayAir`). A slot is the whole picture and a tray holds fragments of
+ * one, so a shelf given the slot's own air would spend about a quarter of the
+ * canvas on gaps between quarter-pictures. Nothing changes for a cast that
+ * fills its boxes, which is every animal.
  */
 const COMPOSITION = {
   /** Kept clear at each end of a row. */
@@ -453,6 +472,15 @@ const COMPOSITION = {
    * extra height goes to the row gaps rather than a larger sky gap.
    */
   skyMax: 0.42,
+  /**
+   * Kept clear above and below a lone picture, as a fraction of the canvas
+   * height. A picture fills the room the tray leaves it, and this is the only
+   * part of that room it does not take: enough that it is plainly a picture
+   * with air around it rather than a thing wedged against the edges, and
+   * enough that rounding a ground line to a whole unit can never push a target
+   * off the canvas or under the tray.
+   */
+  pictureRoom: 0.02,
   /** The tray's nominal share of the canvas height, used to judge its shape. */
   trayShare: 0.32,
   /** Where the grass takes over, as a share of the ground below the horizon. */
@@ -537,6 +565,25 @@ function splitRows(count: number, rows: number): number[] {
 }
 
 /**
+ * Is this scene a picture being rebuilt - one target that several pieces
+ * assemble - rather than creatures standing in a landscape?
+ *
+ * The distinction is what the room on the board is *for*. A row of animals is a
+ * scene: each of them stands on a line of ground, with sky over it and grass
+ * under its feet, and the composition keeps room for all of that. A picture is
+ * the board: it has no feet, nothing grows below it, and every unit of canvas
+ * kept clear around it is a unit the child does not get to see. So a lone
+ * picture is composed to fill the room the tray leaves it, and the buttons in
+ * the corners are allowed to sit over it - a placed piece answers no touch, so
+ * nothing about that is ambiguous.
+ *
+ * This is the same condition the gutter tray is tried under, and for the same
+ * reason: it is the one arrangement where the middle of the board belongs to a
+ * single thing.
+ */
+const isLonePicture = (pieces: number, targets: number): boolean => targets === 1 && pieces > 1;
+
+/**
  * How far a piece reaches above and below its own anchor, at slot size 1. A row
  * is given room for the worst reach in each direction among the pieces dealt
  * into it, which is what stands all of them on one line without any of them
@@ -612,13 +659,33 @@ function inkShares(pieces: readonly PieceShape[]): Size[] {
   });
 }
 
-/** What a row of these drawings takes across the canvas, in slot units. */
-function spanOf(widths: readonly number[]): number {
+/**
+ * What a row of these drawings takes across the canvas, in slot units.
+ *
+ * `air` scales the margins and the gaps, and is the same "divided by what the
+ * cast draws" move `maxSlot` makes: the composition's gaps are shares of a
+ * *slot*, and a slot is the whole picture rather than the piece standing in
+ * the tray. Left at 1 - which is what a row of the scene uses, where a hole
+ * really is a slot wide - a shelf of quarter-pictures would be given the air
+ * four whole pictures want, and about a quarter of the canvas would go on gaps
+ * between fragments. For a cast that fills its boxes, which is every animal,
+ * `air` is 1 and nothing changes.
+ */
+function spanOf(widths: readonly number[], air = 1): number {
   const { sideMargin, columnGap } = COMPOSITION;
   return (
-    widths.reduce((sum, width) => sum + width, 0) + (widths.length - 1) * columnGap + 2 * sideMargin
+    widths.reduce((sum, width) => sum + width, 0) +
+    (widths.length - 1) * columnGap * air +
+    2 * sideMargin * air
   );
 }
+
+/**
+ * How much air the tray's own margins and gaps are worth for this cast: the
+ * largest drawing in it, in slot units. One for a cast that fills its boxes.
+ */
+const trayAir = (shares: readonly Size[]): number =>
+  Math.max(...shares.map((share) => Math.max(share.width, share.height)));
 
 /**
  * Pack the cast into `rows` shelves, taking the pieces in `order` and giving
@@ -638,13 +705,14 @@ function spanOf(widths: readonly number[]): number {
  * cast, so neither is chosen here.
  */
 function packShelves(shares: readonly Size[], rows: number, order: readonly number[]): Shelf[] {
+  const air = trayAir(shares);
   const packed: number[][] = Array.from({ length: rows }, () => []);
   const widths: number[][] = Array.from({ length: rows }, () => []);
   for (const index of order) {
     const share = shares[index] as Size;
     let best = 0;
     for (let row = 1; row < rows; row++) {
-      if (spanOf(widths[row] as number[]) < spanOf(widths[best] as number[])) best = row;
+      if (spanOf(widths[row] as number[], air) < spanOf(widths[best] as number[], air)) best = row;
     }
     (packed[best] as number[]).push(index);
     (widths[best] as number[]).push(share.width);
@@ -655,7 +723,10 @@ function packShelves(shares: readonly Size[], rows: number, order: readonly numb
     const inOrder = [...indices].sort((a, b) => a - b);
     return {
       pieces: inOrder,
-      span: spanOf(inOrder.map((index) => (shares[index] as Size).width)),
+      span: spanOf(
+        inOrder.map((index) => (shares[index] as Size).width),
+        air,
+      ),
       height: Math.max(...inOrder.map((index) => (shares[index] as Size).height)),
     };
   });
@@ -688,6 +759,7 @@ function shelvings(shares: readonly Size[], rows: number): Shelf[][] {
  * that the picture keeps the middle of the board.
  */
 function gutterings(shares: readonly Size[]): Column[] {
+  const air = trayAir(shares);
   const packed: number[][] = [[], []];
   const depths = [0, 0];
   for (const index of orderedBy(shares, (share) => share.height)) {
@@ -700,7 +772,7 @@ function gutterings(shares: readonly Size[]): Column[] {
     return {
       pieces: inOrder,
       width: Math.max(...inOrder.map((index) => (shares[index] as Size).width), 0),
-      depth: (depths[at] as number) + (inOrder.length + 1) * COMPOSITION.trayPad,
+      depth: (depths[at] as number) + (inOrder.length + 1) * COMPOSITION.trayPad * air,
     };
   });
 }
@@ -714,6 +786,8 @@ function planFor(
 ): Plan {
   const sceneCounts = splitRows(targets.length, sceneRowCount);
   const drawn = shares.map((share) => Math.max(share.width, share.height));
+  const air = trayAir(shares);
+  const picture = isLonePicture(shares.length, targets.length);
 
   const rises: number[] = [];
   const drops: number[] = [];
@@ -726,11 +800,13 @@ function planFor(
   }
 
   // Every height the composition needs is a multiple of the slot size, so the
-  // tallest slot that still fits is a division rather than a search.
+  // tallest slot that still fits is a division rather than a search. A lone
+  // picture grows nothing at its feet, so it is asked for its own height and
+  // nothing more.
   const sceneHeight =
     rises.reduce((sum, rise, index) => sum + rise + (drops[index] as number), 0) +
     (sceneRowCount - 1) * COMPOSITION.rowGap +
-    COMPOSITION.footRoom;
+    (picture ? 0 : COMPOSITION.footRoom);
 
   // A band of shelves is height the scene does not get; a pair of gutters is
   // width it does not get. Which of the two the canvas can better spare is the
@@ -738,12 +814,17 @@ function planFor(
   const trayHeight =
     tray.shape === "shelves"
       ? tray.shelves.reduce((sum, shelf) => sum + shelf.height, 0) +
-        (tray.shelves.length + 1) * COMPOSITION.trayPad
+        (tray.shelves.length + 1) * COMPOSITION.trayPad * air
       : 0;
   const sceneSpan =
     tray.shape === "shelves"
-      ? spanOf(Array.from({ length: Math.max(...sceneCounts) }, () => 1))
-      : spanOf([gutterWidth(tray.columns), 1, gutterWidth(tray.columns)]);
+      ? // A lone picture takes the width it is given, edge to edge: the side
+        // margin is room for a creature to stand back from the edge of a
+        // landscape, and a picture is not standing in one.
+        picture
+        ? 1
+        : spanOf(Array.from({ length: Math.max(...sceneCounts) }, () => 1))
+      : spanOf([gutterWidth(tray.columns), 1, gutterWidth(tray.columns)], air);
   const trayWidthSpan =
     tray.shape === "shelves" ? Math.max(...tray.shelves.map((shelf) => shelf.span)) : 0;
   const trayDepth =
@@ -754,10 +835,14 @@ function planFor(
   const largest = Math.max(...drawn);
   const slotSize = Math.floor(
     Math.min(
-      (height * (1 - COMPOSITION.skyShare)) / (sceneHeight + trayHeight),
+      (height * (picture ? 1 - 2 * COMPOSITION.pictureRoom : 1 - COMPOSITION.skyShare)) /
+        (sceneHeight + trayHeight),
       width / Math.max(sceneSpan, trayWidthSpan),
       trayDepth > 0 ? columnRoom / trayDepth : Infinity,
-      (COMPOSITION.maxSlot * Math.min(width, height)) / largest,
+      // The ceiling on a lone picture is the room the tray leaves it, which the
+      // three limits above already are; capping it again by a share of the
+      // canvas would leave a picture small in the middle of an empty board.
+      picture ? Infinity : (COMPOSITION.maxSlot * Math.min(width, height)) / largest,
     ),
   );
   return {
@@ -786,12 +871,18 @@ interface LaidTray {
  * A band of shelves across the top: the arrangement every kind uses, and the
  * only one where the tray costs the scene any height.
  */
-function shelveTray(plan: Plan, canvas: Size, slotSize: number, margin: number): LaidTray {
+function shelveTray(
+  plan: Plan,
+  canvas: Size,
+  slotSize: number,
+  margin: number,
+  air: number,
+): LaidTray {
   const shelves = plan.tray.shape === "shelves" ? plan.tray.shelves : [];
   const scaled = (share: number): number => share * slotSize;
   const heights = shelves.map((shelf) => scaled(shelf.height));
   const shelved = heights.reduce((sum, height) => sum + height, 0);
-  const sceneTop = Math.round(shelved + (shelves.length + 1) * scaled(COMPOSITION.trayPad));
+  const sceneTop = Math.round(shelved + (shelves.length + 1) * scaled(COMPOSITION.trayPad * air));
   const pad = (sceneTop - shelved) / (shelves.length + 1);
 
   const cells: TrayCell[] = [];
@@ -827,10 +918,11 @@ function gutterTray(
   canvas: Size,
   slotSize: number,
   margin: number,
+  air: number,
 ): LaidTray {
   const scaled = (share: number): number => share * slotSize;
   const width = scaled(gutterWidth(columns));
-  const edge = margin + width + Math.round(scaled(COMPOSITION.columnGap) / 2);
+  const edge = margin + width + Math.round(scaled(COMPOSITION.columnGap * air) / 2);
   // The column is centred in the sand it stands on rather than pushed against
   // the picture: the shelf is what the child reads as "these are waiting".
   const inset = (edge - width) / 2;
@@ -874,26 +966,39 @@ function compose(view: View, plan: Plan): Arrangement {
   const { canvas } = view;
   const { slotSize } = plan;
   const scaled = (share: number): number => share * slotSize;
+  const picture = isLonePicture(
+    plan.inks.length,
+    plan.sceneCounts.reduce((sum, count) => sum + count, 0),
+  );
+  const air = trayAir(plan.inks);
 
   /** How deep each row of ground has to be for the pieces dealt into it. */
   const depths = plan.rises.map((rise, index) => (rise + (plan.drops[index] as number)) * slotSize);
   const rowGap = scaled(COMPOSITION.rowGap);
   const margin = Math.round(scaled(COMPOSITION.sideMargin));
-  const laid = plan.tray.shape === "shelves" ? shelveTray(plan, canvas, slotSize, margin) : null;
+  // The tray's own margin is a share of what stands in it rather than of the
+  // slot, exactly as its gaps are - see `spanOf`. The scene keeps the slot's.
+  const trayMargin = Math.round(scaled(COMPOSITION.sideMargin * air));
+  const laid =
+    plan.tray.shape === "shelves" ? shelveTray(plan, canvas, slotSize, trayMargin, air) : null;
   const sceneTop = laid ? laid.sceneTop : 0;
 
   const sceneNeed =
     depths.reduce((sum, depth) => sum + depth, 0) +
     (depths.length - 1) * rowGap +
-    scaled(COMPOSITION.footRoom);
-  const skyNeed = COMPOSITION.skyShare * canvas.height;
+    (picture ? 0 : scaled(COMPOSITION.footRoom));
+  const pictureRoom = COMPOSITION.pictureRoom * canvas.height;
+  const skyNeed = picture ? 2 * pictureRoom : COMPOSITION.skyShare * canvas.height;
 
   // Whatever the canvas has below the tray over what scene and sky need is
   // shared out: one share per row gap and one for the sky, so a single row
   // stands near the bottom and more rows spread themselves up. The sky stops
-  // taking its share at `skyMax`.
+  // taking its share at `skyMax`. A lone picture is not standing on anything,
+  // so it keeps `pictureRoom` at each end and centres itself in the rest.
   const spare = Math.max(0, canvas.height - sceneTop - sceneNeed - skyNeed) / depths.length;
-  const sky = Math.min(skyNeed + spare, COMPOSITION.skyMax * canvas.height);
+  const sky = picture
+    ? pictureRoom + spare / 2
+    : Math.min(skyNeed + spare, COMPOSITION.skyMax * canvas.height);
 
   const sceneRows: SceneRow[] = [];
   let top = sceneTop + sky;
@@ -921,7 +1026,7 @@ function compose(view: View, plan: Plan): Arrangement {
 
   const gutters =
     plan.tray.shape === "gutters"
-      ? gutterTray(plan.tray.columns, plan, canvas, slotSize, margin)
+      ? gutterTray(plan.tray.columns, plan, canvas, slotSize, trayMargin, air)
       : null;
   const tray = laid ?? gutters;
   if (!tray) throw new Error("A tray is either shelves or gutters; this plan was neither.");
@@ -941,11 +1046,19 @@ function compose(view: View, plan: Plan): Arrangement {
           width: canvas.width - 2 * (tray.bands[0] as TrayBand).rect.width,
           height: canvas.height,
         },
-    finishCenter: laid
-      ? { x: canvas.width / 2, y: Math.round(sceneTop / 2) }
-      : // No band across the top, so the button goes in the sky above the
-        // picture, which is the one part of the board nothing else is using.
-        { x: canvas.width / 2, y: Math.round((sceneTop + sky) / 2) },
+    finishCenter: {
+      x: canvas.width / 2,
+      y: onCanvas(
+        laid
+          ? Math.round(sceneTop / 2)
+          : // No band across the top, so the button goes in the sky above the
+            // picture - which a picture composed to fill the room may have none
+            // of. It may sit over the picture: what is under it is placed, and
+            // a placed piece answers no touch.
+            Math.round((sceneTop + sky) / 2),
+        canvas.height,
+      ),
+    },
     bands: [
       { top: horizon, fill: "#8ed76f" },
       {

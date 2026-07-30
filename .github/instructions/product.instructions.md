@@ -88,6 +88,15 @@ oversights until you know it, so the reason is written next to the rule.
   [decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
 - Keep every target large; pieces stay well over a tenth of the canvas wide. Why:
   small hands need large things to grab.
+- Let a picture being rebuilt fill the room the tray leaves it, and let the reset
+  button, the chapter dots, the grown-ups button and the button that ends the
+  level sit over it rather than making it smaller. Never take that room from the
+  tray, which has to keep a waiting piece visible and grabbable. Why: everything
+  that keeps a picture small - grass under its feet, sky over its head, a margin
+  at its sides, a share of the canvas as a ceiling - is there for a creature
+  standing in a landscape, and a picture is the landscape; and a placed piece
+  answers no touch, so nothing under a button is competing with it. See
+  [decision 20260731T091500](../../docs/decisions/20260731T091500-a-rebuilt-picture-fills-the-room.md).
 - Keep the opening chapter playable without a drag. Levels 1, 3 and 5 are
   cause-and-effect levels - touch a thing, a thing happens - and they end when
   enough things have been touched rather than when a tray is empty. Never make
@@ -154,6 +163,16 @@ between sittings, so a child who plays ten minutes a day works along the thirty
 rather than replaying the first five. Forgetting is always allowed - a browser
 that will not store anything simply starts at level 1 - and the mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md).
+
+**A picture being rebuilt takes the whole board.** The levels where several
+pieces make one picture - the polygons, the jigsaws, the shatters and a sliced
+animal - draw it as large as the pieces waiting for it leave room for, and the
+buttons are allowed to sit over it. Every piece is drawn at the size it will be
+when placed, so the tray always costs the picture about half the board, and a
+rebuilt picture at half the board is a rebuilt picture at its ceiling. The
+mechanics are in
+[`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); the reasoning is
+[decision 20260731T091500](../../docs/decisions/20260731T091500-a-rebuilt-picture-fills-the-room.md).
 
 **Toddler-proofing.** Pinch-zoom, double-tap zoom, text selection, long-press
 context menus and native image dragging are all disabled. Every target is large.

@@ -423,6 +423,27 @@ instead of crowding the pieces out. It runs in four steps:
 5. spend what height is left on sky and on the gaps between rows, then read the
    horizon, the grass band and the tray's bands off the result.
 
+**A lone picture is composed differently at every one of those steps.** One
+target with more than one piece aimed at it - the condition the gutters are
+tried under, and `isLonePicture` in `src/layout.ts` - is a picture being rebuilt
+rather than a creature standing in a landscape. Almost everything that holds a
+board back exists for the creature: `footRoom` is grass for it to stand on,
+`skyShare` is sky over its head, `sideMargin` is room to stand back from the edge
+of a scene, and `maxSlot` is a share of the canvas so that several animals can
+share one. A picture is the scene, so it takes all four back and fills the room
+the tray leaves it, keeping only `pictureRoom` at each end and centring itself in
+the rest. See
+[decision 20260731T091500](../../docs/decisions/20260731T091500-a-rebuilt-picture-fills-the-room.md).
+
+**The tray's own air is a share of what stands in the tray.** `sideMargin`,
+`columnGap` and `trayPad` are fractions of a *slot*, and around a waiting piece
+they are scaled by `trayAir` - the largest thing in the cast, in slot units -
+before they are spent. This is the same "divided by what the cast draws" move
+`maxSlot` already makes, and for the same reason: a slot is the whole picture,
+so a shelf of quarter-pictures given the slot's own air would spend a quarter of
+the canvas on the gaps between them. It changes nothing for a cast that fills
+its boxes, which is every animal.
+
 Steps 3 and 4 are why layouts are built when a puzzle starts rather than up
 front: a hole's height depends on the anchor of whichever piece was dealt into
 that place. Generating the layouts rather than declaring them is
@@ -443,10 +464,10 @@ of rectangles, each with the edge it is lipped along, and there are two shapes
 it comes in. *Shelves* are the familiar one: rows across the top of the canvas,
 lipped along the bottom. *Gutters* are two columns down the sides, lipped along
 the edge that faces the scene, and are only ever tried where the scene holds one
-target and more than one piece - a picture being rebuilt. A landscape canvas
-leaves about two thirds of its width empty either side of a picture drawn one
-slot wide, and standing the pieces in that room instead of above it is what lets
-the picture itself grow; `COMPOSITION.controlRoom` keeps the bottom of a gutter
+target and more than one piece - a picture being rebuilt. Standing the pieces
+beside the picture rather than above it buys the picture the height a band across
+the top would have taken, which is most of what holds a landscape board back;
+`COMPOSITION.controlRoom` keeps the bottom of a gutter
 clear of the reset button and the grown-ups button, in canvas units rather than
 as a share, because what it protects is not a share either. A gutter tray is
 only adopted where it is worth `COMPOSITION.gutterGain` more slot than the best
@@ -532,6 +553,14 @@ tray, `controlRoom` is what keeps a gutter clear of the buttons, and `minSlot`
 is what keeps a piece grabbable. Reaching past them to nudge
 a coordinate would move a piece without moving the room left for it.
 
+The tray is the one thing a picture may not have back. A waiting piece has to be
+somewhere a child can see it and pick it up, and `keeps every tray cell out of
+every target's snap zone` is a promise, so "fill the viewport" means "fill the
+room the tray leaves". Every piece is drawn at the same scale it will be placed
+at, so the pieces waiting for a picture always cover as much canvas as the
+picture does: the assembled picture can never take much more than half the
+board's area, and a board already near that is not a board with a bug in it.
+
 All layout tunables belong in `src/layout.ts`. Start there rather than
 scattering a constant into whichever file happened to need it.
 
@@ -555,6 +584,8 @@ pieces of no particular shape:
 - tray cells stay on one of the tray's bands, never collide, and never sit in a
   target's snap zone;
 - pieces stay grabbable - over a tenth of the canvas wide;
+- the whole finish button stays on canvas, which a picture that leaves no sky
+  above itself no longer gives for free;
 - each orientation fills at least 75% of its viewport.
 
 Alongside them, `how big the board gets` holds a measured floor under every one
