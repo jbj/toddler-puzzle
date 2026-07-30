@@ -22,6 +22,8 @@
  *    is what the tray packs by and what a hand has to find.
  */
 import type { Point, Rect, Size } from "./geometry";
+import type { Layout } from "./layout";
+import { renderTrayBands } from "./scenery";
 import { pieceId, type PieceShape } from "./piece";
 import type { Picture } from "./pictures";
 
@@ -139,4 +141,41 @@ export function pictureGuide(
       <path d="${frame.outline}" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="8" />
     </g>
   `;
+}
+
+/**
+ * The colour behind a picture board, which is the colour behind the page.
+ *
+ * The two have to agree: the canvas keeps its aspect ratio inside the window,
+ * so one of them is showing above and below it whatever the screen, and a seam
+ * there would draw the eye to the letterbox rather than to the picture. So it
+ * is the *same* colour rather than two copies of one - `--board-blue` in
+ * `src/style.css`, which the board inherits like any other element - and there
+ * is nothing here that could drift out of step with the page. The shot run
+ * checks the variable reaches both in a real browser.
+ *
+ * Written as `style="fill: ..."` rather than as a `fill` attribute, because a
+ * presentation attribute is not reliably a CSS value and `var()` in one is not
+ * reliably resolved; a style property is both. The literal is a fallback for a
+ * board rendered somewhere the stylesheet is not, which nothing does today.
+ */
+export const PICTURE_BACKDROP = "var(--board-blue, #6fb8d4)";
+
+/**
+ * What a picture board is drawn on: flat colour, and the tray.
+ *
+ * No landscape. The hills and the sky are there so an animal has somewhere to
+ * stand, and a picture does not stand anywhere - it is the scene, and putting
+ * one scene inside another makes it a postcard held up in a field. Flat colour
+ * also lets the picture take the whole board, which is the point of it: what is
+ * left over at the edges is the page's own blue rather than a landscape too
+ * small to be worth drawing. See
+ * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+ */
+export function pictureBackdrop(layout: Layout): string {
+  const { width, height } = layout.canvas;
+  return (
+    `<rect x="0" y="0" width="${width}" height="${height}" style="fill: ${PICTURE_BACKDROP}" />` +
+    renderTrayBands(layout)
+  );
 }

@@ -35,12 +35,11 @@ import { boxCenter, distance, shuffle, type Point } from "../geometry";
 import { boxOf, holeOf, inkSnapRadius, type Layout } from "../layout";
 import type { Grid } from "../jigsaw";
 import { jigsawShapes } from "../jigsaw";
-import { pictureGuide } from "../picture-pieces";
+import { pictureBackdrop, pictureGuide } from "../picture-pieces";
 import type { LevelSpec } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
 import { pictureFor, type Picture } from "../pictures";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
-import { renderScenery } from "../scenery";
 
 const ID = "jigsaw" as const;
 
@@ -129,10 +128,10 @@ export const jigsaw: PuzzleKind = {
     return puzzle;
   },
 
-  /** The landscape, with the picture waiting to be rebuilt in it. */
+  /** Flat colour, with the picture waiting to be rebuilt on it. */
   backdrop(puzzle: Puzzle, layout: Layout): string {
     const jig = asJigsaw(puzzle);
-    return `${renderScenery(layout)}<g class="holes">${frame(jig, layout, isBuilt(puzzle))}</g>`;
+    return `${pictureBackdrop(layout)}<g class="holes">${frame(jig, layout, isBuilt(puzzle))}</g>`;
   },
 
   /**
