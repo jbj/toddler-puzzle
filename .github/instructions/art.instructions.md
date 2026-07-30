@@ -264,6 +264,21 @@ overhang stays inside its budget. The rule lives in
    start turning up on its own. To change what a level holds, see
    [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 
+## Withdrawing an animal
+
+Deleting one is steps 4, 5 and 6 in reverse - out of `ANIMAL_IDS`, `SOURCES`,
+`ANIMAL_THEMES` and `FOOT_LEVEL`, then `npm run art:slices` to drop its recipes -
+and one thing that is not mechanical: **the theme it leaves behind still has to
+fill every level that names it**. A theme is a cast, and a level of five is a
+promise that five of them exist; check the level table before deleting the
+fourth animal of a five-animal theme. See
+[decision 20260730T222000](../../docs/decisions/20260730T222000-size-a-themed-level-by-its-theme.md).
+
+Expect the sliced floors in `tests/puzzle.test.ts` to move as well. They are the
+worst of a fixed set of seeded deals, so a smaller cast makes those seeds land
+on different animals; a number that comes down there is the sample changing, not
+a board getting smaller, and the comment above the table says how to tell.
+
 ## Picture scenes
 
 The animals above are one kind of art in this repository; the other is a

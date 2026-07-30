@@ -1065,6 +1065,14 @@ describe("layouts for a picture shattered into irregular shards", () => {
  *
  * Raising a number here is a good day. *Lowering* one is a decision, and the
  * pull request that does it has to say which invariant bought the loss.
+ *
+ * The four sliced numbers at levels 12 and 13 came down when the cow, the pig
+ * and the parrot were withdrawn, and they are the exception that proves the
+ * rule: no board got smaller. A deal draws from thirteen animals now rather
+ * than sixteen, so the same seeds reach casts that were always possible and
+ * had simply not come up - a butterfly cut into three, a rabbit beside a
+ * giraffe. Each of the four is the worst that cast draws, so what moved is
+ * what the sample sees, not what a child gets.
  */
 const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number, number])[] = [
   [1, "landscape", 0.203, 0.203],
@@ -1089,10 +1097,10 @@ const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number
   [10, "portrait", 0.265, 0.265],
   [11, "landscape", 0.226, 0.166],
   [11, "portrait", 0.323, 0.239],
-  [12, "landscape", 0.263, 0.138],
-  [12, "portrait", 0.391, 0.197],
-  [13, "landscape", 0.226, 0.116],
-  [13, "portrait", 0.323, 0.163],
+  [12, "landscape", 0.245, 0.138],
+  [12, "portrait", 0.35, 0.197],
+  [13, "landscape", 0.226, 0.107],
+  [13, "portrait", 0.323, 0.154],
   [14, "landscape", 0.266, 0.128],
   [14, "portrait", 0.406, 0.19],
   [15, "landscape", 0.214, 0.089],

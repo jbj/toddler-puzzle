@@ -514,7 +514,7 @@ const COMPOSITION = {
    *
    * It had to come down from 0.085 for level 27, the busiest board in the
    * table: eight slices of two animals, whose worst cast in landscape - a
-   * butterfly beside a pig - draws 0.0705. Every other sliced level clears
+   * rabbit beside a turtle - draws 0.0737. Every other sliced level clears
    * 0.08, so this is the floor for one level rather than for the chapter, and
    * it is set below the measured worst rather than on top of it, so that
    * redrawing an animal a little thinner does not make a level refuse to

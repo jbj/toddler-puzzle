@@ -361,7 +361,7 @@ describe("themed casts", () => {
     // A half-drawn theme, or a kind asking for a busier board than the theme
     // has animals: the child gets a full, playable, mostly-themed board.
     const cast = [
-      shapeIn("cow", "farm"),
+      shapeIn("duck", "farm"),
       shapeIn("whale", "sea"),
       shapeIn("crab", "sea"),
       shapeIn("fish", "sea"),
@@ -372,18 +372,18 @@ describe("themed casts", () => {
       expect(dealt).toHaveLength(3);
       expect(new Set(dealt.map((shape) => shape.id)).size).toBe(3);
       // The one animal the theme does have is always in.
-      expect(dealt.map((shape) => shape.id)).toContain("cow");
+      expect(dealt.map((shape) => shape.id)).toContain("duck");
     }
   });
 
   it("puts the animals that filled a short theme up anywhere in the order", () => {
     // Topping up must not always park the off-theme animals at the end of the
     // row, or the same hole would take an off-theme piece every time.
-    const cast = [shapeIn("cow", "farm"), shapeIn("whale", "sea"), shapeIn("crab", "sea")];
+    const cast = [shapeIn("duck", "farm"), shapeIn("whale", "sea"), shapeIn("crab", "sea")];
     const level: LevelSpec = { ...levelSpec(6), theme: "farm", targets: 3, pieces: 3 };
     const positions = new Set<number>();
     for (let run = 0; run < 100; run++) {
-      positions.add(dealPieces(level, cast, seededRandom(run)).findIndex((s) => s.id === "cow"));
+      positions.add(dealPieces(level, cast, seededRandom(run)).findIndex((s) => s.id === "duck"));
     }
     expect(positions.size).toBeGreaterThan(1);
   });
@@ -397,7 +397,7 @@ describe("themed casts", () => {
   });
 
   it("still refuses a themed level with nowhere near enough pieces", () => {
-    const cast = [shapeIn("cow", "farm"), shapeIn("pig", "farm")];
+    const cast = [shapeIn("duck", "farm"), shapeIn("rabbit", "farm")];
     expect(() => dealPieces(levelSpec(10), cast)).toThrow(/only 2 exist/i);
   });
 

@@ -93,7 +93,12 @@ animals in that cast (`src/themes.ts`, and `ANIMAL_THEMES` in `src/assets.ts`),
 so a whole puzzle can be the farm or the sea. A theme with too few animals for
 the level is topped up from the rest of the cast and the whole selection
 reshuffled, rather than throwing - a level that will not start is worse for a
-child than a level with a stray penguin in it. Two animals in one theme have to
+child than a level with a stray penguin in it. That net is for a theme being
+drawn, not something the table may lean on: **never give a level a theme with
+fewer animals than the level puts on the board**, which is why the busiest rows
+of chapter 2 name the biggest themes. See
+[decision 20260730T222000](../../docs/decisions/20260730T222000-size-a-themed-level-by-its-theme.md).
+Two animals in one theme have to
 read differently at a glance, which `npm run art:check` enforces; see
 [`art.instructions.md`](art.instructions.md).
 

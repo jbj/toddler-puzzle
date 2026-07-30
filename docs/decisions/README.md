@@ -49,3 +49,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260730T000400-the-home-screen-icon-is-svg](20260730T000400-the-home-screen-icon-is-svg.md) | Ship an SVG home-screen icon rather than a committed PNG |
 | [20260730T005900-guard-the-sample-against-the-table](20260730T005900-guard-the-sample-against-the-table.md) | Guard the shot run's sample against the level table |
 | [20260730T113000-a-check-explains-its-own-environment](20260730T113000-a-check-explains-its-own-environment.md) | Let a check explain its own environment rather than fail as something else |
+| [20260730T222000-size-a-themed-level-by-its-theme](20260730T222000-size-a-themed-level-by-its-theme.md) | Size a themed level by the animals its theme has |

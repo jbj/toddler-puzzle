@@ -189,6 +189,12 @@ export const LEVELS: readonly LevelSpec[] = [
   },
 
   // Chapter 2: animals. The game as it has always been, growing to a full board.
+  // A theme here has to be able to fill the board on its own - a board topped up
+  // from another theme is the safety net in `dealPieces`, not something the
+  // table may lean on - so which theme a row names is bounded by how many
+  // animals that theme has. Farm has three, which is why the busier rows are
+  // jungle and sea. See
+  // [decision 20260730T222000](../docs/decisions/20260730T222000-size-a-themed-level-by-its-theme.md).
   {
     level: 6,
     chapter: "animals",
@@ -220,7 +226,7 @@ export const LEVELS: readonly LevelSpec[] = [
     level: 9,
     chapter: "animals",
     kind: "shape-match",
-    theme: "farm",
+    theme: "jungle",
     targets: 5,
     pieces: 5,
     snapForgiveness: 1.25,
