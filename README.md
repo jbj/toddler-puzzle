@@ -118,9 +118,8 @@ panel - by being **held for two seconds**, never by being tapped, however many
 times a small hand tries. Behind it are a map of the thirty levels to jump about
 in, a switch for sound, a choice of idle hints, a switch for each kind of puzzle,
 and the only place progress can be cleared. It is deliberately plain and
-adult-looking, and closing it puts the child back exactly where they were. Sound
-works today; idle hints are stored and take effect when that feature arrives.
-There is no rotation switch - see
+adult-looking, and closing it puts the child back exactly where they were. There
+is no rotation switch - see
 [decision 20260730T203000](docs/decisions/20260730T203000-no-rotation-mode.md).
 See also
 [decision 20260729T000652](docs/decisions/20260729T000652-a-door-for-grown-ups.md).
