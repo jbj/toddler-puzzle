@@ -15,7 +15,7 @@ import {
   type Rect,
 } from "../src/geometry";
 import {
-  FINISH_RADIUS,
+  FINISH_REACH,
   GRAB_PADDING,
   boxOf,
   buildLayout,
@@ -671,12 +671,16 @@ const PROMISES = {
   // no sky at all, so this is now something to hold rather than something that
   // falls out. It may sit *over* the picture - by then every piece is placed,
   // and a placed piece answers no touch - but not half off the canvas.
+  //
+  // Measured by `FINISH_REACH` rather than by the radius: the rim is what would
+  // be clipped, and the rim is the stroke straddling the circle's edge, grown
+  // by the idle pulse.
   "keeps the whole finish button on canvas": (layout) => {
     const { x, y } = layout.finishCenter;
-    if (x - FINISH_RADIUS < 0 || x + FINISH_RADIUS > layout.canvas.width) {
+    if (x - FINISH_REACH < 0 || x + FINISH_REACH > layout.canvas.width) {
       return `finish button at x ${x} runs off the side`;
     }
-    if (y - FINISH_RADIUS < 0 || y + FINISH_RADIUS > layout.canvas.height) {
+    if (y - FINISH_REACH < 0 || y + FINISH_REACH > layout.canvas.height) {
       return `finish button at y ${y} runs off the top or bottom`;
     }
     return null;

@@ -55,16 +55,24 @@ export const SNAP_FRACTION = 0.68;
 export const FINGER_LIFT = 34;
 
 /**
- * The radius of the big button that ends a level, in logical units.
- * `celebrate.ts` draws it; the layout has to know how big it is to place it
- * somewhere the whole circle is on canvas, which is not automatic now that a
- * picture composed to fill the room can leave no sky above itself.
+ * The big button that ends a level, in logical units. `celebrate.ts` draws it;
+ * the layout has to know how much room it takes to place it somewhere the whole
+ * button is on canvas, which is not automatic now that a picture composed to
+ * fill the room can leave no sky above itself.
+ *
+ * `FINISH_REACH` rather than the radius is what the layout and the tests
+ * measure with: the stroke straddles the circle's edge and the idle pulse grows
+ * it, so what is drawn reaches further than `FINISH_RADIUS` and clamping by the
+ * radius alone would still clip the rim.
  */
 export const FINISH_RADIUS = 82;
+export const FINISH_STROKE = 7;
+export const FINISH_PULSE = 1.06;
+export const FINISH_REACH = (FINISH_RADIUS + FINISH_STROKE / 2) * FINISH_PULSE;
 
 /** Hold a button's centre far enough from both ends of `extent` to fit inside it. */
 const onCanvas = (at: number, extent: number): number =>
-  Math.min(Math.max(at, FINISH_RADIUS), extent - FINISH_RADIUS);
+  Math.min(Math.max(at, FINISH_REACH), extent - FINISH_REACH);
 
 /**
  * How far a piece's grab area reaches past its artwork, as a fraction of the
