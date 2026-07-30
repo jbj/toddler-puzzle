@@ -15,9 +15,43 @@
  */
 import { spawn } from "node:child_process";
 import { rmSync } from "node:fs";
+import { createConnection } from "node:net";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const CHROME = process.env.CHROME_BIN || "chromium";
+
+/**
+ * Is anything already listening on the debugging port?
+ *
+ * A plain TCP connect rather than an HTTP request, so that whatever holds the
+ * port is found - a browser, a forgotten server, anything.
+ */
+function somethingAnswersOn(port) {
+  return new Promise((resolve) => {
+    const socket = createConnection({ host: "127.0.0.1", port });
+    const settle = (answer) => {
+      socket.destroy();
+      resolve(answer);
+    };
+    socket.setTimeout(1500);
+    socket.once("connect", () => settle(true));
+    socket.once("timeout", () => settle(false));
+    socket.once("error", () => settle(false));
+  });
+}
+
+/** Best effort: ask an occupied port to name itself, for the error message. */
+async function whoIsThere(port) {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/json/version`, {
+      signal: AbortSignal.timeout(1500),
+    });
+    const version = await response.json();
+    return version.Browser ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Launch a headless Chrome and connect to it.
@@ -27,6 +61,30 @@ const CHROME = process.env.CHROME_BIN || "chromium";
  * the browser down. `close` is safe to call more than once.
  */
 export async function openChrome({ debugPort, profileDir, windowSize = "1280,800" }) {
+  // Refuse to attach to a browser this script did not start.
+  //
+  // Chrome cannot bind a port that is already taken, but the connect below does
+  // not care who answers: it would find the *old* browser's page and drive
+  // that, on whatever the interrupted run left on screen. The checks then fail
+  // somewhere with no connection to the real problem - a screenshot run
+  // reporting that a new player does not start on level 1, because it is
+  // looking at a browser parked on level 12. Half an hour goes into the wrong
+  // question. So say what is actually wrong, once, and stop.
+  if (await somethingAnswersOn(debugPort)) {
+    const browser = await whoIsThere(debugPort);
+    console.error(
+      `Something is already listening on 127.0.0.1:${debugPort}, which is the ` +
+        `port this check talks to its own browser on.\n` +
+        (browser ? `It says it is ${browser}.\n` : "") +
+        "\nThat is nearly always a headless browser left behind by an " +
+        "interrupted run.\nIt has to go, because attaching to it would drive " +
+        "the wrong browser and fail\nsomewhere unrelated. Find it and stop it:\n\n" +
+        `    ps -eo pid,cmd | grep '[r]emote-debugging-port=${debugPort}'\n` +
+        "    kill <pid>\n",
+    );
+    process.exit(1);
+  }
+
   rmSync(profileDir, { recursive: true, force: true });
 
   const chrome = spawn(

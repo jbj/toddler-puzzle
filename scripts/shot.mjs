@@ -10,7 +10,16 @@
  * Output lands in .art/shots/.
  */
 import { createServer } from "node:http";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -27,6 +36,69 @@ const DEBUG_PORT = 9333;
 // screenshots from two runs show the same puzzle.
 const SEED = 20260726;
 const profileDir = join(root, ".art/chrome-profile");
+
+// --- preflight ------------------------------------------------------------
+//
+// This file is a script, not a module: everything below runs at import time.
+// Both checks here exist because the failure they replace arrives much later
+// and points somewhere else.
+
+// Importing this file *is* running it - there is no exported entry point to
+// call, so `await import("./scripts/shot.mjs")` launches a browser, serves the
+// build and plays the game. That is a surprising way to find out, especially
+// for anyone reaching for it as a way to check the syntax.
+function invokedDirectly() {
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+if (!invokedDirectly()) {
+  throw new Error(
+    "scripts/shot.mjs is a script, not a module: importing it runs the whole " +
+      "check.\nRun it with `npm run shot`, or check its syntax with " +
+      "`node --check scripts/shot.mjs`.",
+  );
+}
+
+// The run serves `dist/`, so without a build there is nothing to serve: the
+// page comes back empty and the first thing to notice is a null `#stage`, deep
+// in the run and far from the cause.
+if (!existsSync(join(dist, "index.html"))) {
+  console.error("There is no build to serve (dist/index.html is missing).\n\n    npm run build\n");
+  process.exit(1);
+}
+
+// A build older than the code is worse than no build: every assertion below
+// would be about code that is no longer in the tree, and would pass or fail on
+// its own terms. `npm run build` type-checks first, so a type error in a test
+// leaves the previous `dist/` standing - which is exactly when this bites.
+const built = statSync(join(dist, "index.html")).mtimeMs;
+const newer = ["src", "public", "index.html"]
+  .map((path) => join(root, path))
+  .flatMap((path) => filesUnder(path))
+  .filter((file) => statSync(file).mtimeMs > built);
+if (newer.length > 0) {
+  const shown = newer.slice(0, 3).map((file) => file.slice(root.length));
+  console.error(
+    `The build is older than the code (${newer.length} file(s) changed since, ` +
+      `including ${shown.join(", ")}).\nThe run would be checking something ` +
+      "other than the working tree.\n\n    npm run build\n",
+  );
+  process.exit(1);
+}
+
+function filesUnder(path) {
+  let entry;
+  try {
+    entry = statSync(path);
+  } catch {
+    return [];
+  }
+  if (!entry.isDirectory()) return [path];
+  return readdirSync(path).flatMap((name) => filesUnder(join(path, name)));
+}
 
 const MIME = {
   ".html": "text/html",

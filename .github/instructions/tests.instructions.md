@@ -38,6 +38,43 @@ Use `?seed=` when an end-to-end or browser run needs to reproduce a specific
 deal. A seed is a reproduction tool, not a reason to make tests depend on only
 one cast.
 
+A suite that reaches for the kind registry has to `await loadAllKinds()` at the
+top of the module first: four of the six kinds are a chunk each, and `kindFor`
+stays synchronous and strict rather than waiting. Vitest handles the top-level
+await. `tests/levels.test.ts` and `tests/puzzle.test.ts` do this already.
+
+## A check that inspects nothing passes
+
+This is the failure mode this repository keeps finding, so it is worth knowing
+by shape rather than meeting one at a time. Every one of these was green, and
+none of them was looking at anything:
+
+- A rule over `querySelectorAll(...)` expressed as `filter(...).length === 0`.
+  Rename the class and the selector matches nothing, the filter finds nothing to
+  object to, and the check passes having read no elements.
+- A `for` loop over a glob with the assertions inside the loop. If the glob
+  matches nothing the body never runs, so the test makes no assertion at all -
+  including the one in its own name.
+- A required set derived by parsing a source file. If the parse silently matches
+  fewer things than it should, everything compared against it agrees, because
+  they are all comparing against the same smaller world. **A parser that returns
+  fewer results than it should is indistinguishable from a world with fewer
+  things in it.**
+
+So when a check iterates a set it discovered rather than one it was given,
+assert the set is not empty, and put what it actually read into the message -
+`(6 kinds, 6 chapters, 6 celebrations)` tells a later reader the difference
+between a real pass and a broken parse. Where one number can be cross-checked
+against another that was found a different way, do that: the shot run's coverage
+guard compares the levels it parsed against the levels the running game shows,
+which is what makes a thinning parse visible. See
+[decision 20260730T005900](../../docs/decisions/20260730T005900-guard-the-sample-against-the-table.md).
+
+Then make it fail on purpose, once, and watch it. Break the thing it is meant to
+catch, run it, read the message, and put it back. A guard nobody has seen fail
+is a guard nobody knows works, and the message it prints when it does fail is
+half of what it is for.
+
 ## What `npm run test` covers
 
 Vitest covers the coordinate mapping (including letterboxing in both
@@ -377,3 +414,27 @@ The artwork. `npm run art:check` covers that, and
 actually sounds like: the checks above can say a sound is soft, brief and
 distinct from its neighbours, but not that it is the right sound for the moment.
 Only a person with a speaker can say that.
+
+Also anything nobody has staged. The checks in this repository are unusually
+mechanical, and the gap that leaves is a particular one: **a claim about how
+something behaves under conditions nobody created**. Such a sentence tends to
+sound obviously true, and it is surrounded by measurements, so it inherits their
+credibility without having earned any. Every one of these was believed, written
+down, and wrong:
+
+- That a failed chunk load could be retried. A browser remembers a dynamic
+  import that failed and will not go near the network for it again, so the retry
+  could never have run. Found by cutting the network, not by reading the code.
+- That the game worked offline between sittings. It never had: the HTTP cache
+  decides that, and it behaved identically before and after the change that was
+  said to preserve it.
+- That the safe-area rules were doing something. Headless Chrome reports every
+  inset as `0px`, so a misspelt property name would have shipped green.
+- That a manifest served correctly because its contents were right. It was
+  served as `application/octet-stream`, which a browser rejects.
+
+The habit that catches all four is the same: when you write a sentence about
+behaviour, go and create the conditions it describes, and report what happened
+rather than what you expected. `scripts/shot.mjs` is where conditions like these
+can actually be made - it is the only place the network is taken away, the
+viewport is not a desktop, and the insets are not zero.

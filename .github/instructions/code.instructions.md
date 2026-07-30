@@ -20,6 +20,15 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
 contract, and the headless Chrome shot run, in that order. It is also the whole
 of what CI runs, so a script added to `verify` is a check added to CI.
 
+**A green run on your own machine is not the same evidence as a green run in
+CI**, and the difference is not pedantry. CI is slower, which changes what the
+browser checks see: a celebration that looked continuous locally turned out to
+leave a visible gap in the balloons, and a button that was never hit locally
+started catching taps meant for what was behind it. Both were real faults in the
+game rather than flaky tests, and both passed locally first. A rasteriser one
+version apart has failed the art check the same way. So run `npm run verify`
+before pushing, and then wait for `gh pr checks` before saying a change is done.
+
 The build itself now enforces a **bundle budget**: four numbers in
 `scripts/check-bundle.mjs` for what a child downloads before the first level
 appears and what the whole game weighs, raw and gzipped. It prints the table
@@ -61,6 +70,51 @@ expecting the formatter to.
 `npm run audio:check` need a headless Chrome binary and honour `CHROME_BIN`;
 `npm run audio` also wants `rsvg-convert` to rasterise its sheet, and writes the
 SVG regardless if it is missing.
+
+`CHROME_BIN` is only needed when the browser is not called `chromium` - that is
+the default, and CI sets the variable because a runner has `google-chrome`.
+Setting it to a full path on a machine where `chromium` is already on `PATH`
+changes nothing; it is not a step to copy around.
+
+### When a browser check goes wrong
+
+The two checks that drive a browser - `npm run shot` and `npm run audio:check` -
+each start their own and talk to it on a fixed port. Three things used to go
+wrong here in ways that pointed somewhere else entirely, so each now stops with
+its own message rather than failing later as something unrelated:
+
+- **A browser is already on the port.** Nearly always one left behind by an
+  interrupted run. Nothing would stop the check attaching to it and driving
+  *that* browser, on whatever page the old run left on screen - which surfaces
+  as an assertion failing for reasons that make no sense, like a fresh player
+  not starting on level 1. The check now refuses to attach to a browser it did
+  not start, and prints how to find and stop the old one. Do that, then run it
+  again; there is nothing wrong with the code.
+- **There is no build, or the build is older than the code.** The run serves
+  `dist/`, so without `npm run build` the page is empty and the first thing to
+  go wrong is far from the cause. A *stale* build is worse: the run passes or
+  fails on code that is no longer in the tree. That happens most often when
+  `npm run build` failed its type-check - which type-checks `tests/` too, so a
+  broken test type leaves the last build standing. Both stop the run now.
+- **Importing `scripts/shot.mjs` runs it.** There is no entry point to call:
+  the file is a script, and importing it serves the build and plays the game.
+  Reaching for `await import(...)` to check the file parses is how a stray
+  browser gets created in the first place. It now refuses to be imported; use
+  `node --check scripts/shot.mjs`.
+
+Why each of those stops the run rather than being written down and hoped for is
+[decision 20260730T113000](../../docs/decisions/20260730T113000-a-check-explains-its-own-environment.md).
+
+### Lint rules worth knowing before they surprise you
+
+- `@typescript-eslint/unbound-method` fires when a method written in shorthand
+  is pulled off its object, which includes destructuring a test helper. Declare
+  helpers as properties holding arrows - `readonly f: () => T` - rather than
+  methods.
+- `@typescript-eslint/no-unnecessary-type-assertion` and `tsc` disagree about
+  indexing a readonly tuple such as `CHAPTERS[i]`: one wants the assertion the
+  other calls redundant. Iterate the thing instead of indexing it and both are
+  satisfied.
 
 ## Source map
 
@@ -126,6 +180,29 @@ SVG regardless if it is missing.
   looks like. Attaching that is your job.
 - Routine version bumps of actions are Dependabot's job, not yours.
 
+### When one pull request is based on another
+
+Work that arrives as a chain - each branch based on the one before it, so the
+last contains everything - is reviewed from the bottom up and merged in order.
+Two things about that are easy to learn the expensive way:
+
+- **A review from Copilot does not start by itself when the base is not
+  `main`.** Ask for it once CI is green, or the pull request sits there looking
+  reviewed and is not:
+
+      gh api -X POST repos/<owner>/<repo>/pulls/<n>/requested_reviewers \
+        -f "reviewers[]=copilot-pull-request-reviewer[bot]"
+
+- **Never push to a branch something else is based on.** The pull request on
+  top goes to a state where **CI does not run at all**, and `gh pr checks`
+  reports "no checks reported" rather than a failure - so it is silence, not a
+  red mark, and nobody notices. If the base has genuinely moved, *merge* it into
+  the branch above rather than rebasing: other branches point at those commits.
+
+`docs/decisions/README.md` is the file every change touches, so it is where two
+branches collide. Keep an edit to it to the single row for the record being
+added.
+
 CI runs the whole of `npm run verify` on every pull request. It does not post
 the screenshots: the author attaches them, having run the same command. Why that
 way round is
@@ -143,7 +220,7 @@ broken one.
 
 ## Attaching screenshots
 
-`npm run verify` leaves fifteen screenshots and a combined
+`npm run verify` leaves the screenshots and a combined
 `.art/shots/contact-sheet.png` in `.art/shots/`. Attach the contact sheet to the
 pull request body, and an individual shot as well when one detail deserves a
 closer look.

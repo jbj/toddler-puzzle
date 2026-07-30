@@ -48,3 +48,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260729T223500-a-chapter-is-warmed-before-it-is-needed](20260729T223500-a-chapter-is-warmed-before-it-is-needed.md) | Budget the bundle, and warm a chapter rather than fetch it |
 | [20260730T000400-the-home-screen-icon-is-svg](20260730T000400-the-home-screen-icon-is-svg.md) | Ship an SVG home-screen icon rather than a committed PNG |
 | [20260730T005900-guard-the-sample-against-the-table](20260730T005900-guard-the-sample-against-the-table.md) | Guard the shot run's sample against the level table |
+| [20260730T113000-a-check-explains-its-own-environment](20260730T113000-a-check-explains-its-own-environment.md) | Let a check explain its own environment rather than fail as something else |
