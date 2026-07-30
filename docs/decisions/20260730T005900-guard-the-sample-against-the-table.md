@@ -63,14 +63,36 @@ number of squares the live level map renders, and that the app never reported a
 kind or chapter the parse did not know about. An empty or garbled parse survives
 none of those.
 
+The non-empty floors are deliberately loose - two of each - rather than the six
+kinds, six chapters and six celebrations the table holds today, because hard-coding
+those numbers would just restate the table in a second place that could fall out of
+step with it. The floors only have to be high enough that an empty parse cannot slip
+through; the count cross-check against the live level map is what actually pins the
+size. So that a future reader can tell "six kinds" from "two kinds and a half-broken
+parse" at a glance, the measured figures on the day this landed are recorded here,
+the way the bundle budgets record theirs: **6 kinds, 6 chapters, 6 celebrations, 30
+levels**, and every check label prints the count it saw.
+
 That this actually catches a thinning sample was checked the only way worth
-checking it: the one shot that exercises the shatter kind was commented out and
-the run re-run. The guard failed with
+checking it, at both halves of the guard - the coverage half and the parse half.
+
+For the coverage half, the one shot that exercises the shatter kind was commented
+out and the run re-run. The guard failed with
 `coverage: every puzzle kind is exercised (shatter @ level 26)` and the run
 exited non-zero, while the chapter and celebration checks stayed green because
 level 30 still covers the mastery chapter - the granularity is per kind, per
 chapter and per celebration, not per level. The shot was put back and the run
-went green again. A guard nobody has watched fail is a guard nobody knows works.
+went green again.
+
+For the parse half - the load-bearing check, since it is what stops a garbled
+requirement passing - one level row in `src/levels.ts` had its `kind` and `chapter`
+fields swapped in order. That is still valid TypeScript and the app still renders
+all thirty levels, but the row no longer matches the parse's regex, so the
+requirement quietly shrank to twenty-nine. The guard failed with
+`coverage: the parse saw every level (29 parsed, 30 in the level map)` and the run
+exited non-zero, while every other coverage check stayed green - exactly the silent
+thinning the cross-check exists to make loud. The row was restored and the run went
+green again. A guard nobody has watched fail is a guard nobody knows works.
 
 The rule lives in
 [`tests.instructions.md`](../../.github/instructions/tests.instructions.md),
