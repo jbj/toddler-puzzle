@@ -14,8 +14,9 @@
  * and checks it comes back where it was.
  */
 import { describe, expect, it } from "vitest";
-import { LEVEL_COUNT } from "../src/levels";
+import { LEVEL_COUNT, PUZZLE_KINDS } from "../src/levels";
 import {
+  ALL_KINDS,
   DEFAULT_SETTINGS,
   NEW_PLAYER,
   STORAGE_KEY,
@@ -116,7 +117,7 @@ describe("reading a stored record", () => {
       ),
     );
     expect(progress.level).toBe(1);
-    expect(progress.settings).toEqual({ sound: false, hints: "sooner" });
+    expect(progress.settings).toEqual({ ...DEFAULT_SETTINGS, sound: false, hints: "sooner" });
   });
 
   it("passes over a setting this build no longer has", () => {
@@ -132,8 +133,46 @@ describe("reading a stored record", () => {
       ),
     );
     expect(progress.level).toBe(9);
-    expect(progress.settings).toEqual({ sound: false, hints: "sooner" });
+    expect(progress.settings).toEqual({ ...DEFAULT_SETTINGS, sound: false, hints: "sooner" });
     expect(progress.settings).not.toHaveProperty("rotation");
+  });
+
+  it("starts every kind of puzzle in play, including for a record written before them", () => {
+    // The switches arrived after the game shipped, so a record from before them
+    // has no `kinds` at all. It has to read as the game it was written by,
+    // which is the whole ramp.
+    expect(DEFAULT_SETTINGS.kinds).toEqual(ALL_KINDS);
+    const progress = readProgress(fakeStorage(stored({ level: 9, settings: { sound: false } })));
+    expect(progress.settings.kinds).toEqual(ALL_KINDS);
+  });
+
+  it("reads the kinds a grown-up switched off, and nothing else", () => {
+    const progress = readProgress(
+      fakeStorage(
+        stored({
+          level: 9,
+          settings: { sound: true, hints: "later", kinds: { jigsaw: false, kaleidoscope: false } },
+        }),
+      ),
+    );
+    expect(progress.settings.kinds).toEqual({ ...ALL_KINDS, jigsaw: false });
+    expect(progress.settings.kinds).not.toHaveProperty("kaleidoscope");
+  });
+
+  it("reads a kind that is not a boolean as being in play", () => {
+    const progress = readProgress(
+      fakeStorage(stored({ level: 9, settings: { kinds: { jigsaw: "no", sliced: 0 } } })),
+    );
+    expect(progress.settings.kinds).toEqual(ALL_KINDS);
+  });
+
+  it("reads a record with every kind switched off as every kind in play", () => {
+    // Nothing the panel can do produces one - it refuses to turn the last kind
+    // off - but a game with no levels in it is not something to hand a child
+    // because another tab wrote nonsense under the key.
+    const off = Object.fromEntries(PUZZLE_KINDS.map((kind) => [kind, false]));
+    const progress = readProgress(fakeStorage(stored({ level: 9, settings: { kinds: off } })));
+    expect(progress.settings.kinds).toEqual(ALL_KINDS);
   });
 
   it("replaces a setting it does not recognise with the default", () => {
@@ -322,7 +361,7 @@ describe("the store", () => {
     expect(readProgress(storage)).toEqual({
       level: 5,
       furthest: 5,
-      settings: { sound: false, hints: "off" },
+      settings: { ...DEFAULT_SETTINGS, sound: false, hints: "off" },
     });
   });
 

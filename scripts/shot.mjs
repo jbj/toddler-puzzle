@@ -715,6 +715,19 @@ const soundIsOn = () =>
     `document.querySelector('.grownups-switch[data-setting="sound"]').getAttribute('aria-checked') === 'true'`,
   );
 
+/** How many squares the map is showing as stepped over, because their kind is off. */
+const skippedSquares = () =>
+  evaluate(`document.querySelectorAll('.grownups-level.is-skipped').length`);
+
+const kindIsOn = (kind) =>
+  evaluate(
+    `document.querySelector('.grownups-switch[data-kind="${kind}"]').getAttribute('aria-checked') === 'true'`,
+  );
+
+/** Whether a kind's switch is the last one on, and so refuses to be moved. */
+const kindIsHeldOn = (kind) =>
+  evaluate(`document.querySelector('.grownups-switch[data-kind="${kind}"]').disabled === true`);
+
 /**
  * Every option the panel offers, by the label a grown-up reads. A switch that
  * does nothing is worse than no switch at all, so what is on this panel is
@@ -1332,7 +1345,18 @@ try {
   const options = await panelOptions();
   check(
     `the panel offers exactly the options that do something (${options.join(", ")})`,
-    JSON.stringify(options) === JSON.stringify(["Sound", "Idle hints", "Start again"]),
+    JSON.stringify(options) ===
+      JSON.stringify([
+        "Sound",
+        "Idle hints",
+        "Touch and play",
+        "Whole animals",
+        "Sliced animals",
+        "Shape pictures",
+        "Jigsaws",
+        "Shattered pictures",
+        "Start again",
+      ]),
   );
   const unfulfilled = (await panelNotes()).filter((note) =>
     /not in play|coming soon|not yet|does nothing/i.test(note),
@@ -1375,6 +1399,40 @@ try {
   check("resetting starts the game over", (await levelNumber()) === 1);
   const afterReset = await levelSquares();
   check(`the map empties with it (${afterReset.reached})`, afterReset.reached === 1);
+
+  // Six switches, one per kind of puzzle, so a grown-up can fit the thirty
+  // levels to the child in front of them. A kind switched off is stepped over
+  // wherever it sits, and the last one on cannot be turned off - there has to
+  // be a game left. See src/grownups.ts.
+  check("every kind starts in play", (await skippedSquares()) === 0);
+  await pressInPanel('.grownups-switch[data-kind="shatter"]');
+  check("a kind can be switched off", (await kindIsOn("shatter")) === false);
+  const skipped = await skippedSquares();
+  check(`the map fades the levels being skipped (${skipped})`, skipped === 2);
+  check(
+    "a kind switched off is remembered",
+    (await savedRecord())?.settings?.kinds?.shatter === false,
+  );
+
+  // Switching the kind out from under the child moves them on rather than
+  // leaving them on a level their grown-up has just said no to.
+  check("the child is on level 1 after the reset", (await levelNumber()) === 1);
+  await pressInPanel('.grownups-switch[data-kind="play"]');
+  check("switching off the kind being played moves the child", (await levelNumber()) === 2);
+
+  for (const kind of ["shape-match", "sliced", "polygon"]) {
+    await pressInPanel(`.grownups-switch[data-kind="${kind}"]`);
+  }
+  check("the last kind left is held on", (await kindIsHeldOn("jigsaw")) === true);
+  await pressInPanel('.grownups-switch[data-kind="jigsaw"]');
+  check("and cannot be switched off", (await kindIsOn("jigsaw")) === true);
+  await shot("09b-grownups-kinds");
+
+  for (const kind of ["play", "shape-match", "sliced", "polygon", "shatter"]) {
+    await pressInPanel(`.grownups-switch[data-kind="${kind}"]`);
+  }
+  check("every kind can be put back", (await skippedSquares()) === 0);
+  check("nothing is held on once there is a choice", (await kindIsHeldOn("jigsaw")) === false);
 
   // Back where the rest of this run expects the child to be.
   await pressInPanel('.grownups-level[data-level="6"]');
