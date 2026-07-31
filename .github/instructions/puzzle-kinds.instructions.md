@@ -130,9 +130,13 @@ dependencies, and there is nothing here that needs one. See
 **Every slice of an animal keeps that animal's box, anchor and outline**, so the
 layout gives them one scale and one origin and they assemble by construction.
 The hole is cut once, from the animal's own silhouette, and stays visible under
-a half-built animal as the guide to what is still missing. A slice is accepted
-anywhere near *its animal* rather than near the quarter of the hole it came out
-of, which is as forgiving as a whole-animal drop.
+a half-built animal as the guide to what is still missing. The cuts are drawn on
+it too - the same paths the slices were clipped with, clipped to the silhouette
+so a line stops where the animal does - so the guide says where each piece goes
+and not only what is being built, which is the promise a jigsaw's frame and a
+shattered picture's already make. A slice is accepted anywhere near *its animal*
+rather than near the quarter of the hole it came out of, which is as forgiving
+as a whole-animal drop; the lines are there to be aimed at, never to be hit.
 
 **Where the cuts go is measured, not chosen.** `npm run art:slices` searches for
 them offline and writes `src/slice-recipes.json`; `npm run art:check` re-judges
