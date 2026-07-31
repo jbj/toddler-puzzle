@@ -312,6 +312,13 @@ function copies(part: Omit<ScenePart, "at">, places: readonly Point[]): ScenePar
 }
 
 // --- the scenes -----------------------------------------------------------
+//
+// The catalogue is longer than the chapter. A polygon level names the picture
+// it stands (`shapePicture` in the level table), and the shapes chapter has
+// five rows for these nine, so `rocket`, `fish`, `flower` and `train` stand
+// unused. They are spares, kept on purpose: retuning the chapter is then a
+// table edit rather than an afternoon's drawing, and the geometry half of
+// `tests/polygon.test.ts` goes on holding them to the same rules as the rest.
 
 export const SCENES: readonly Scene[] = [
   {
@@ -545,6 +552,9 @@ export const SCENES: readonly Scene[] = [
 /** The scenes built from this many pieces, in catalogue order. */
 export const scenesOf = (parts: number): readonly Scene[] =>
   SCENES.filter((scene) => scene.parts.length === parts);
+
+/** The scene with this id, or nothing. A level names one; nobody guesses. */
+export const sceneById = (id: string): Scene | undefined => SCENES.find((scene) => scene.id === id);
 
 /** How many pieces the catalogue can build a scene from, smallest first. */
 export const SCENE_SIZES: readonly number[] = [

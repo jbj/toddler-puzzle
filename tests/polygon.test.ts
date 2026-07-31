@@ -30,8 +30,8 @@ import {
   cornersOf,
   sceneAnchor,
   sceneBounds,
+  sceneById,
   sceneShapes,
-  scenesOf,
   signatureOf,
   sizeOf,
   type Scene,
@@ -82,13 +82,13 @@ function twins(scene: Scene): { a: number; b: number }[] {
 }
 
 describe("the scene catalogue", () => {
-  it("builds a picture for every polygon level, and more than one each", () => {
-    // Six scenes was the ask; the point of more than one per level is that a
-    // chapter of five levels is not the same five pictures every time.
+  it("builds a picture for every polygon level, and keeps spares besides", () => {
+    // Six scenes was the ask. A level names the picture it stands, so the
+    // catalogue being longer than the chapter is the point: the spares are what
+    // a retune of the chapter is made of, and they are held to every rule
+    // below so one can be dropped into the table without a second thought.
     expect(SCENES.length).toBeGreaterThanOrEqual(6);
-    for (const level of POLYGON_LEVELS) {
-      expect(scenesOf(level.pieces).length, `level ${level.level}`).toBeGreaterThanOrEqual(2);
-    }
+    expect(SCENES.length).toBeGreaterThan(POLYGON_LEVELS.length);
   });
 
   it("gives every scene a name of its own and every part an id of its own", () => {
@@ -168,14 +168,19 @@ describe("the scene catalogue", () => {
     }
   });
 
-  it("has something interchangeable at every polygon level", () => {
-    // Not every picture - a boat has one hull and two different sails - but
-    // every level must be able to deal one, or the rule the chapter is built on
-    // would never come up there.
-    for (const level of POLYGON_LEVELS) {
-      const shared = scenesOf(level.pieces).filter((scene) => twins(scene).length > 0);
-      expect(shared.length, `level ${level.level}`).toBeGreaterThanOrEqual(1);
-    }
+  it("has something interchangeable at all but one polygon level", () => {
+    // Not every picture - a boat has one hull and two different sails - but a
+    // chapter built on the swap cannot be five pictures that never show it.
+    // One level may stand a picture without a twin in it, which is how the
+    // chapter is allowed to open on something very plain; no more than one.
+    const plain = POLYGON_LEVELS.filter((level) => {
+      const scene = sceneById(level.options?.shapePicture ?? "");
+      return scene === undefined || twins(scene).length === 0;
+    });
+    expect(
+      plain.length,
+      `levels with no twin to swap: ${plain.map((one) => one.level).join(", ")}`,
+    ).toBeLessThanOrEqual(1);
     const withTwins = SCENES.filter((scene) => twins(scene).length > 0);
     expect(withTwins.length * 2).toBeGreaterThanOrEqual(SCENES.length);
   });
@@ -196,13 +201,14 @@ describe("the scene catalogue", () => {
   });
 });
 
-/** Deal a level until the scene we want to reason about turns up. */
+/**
+ * Deal a level standing the picture we want to reason about. A row names its
+ * picture now, so this overrides the name rather than dealing until the one it
+ * wants turns up - which is also how the catalogue's spares get played here.
+ */
 function dealScene(level: LevelSpec, id: string): Puzzle {
-  for (let seed = 0; seed < 200; seed++) {
-    const puzzle = polygon.deal({ level, shapes: [] }, seededRandom(seed));
-    if (puzzle.targets[0]!.id === `polygon:${id}`) return puzzle;
-  }
-  throw new Error(`Level ${level.level} never dealt the ${id} scene.`);
+  const named = { ...level, options: { ...level.options, shapePicture: id } };
+  return polygon.deal({ level: named, shapes: [] }, seededRandom(level.level));
 }
 
 /**
@@ -243,18 +249,25 @@ describe("the polygon kind", () => {
     }
   });
 
-  it("deals a different picture from one game to the next, and the same one from a seed", () => {
+  it("stands the picture its row names, whatever the seed, and shuffles only the order", () => {
+    // Which picture is the table's business: a level is the same picture every
+    // time it is played, so two levels of the chapter cannot turn out to be the
+    // same puzzle. What is still dealt fresh is the order the pieces wait in.
+    for (const level of POLYGON_LEVELS) {
+      const named = `polygon:${level.options?.shapePicture}`;
+      const orders = new Set<string>();
+      for (let seed = 0; seed < 20; seed++) {
+        const puzzle = polygon.deal({ level, shapes: [] }, seededRandom(seed));
+        expect(puzzle.targets[0]!.id, `level ${level.level}`).toBe(named);
+        orders.add(puzzle.pieces.map((piece) => piece.id).join(","));
+      }
+      expect(orders.size, `level ${level.level}`).toBeGreaterThan(1);
+    }
+    // And a seed replays a deal exactly, order and all.
     const level = POLYGON_LEVELS[0]!;
-    const dealt = new Set(
-      Array.from(
-        { length: 40 },
-        (_, seed) => polygon.deal({ level, shapes: [] }, seededRandom(seed)).targets[0]!.id,
-      ),
-    );
-    expect(dealt.size).toBe(scenesOf(level.pieces).length);
     const once = polygon.deal({ level, shapes: [] }, seededRandom(4));
     const again = polygon.deal({ level, shapes: [] }, seededRandom(4));
-    expect(again.targets[0]!.id).toBe(once.targets[0]!.id);
+    expect(again.pieces.map((piece) => piece.id)).toEqual(once.pieces.map((piece) => piece.id));
   });
 
   it("refuses a level that asks for more than one picture", () => {
@@ -262,9 +275,31 @@ describe("the polygon kind", () => {
     expect(() => polygon.deal({ level, shapes: [] }, seededRandom(1))).toThrow(/1 target/i);
   });
 
-  it("refuses a level of a size no picture is built from", () => {
+  it("refuses a level that names no picture at all", () => {
+    // A level nobody chose the picture for is a mistake in the table, and one
+    // the child would never see reported. Better a loud start than a quiet
+    // default.
+    const level = { ...POLYGON_LEVELS[0]!, options: {} };
+    expect(() => polygon.deal({ level, shapes: [] }, seededRandom(1))).toThrow(
+      /names no shape picture/i,
+    );
+  });
+
+  it("refuses a level that names a picture the catalogue does not have", () => {
+    const level = { ...POLYGON_LEVELS[0]!, options: { shapePicture: "spaceship" } };
+    expect(() => polygon.deal({ level, shapes: [] }, seededRandom(1))).toThrow(
+      /no shape picture is called "spaceship"/i,
+    );
+  });
+
+  it("refuses a level whose size disagrees with the picture it names", () => {
+    // The row and the catalogue have to say the same thing: a picture arrives
+    // whole, so a table asking for four pieces of a three-part house has
+    // drifted rather than tuned.
     const level = { ...POLYGON_LEVELS[0]!, pieces: 9 };
-    expect(() => polygon.deal({ level, shapes: [] }, seededRandom(1))).toThrow(/no polygon scene/i);
+    expect(() => polygon.deal({ level, shapes: [] }, seededRandom(1))).toThrow(
+      /asks for 9 pieces but "house" is built from 3/i,
+    );
   });
 
   it("cuts one shadow per part, all in the one picture's hole", () => {

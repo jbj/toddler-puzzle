@@ -43,16 +43,19 @@ import type { PieceId } from "../piece";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
 import { renderScenery } from "../scenery";
 import {
-  SCENE_SIZES,
+  SCENES,
   boundsOf,
   outlineOf,
-  scenesOf,
+  sceneById,
   sceneShapes,
   signatureOf,
   type Scene,
 } from "../scenes";
 
 const ID = "polygon" as const;
+
+/** What a row could have named, for a message that has to say so. */
+const catalogue = (): string => SCENES.map((scene) => scene.id).join(", ");
 
 /** A shadow in the picture: where it is, how big, and what fits it. */
 interface Place {
@@ -204,12 +207,28 @@ export const polygon: PuzzleKind = {
           `builds one, so its row must say 1 target and however many pieces it takes.`,
       );
     }
-    const choices = scenesOf(level.pieces);
-    const scene = choices[Math.floor(random() * choices.length)];
+    // Which picture is the table's business rather than the deal's: two levels
+    // of the chapter are two different pictures because the rows say so, and a
+    // reader can see that without playing them. Only the order the pieces
+    // arrive in is dealt fresh.
+    const named = level.options?.shapePicture;
+    if (!named) {
+      throw new Error(
+        `Level ${level.level} names no shape picture; a polygon level stands the one its ` +
+          `row names, so its options must say which of ${catalogue()}.`,
+      );
+    }
+    const scene = sceneById(named);
     if (!scene) {
       throw new Error(
-        `No polygon scene is built from ${level.pieces} pieces (level ${level.level}); ` +
-          `the catalogue builds scenes of ${SCENE_SIZES.join(", ")}.`,
+        `No shape picture is called "${named}" (level ${level.level}); ` +
+          `the catalogue holds ${catalogue()}.`,
+      );
+    }
+    if (scene.parts.length !== level.pieces) {
+      throw new Error(
+        `Level ${level.level} asks for ${level.pieces} pieces but "${scene.id}" is built ` +
+          `from ${scene.parts.length}; a picture arrives whole or not at all.`,
       );
     }
 

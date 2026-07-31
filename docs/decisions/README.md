@@ -51,3 +51,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260730T005900-guard-the-sample-against-the-table](20260730T005900-guard-the-sample-against-the-table.md) | Guard the shot run's sample against the level table |
 | [20260730T113000-a-check-explains-its-own-environment](20260730T113000-a-check-explains-its-own-environment.md) | Let a check explain its own environment rather than fail as something else |
 | [20260730T194900-a-grown-up-can-take-a-kind-out](20260730T194900-a-grown-up-can-take-a-kind-out.md) | Let a grown-up switch a kind of puzzle out of the thirty |
+| [20260731T152600-a-level-names-what-it-is-made-of](20260731T152600-a-level-names-what-it-is-made-of.md) | Name a level's subject in the table, so no two levels are the same puzzle |

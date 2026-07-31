@@ -1064,7 +1064,13 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * longer side over the same width.
  *
  * Raising a number here is a good day. *Lowering* one is a decision, and the
- * pull request that does it has to say which invariant bought the loss.
+ * pull request that does it has to say which invariant bought the loss. Level
+ * 17 is the one that has been lowered: it used to deal a four-piece picture and
+ * now stands the boat, which is three, and a three-part picture is drawn in a
+ * smaller slot than a four-part one. The loss bought a chapter whose five
+ * levels are five different pictures, named in the table rather than drawn at
+ * random - and the slot it drops to, 0.203, is the same one the whole opening
+ * chapter plays at.
  */
 const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number, number])[] = [
   [1, "landscape", 0.203, 0.203],
@@ -1097,10 +1103,10 @@ const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number
   [14, "portrait", 0.406, 0.19],
   [15, "landscape", 0.214, 0.089],
   [15, "portrait", 0.35, 0.143],
-  [16, "landscape", 0.203, 0.095],
-  [16, "portrait", 0.291, 0.135],
-  [17, "landscape", 0.244, 0.097],
-  [17, "portrait", 0.349, 0.139],
+  [16, "landscape", 0.203, 0.101],
+  [16, "portrait", 0.291, 0.145],
+  [17, "landscape", 0.203, 0.095],
+  [17, "portrait", 0.291, 0.135],
   [18, "landscape", 0.244, 0.097],
   [18, "portrait", 0.349, 0.139],
   [19, "landscape", 0.262, 0.087],

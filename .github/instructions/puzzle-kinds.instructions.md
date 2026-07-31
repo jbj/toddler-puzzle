@@ -97,6 +97,24 @@ child than a level with a stray penguin in it. Two animals in one theme have to
 read differently at a glance, which `npm run art:check` enforces; see
 [`art.instructions.md`](art.instructions.md).
 
+**A level is its kind, its subject and its size, and no two levels are all
+three.** The subject is whatever the row names - the `activity` for a play
+level, the `theme` for an animal one, `options.scene` for a jigsaw or shatter,
+`options.shapePicture` for a polygon level - and it is named in the table rather
+than drawn at deal time, so that the thirty being thirty *different* puzzles is
+something a reader can check by looking down the file. `tests/levels.test.ts`
+builds that triple for every row and fails on a duplicate. A picture may come
+back at another size, because a scene cut four ways and the same scene cut nine
+ways are two different things to solve; the same picture at the same size twice
+is a level nobody chose. See
+[decision 20260731T152600](../../docs/decisions/20260731T152600-a-level-names-what-it-is-made-of.md).
+
+`options.scene` and `options.shapePicture` are two keys because they name two
+catalogues: a `scene` is a hand-drawn `.svg` in `src/pictures.ts` that gets cut
+up, and a `shapePicture` is built out of parts in `src/scenes.ts`. The art check
+reads the table for the word `scene` to know what to rasterise, so the two
+cannot share a key.
+
 Retuning the ramp is a table edit and nothing else. Adding a level means adding a
 record; the layout follows, because nothing downstream knows a level count.
 
@@ -166,20 +184,31 @@ away. See
 
 ## Pictures out of shapes
 
-`src/kinds/polygon.ts` plays levels 16-20: one picture - a house, a boat, a
-rocket, a car, a fish, a flower, a butterfly, a train, a sunflower - built out
-of three to six plain, strongly coloured geometric shapes dropped into shadows
-inside the finished arrangement. It sits between the other two kinds. In
-shape-match one piece *is* one whole animal; in a sliced level a piece is a
-fragment of one; here several pieces make one picture and each of them is still
-a whole thing a child can name, so the shape names come along without anybody
-making a lesson of them.
+`src/kinds/polygon.ts` plays levels 16-20: one picture - a house, a boat, a car,
+a butterfly, a sunflower, with a rocket, a fish, a flower and a train spare in
+the catalogue - built out of three to six plain, strongly coloured geometric
+shapes dropped into shadows inside the finished arrangement. It sits between the
+other two kinds. In shape-match one piece *is* one whole animal; in a sliced
+level a piece is a fragment of one; here several pieces make one picture and each
+of them is still a whole thing a child can name, so the shape names come along
+without anybody making a lesson of them.
 
 **The shapes are generated, and the catalogue is `src/scenes.ts`.** A scene is a
 list of parts, each a named form - square, rectangle, circle, triangle, wedge,
 trapezoid - at a place in the 240x240 scene box. `outlineOf` mints the path,
 `artworkOf` paints it. There is no hand-drawn artwork in this chapter and no
 `.svg` file to add: a new scene is a new entry in `SCENES`.
+
+**A level names the picture it stands**, in `options.shapePicture`, the way a
+jigsaw level names the scene it cuts up - so no two levels of the chapter can
+turn out to be the same puzzle, and a reader can see that without playing them.
+`deal` looks the name up and throws rather than making the best of it when a row
+names nothing, names a picture the catalogue does not hold, or names one whose
+part count disagrees with the row's `pieces`. What is still dealt fresh is the
+order the pieces wait in. The catalogue is longer than the chapter on purpose:
+the pictures no level stands are spares to retune it with, held to every rule
+the five in play are held to. See
+[decision 20260731T152600](../../docs/decisions/20260731T152600-a-level-names-what-it-is-made-of.md).
 
 **A scene is one target with several pieces**, exactly as a sliced animal is.
 Every part carries the whole scene box and the scene's single anchor, so the
@@ -205,8 +234,9 @@ the hint sharpens by itself as the picture comes together, and `npm run shot`
 counts the glows against the free congruent shadows it finds for itself rather
 than against a number written down here.
 
-**Adding a scene** means an entry in `SCENES` and nothing else; `SCENE_SIZES`
-and the level table's piece counts are what decide when it can be dealt. Three
+**Adding a scene** means an entry in `SCENES`, and putting it in front of a
+child means naming it in a level's `options.shapePicture` - an entry nobody
+names is a spare, which is a fine thing to add and no use to a player. Three
 things the tests will hold you to, and all three are about the child rather than
 the code:
 
