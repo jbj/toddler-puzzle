@@ -380,13 +380,14 @@ placed piece's edge has faded to nothing. It is also where the clip each piece
 is wearing is read, which nothing but a browser knows - it is a CSS switch on a
 custom property: a half-built jigsaw is still cut exactly where it was cut, each
 of the three finished boards has switched to the wider clip that closes its
-joins, and a piece put back into a settle keeps the clip it was made with. That
-last one moves a class rather than racing the animation - the rule is about the
-class, and a check that has to be quick enough to catch a real settle is a check
-that fails on a slow day. Each check counts the pieces as well as measuring
-them, so a board that drew none would fail rather than pass by having nothing to
-look at. Whether the join underneath is truly seamless is the one part only the
-contact sheet can answer. See
+joins, a piece put back into a settle keeps the clip it was made with, and the
+same piece on a device asking for less motion does not - it is home already.
+Those last two move a class rather than racing the animation - the rule is about
+the class, and a check that has to be quick enough to catch a real settle is a
+check that fails on a slow day. Each check counts the pieces as well as
+measuring them, so a board that drew none would fail rather than pass by having
+nothing to look at. Whether the join underneath is truly seamless is the one
+part only the contact sheet can answer. See
 [decision 20260730T194500](../../docs/decisions/20260730T194500-a-placed-piece-has-no-edge.md).
 
 It is also the only place the grab boxes can be checked, since they are measured

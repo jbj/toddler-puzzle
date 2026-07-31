@@ -104,7 +104,8 @@ body {
    is declared whole, and a piece that is not yet where it belongs is a piece
    with the same sliver hanging off it. So a settling piece keeps the clip it
    was cut with until it stops moving, and switches when there is nowhere left
-   for the overlap to show. */
+   for the overlap to show. Unless there was no journey to wait out - see the
+   reduced-motion block below. */
 .cut-art {
   clip-path: var(--cut-exact);
 }
@@ -197,6 +198,14 @@ body {
 
   .piece.is-placed .cut {
     transition-duration: 1ms;
+  }
+
+  /* A piece that has asked for less motion is home as soon as it is dropped,
+     so there is no journey to hold the wider clip back for - and holding it
+     back anyway would put the seam back on the finished picture for the third
+     of a second the class outlives the movement it stands for. */
+  #stage.is-complete .piece.is-settling .cut-art {
+    clip-path: var(--cut-spread);
   }
 }
 

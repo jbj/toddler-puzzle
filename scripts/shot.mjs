@@ -1788,6 +1788,18 @@ try {
     `a piece still on its way keeps the cut it was made with (${settling.exact}/${settling.drawn})`,
     settling.drawn === 1 && settling.exact === 1,
   );
+  // And the same piece on a device that asked for less motion, which is home
+  // the instant it is dropped: the class outlives the movement it stands for,
+  // and waiting it out would put the seam back for a third of a second.
+  await send("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+  });
+  const stillSettling = await cutClipsOn(".piece.is-settling");
+  await send("Emulation.setEmulatedMedia", { features: [] });
+  check(
+    `a piece that asked for less motion has nothing to wait for (${stillSettling.spread}/${stillSettling.drawn})`,
+    stillSettling.drawn === 1 && stillSettling.spread === 1,
+  );
   await evaluate(`(() => {
     document.querySelector('.piece').classList.remove('is-settling');
     return true;
