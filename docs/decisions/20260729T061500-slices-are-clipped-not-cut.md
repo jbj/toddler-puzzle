@@ -72,7 +72,9 @@ laid out as though it held eight whole animals, and every slice of an animal
 would get the same animal-sized grab box and fight over a press.
 
 The cut edges are picked out in white, clipped to the silhouette, so the joins
-read as joins rather than as a crack in the drawing.
+read as joins rather than as a crack in the drawing - until the slice is home,
+when the edge fades and the animal is an animal again
+([20260730T194500](20260730T194500-a-placed-piece-has-no-edge.md)).
 
 Nothing here knows about jigsaw tabs. A jigsaw piece is a cell with a wavy edge,
 which is the same idea with a harder clip path; if that chapter wants one, it

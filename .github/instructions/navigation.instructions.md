@@ -35,6 +35,18 @@ not a feature. The reasoning is
 Everything a grown-up can change lives in the panel described below, which the
 child cannot open.
 
+A grown-up can shorten the ramp from that panel, by switching a kind of puzzle
+off. That does not edit the table and does not add anything to the play surface:
+the levels of a kind that is off are stepped over, and the game still runs
+forward through what is left. `nextLevel`, `endsChapter`, `playableFrom` and
+`isLastPlayable` in `src/levels.ts` all take the same optional `EnabledKinds`
+and mean the same things about the game actually being played - so the button
+onwards skips, a chapter still ends where it now ends, and the finale still
+lands on the last level in play whatever number it carries. `src/game.ts` reads
+the setting at the moment it needs it rather than keeping a copy, so a switch
+moved mid-level is answered by the button at the end of that level. See
+[decision 20260730T194900](../../docs/decisions/20260730T194900-a-grown-up-can-take-a-kind-out.md).
+
 The six dots by the reset button (`buildChapterDots` in `src/board.ts`) are one
 per chapter, filled up to the chapter being played, so a grown-up can see how far
 along the set is without thirty dots of clutter. They are an indicator, not a
@@ -126,20 +138,26 @@ Three things about it are load-bearing:
   `clearProgress()`. The button on the play surface deals a fresh puzzle for the
   level being played; that is all it has ever done.
 
-The settings in the record - `sound` and `hints` - are set from the grown-up
-panel below, and `applySettings` in `src/grownups.ts` is the single place either
-of them reaches the game. `sound` calls `setSoundEnabled` in `src/audio.ts`,
-which every tone goes through, so off means silent whatever is played next.
-`hints` calls `setHintTiming` in `src/hint.ts`, which owns both the delays and
-the glow; see [the idle hint](#the-idle-hint) below. Both are answered on the
-board in front of the grown-up rather than at the next level, because the moment
-a switch is moved is usually the moment a child is stuck. There is no `rotation`
-setting: rotation mode was dropped rather than built, so the switch and the field
-went with it - see
+The settings in the record - `sound`, `hints` and `kinds` - are set from the
+grown-up panel below. `applySettings` in `src/grownups.ts` is the single place
+`sound` and `hints` reach the game: `sound` calls `setSoundEnabled` in
+`src/audio.ts`, which every tone goes through, so off means silent whatever is
+played next, and `hints` calls `setHintTiming` in `src/hint.ts`, which owns both
+the delays and the glow; see [the idle hint](#the-idle-hint) below. Both are
+answered on the board in front of the grown-up rather than at the next level,
+because the moment a switch is moved is usually the moment a child is stuck.
+`kinds` is deliberately not in `applySettings` - there is nothing to switch on.
+`src/game.ts` asks the record which kinds are in play at the moment it needs to
+know, and `src/main.ts` resumes forward off a level whose kind has since been
+switched off, so there is no copy of the setting anywhere to keep in step.
+There is no `rotation` setting: rotation mode was dropped rather than built, so
+the switch and the field went with it - see
 [decision 20260730T203000](../../docs/decisions/20260730T203000-no-rotation-mode.md).
 Dropping a field did not bump `STORAGE_VERSION`, because every field is read on
 its own and an unknown one is passed over; a record written when the switch
-existed still resumes on the right level. The reasoning for all of this is
+existed still resumes on the right level. Adding `kinds` did not bump it either,
+for the same reason in reverse: a record from before the per-kind switches has
+no `kinds` and reads as the whole ramp. The reasoning for all of this is
 [decision 20260728T212500](../../docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
 
 ## The grown-up panel
@@ -168,15 +186,29 @@ what the code has to keep true is this.
   hiding from.
 - **It never touches the board.** It is HTML mounted outside `#app` - which
   `buildBoard` replaces wholesale - so closing it puts the child back mid-puzzle
-  without re-dealing anything. Only choosing a level changes the board.
+  without re-dealing anything. Only choosing a level, or switching off the kind
+  of the level being played, changes the board.
 - **Choosing a level is not reaching it.** The map's squares come from
   `furthest`, and a level chosen here goes through `jumpToLevel` rather than
   `reachLevel`, so reading the map never fills the map in. `createGame` returns
   the handle the panel drives (`chooseLevel`, `currentLevel`).
+- **A kind can be switched out of the game, but never the last one.** Six
+  switches, one per `PuzzleKindId`, walked off `PUZZLE_KINDS` in
+  `src/levels.ts` so a seventh kind cannot arrive without one. `toggleKind` is
+  the rule and is pure - no DOM, no record - for the same reason
+  `createHoldGate` is: it refuses the press that would leave nothing to play,
+  and `refresh` draws the lone survivor as held on rather than letting a
+  grown-up press something that silently does nothing. Switching off the kind
+  under the child moves them to the next level in play, because the moment a
+  parent turns a kind off is almost always the moment their child is stuck on
+  one of its levels. The map keeps all thirty squares and fades the skipped
+  ones - it is how a grown-up sees what the switch did - and they stay
+  pressable. See
+  [decision 20260730T194900](../../docs/decisions/20260730T194900-a-grown-up-can-take-a-kind-out.md).
 - **Reset asks twice**, and is the only place progress can be cleared.
-- **Every option on it does something.** There is a switch for sound and a
-  choice of idle hint timing, and that is all. The rotation switch that used to
-  sit between them is gone with the feature - see
+- **Every option on it does something.** A switch for sound, a choice of idle
+  hint timing, and a switch per kind of puzzle. The rotation switch that used to
+  sit among them is gone with the feature - see
   [decision 20260730T203000](../../docs/decisions/20260730T203000-no-rotation-mode.md)
   - because a control a parent moves and nothing answers is worse than no
   control. `npm run shot` reads the option labels off the panel and checks the

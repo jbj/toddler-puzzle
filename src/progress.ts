@@ -28,7 +28,7 @@
  * a browser. `game.ts` and `main.ts` hold the only DOM-facing ends: which level
  * to start on, and recording each one as it is reached.
  */
-import { LEVEL_COUNT } from "./levels";
+import { LEVEL_COUNT, PUZZLE_KINDS, type EnabledKinds, type PuzzleKindId } from "./levels";
 
 /**
  * How long the game waits before nudging an idle child (#21). Read by
@@ -54,16 +54,34 @@ export interface Settings {
   readonly sound: boolean;
   /** When an idle hint appears (#21). */
   readonly hints: HintTiming;
+  /**
+   * Which kinds of puzzle are in play. Thirty levels have to suit one child,
+   * and this is how a grown-up narrows them: a kind switched off is skipped
+   * wherever it appears in the table. Never all off - the panel refuses to turn
+   * the last one off, and `readSettings` reads an all-off record as all-on, so
+   * there is always a game whatever arrives from storage.
+   */
+  readonly kinds: EnabledKinds;
 }
+
+/** One entry per kind, from a function that says whether each one is on. */
+function kindsWhere(on: (kind: PuzzleKindId) => boolean): EnabledKinds {
+  return Object.fromEntries(PUZZLE_KINDS.map((kind) => [kind, on(kind)])) as EnabledKinds;
+}
+
+/** Every kind in play, which is what a child who has never played gets. */
+export const ALL_KINDS: EnabledKinds = kindsWhere(() => true);
 
 /**
  * What a child who has never played gets. Sound on because the tones are half
  * the reward; hints late because a two-year-old who is still looking has not
- * given up.
+ * given up; every kind of puzzle in play, because the ramp is the game and a
+ * grown-up should have to decide to shorten it.
  */
 export const DEFAULT_SETTINGS: Settings = {
   sound: true,
   hints: "later",
+  kinds: ALL_KINDS,
 };
 
 /** The whole stored record. */
@@ -97,7 +115,9 @@ export const STORAGE_KEY = "animal-puzzle";
  * switch reads today exactly as it should: the settings that still exist come
  * back, the one that does not is passed over, and the child keeps their level.
  * Bumping the version for that would have thrown away every player's place to
- * tidy away one boolean.
+ * tidy away one boolean. Adding one is the same in reverse: a record written
+ * before the per-kind switches existed has no `kinds` at all, and reads as
+ * every kind in play, which is the game it was written by.
  */
 export const STORAGE_VERSION = 1;
 
@@ -152,6 +172,25 @@ function canWrite(storage: StorageLike | null): boolean {
 const isLevel = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= LEVEL_COUNT;
 
+/**
+ * Which kinds a stored record leaves in play. Each one stands on its own and
+ * defaults to on, so a record written before this existed - or before a
+ * seventh kind was added - reads as the whole ramp rather than as nothing.
+ *
+ * A record that says every kind is off is read as every kind on. The panel will
+ * not produce one, but storage is shared with whatever else has written under
+ * this key, and a game with no levels in it is not a failure worth passing on
+ * to a two-year-old.
+ */
+function readKinds(raw: Record<string, unknown> | null): EnabledKinds {
+  if (!raw) return ALL_KINDS;
+  const kinds = kindsWhere((kind) => {
+    const stored = raw[kind];
+    return typeof stored === "boolean" ? stored : true;
+  });
+  return PUZZLE_KINDS.some((kind) => kinds[kind]) ? kinds : ALL_KINDS;
+}
+
 /** One setting, or the default when what was stored is not one of its values. */
 function readSettings(raw: Record<string, unknown> | null): Settings {
   if (!raw) return DEFAULT_SETTINGS;
@@ -161,6 +200,7 @@ function readSettings(raw: Record<string, unknown> | null): Settings {
     hints: HINT_TIMINGS.includes(hints as HintTiming)
       ? (hints as HintTiming)
       : DEFAULT_SETTINGS.hints,
+    kinds: readKinds(asRecord(raw["kinds"])),
   };
 }
 

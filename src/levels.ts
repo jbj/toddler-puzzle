@@ -27,6 +27,13 @@
  *
  * Every kind this table names is built and registered (`kinds/registry.ts`),
  * and the tests hold the two to each other.
+ *
+ * **A grown-up can take a kind out.** The panel (`grownups.ts`) carries a switch
+ * per `PuzzleKindId`, so thirty levels can be narrowed to the ones the child in
+ * front of it can do. That never edits the table: the rows stand as they are and
+ * the ones whose kind is switched off are stepped over, by `nextLevel` and the
+ * handful of functions beside it that all take the same optional `EnabledKinds`.
+ * Nothing that does not care about the setting has to know it exists.
  */
 import { shuffle } from "./geometry";
 import { assertUniquePieceIds, type PieceShape } from "./piece";
@@ -50,11 +57,39 @@ export const CHAPTERS: readonly ChapterId[] = [
 ];
 
 /**
- * Every kind of puzzle the ramp names. Each one is registered by the kind that
- * implements it (`kinds/registry.ts`), and a level naming one that is not is a
- * mistake the tests catch.
+ * Every kind of puzzle the ramp names, in the order the ramp introduces them.
+ * Each one is registered by the kind that implements it (`kinds/registry.ts`),
+ * and a level naming one that is not is a mistake the tests catch.
+ *
+ * It is a list rather than a bare union because a grown-up can switch a kind
+ * off (`EnabledKinds`), and the panel that offers that has to be able to walk
+ * the kinds without being told them a second time - a seventh kind added to the
+ * union but forgotten in the panel would be a kind nobody could turn off.
  */
-export type PuzzleKindId = "play" | "shape-match" | "sliced" | "polygon" | "jigsaw" | "shatter";
+export const PUZZLE_KINDS = [
+  "play",
+  "shape-match",
+  "sliced",
+  "polygon",
+  "jigsaw",
+  "shatter",
+] as const;
+
+export type PuzzleKindId = (typeof PUZZLE_KINDS)[number];
+
+/**
+ * Which kinds of puzzle are in play, as a grown-up left them (#8). Thirty
+ * levels have to suit one particular child, and a two-year-old who cannot yet
+ * do jigsaws should not meet five of them: a kind switched off here is skipped
+ * wherever it appears, so the game goes on running forward through the levels
+ * that are left.
+ *
+ * Every function here takes it as an option and treats an absent one as "all
+ * of them", so nothing that does not care about the setting has to know it
+ * exists. **An all-off record is read as all-on** - see `playableLevels` - so
+ * there is always a game to play whatever is in storage.
+ */
+export type EnabledKinds = Readonly<Record<PuzzleKindId, boolean>>;
 
 /**
  * A themed cast. A level naming one is dealt from the pieces that belong to it
@@ -456,9 +491,57 @@ export function isVouchedLevel(spec: LevelSpec): boolean {
   return VOUCHED.has(spec);
 }
 
-/** Levels are numbered from 1; the level after the last one is the first again. */
-export function nextLevel(level: number): number {
-  return (level % LEVEL_COUNT) + 1;
+/**
+ * The levels a grown-up has left in play, in order.
+ *
+ * The whole thirty when nothing is switched off, which is what every caller
+ * that does not know about the setting gets. **And the whole thirty when
+ * everything is switched off**, because the alternative is a game with no
+ * levels in it: the panel already refuses to turn the last kind off, and this
+ * is the second answer to the same question, for a record that arrived from
+ * storage rather than from the panel.
+ */
+export function playableLevels(enabled?: EnabledKinds): readonly LevelSpec[] {
+  if (!enabled) return LEVELS;
+  const kept = LEVELS.filter((level) => enabled[level.kind]);
+  return kept.length > 0 ? kept : LEVELS;
+}
+
+/** Would this level be dealt, as the kinds stand? */
+export function isPlayable(level: number, enabled?: EnabledKinds): boolean {
+  return playableLevels(enabled).some((spec) => spec.level === level);
+}
+
+/**
+ * This level if it is in play, else the next one that is, wrapping round.
+ *
+ * Where a level number that came from somewhere other than play is turned into
+ * a level to deal: the one resumed from storage, and the one a child is sitting
+ * on when the kind under them is switched off.
+ */
+export function playableFrom(level: number, enabled?: EnabledKinds): number {
+  const playable = playableLevels(enabled);
+  return (playable.find((spec) => spec.level >= level) ?? playable[0])?.level ?? 1;
+}
+
+/**
+ * Levels are numbered from 1; the level after the last one is the first again,
+ * so the only way the child can go is forward. Kinds a grown-up has switched
+ * off are stepped over rather than dealt, which is the one thing that setting
+ * does to the shape of the game.
+ */
+export function nextLevel(level: number, enabled?: EnabledKinds): number {
+  const playable = playableLevels(enabled);
+  return (playable.find((spec) => spec.level > level) ?? playable[0])?.level ?? 1;
+}
+
+/**
+ * The last level of the set, which gets the finale and the replay arrow. With
+ * a kind switched off that is not necessarily level 30 - the end of the game is
+ * the end of what is being played, not the end of the table.
+ */
+export function isLastPlayable(level: number, enabled?: EnabledKinds): boolean {
+  return playableLevels(enabled).at(-1)?.level === level;
 }
 
 /** 1-based chapter number, which is also how far into the six the level is. */
@@ -479,11 +562,17 @@ export function chapterNumber(spec: LevelSpec): number {
  * the table does not have ends nothing, rather than throwing: a number out of
  * range has already been dealt with by the time anything asks this, and a
  * celebration is not worth a crash.
+ *
+ * Asked with the kinds a grown-up has left on, it means the same thing about
+ * the game actually being played: the last level *in play* of its chapter, and
+ * the last one of all whatever number it carries. A child who never meets a
+ * jigsaw should still get the party at the end of every chapter they do meet.
  */
-export function endsChapter(level: number): boolean {
+export function endsChapter(level: number, enabled?: EnabledKinds): boolean {
   if (level < 1 || level > LEVEL_COUNT) return false;
-  if (level === LEVEL_COUNT) return true;
-  return levelSpec(level).chapter !== levelSpec(level + 1).chapter;
+  const ahead = playableLevels(enabled).find((spec) => spec.level > level);
+  if (!ahead) return true;
+  return levelSpec(level).chapter !== ahead.chapter;
 }
 
 /**

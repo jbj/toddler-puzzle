@@ -418,6 +418,40 @@ const cutsInGuide = () => evaluate(`document.querySelectorAll('.hole .cell').len
 const guideIsShowing = () =>
   evaluate(`Number(getComputedStyle(document.querySelector('.hole')).opacity) > 0.5`);
 /**
+ * What the cut edges on a set of pieces are doing: how many pieces carry one,
+ * and the brightest one showing. Both numbers, because a check that only asked
+ * for nothing showing would pass on a board where no edge was ever drawn -
+ * which is a different bug, not this rule kept.
+ */
+const cutEdgesOn = (selector) =>
+  evaluate(`(() => {
+  const cuts = [...document.querySelectorAll(${JSON.stringify(selector)} + ' .cut')];
+  const worst = cuts.reduce((most, cut) => Math.max(most, Number(getComputedStyle(cut).opacity)), 0);
+  return { drawn: cuts.length, worst };
+})()`);
+/**
+ * The other half of that rule: which of its two clips each piece of a cut-up
+ * drawing is wearing. A piece is clipped to the line it was cut along while
+ * there is still a gap in the drawing, and to the same line spread by a hair
+ * once the drawing is whole, so the joins close as the last piece lands. Only a
+ * browser knows which one applies - it is a CSS switch on a custom property -
+ * so this is the only place either can be seen.
+ */
+const cutClipsOn = (selector) =>
+  evaluate(`(() => {
+  const arts = [...document.querySelectorAll(${JSON.stringify(selector)} + ' .cut-art')];
+  const wearing = (art) => {
+    const applied = getComputedStyle(art).clipPath.replaceAll('"', '');
+    const named = (name) => art.style.getPropertyValue(name).trim().replaceAll('"', '');
+    if (applied === named('--cut-spread')) return 'spread';
+    if (applied === named('--cut-exact')) return 'exact';
+    return applied;
+  };
+  const worn = arts.map(wearing);
+  return { drawn: arts.length, spread: worn.filter((w) => w === 'spread').length,
+           exact: worn.filter((w) => w === 'exact').length };
+})()`);
+/**
  * The level on screen. Reads the chapter and kind alongside it in the same
  * round-trip and records them as covered, so the coverage guard at the end of
  * the run sees every kind and chapter the sample put up - however the run
@@ -743,6 +777,19 @@ const soundIsOn = () =>
   evaluate(
     `document.querySelector('.grownups-switch[data-setting="sound"]').getAttribute('aria-checked') === 'true'`,
   );
+
+/** How many squares the map is showing as stepped over, because their kind is off. */
+const skippedSquares = () =>
+  evaluate(`document.querySelectorAll('.grownups-level.is-skipped').length`);
+
+const kindIsOn = (kind) =>
+  evaluate(
+    `document.querySelector('.grownups-switch[data-kind="${kind}"]').getAttribute('aria-checked') === 'true'`,
+  );
+
+/** Whether a kind's switch is the last one on, and so refuses to be moved. */
+const kindIsHeldOn = (kind) =>
+  evaluate(`document.querySelector('.grownups-switch[data-kind="${kind}"]').disabled === true`);
 
 /**
  * Every option the panel offers, by the label a grown-up reads. A switch that
@@ -1361,7 +1408,18 @@ try {
   const options = await panelOptions();
   check(
     `the panel offers exactly the options that do something (${options.join(", ")})`,
-    JSON.stringify(options) === JSON.stringify(["Sound", "Idle hints", "Start again"]),
+    JSON.stringify(options) ===
+      JSON.stringify([
+        "Sound",
+        "Idle hints",
+        "Touch and play",
+        "Whole animals",
+        "Sliced animals",
+        "Shape pictures",
+        "Jigsaws",
+        "Shattered pictures",
+        "Start again",
+      ]),
   );
   const unfulfilled = (await panelNotes()).filter((note) =>
     /not in play|coming soon|not yet|does nothing/i.test(note),
@@ -1404,6 +1462,40 @@ try {
   check("resetting starts the game over", (await levelNumber()) === 1);
   const afterReset = await levelSquares();
   check(`the map empties with it (${afterReset.reached})`, afterReset.reached === 1);
+
+  // Six switches, one per kind of puzzle, so a grown-up can fit the thirty
+  // levels to the child in front of them. A kind switched off is stepped over
+  // wherever it sits, and the last one on cannot be turned off - there has to
+  // be a game left. See src/grownups.ts.
+  check("every kind starts in play", (await skippedSquares()) === 0);
+  await pressInPanel('.grownups-switch[data-kind="shatter"]');
+  check("a kind can be switched off", (await kindIsOn("shatter")) === false);
+  const skipped = await skippedSquares();
+  check(`the map fades the levels being skipped (${skipped})`, skipped === 2);
+  check(
+    "a kind switched off is remembered",
+    (await savedRecord())?.settings?.kinds?.shatter === false,
+  );
+
+  // Switching the kind out from under the child moves them on rather than
+  // leaving them on a level their grown-up has just said no to.
+  check("the child is on level 1 after the reset", (await levelNumber()) === 1);
+  await pressInPanel('.grownups-switch[data-kind="play"]');
+  check("switching off the kind being played moves the child", (await levelNumber()) === 2);
+
+  for (const kind of ["shape-match", "sliced", "polygon"]) {
+    await pressInPanel(`.grownups-switch[data-kind="${kind}"]`);
+  }
+  check("the last kind left is held on", (await kindIsHeldOn("jigsaw")) === true);
+  await pressInPanel('.grownups-switch[data-kind="jigsaw"]');
+  check("and cannot be switched off", (await kindIsOn("jigsaw")) === true);
+  await shot("09b-grownups-kinds");
+
+  for (const kind of ["play", "shape-match", "sliced", "polygon", "shatter"]) {
+    await pressInPanel(`.grownups-switch[data-kind="${kind}"]`);
+  }
+  check("every kind can be put back", (await skippedSquares()) === 0);
+  check("nothing is held on once there is a choice", (await kindIsHeldOn("jigsaw")) === false);
 
   // Back where the rest of this run expects the child to be.
   await pressInPanel('.grownups-level[data-level="6"]');
@@ -1564,6 +1656,18 @@ try {
 
   await solveRemaining();
   check("the animal can be put back together", (await placedCount()) === 4);
+  // The cut edges are for a slice that is still loose. An assembled animal is
+  // an animal, not an animal with a grid over it.
+  const sliceEdges = await cutEdgesOn(".piece.is-placed");
+  check(
+    `an assembled animal has no lines across it (${sliceEdges.drawn} edges faded)`,
+    sliceEdges.drawn === 4 && sliceEdges.worst === 0,
+  );
+  const sliceClips = await cutClipsOn("#stage");
+  check(
+    `an assembled animal closes over its joins (${sliceClips.spread}/${sliceClips.drawn})`,
+    sliceClips.drawn === 4 && sliceClips.spread === 4,
+  );
   await shot("16-level14-assembled");
 
   // --- levels 16-20: a picture built out of plain shapes -------------------
@@ -1711,6 +1815,13 @@ try {
   check("four pieces, one picture to build them in", (await holeCount()) === 1);
   check("every piece has a cut of its own in the guide", (await cutsInGuide()) === jigsawPieces);
   check("the picture shows under the empty frame", await guideIsShowing());
+  // The other half of the rule the finished board is checked against below: a
+  // piece waiting in the tray is a piece, and its edge is what says so.
+  const looseEdges = await cutEdgesOn(".piece:not(.is-placed)");
+  check(
+    `a piece waiting to be placed shows its cut (${looseEdges.worst.toFixed(2)})`,
+    looseEdges.drawn === jigsawPieces && looseEdges.worst > 0.5,
+  );
   await shot("23-level21-jigsaw");
 
   // Aimed at its own cut, and it has to land there: a jigsaw piece dropped
@@ -1725,11 +1836,61 @@ try {
   const settled = await centreOf(`.piece[data-piece="${firstPiece}"] .cut`);
   const off = Math.hypot(settled.x - itsCut.x, settled.y - itsCut.y);
   check(`a piece settles into the cut it came from (${off.toFixed(1)}px out)`, off < 6);
+  // One piece in, three cells still empty: every piece is clipped to the line
+  // it was cut along, so nothing spills over a gap it has no business in.
+  const building = await cutClipsOn("#stage");
+  check(
+    `a half-built picture is cut where it was cut (${building.exact}/${building.drawn})`,
+    building.drawn === jigsawPieces && building.exact === jigsawPieces,
+  );
   await shot("24-level21-first-piece");
 
   await solveRemaining();
   check("a jigsaw can be finished", (await placedCount()) === jigsawPieces);
   check("the guide goes once the picture is whole", !(await guideIsShowing()));
+  const jigsawEdges = await cutEdgesOn(".piece.is-placed");
+  check(
+    `a finished jigsaw is a picture, not a grid (${jigsawEdges.drawn} edges faded)`,
+    jigsawEdges.drawn === jigsawPieces && jigsawEdges.worst === 0,
+  );
+  // And the guide going is what the wider clip is for: with the white lines
+  // gone and nothing dimmed behind the joins, the pieces have to overlap or the
+  // seams are all there is left to see.
+  const built = await cutClipsOn("#stage");
+  check(
+    `a finished picture closes over its joins (${built.spread}/${built.drawn})`,
+    built.drawn === jigsawPieces && built.spread === jigsawPieces,
+  );
+  // The last piece is still sliding home when the picture is declared whole,
+  // and a piece that is not yet where it belongs would wear its overlap where
+  // everyone could see it. Put a piece back into the settle it just came out of
+  // rather than racing the animation: the rule is about the class, and a check
+  // that has to be quick enough to catch it is a check that fails on a slow day.
+  await evaluate(`(() => {
+    document.querySelector('.piece').classList.add('is-settling');
+    return true;
+  })()`);
+  const settling = await cutClipsOn(".piece.is-settling");
+  check(
+    `a piece still on its way keeps the cut it was made with (${settling.exact}/${settling.drawn})`,
+    settling.drawn === 1 && settling.exact === 1,
+  );
+  // And the same piece on a device that asked for less motion, which is home
+  // the instant it is dropped: the class outlives the movement it stands for,
+  // and waiting it out would put the seam back for a third of a second.
+  await send("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+  });
+  const stillSettling = await cutClipsOn(".piece.is-settling");
+  await send("Emulation.setEmulatedMedia", { features: [] });
+  check(
+    `a piece that asked for less motion has nothing to wait for (${stillSettling.spread}/${stillSettling.drawn})`,
+    stillSettling.drawn === 1 && stillSettling.spread === 1,
+  );
+  await evaluate(`(() => {
+    document.querySelector('.piece').classList.remove('is-settling');
+    return true;
+  })()`);
   await shot("25-level21-built");
 
   // --- level 26: a picture broken into shards -------------------------------
@@ -1760,6 +1921,16 @@ try {
   await solveRemaining();
   check("a shatter can be finished", (await placedCount()) === shardCount);
   check("the guide goes once the picture is whole", !(await guideIsShowing()));
+  const shardEdges = await cutEdgesOn(".piece.is-placed");
+  check(
+    `a mended picture shows none of the breaks (${shardEdges.drawn} edges faded)`,
+    shardEdges.drawn === shardCount && shardEdges.worst === 0,
+  );
+  const shardClips = await cutClipsOn("#stage");
+  check(
+    `a mended picture closes over its breaks (${shardClips.spread}/${shardClips.drawn})`,
+    shardClips.drawn === shardCount && shardClips.spread === shardCount,
+  );
   await shot("28-level26-built");
 
   // --- the ends of chapters 3 and 5 -----------------------------------------

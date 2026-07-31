@@ -14,7 +14,7 @@
 import { describe, expect, it } from "vitest";
 import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalThemes } from "../src/assets";
 import { seededRandom } from "../src/geometry";
-import { isKindRegistered, kindFor, loadAllKinds } from "../src/kinds/registry";
+import { KIND_IDS, isKindRegistered, kindFor, loadAllKinds } from "../src/kinds/registry";
 import { buildLevelLayout } from "../src/layout";
 import {
   CHAPTERS,
@@ -22,12 +22,19 @@ import {
   LEVEL_COUNT,
   MAX_SNAP_FORGIVENESS,
   MIN_SNAP_FORGIVENESS,
+  PUZZLE_KINDS,
   castOf,
   chapterNumber,
   dealPieces,
+  endsChapter,
+  isLastPlayable,
+  isPlayable,
   isVouchedLevel,
   levelSpec,
   nextLevel,
+  playableFrom,
+  playableLevels,
+  type EnabledKinds,
   type LevelSpec,
   type PuzzleKindId,
 } from "../src/levels";
@@ -406,6 +413,101 @@ describe("themed casts", () => {
     expect(dealPieces(level, SHAPES, seededRandom(4))).toEqual(
       dealPieces(level, SHAPES, seededRandom(4)),
     );
+  });
+});
+
+/**
+ * The kinds a grown-up has left on, written as the ones to switch *off* because
+ * that is how the panel is used: everything is on until somebody takes one out.
+ */
+const without = (...off: readonly PuzzleKindId[]): EnabledKinds =>
+  Object.fromEntries(PUZZLE_KINDS.map((kind) => [kind, !off.includes(kind)])) as EnabledKinds;
+
+describe("a kind switched off", () => {
+  it("names every kind of the table exactly once, in play order", () => {
+    // The panel walks this list to build its switches, so a kind missing from
+    // it is a kind nobody can turn off, and one that is not in the table is a
+    // switch that does nothing.
+    expect([...new Set(PUZZLE_KINDS)]).toEqual([...PUZZLE_KINDS]);
+    expect(new Set(PUZZLE_KINDS)).toEqual(new Set(LEVELS.map((level) => level.kind)));
+    expect(new Set(PUZZLE_KINDS)).toEqual(new Set(KIND_IDS));
+    expect(PUZZLE_KINDS.map((kind) => LEVELS.find((level) => level.kind === kind)?.level)).toEqual(
+      [...PUZZLE_KINDS.map((kind) => LEVELS.find((level) => level.kind === kind)?.level)].sort(
+        (a, b) => (a ?? 0) - (b ?? 0),
+      ),
+    );
+  });
+
+  it("leaves the whole thirty alone when nothing is switched off", () => {
+    expect(playableLevels()).toEqual(LEVELS);
+    expect(playableLevels(without())).toEqual(LEVELS);
+  });
+
+  it("drops its levels and keeps the rest in order", () => {
+    const kinds = without("play");
+    expect(playableLevels(kinds).map((level) => level.level)).toEqual(
+      LEVELS.filter((level) => level.kind !== "play").map((level) => level.level),
+    );
+    expect(isPlayable(1, kinds)).toBe(false);
+    expect(isPlayable(2, kinds)).toBe(true);
+  });
+
+  it("is stepped over on the way to the next level", () => {
+    // Levels 1, 3 and 5 are the cause-and-effect ones, so a child whose
+    // grown-up switched those off plays 2, 4, 6 and on.
+    const kinds = without("play");
+    expect(nextLevel(1, kinds)).toBe(2);
+    expect(nextLevel(2, kinds)).toBe(4);
+    expect(nextLevel(4, kinds)).toBe(6);
+  });
+
+  it("wraps to the first level still in play, not to level 1", () => {
+    const kinds = without("play", "shape-match");
+    expect(nextLevel(LEVEL_COUNT, kinds)).toBe(11);
+    expect(playableFrom(1, kinds)).toBe(11);
+  });
+
+  it("resumes forward off a level that has just been taken out", () => {
+    const kinds = without("jigsaw");
+    // A child who stopped on level 21 resumes on the first level of what is
+    // left rather than on a jigsaw their grown-up has switched off.
+    expect(playableFrom(21, kinds)).toBe(26);
+    expect(playableFrom(20, kinds)).toBe(20);
+  });
+
+  it("moves the end of the game to the end of what is played", () => {
+    expect(isLastPlayable(LEVEL_COUNT)).toBe(true);
+    const kinds = without("jigsaw");
+    expect(isLastPlayable(LEVEL_COUNT, kinds)).toBe(false);
+    // 30 and 29 are jigsaws, so the last thing played is level 28.
+    expect(isLastPlayable(28, kinds)).toBe(true);
+  });
+
+  it("still ends every chapter that is played", () => {
+    const kinds = without("play");
+    // Level 5 is gone, so the first chapter ends on level 4 and the party
+    // moves with it rather than being lost. Level 3 is gone too, and is not
+    // where a chapter ends.
+    expect(endsChapter(4, kinds)).toBe(true);
+    expect(endsChapter(2, kinds)).toBe(false);
+    expect(endsChapter(3, kinds)).toBe(false);
+    expect(endsChapter(10, kinds)).toBe(true);
+    // A level whose kind is off is answered by what comes after it, which is
+    // what a grown-up who jumped the child straight onto one should get.
+    expect(endsChapter(5, kinds)).toBe(true);
+    // And the last level still in play ends the game.
+    expect(endsChapter(LEVEL_COUNT, kinds)).toBe(true);
+  });
+
+  it("never leaves the game with nothing to play", () => {
+    // The panel refuses to turn the last kind off, and this is the second
+    // answer to the same question: a record that says everything is off - from
+    // an older build, or another tab - is read as everything on.
+    const nothing = without(...PUZZLE_KINDS);
+    expect(playableLevels(nothing)).toEqual(LEVELS);
+    expect(nextLevel(30, nothing)).toBe(1);
+    expect(playableFrom(7, nothing)).toBe(7);
+    expect(isLastPlayable(LEVEL_COUNT, nothing)).toBe(true);
   });
 });
 
