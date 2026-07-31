@@ -141,10 +141,11 @@ cutter. Two halves, and neither works without the other:
   once it has gone. The overlap cannot show, because every piece of one drawing
   is that drawing at one scale and one origin.
 
-The wider clip waits for the last piece - `.cut-art` in `style.css`, on the
-`is-complete` the host puts on the stage - because it is only free once there is
-no gap left to spill into, and while there is one the guide behind the join is
-the same picture dimmed. `SLICE_OVERLAP` and `PICTURE_OVERLAP` differ because
+The wider clip waits for the last piece to *land* - `.cut-art` in `style.css`,
+on the `is-complete` the host puts on the stage, and never on a piece still
+wearing `is-settling` - because it is only free once there is no gap left to
+spill into, and while there is one the guide behind the join is the same picture
+dimmed. `SLICE_OVERLAP` and `PICTURE_OVERLAP` differ because
 the drawings do: a scene is flat and opaque and can take a wide overlap, an
 animal has translucent art that a wide overlap would paint twice and darken.
 Neither the nudged copies in the clip nor either overlap is a fudge to tidy

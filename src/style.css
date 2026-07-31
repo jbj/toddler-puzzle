@@ -98,12 +98,18 @@ body {
    join closes at the moment the guide behind it goes. Only then: a loose piece
    would show a sliver of its neighbour's drawing outside its own white edge,
    and a piece placed early would spill over the empty cell beside it. `cut.ts`
-   draws both clips and hangs them here. */
+   draws both clips and hangs them here.
+
+   Landed, not accepted: the last piece is still sliding home when the drawing
+   is declared whole, and a piece that is not yet where it belongs is a piece
+   with the same sliver hanging off it. So a settling piece keeps the clip it
+   was cut with until it stops moving, and switches when there is nowhere left
+   for the overlap to show. */
 .cut-art {
   clip-path: var(--cut-exact);
 }
 
-#stage.is-complete .cut-art {
+#stage.is-complete .piece:not(.is-settling) .cut-art {
   clip-path: var(--cut-spread);
 }
 

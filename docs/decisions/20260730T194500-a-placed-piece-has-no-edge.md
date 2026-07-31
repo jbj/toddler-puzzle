@@ -47,6 +47,13 @@ is being built, what shows through a join is the guide underneath, which is the
 same picture dimmed. The guide goes when the last piece lands, and that is the
 moment - the only moment - a join has the open sky behind it.
 
+Landed, and not merely accepted. The last piece is still sliding home when the
+puzzle counts itself finished, and a piece an inch from where it belongs is a
+piece with that sliver hanging off it in plain view. So a piece that is still
+moving keeps the clip it was cut with, and swaps when it stops - by which time
+it is exactly where its neighbours already are, and the overlap has nowhere to
+show.
+
 The overlap cannot show, and that is a property of how this game cuts things up
 rather than luck. Every piece of one drawing *is* that drawing, seen through a
 different window, laid out at one scale and one origin

@@ -1774,6 +1774,24 @@ try {
     `a finished picture closes over its joins (${built.spread}/${built.drawn})`,
     built.drawn === jigsawPieces && built.spread === jigsawPieces,
   );
+  // The last piece is still sliding home when the picture is declared whole,
+  // and a piece that is not yet where it belongs would wear its overlap where
+  // everyone could see it. Put a piece back into the settle it just came out of
+  // rather than racing the animation: the rule is about the class, and a check
+  // that has to be quick enough to catch it is a check that fails on a slow day.
+  await evaluate(`(() => {
+    document.querySelector('.piece').classList.add('is-settling');
+    return true;
+  })()`);
+  const settling = await cutClipsOn(".piece.is-settling");
+  check(
+    `a piece still on its way keeps the cut it was made with (${settling.exact}/${settling.drawn})`,
+    settling.drawn === 1 && settling.exact === 1,
+  );
+  await evaluate(`(() => {
+    document.querySelector('.piece').classList.remove('is-settling');
+    return true;
+  })()`);
   await shot("25-level21-built");
 
   // --- level 26: a picture broken into shards -------------------------------

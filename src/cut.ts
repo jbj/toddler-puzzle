@@ -31,8 +31,10 @@
  * Switched rather than always on, because the wider clip is only free once the
  * drawing is whole. A loose piece would show a sliver of its neighbour's
  * drawing outside its own white edge, and a piece placed early would spill over
- * the empty cell next to it. Both are `.cut-art` in `style.css`, keyed off the
- * `is-complete` the host puts on the stage.
+ * the empty cell next to it - as would the last piece itself, which is still
+ * sliding home when the drawing is declared whole. Both are `.cut-art` in
+ * `style.css`, keyed off the `is-complete` the host puts on the stage and held
+ * back from any piece that is still moving.
  *
  * Do not "tidy" the nudged copies away, and do not shrink the overlap to zero:
  * both undo the seamless picture. The reasoning is
