@@ -45,8 +45,10 @@ and an argument nobody can see having changed is worth nothing.
 | [20260730T183000-sounds-are-data-and-the-machine-listens](20260730T183000-sounds-are-data-and-the-machine-listens.md) | Write sounds as data and measure them offline |
 | [20260730T203000-no-rotation-mode](20260730T203000-no-rotation-mode.md) | Drop rotation mode rather than guess at the gesture |
 | [20260730T213000-a-hint-points-at-both-ends](20260730T213000-a-hint-points-at-both-ends.md) | Point an idle hint at the piece as well as its place |
+| [20260730T194500-a-placed-piece-has-no-edge](20260730T194500-a-placed-piece-has-no-edge.md) | Take a piece's cut edge away once it is placed |
 | [20260729T223500-a-chapter-is-warmed-before-it-is-needed](20260729T223500-a-chapter-is-warmed-before-it-is-needed.md) | Budget the bundle, and warm a chapter rather than fetch it |
 | [20260730T000400-the-home-screen-icon-is-svg](20260730T000400-the-home-screen-icon-is-svg.md) | Ship an SVG home-screen icon rather than a committed PNG |
 | [20260730T005900-guard-the-sample-against-the-table](20260730T005900-guard-the-sample-against-the-table.md) | Guard the shot run's sample against the level table |
 | [20260730T113000-a-check-explains-its-own-environment](20260730T113000-a-check-explains-its-own-environment.md) | Let a check explain its own environment rather than fail as something else |
+| [20260730T194900-a-grown-up-can-take-a-kind-out](20260730T194900-a-grown-up-can-take-a-kind-out.md) | Let a grown-up switch a kind of puzzle out of the thirty |
 | [20260730T230000-a-picture-takes-the-board](20260730T230000-a-picture-takes-the-board.md) | Let a picture take the whole board, on flat colour |

@@ -71,6 +71,13 @@ expecting the formatter to.
 `npm run audio` also wants `rsvg-convert` to rasterise its sheet, and writes the
 SVG regardless if it is missing.
 
+Both browser checks run silent: `scripts/chrome.mjs` launches Chromium with
+`--mute-audio`. `npm run shot` plays the game for real, so without it a check
+somebody started in the background sings its way through the levels out of the
+laptop speakers. The flag mutes the browser's *output device* only, so
+`npm run audio:check`, which measures an `OfflineAudioContext` rendered into a
+buffer that never reaches a device, still hears every sound unchanged.
+
 `CHROME_BIN` is only needed when the browser is not called `chromium` - that is
 the default, and CI sets the variable because a runner has `google-chrome`.
 Setting it to a full path on a machine where `chromium` is already on `PATH`
@@ -138,6 +145,7 @@ Why each of those stops the run rather than being written down and hoped for is
 | `src/kinds/shatter.ts` | One picture broken into irregular convex shards, no two alike |
 | `src/shatter.ts` | The shatterer: recursive half-plane splits, searched until every shard clears the floors |
 | `src/picture-pieces.ts` | Mints a frame, the clipped pieces and the dimmed guide. Shared by both cut-up-picture kinds |
+| `src/cut.ts` | How a piece of a bigger drawing is cut out and edged: the two clips - the cut, and the cut spread by a hair for once the drawing is whole - and the white line that fades once the piece is home. Shared by the slicer and both cut-up-picture kinds |
 | `src/kinds/play.ts` | Cause and effect: the bubbles, the peekaboo bushes and the scene that answers |
 | `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - a chapter celebration bursts balloons with it |
 | `src/motion.ts` | Whether the player asked for less motion. The one place `prefers-reduced-motion` is read |

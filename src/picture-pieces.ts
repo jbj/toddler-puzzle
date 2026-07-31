@@ -20,7 +20,12 @@
  *    settles into the picture rather than being placed in it;
  *  - what a piece draws is a corner of a box it mostly leaves empty, so `inked`
  *    is what the tray packs by and what a hand has to find.
+ *
+ * What the clip and the white edge along it are doing is `cut.ts`: the edge is
+ * for a piece that is still loose and goes when the piece is home, and the clip
+ * is a hair wider than the edge so the finished picture has no seams in it.
  */
+import { cutBounds, cutClip, cutEdge, PICTURE_OVERLAP } from "./cut";
 import type { Point, Rect, Size } from "./geometry";
 import type { Layout } from "./layout";
 import { renderTrayBands } from "./scenery";
@@ -74,14 +79,17 @@ export function picturePieces(
   const pieces = cells.map((cell, index): PieceShape => {
     const id = `${frame}:${cell.name}`;
     const clip = clipId(id);
+    const cut = cutClip(clip, cell.outline, PICTURE_OVERLAP);
     return {
       id: pieceId(id),
       outline: cell.outline,
       artwork: `<g class="picture-piece">
-        <defs><clipPath id="${clip}"><path d="${cell.outline}" /></clipPath></defs>
-        <g clip-path="url(#${clip})">
-          ${picture.artwork}
-          <path class="cut" d="${cell.outline}" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="7" />
+        <defs>${cut.defs}${cutBounds(`${clip}-box`, box)}</defs>
+        <g clip-path="url(#${clip}-box)">
+          <g ${cut.attrs}>
+            ${picture.artwork}
+            ${cutEdge(cell.outline, 7, 0.75)}
+          </g>
         </g>
       </g>`,
       box,

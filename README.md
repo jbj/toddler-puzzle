@@ -116,13 +116,22 @@ setting, because the player cannot read. But thirty levels need somebody who can
 read to be able to steer, so a small "Grown-ups" button in the corner opens a
 panel - by being **held for two seconds**, never by being tapped, however many
 times a small hand tries. Behind it are a map of the thirty levels to jump about
-in, a switch for sound, a choice of idle hints, and the only place progress can
-be cleared. It is deliberately plain and adult-looking, and closing it puts the
-child back exactly where they were. Sound works today; idle hints are stored and
-take effect when that feature arrives. There is no rotation switch - see
+in, a switch for sound, a choice of idle hints, a switch for each kind of puzzle,
+and the only place progress can be cleared. It is deliberately plain and
+adult-looking, and closing it puts the child back exactly where they were. There
+is no rotation switch - see
 [decision 20260730T203000](docs/decisions/20260730T203000-no-rotation-mode.md).
 See also
 [decision 20260729T000652](docs/decisions/20260729T000652-a-door-for-grown-ups.md).
+
+**A grown-up can shorten the ramp.** The thirty levels span about a year of
+development, and no child is at every point of it at once, so each kind of
+puzzle - the touch-and-play levels, whole animals, sliced animals, shape
+pictures, jigsaws, shattered pictures - has a switch in that panel. A kind
+switched off is stepped over wherever it appears; the order never changes, the
+chapters still end where they now end, and the last kind on cannot be turned off.
+Nothing about it shows on the child's screen. See
+[decision 20260730T194900](docs/decisions/20260730T194900-a-grown-up-can-take-a-kind-out.md).
 
 Works with a finger or a mouse, in landscape or portrait.
 

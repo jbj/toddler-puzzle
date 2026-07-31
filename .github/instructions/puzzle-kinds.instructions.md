@@ -100,6 +100,18 @@ read differently at a glance, which `npm run art:check` enforces; see
 Retuning the ramp is a table edit and nothing else. Adding a level means adding a
 record; the layout follows, because nothing downstream knows a level count.
 
+**A grown-up can switch a kind off, and that is a filter over the table rather
+than an edit to it.** `PUZZLE_KINDS` in `src/levels.ts` is the ordered list of
+kinds - `PuzzleKindId` is derived from it, so the panel that offers a switch per
+kind cannot fall behind a seventh one - and `EnabledKinds` is what a grown-up
+left on. `playableLevels` and the functions beside it (`nextLevel`,
+`endsChapter`, `playableFrom`, `isLastPlayable`, `isPlayable`) all take the same
+optional `EnabledKinds` and treat an absent one as "all of them", so nothing
+that does not care has to know. Two rules hold it together: an all-off record
+reads as all-on, because a game with no levels in it is not something to hand a
+child, and the level table itself is never touched. See
+[decision 20260730T194900](../../docs/decisions/20260730T194900-a-grown-up-can-take-a-kind-out.md).
+
 ## Sliced animals
 
 `src/kinds/sliced.ts` plays levels 11-15 and 27: one or two animals, each
@@ -126,6 +138,31 @@ of, which is as forgiving as a whole-animal drop.
 them offline and writes `src/slice-recipes.json`; `npm run art:check` re-judges
 what is committed. That contract, and the numbers behind it, are in
 [`art.instructions.md`](art.instructions.md).
+
+**A cut edge belongs to a piece that is still loose**, and that rule is shared
+with the two picture kinds, so it lives in `src/cut.ts` rather than in either
+cutter. Two halves, and neither works without the other:
+
+- the white line along a cut is drawn while the piece is in the tray or under a
+  finger, and fades over the settle once the piece is home - a finished picture
+  with a grid over it is not a finished picture;
+- a finished drawing is clipped a hair wider than it was cut, so its pieces
+  overlap by about a pixel instead of meeting exactly. Two neighbours clipped to
+  the same path each paint the boundary at partial coverage and leave a pale
+  hairline down the join; invisible under a white edge, and all there is to see
+  once it has gone. The overlap cannot show, because every piece of one drawing
+  is that drawing at one scale and one origin.
+
+The wider clip waits for the last piece to *land* - `.cut-art` in `style.css`,
+on the `is-complete` the host puts on the stage, and never on a piece still
+wearing `is-settling` - because it is only free once there is no gap left to
+spill into, and while there is one the guide behind the join is the same picture
+dimmed. `SLICE_OVERLAP` and `PICTURE_OVERLAP` differ because
+the drawings do: a scene is flat and opaque and can take a wide overlap, an
+animal has translucent art that a wide overlap would paint twice and darken.
+Neither the nudged copies in the clip nor either overlap is a fudge to tidy
+away. See
+[decision 20260730T194500](../../docs/decisions/20260730T194500-a-placed-piece-has-no-edge.md).
 
 ## Pictures out of shapes
 
@@ -206,7 +243,10 @@ through its cell. Nothing intersects artwork with anything, so one scene serves
 a 2x2 board and a 4x3 board without being redrawn, and two neighbours cannot
 draw the same pixel differently. A scene is safe to inline many times over: no
 ids, no outward references, which `npm run art:check` enforces. See
-[`art.instructions.md`](art.instructions.md).
+[`art.instructions.md`](art.instructions.md). The clip itself, and the white
+edge along it that goes when the piece is placed, are `src/cut.ts` and the same
+for both cutters - the rule is under
+[sliced animals](#sliced-animals) above.
 
 **The picture stays under the empty frame.** The guide is the scene itself,
 dimmed, with every cut drawn over it - the *same* path each piece is clipped
@@ -360,8 +400,10 @@ kind was played by shape-match instead so that the table could run ahead of the
 code; that scaffold came down when the last kind landed
 ([decision 20260728T205627](../../docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md)).
 
-Adding a kind is one entry in `LOADERS` in `src/kinds/registry.ts`, and the
-levels that named it start playing it. Do not edit `LEVELS` to switch a kind on.
+Adding a kind is one entry in `LOADERS` in `src/kinds/registry.ts` and one entry
+in `PUZZLE_KINDS` in `src/levels.ts`, and the levels that named it start playing
+it - with a switch of its own in the grown-up panel, which walks that list. Do
+not edit `LEVELS` to switch a kind on.
 
 **A kind is also where the bundle is cut.** A chapter is five levels and, near
 enough, one kind, so splitting by kind is splitting by chapter. `play` and
