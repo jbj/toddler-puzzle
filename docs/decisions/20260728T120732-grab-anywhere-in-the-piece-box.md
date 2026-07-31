@@ -39,6 +39,14 @@ proves it), and a grab area held inside the box therefore cannot reach into a
 neighbour's. Placed pieces keep `pointer-events: none`, so a finished animal
 still catches nothing.
 
+The clamp has since been replaced by something that does the same job better.
+The rectangle is now the piece's one box (`gripOf`), and the tray cuts each cell
+from that same box, so two waiting pieces cannot have overlapping grab areas even
+where a piece is much smaller than the box it carries - which the clamp never
+managed. The margin also follows the drawing rather than the authored box, and
+still stops at the box's edge. See
+[20260731T133000-one-box-measures-a-piece](20260731T133000-one-box-measures-a-piece.md).
+
 An invisible rectangle with no visual effect is the sort of thing a later reader
 deletes as dead markup. It is not: nothing else makes those places grabbable,
 and removing it silently returns the game to hit-testing paint.

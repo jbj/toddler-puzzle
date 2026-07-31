@@ -37,8 +37,8 @@
  * swapping them would change the picture. See
  * [decision 20260729T090200](../../docs/decisions/20260729T090200-two-shapes-the-same-are-the-same-piece.md).
  */
-import { boxCenter, distance, shuffle, type Point, type Size } from "../geometry";
-import { boxOf, holeOf, inkSnapRadius, type Layout } from "../layout";
+import { distance, shuffle, type Point, type Size } from "../geometry";
+import { boxOf, gripCentre, holeOf, onTarget, type Layout } from "../layout";
 import type { PieceId } from "../piece";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
 import { renderScenery } from "../scenery";
@@ -128,30 +128,35 @@ function take(puzzle: PolygonPuzzle, piece: PieceId, index: number): void {
   puzzle.placeOf.set(piece, index);
 }
 
-/** The middle of a place, in logical units. */
-function centreOf(puzzle: PolygonPuzzle, layout: Layout, index: number): Point {
-  const { scale } = boxOf(layout, pictureOf(puzzle));
+/**
+ * Where this piece's box would sit if it took `index`: the picture's own
+ * corner, shifted by however far that place is from the place the piece was
+ * drawn in. What `target` answers for the place a piece is aimed at now, and
+ * what the rule is asked about for a place it might be.
+ */
+function homeFor(puzzle: PolygonPuzzle, layout: Layout, piece: PieceId, index: number): Point {
+  const { scale } = boxOf(layout, piece);
   const origin = holeOf(layout, pictureOf(puzzle));
-  const place = placeAt(puzzle, index);
+  const from = placeAt(puzzle, homeIndex(puzzle, piece)).origin;
+  const to = placeAt(puzzle, index).origin;
   return {
-    x: origin.x + (place.origin.x + place.size.width / 2) * scale,
-    y: origin.y + (place.origin.y + place.size.height / 2) * scale,
+    x: origin.x + (to.x - from.x) * scale,
+    y: origin.y + (to.y - from.y) * scale,
   };
 }
 
 /**
  * Which place this drop chose: the nearest free one that wants this shape and
- * is within reach, or null for a drop that counts as nothing.
+ * that the drop is on target for, or null for a drop that counts as nothing.
  *
- * Reach is measured from what the piece *draws*, not from the box it carries -
- * the box is the whole picture, and two thirds of that would put a roof into a
- * wall. `accepts` and `settle` both ask this, so what is accepted and what is
- * recorded cannot come apart.
+ * The rule is the host's (`onTarget`), asked once per candidate place, so a
+ * thin triangle is judged by the same thickened box everything else is. Nearest
+ * is the tie-break between two places the drop is on target for, which two
+ * congruent shadows close together can be. `accepts` and `settle` both ask
+ * this, so what is accepted and what is recorded cannot come apart.
  */
 function chosen(puzzle: PolygonPuzzle, layout: Layout, piece: PieceId, at: Point): number | null {
-  const { ink } = boxOf(layout, piece);
-  const reach = inkSnapRadius(layout, piece);
-  const dropped = boxCenter({ x: at.x + ink.x, y: at.y + ink.y }, ink);
+  const dropped = gripCentre(layout, piece, at);
   const wanted = placeAt(puzzle, homeIndex(puzzle, piece)).signature;
 
   let best: number | null = null;
@@ -159,8 +164,10 @@ function chosen(puzzle: PolygonPuzzle, layout: Layout, piece: PieceId, at: Point
   for (let index = 0; index < puzzle.places.length; index++) {
     if (placeAt(puzzle, index).signature !== wanted) continue;
     if (isFilled(puzzle, index)) continue;
-    const away = distance(dropped, centreOf(puzzle, layout, index));
-    if (away <= reach && away < nearest) {
+    const home = homeFor(puzzle, layout, piece, index);
+    if (!onTarget(layout, piece, at, home)) continue;
+    const away = distance(dropped, gripCentre(layout, piece, home));
+    if (away < nearest) {
       best = index;
       nearest = away;
     }
@@ -252,14 +259,7 @@ export const polygon: PuzzleKind = {
    */
   target(puzzle: Puzzle, layout: Layout, piece: PieceId): Point {
     const scene = asPolygon(puzzle);
-    const { scale } = boxOf(layout, piece);
-    const origin = holeOf(layout, pictureOf(scene));
-    const from = placeAt(scene, homeIndex(scene, piece)).origin;
-    const to = placeAt(scene, placeIndex(scene, piece)).origin;
-    return {
-      x: origin.x + (to.x - from.x) * scale,
-      y: origin.y + (to.y - from.y) * scale,
-    };
+    return homeFor(scene, layout, piece, placeIndex(scene, piece));
   },
 
   /**
@@ -274,18 +274,12 @@ export const polygon: PuzzleKind = {
    */
   openTargets(puzzle: Puzzle, layout: Layout, piece: PieceId): readonly Point[] {
     const scene = asPolygon(puzzle);
-    const { scale } = boxOf(layout, piece);
-    const origin = holeOf(layout, pictureOf(scene));
-    const home = placeAt(scene, homeIndex(scene, piece));
+    const wanted = placeAt(scene, homeIndex(scene, piece)).signature;
     const open: Point[] = [];
     for (let index = 0; index < scene.places.length; index++) {
-      const place = placeAt(scene, index);
-      if (place.signature !== home.signature) continue;
+      if (placeAt(scene, index).signature !== wanted) continue;
       if (isFilled(scene, index)) continue;
-      open.push({
-        x: origin.x + (place.origin.x - home.origin.x) * scale,
-        y: origin.y + (place.origin.y - home.origin.y) * scale,
-      });
+      open.push(homeFor(scene, layout, piece, index));
     }
     return open;
   },

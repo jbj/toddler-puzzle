@@ -63,35 +63,72 @@ export function boxCenter(topLeft: Point, size: Size): Point {
   return { x: topLeft.x + size.width / 2, y: topLeft.y + size.height / 2 };
 }
 
-/**
- * Deliberately forgiving hit test: a piece counts as "in" its hole if the two
- * centres are within `radius`, which is roughly two thirds of the piece - see
- * `pieceBox` in layout.ts for what that means for a piece that is not square.
- */
-export function isWithinSnapRadius(a: Point, b: Point, radius: number): boolean {
-  return distance(a, b) <= radius;
+/** Does `rect` cover `point`? Edges count, because a near miss should. */
+export function covers(rect: Rect, point: Point): boolean {
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height
+  );
 }
 
 /**
- * Grow a measured rectangle by `padding` on every side, then keep it inside
- * `bounds`. Used for the area a piece can be grabbed by: the artwork is
- * measured, given a little margin, and held inside the piece's authored box.
+ * Grow a rectangle by up to `padding` on every side, staying inside `bounds`
+ * and staying centred where it was: each axis takes the smaller of the room it
+ * has on either side, so a drawing that already reaches one edge of its box
+ * gets no margin on that axis rather than a lopsided one.
  *
- * The clamp is the load-bearing half. A piece's authored box is exactly the
- * slot it was laid out in, and no two slots overlap, so a grab area that stays
- * inside the box cannot reach into a neighbour's and make a press ambiguous.
+ * Centred is the load-bearing half. The centre of a piece's box is the point
+ * the whole game aims at, so a margin that moved it would move the target.
  */
-export function padWithin(rect: Rect, padding: number, bounds: Size): Rect {
-  const left = Math.max(rect.x - padding, 0);
-  const top = Math.max(rect.y - padding, 0);
-  const right = Math.min(rect.x + rect.width + padding, bounds.width);
-  const bottom = Math.min(rect.y + rect.height + padding, bounds.height);
+export function padWithin(rect: Rect, padding: number, bounds: Rect): Rect {
+  const room = (low: number, high: number): number => Math.max(0, Math.min(padding, low, high));
+  const across = room(rect.x - bounds.x, bounds.x + bounds.width - (rect.x + rect.width));
+  const down = room(rect.y - bounds.y, bounds.y + bounds.height - (rect.y + rect.height));
   return {
-    x: left,
-    y: top,
-    width: Math.max(right - left, 0),
-    height: Math.max(bottom - top, 0),
+    x: rect.x - across,
+    y: rect.y - down,
+    width: rect.width + 2 * across,
+    height: rect.height + 2 * down,
   };
+}
+
+/**
+ * Thicken a rectangle until its narrow side is at least `ratio` of its long
+ * one, growing it about its own centre.
+ *
+ * This is what stops a long thin piece being punished twice. A sliver is hard
+ * to aim *and*, measured by its narrow side, would be given the least room to
+ * be aimed at; thickened, it asks for about as much accuracy as a square piece
+ * of the same length does. Growing about the centre is load-bearing: the
+ * centre of a piece's box has to stay the centre of what it draws, because
+ * that is the point the whole game aims at and sparkles on.
+ */
+export function thickenTo(rect: Rect, ratio: number): Rect {
+  const width = Math.max(rect.width, rect.height * ratio);
+  const height = Math.max(rect.height, rect.width * ratio);
+  return {
+    x: rect.x - (width - rect.width) / 2,
+    y: rect.y - (height - rect.height) / 2,
+    width,
+    height,
+  };
+}
+
+/** `rect` grown about its own centre by `factor`, e.g. a level's forgiveness. */
+export function growAboutCentre(rect: Rect, factor: number): Rect {
+  return {
+    x: rect.x - (rect.width * (factor - 1)) / 2,
+    y: rect.y - (rect.height * (factor - 1)) / 2,
+    width: rect.width * factor,
+    height: rect.height * factor,
+  };
+}
+
+/** `rect` moved so its own origin is measured from `at`. */
+export function rectAt(at: Point, rect: Rect): Rect {
+  return { x: at.x + rect.x, y: at.y + rect.y, width: rect.width, height: rect.height };
 }
 
 /**
@@ -108,20 +145,20 @@ export function clampToCanvas(topLeft: Point, size: Size, logical: Size): Point 
 }
 
 /**
- * The same, for a piece whose drawing is smaller than its box. `ink` is where
- * the drawing sits inside the box, so what is held on canvas is the part a
- * child can see and grab rather than the empty box around it. A slice cut from
- * the corner of an animal would otherwise be stopped a whole animal short of
- * the edge it was being dragged to.
+ * The same, for a piece whose box is smaller than the box it carries. `grip` is
+ * the piece's own box - what it draws, thickened, in box units - so what is
+ * held on canvas is the part a child reaches for rather than the empty space
+ * around it. A slice cut from the corner of an animal would otherwise be
+ * stopped a whole animal short of the edge it was being dragged to.
  *
- * Identical to `clampToCanvas` for a piece that fills its box.
+ * Identical to `clampToCanvas` for a piece whose grip fills its box.
  */
-export function clampInkToCanvas(topLeft: Point, ink: Rect, logical: Size): Point {
-  // The `+ 0` is not a no-op: `-ink.x` is negative zero when the ink starts at
-  // the box's own edge, and a negative zero would reach the transform string.
+export function clampGripToCanvas(topLeft: Point, grip: Rect, logical: Size): Point {
+  // The `+ 0` is not a no-op: `-grip.x` is negative zero when the grip starts
+  // at the box's own edge, and a negative zero would reach the transform string.
   return {
-    x: Math.min(Math.max(topLeft.x, -ink.x), logical.width - ink.x - ink.width) + 0,
-    y: Math.min(Math.max(topLeft.y, -ink.y), logical.height - ink.y - ink.height) + 0,
+    x: Math.min(Math.max(topLeft.x, -grip.x), logical.width - grip.x - grip.width) + 0,
+    y: Math.min(Math.max(topLeft.y, -grip.y), logical.height - grip.y - grip.height) + 0,
   };
 }
 

@@ -7,11 +7,11 @@
  * rectangle over its artwork so it can be picked up anywhere inside that box.
  * See `fitGrabBox`.
  */
-import { padWithin, type Point } from "./geometry";
+import { type Point } from "./geometry";
 import { replayArrow } from "./icons";
-import { GRAB_PADDING, boxOf, type Layout } from "./layout";
+import { boxOf, type Layout } from "./layout";
 import { CHAPTERS, LEVEL_COUNT, chapterNumber } from "./levels";
-import type { PieceId, PieceShape } from "./piece";
+import { gripOf, type PieceId, type PieceShape } from "./piece";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -98,6 +98,12 @@ function buildPiece(shape: PieceShape, scale: number): SVGGElement {
  * Do not delete this as unused markup - nothing else makes those places
  * grabbable. The reasoning is decision 0010.
  *
+ * The rectangle is the piece's own box, `gripOf` in `piece.ts`, which is the
+ * same box the layout packs the tray from and the same box a drop is placed by.
+ * That is what stops a piece being easy to pick up and hard to put down, and it
+ * is why nothing here clamps the box to the authored one: the tray cuts a cell
+ * for this box, so one piece's grab area cannot reach into its neighbour's.
+ *
  * Three details are load-bearing:
  *
  *  - it goes *inside* the artwork group, so it is in authored units and moves
@@ -123,8 +129,7 @@ function fitGrabBox(piece: SVGGElement, shape: PieceShape): void {
   // which is no worse than having no grab box at all.
   if (drawn.width <= 0 || drawn.height <= 0) return;
 
-  const padding = GRAB_PADDING * Math.min(shape.box.width, shape.box.height);
-  const box = padWithin(drawn, padding, shape.box);
+  const box = gripOf(shape, drawn);
 
   const rect = document.createElementNS(SVG_NS, "rect");
   rect.setAttribute("class", "grab-box");
