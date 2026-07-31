@@ -57,12 +57,15 @@ const kB = 1000;
  * budget is wrong - move it, and say so.
  */
 const BUDGET = {
-  // measured 2026-07-29: 92.7 kB raw, 30.1 kB gzipped
-  initialRaw: 102 * kB,
-  initialGzip: 33 * kB,
-  // measured 2026-07-29: 152.1 kB raw, 51.8 kB gzipped
-  totalRaw: 167 * kB,
-  totalGzip: 57 * kB,
+  // measured 2026-07-31: 105.2 kB raw, 34.0 kB gzipped. Up from 92.7/30.1 on
+  // 2026-07-29: the themed backgrounds - a farmyard, a jungle canopy and a
+  // seabed, drawn in code so both orientations and every level share them - are
+  // reached by level 6 and so are part of the initial download.
+  initialRaw: 116 * kB,
+  initialGzip: 37 * kB,
+  // measured 2026-07-31: 164.6 kB raw, 55.7 kB gzipped
+  totalRaw: 181 * kB,
+  totalGzip: 61 * kB,
 };
 
 /** How many of a chunk's biggest modules to name when a budget is blown. */

@@ -50,3 +50,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260730T005900-guard-the-sample-against-the-table](20260730T005900-guard-the-sample-against-the-table.md) | Guard the shot run's sample against the level table |
 | [20260730T113000-a-check-explains-its-own-environment](20260730T113000-a-check-explains-its-own-environment.md) | Let a check explain its own environment rather than fail as something else |
 | [20260730T194900-a-grown-up-can-take-a-kind-out](20260730T194900-a-grown-up-can-take-a-kind-out.md) | Let a grown-up switch a kind of puzzle out of the thirty |
+| [20260731T090000-a-background-belongs-to-the-theme](20260731T090000-a-background-belongs-to-the-theme.md) | Give a themed level the world its cast lives in |

@@ -65,9 +65,13 @@ export const FINGER_LIFT = 34;
  */
 export const GRAB_PADDING = 0.04;
 
+/**
+ * A stripe of ground, from `top` down to the next band or the bottom of the
+ * canvas. Geometry only: what colour a band is painted belongs to the level's
+ * theme, and is the backdrop's business (`scenery.ts`).
+ */
 export interface GroundBand {
   readonly top: number;
-  readonly fill: string;
 }
 
 /**
@@ -947,10 +951,9 @@ function compose(view: View, plan: Plan): Arrangement {
         // picture, which is the one part of the board nothing else is using.
         { x: canvas.width / 2, y: Math.round((sceneTop + sky) / 2) },
     bands: [
-      { top: horizon, fill: "#8ed76f" },
+      { top: horizon },
       {
         top: Math.round(horizon + COMPOSITION.grassShare * (canvas.height - horizon)),
-        fill: "url(#grass)",
       },
     ],
     sceneRows,

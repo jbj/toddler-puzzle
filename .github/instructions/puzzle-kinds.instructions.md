@@ -537,6 +537,43 @@ The background landscape is generated from the layout (`src/scenery.ts`) rather
 than being a fixed-size image, so every level and both orientations share one
 piece of art.
 
+## The background a theme is played against
+
+A level that names a `theme` gets that theme's world rather than the meadow.
+`src/scenery.ts` holds one `Backdrop` per theme - a sky wash, a far ground, a
+near ground, what furnishes the air, what stands in the distance, and what grows
+on a ground line - and `renderScenery` looks one up from `layout.level.theme`,
+which it already has. Nothing above it passes a theme down.
+
+Each themed backdrop is redrawn in code from that theme's hand-drawn picture
+scene, in the same palette and the same flat-shape language: `farm` from
+`farmyard.svg`, `jungle` from `jungle-path.svg`, `sea` from `rockpool.svg` read
+underwater. The scenes are not inlined - each is a fixed-size picture with a
+shape in every quarter, which is a jigsaw's contract rather than a backdrop's.
+
+Rules for a backdrop, all of them deliberate:
+
+- **No animal is ever painted into a background.** A cow standing in the field
+  beside a cow-shaped hole tells a two-year-old that the cow they are holding is
+  already placed. The farmyard's cow is drawn here as a tractor; the rockpool's
+  crab and the jungle's bird are left out. The scene SVGs themselves keep theirs -
+  there an animal is part of the picture being assembled.
+- **The ground is chosen for what stands on it.** Pieces stand on the ground
+  bands, so no themed ground may be darker than the animals on it: the jungle
+  floor stays green because the monkey is brown, the seabed stays pale sand
+  because the whale and the fish are blue.
+- **Props stay near the horizon.** The middle of the board is where the holes
+  are; scenery behind a hole is clutter.
+- **The furniture is never themed.** The tray, the buttons, the dots and the hole
+  treatment are identical in every level - a child learns them once.
+- **A level with no theme is the meadow, unchanged.**
+
+Adding a theme means adding its `Backdrop`; a theme without one fails
+`tests/scenery.test.ts` rather than falling back silently. Backgrounds are art,
+so a change to one is reviewed by rendering it in both orientations and looking
+at it. See
+[decision 20260731T090000](../../docs/decisions/20260731T090000-a-background-belongs-to-the-theme.md).
+
 ## Rules for changing layout
 
 Tune `COMPOSITION`, not the output. Every number in it is a fraction of a slot
