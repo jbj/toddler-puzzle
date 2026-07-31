@@ -231,11 +231,19 @@ export function hintMark(shape: PieceShape, mark: HintMark): SVGGElement {
  * `targets` is a list rather than a point because some kinds have a *choice* of
  * place, and pointing at one of several equally right ones would teach a rule
  * the game does not have. See `PuzzleKind.openTargets`.
+ *
+ * The waiting end carries its own scale rather than borrowing the target's,
+ * because on a picture board a piece waits smaller than it lands: a hint has to
+ * outline the piece the child can see, at the size they can see it.
  */
 export function drawHint(
   layer: SVGGElement,
   shape: PieceShape,
-  options: { readonly scale: number; readonly targets: readonly Point[]; readonly waiting: Point },
+  options: {
+    readonly scale: number;
+    readonly targets: readonly Point[];
+    readonly waiting: { readonly at: Point; readonly scale: number };
+  },
 ): void {
   clearHint(layer);
   const { scale, targets, waiting } = options;
@@ -244,7 +252,7 @@ export function drawHint(
   group.dataset["piece"] = shape.id;
   group.style.pointerEvents = "none";
   if (prefersReducedMotion()) group.classList.add("is-still");
-  group.append(hintMark(shape, { at: waiting, scale, quiet: true }));
+  group.append(hintMark(shape, { at: waiting.at, scale: waiting.scale, quiet: true }));
   for (const at of targets) group.append(hintMark(shape, { at, scale, quiet: false }));
   layer.append(group);
 }

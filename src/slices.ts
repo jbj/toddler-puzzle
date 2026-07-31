@@ -24,6 +24,7 @@
  * contract `FOOT_LEVEL` has, for the same reason.
  */
 import { ART_BOX, type AnimalId } from "./assets";
+import { cutClip, cutEdge, SLICE_OVERLAP } from "./cut";
 import type { Point, Rect } from "./geometry";
 import { pieceId, type PieceShape } from "./piece";
 import recipes from "./slice-recipes.json";
@@ -182,13 +183,42 @@ export function cellPath(cell: Cell): string {
 const clipId = (piece: string, what: string) => `${what}-${piece.replaceAll(":", "-")}`;
 
 /**
+ * How thick the white line along a cut is, in animal units. Shared by the line
+ * on a loose slice and the line on the hole it is heading for, so a slice
+ * arriving home lands its own edge exactly on the guide's rather than beside
+ * it.
+ */
+export const SLICE_EDGE_WIDTH = 4;
+
+/**
+ * Where a recipe cuts: one closed path per slice, in art units. The one place
+ * cells become paths, so the pieces and the guide on the hole they are heading
+ * for are the same strings and not merely the same arithmetic done twice.
+ */
+const cutPaths = (recipe: SliceRecipe, size: number): readonly string[] =>
+  cellsFrom(recipe.cuts, size).map(cellPath);
+
+/**
+ * Where an animal cut into this many slices is cut: one closed path per slice,
+ * in the animal's own box units, in the order `sliceShapes` returns them.
+ *
+ * The very paths the slices are clipped with, which is what lets the hole be
+ * divided exactly where the pieces are - a guide drawn from anything else would
+ * be a line the child aims at and misses.
+ */
+export function sliceCuts(animal: PieceShape, count: SliceCount): readonly string[] {
+  return cutPaths(sliceRecipe(animal.id as string as AnimalId, count), animal.box.width);
+}
+
+/**
  * The slices of one animal, as pieces.
  *
  * Every slice keeps the animal's box, anchor and outline, and that is the whole
  * trick: laid out, all of them get the same scale and the same origin, so they
  * assemble into the animal by construction rather than by arithmetic. What each
  * one draws is the animal's artwork through its own cell, plus the cut edge
- * picked out in white so the join reads as a join.
+ * picked out in white so the join reads as a join - until the slice is home,
+ * when the edge fades and the animal is an animal again (`cut.ts`).
  *
  * `inked` is what makes them behave as separate pieces despite the shared box -
  * the tray packs them by it, the canvas clamp holds them by it, and each gets a
@@ -197,13 +227,13 @@ const clipId = (piece: string, what: string) => `${what}-${piece.replaceAll(":",
  */
 export function sliceShapes(animal: PieceShape, count: SliceCount): readonly PieceShape[] {
   const recipe = sliceRecipe(animal.id as string as AnimalId, count);
-  const cells = cellsFrom(recipe.cuts, animal.box.width);
+  const paths = cutPaths(recipe, animal.box.width);
 
-  return cells.map((cell, index) => {
+  return paths.map((path, index) => {
     const id = `slice:${animal.id}:${count}:${index}`;
     const cellClip = clipId(id, "cell");
     const bodyClip = clipId(id, "body");
-    const path = cellPath(cell);
+    const cut = cutClip(cellClip, path, SLICE_OVERLAP);
     return {
       id: pieceId(id),
       // The animal's own silhouette: one hole, cut once, that every slice of
@@ -211,12 +241,12 @@ export function sliceShapes(animal: PieceShape, count: SliceCount): readonly Pie
       outline: animal.outline,
       artwork: `<g class="slice">
         <defs>
-          <clipPath id="${cellClip}"><path d="${path}" /></clipPath>
+          ${cut.defs}
           <clipPath id="${bodyClip}"><path d="${animal.outline}" /></clipPath>
         </defs>
-        <g clip-path="url(#${cellClip})">${animal.artwork}</g>
         <g clip-path="url(#${bodyClip})">
-          <path d="${path}" fill="none" stroke="#ffffff" stroke-opacity="0.7" stroke-width="4" />
+          <g ${cut.attrs}>${animal.artwork}</g>
+          ${cutEdge(path, SLICE_EDGE_WIDTH, 0.7)}
         </g>
       </g>`,
       box: animal.box,

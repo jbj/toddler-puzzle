@@ -130,14 +130,43 @@ dependencies, and there is nothing here that needs one. See
 **Every slice of an animal keeps that animal's box, anchor and outline**, so the
 layout gives them one scale and one origin and they assemble by construction.
 The hole is cut once, from the animal's own silhouette, and stays visible under
-a half-built animal as the guide to what is still missing. A slice is accepted
-anywhere near *its animal* rather than near the quarter of the hole it came out
-of, which is as forgiving as a whole-animal drop.
+a half-built animal as the guide to what is still missing. The cuts are drawn on
+it too - the same paths the slices were clipped with, clipped to the silhouette
+so a line stops where the animal does - so the guide says where each piece goes
+and not only what is being built, which is the promise a jigsaw's frame and a
+shattered picture's already make. A slice is accepted anywhere near *its animal*
+rather than near the quarter of the hole it came out of, which is as forgiving
+as a whole-animal drop; the lines are there to be aimed at, never to be hit.
 
 **Where the cuts go is measured, not chosen.** `npm run art:slices` searches for
 them offline and writes `src/slice-recipes.json`; `npm run art:check` re-judges
 what is committed. That contract, and the numbers behind it, are in
 [`art.instructions.md`](art.instructions.md).
+
+**A cut edge belongs to a piece that is still loose**, and that rule is shared
+with the two picture kinds, so it lives in `src/cut.ts` rather than in either
+cutter. Two halves, and neither works without the other:
+
+- the white line along a cut is drawn while the piece is in the tray or under a
+  finger, and fades over the settle once the piece is home - a finished picture
+  with a grid over it is not a finished picture;
+- a finished drawing is clipped a hair wider than it was cut, so its pieces
+  overlap by about a pixel instead of meeting exactly. Two neighbours clipped to
+  the same path each paint the boundary at partial coverage and leave a pale
+  hairline down the join; invisible under a white edge, and all there is to see
+  once it has gone. The overlap cannot show, because every piece of one drawing
+  is that drawing at one scale and one origin.
+
+The wider clip waits for the last piece to *land* - `.cut-art` in `style.css`,
+on the `is-complete` the host puts on the stage, and never on a piece still
+wearing `is-settling` - because it is only free once there is no gap left to
+spill into, and while there is one the guide behind the join is the same picture
+dimmed. `SLICE_OVERLAP` and `PICTURE_OVERLAP` differ because
+the drawings do: a scene is flat and opaque and can take a wide overlap, an
+animal has translucent art that a wide overlap would paint twice and darken.
+Neither the nudged copies in the clip nor either overlap is a fudge to tidy
+away. See
+[decision 20260730T194500](../../docs/decisions/20260730T194500-a-placed-piece-has-no-edge.md).
 
 ## Pictures out of shapes
 
@@ -218,7 +247,10 @@ through its cell. Nothing intersects artwork with anything, so one scene serves
 a 2x2 board and a 4x3 board without being redrawn, and two neighbours cannot
 draw the same pixel differently. A scene is safe to inline many times over: no
 ids, no outward references, which `npm run art:check` enforces. See
-[`art.instructions.md`](art.instructions.md).
+[`art.instructions.md`](art.instructions.md). The clip itself, and the white
+edge along it that goes when the piece is placed, are `src/cut.ts` and the same
+for both cutters - the rule is under
+[sliced animals](#sliced-animals) above.
 
 **The picture stays under the empty frame.** The guide is the scene itself,
 dimmed, with every cut drawn over it - the *same* path each piece is clipped
@@ -467,6 +499,47 @@ only adopted where it is worth `COMPOSITION.gutterGain` more slot than the best
 shelving, so a marginal win never buys a rearranged board. See
 [decision 20260730T093000](../../docs/decisions/20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters.md).
 
+**A picture takes the whole board, and stands on nothing.** The two kinds that
+cut one hand-drawn picture up - `jigsaw` and `shatter` - are composed by their
+own path, `arrangePicture`, which runs the other way round from the steps above:
+the tray is planned first, and the picture is centred in *everything that is
+left* less `COMPOSITION.pictureMargin`, as large as its aspect ratio allows. There is no landscape behind it -
+`layout.bands` and `layout.decorLines` are empty, and the kinds paint
+`pictureBackdrop` instead of `renderScenery` - because a picture of a farmyard is
+already a scene, and what the aspect ratio does not reach should read as the page
+rather than as a field. `PICTURE_BACKDROP` is the `--board-blue` variable the page's own
+background is painted with rather than a second copy of the colour, so the
+letterbox has no seam in it; the shot run checks the variable reaches both.
+
+That works only because a piece of a picture may **wait smaller than it lands**,
+down to `COMPOSITION.minWaitingScale` (2/3 on each axis) and no further. The
+pieces of a cut-up picture tile it exactly, so a tray holding all of them at
+landing size costs the picture its own area over again; at two thirds it costs
+four ninths, and that difference is the room the picture grows into. Read the
+shrink through `layout.waitingScale`, and place a waiting piece with
+`waitingHome(layout, piece)` rather than `trayHome` - it shrinks the piece about
+its *own drawing's* centre, because a piece of a picture carries the whole
+picture's box and shrinking about the box corner would swing it across the
+board. Everything else - the drag engine, `accepts`, `target`, every kind - keeps
+talking in full-size positions; only the drawing is shrunk, and only while the
+piece is at rest in the tray.
+
+The other half of the room comes from the tray's own margins. Every gap in the
+composition is a share of the slot, which is right everywhere else because a
+slot is about the size of a piece - but on a picture board the slot is the whole
+picture, so those numbers wrap a single shard in a third of a picture's width of
+sand. A picture board's tray therefore passes `pictureTrayPad` down instead: the
+same `TrayPad` record every tray is laid with, but measured in
+`COMPOSITION.trayEdge` and `trayGap`, which are shares of the largest drawing
+waiting there. Keep it that way. A tray padded against the slot is a tray half
+again as big as it needs to be, and all of it comes off the picture.
+
+A board that stops filling the room it was given without sitting on the 2/3
+floor is a regression, as is a tray that spends more sand on itself than the
+pieces standing in it are worth; `tests/picture-board.test.ts` is what catches
+both. See
+[decision 20260730T230000](../../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+
 A tray cell belongs to a *piece*, not to a position: `layout.trayCells` maps a
 piece id to the rectangle it waits in, cut to that piece's own ink rather than
 to the largest ink in the cast, and `trayHome(layout, piece)` centres it there.
@@ -569,9 +642,11 @@ Rules for a backdrop, all of them deliberate:
 - **A level with no theme is the meadow, unchanged.**
 
 Adding a theme means adding its `Backdrop`; a theme without one fails
-`tests/scenery.test.ts` rather than falling back silently. Backgrounds are art,
-so a change to one is reviewed by rendering it in both orientations and looking
-at it. See
+`tests/scenery.test.ts` rather than falling back silently. A `jigsaw` or
+`shatter` level has no backdrop of any kind - a picture takes the whole board and
+stands on flat colour, as above - so a theme on one of those would reach the cast
+and nothing else. Backgrounds are art, so a change to one is reviewed by
+rendering it in both orientations and looking at it. See
 [decision 20260731T090000](../../docs/decisions/20260731T090000-a-background-belongs-to-the-theme.md).
 
 ## Rules for changing layout

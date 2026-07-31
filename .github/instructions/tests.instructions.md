@@ -116,8 +116,10 @@ a gap is a stripe of the animal that no slice draws and an overlap is a stripe
 two slices both draw, and neither shows up in a screenshot of a duck that is
 almost right. The kind is rules: every slice of an animal keeps that animal's
 box, anchor and outline and aims at its one hole, a slice is accepted anywhere
-on its own animal and never on the other one, and the hole stays showing until
-the last slice arrives. Where the cuts actually *go* is not checked there - only
+on its own animal and never on the other one, the hole is divided by the very
+paths the slices were clipped with - so the guide draws the line each piece
+lands on rather than a line of its own - and the hole stays showing until the
+last slice arrives. Where the cuts actually *go* is not checked there - only
 `npm run art:check` can see whether a cut severed a leg.
 
 `tests/polygon.test.ts` covers the picture chapter, also in two halves. The
@@ -249,6 +251,27 @@ floors: area share, fatness, spread, and no two shards alike. Reproducibility
 from a seed is checked both ways round: the same seed twice gives the same
 shards, and two seeds give different ones. What a shattered picture actually
 looks like is `npm run shot`'s, which plays level 26 and finishes it.
+
+`tests/picture-board.test.ts` covers the board both picture chapters are played
+on, which is composed the other way round from every other board: the tray
+first, the picture in everything left. Three of its checks are the ones that
+would otherwise rot silently. **The picture is as big as it is allowed to be**: for
+every jigsaw and shatter level, both orientations, six deals each, either the
+picture reaches an edge of the room the tray left it or the waiting scale is
+sitting on the two-thirds floor - a board where neither is tight has quietly
+stopped growing the picture, and nothing else would say so. **The tray is no
+bigger than what stands in it**: the sand spare around the waiting pieces,
+measured across the direction the tray costs the picture, stays under a third of
+the largest piece, and the tray starts within a fifth of one of the outer edge -
+which is what stops a margin measured against the whole picture creeping back
+in. **The shrink is safe**: a waiting piece is exactly `waitingScale` of its landing ink on both
+axes and concentric with it, which is what makes a piece grow in place under the
+finger instead of leaping across the board when it is picked up. Around those it
+holds the backdrop to being flat colour with no landscape in it, and to asking
+for the page's own `--board-blue` rather than repeating the colour. Whether the
+variable actually reaches both the page and the board, and whether the picture
+really does take the board once it is rendered, are `npm run shot`'s - it reads
+both off a real jigsaw at level 21.
 
 `tests/scene-cells.test.mjs` covers the measure behind "every piece has
 something in it", which is the one piece of real logic in the art scripts. It is
@@ -405,6 +428,23 @@ run going green while testing less. It guards its own honesty too - it proves th
 parse saw the whole table before trusting it, because a coverage check that
 requires nothing passes while inspecting nothing. It costs no screenshots. See
 [decision 20260730T005900](../../docs/decisions/20260730T005900-guard-the-sample-against-the-table.md).
+
+It is where the cut edges are held to both halves of their rule, on all three
+kinds that cut something up: on level 21 every piece still in the tray draws the
+line it was cut along, and on the finished slices, jigsaw and shatter every
+placed piece's edge has faded to nothing. It is also where the clip each piece
+is wearing is read, which nothing but a browser knows - it is a CSS switch on a
+custom property: a half-built jigsaw is still cut exactly where it was cut, each
+of the three finished boards has switched to the wider clip that closes its
+joins, a piece put back into a settle keeps the clip it was made with, and the
+same piece on a device asking for less motion does not - it is home already.
+Those last two move a class rather than racing the animation - the rule is about
+the class, and a check that has to be quick enough to catch a real settle is a
+check that fails on a slow day. Each check counts the pieces as well as
+measuring them, so a board that drew none would fail rather than pass by having
+nothing to look at. Whether the join underneath is truly seamless is the one
+part only the contact sheet can answer. See
+[decision 20260730T194500](../../docs/decisions/20260730T194500-a-placed-piece-has-no-edge.md).
 
 It is also the only place the grab boxes can be checked, since they are measured
 from rendered artwork: every piece has one, it covers the drawing without

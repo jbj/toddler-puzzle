@@ -60,7 +60,7 @@ import { enableDragging } from "./drag";
 import { boxCenter, type Point, type Size } from "./geometry";
 import { clearHint, createIdleHint, drawHint, hintPiece, type IdleHint } from "./hint";
 import { ensureKind, isKindLoaded, kindFor, recoverWhenPossible } from "./kinds/registry";
-import { boxOf, chooseLayout, trayHome, type Layout } from "./layout";
+import { boxOf, chooseLayout, trayHome, waitingHome, type Layout } from "./layout";
 import {
   endsChapter,
   isLastPlayable,
@@ -234,10 +234,20 @@ export function createGame(
   const restingPlace = (piece: PieceId): Point =>
     isPlaced(piece) ? kind.target(puzzle, layout, piece) : homeOf(piece);
 
-  function moveTo(piece: PieceId, position: Point, animated: boolean): void {
+  /**
+   * Move a piece to a position, which is always the corner its box takes at
+   * full size - the only currency the drag engine and the kinds deal in.
+   *
+   * `waiting` says the piece is coming to rest in its tray cell, where a
+   * picture board draws it smaller than it lands. That shrink is a fact about
+   * the drawing rather than about the position, so what is written down stays
+   * the full-size corner and nothing downstream has to know about it.
+   */
+  function moveTo(piece: PieceId, position: Point, animated: boolean, waiting = false): void {
     const element = pieceEl(piece);
     element.classList.toggle("is-settling", animated);
-    setPiecePosition(element, position);
+    const rest = waiting ? waitingHome(layout, piece) : { at: position, shrink: 1 };
+    setPiecePosition(element, rest.at, rest.shrink);
     stateOf(piece).position = position;
     if (animated) {
       window.setTimeout(() => element.classList.remove("is-settling"), SETTLE_MS);
@@ -255,16 +265,15 @@ export function createGame(
   /** Push current state into the DOM, e.g. after a fresh puzzle or a re-layout. */
   function render(): void {
     renderBackdrop();
+    showComplete();
     // A level played by touch has no pieces on the board to place: what there
     // is to see, the kind drew for itself when the board was mounted.
     if (kind.play) return;
     for (const shape of puzzle.pieces) {
       const element = pieceEl(shape.id);
-      const target = restingPlace(shape.id);
       element.classList.remove("is-dragging", "is-settling");
       element.classList.toggle("is-placed", isPlaced(shape.id));
-      setPiecePosition(element, target);
-      stateOf(shape.id).position = target;
+      moveTo(shape.id, restingPlace(shape.id), false, !isPlaced(shape.id));
     }
   }
 
@@ -283,10 +292,12 @@ export function createGame(
     const targets = kind.openTargets?.(puzzle, layout, shape.id) ?? [
       kind.target(puzzle, layout, shape.id),
     ];
+    const { scale } = boxOf(layout, shape.id);
+    const rest = waitingHome(layout, shape.id);
     drawHint(board.hintLayer, shape, {
-      scale: boxOf(layout, shape.id).scale,
+      scale,
       targets,
-      waiting: homeOf(shape.id),
+      waiting: { at: rest.at, scale: scale * rest.shrink },
     });
   }
 
@@ -307,10 +318,22 @@ export function createGame(
     });
   }
 
+  /**
+   * Tell the board the puzzle is whole. The only thing that reads it is the
+   * artwork of a drawing that was cut up: a slice or a piece of a picture is
+   * clipped to its own cut while there is still a gap to fill, and to a hair
+   * past it once there is not, so the joins close as the last piece lands
+   * (`.cut-art` in `style.css` and `cut.ts`).
+   */
+  function showComplete(): void {
+    board.stage.classList.toggle("is-complete", complete);
+  }
+
   function checkComplete(): void {
     if (complete || !kind.isComplete(puzzle)) return;
 
     complete = true;
+    showComplete();
     // A finished level is never hinted at. This runs before the celebration is
     // built, so nothing can glow underneath one.
     hint?.stop();
@@ -553,7 +576,7 @@ export function createGame(
             kind.settle?.(puzzle, layout, piece, position);
             place(piece);
           } else {
-            moveTo(piece, homeOf(piece), true);
+            moveTo(piece, homeOf(piece), true, true);
             playReturn();
             // A drag that went nowhere is still the child working at it, so the
             // wait starts again from here rather than carrying on.

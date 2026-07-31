@@ -437,6 +437,27 @@ export interface SceneryOptions {
   readonly sky?: boolean;
 }
 
+/**
+ * The shelf the waiting pieces stand on: a band of sand with a darker lip along
+ * the edge the scene is on, which is what makes it read as a shelf rather than
+ * as a stripe. Shared with the picture boards, which have no landscape behind
+ * them but still have a tray, so the two cannot drift apart.
+ */
+export function renderTrayBands(layout: Layout): string {
+  return layout.trayBands
+    .map(({ rect, lip }) => {
+      const edge =
+        lip === "bottom"
+          ? { x: rect.x, y: rect.y + rect.height, width: rect.width, height: 10 }
+          : lip === "right"
+            ? { x: rect.x + rect.width - 10, y: rect.y, width: 10, height: rect.height }
+            : { x: rect.x, y: rect.y, width: 10, height: rect.height };
+      return `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" fill="#f6ead0" />
+       <rect x="${edge.x}" y="${edge.y}" width="${edge.width}" height="${edge.height}" fill="#d9c398" />`;
+    })
+    .join("");
+}
+
 export function renderScenery(layout: Layout, options: SceneryOptions = {}): string {
   const { width, height } = layout.canvas;
   const { sceneTop, horizon, bands } = layout;
@@ -477,20 +498,7 @@ export function renderScenery(layout: Layout, options: SceneryOptions = {}): str
 
   const decor = layout.decorLines.map((groundY) => backdrop.growth(width, groundY)).join("");
 
-  const trayBand = tray
-    ? layout.trayBands
-        .map(({ rect, lip }) => {
-          const edge =
-            lip === "bottom"
-              ? { x: rect.x, y: rect.y + rect.height, width: rect.width, height: 10 }
-              : lip === "right"
-                ? { x: rect.x + rect.width - 10, y: rect.y, width: 10, height: rect.height }
-                : { x: rect.x, y: rect.y, width: 10, height: rect.height };
-          return `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" fill="#f6ead0" />
-       <rect x="${edge.x}" y="${edge.y}" width="${edge.width}" height="${edge.height}" fill="#d9c398" />`;
-        })
-        .join("")
-    : "";
+  const trayBand = tray ? renderTrayBands(layout) : "";
 
   return `
     <defs>

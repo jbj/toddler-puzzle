@@ -69,10 +69,19 @@ function group(className?: string): SVGGElement {
   return g;
 }
 
-export function setPiecePosition(piece: SVGGElement, position: Point): void {
+/**
+ * Put a piece where it belongs, at the size it is drawn there.
+ *
+ * `shrink` is one everywhere but the tray of a picture board, where a piece
+ * waits smaller than it lands. Both terms are always written, even when the
+ * scale is one, because a transition can only interpolate between transforms
+ * built the same way: drop the `scale` when it is one and a piece being picked
+ * up would jump rather than grow.
+ */
+export function setPiecePosition(piece: SVGGElement, position: Point, shrink = 1): void {
   // Set via CSS rather than the `transform` attribute so the settle animation
   // in style.css can transition it.
-  piece.style.transform = `translate(${position.x}px, ${position.y}px)`;
+  piece.style.transform = `translate(${position.x}px, ${position.y}px) scale(${shrink})`;
 }
 
 function buildPiece(shape: PieceShape, scale: number): SVGGElement {
