@@ -77,9 +77,10 @@ const across = (scene: Scene, fraction: number): number =>
 /**
  * One theme's landscape: what colour everything is, and what stands in it.
  *
- * `skyline` is drawn before the ground bands, so whatever stands on the horizon
- * is tucked in behind the first hill crest - which is what makes it read as
- * standing in the distance rather than floating at the join.
+ * `skyline` is drawn after the ground bands and their crests, with its props
+ * standing a little below the horizon, so whatever stands there sits into the
+ * field rather than floating at the join - a crest rises above the horizon, and
+ * drawing the props first would bury them behind it.
  */
 interface Backdrop {
   /** The wash behind everything: sky for a land theme, water for the sea. */
