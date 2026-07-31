@@ -81,7 +81,10 @@ function sliceCount({ level, targets, pieces }: Deal["level"]): SliceCount {
  * The lines are drawn opaque inside a faded group rather than each one faded,
  * because two neighbouring cells share their cut: two half-transparent strokes
  * along one line would come out darker than the rest and read as a cut that is
- * not there.
+ * not there. Inside the group the second stroke of a shared cut lands on
+ * pixels the first already painted white, so the group fades one line rather
+ * than two - measured through `rsvg-convert`, where one, two and three
+ * coincident strokes come out the same colour.
  *
  * Unlike a shape-match hole this one is dimmed rather than hidden when it is
  * filled: a rim peeking out from under a whole animal is untidy, but the

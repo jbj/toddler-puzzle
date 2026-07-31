@@ -191,17 +191,23 @@ const clipId = (piece: string, what: string) => `${what}-${piece.replaceAll(":",
 export const SLICE_EDGE_WIDTH = 4;
 
 /**
+ * Where a recipe cuts: one closed path per slice, in art units. The one place
+ * cells become paths, so the pieces and the guide on the hole they are heading
+ * for are the same strings and not merely the same arithmetic done twice.
+ */
+const cutPaths = (recipe: SliceRecipe, size: number): readonly string[] =>
+  cellsFrom(recipe.cuts, size).map(cellPath);
+
+/**
  * Where an animal cut into this many slices is cut: one closed path per slice,
  * in the animal's own box units, in the order `sliceShapes` returns them.
  *
  * The very paths the slices are clipped with, which is what lets the hole be
  * divided exactly where the pieces are - a guide drawn from anything else would
- * be a line the child aims at and misses. `sliceShapes` reads it too, so the two
- * cannot drift apart.
+ * be a line the child aims at and misses.
  */
 export function sliceCuts(animal: PieceShape, count: SliceCount): readonly string[] {
-  const { cuts } = sliceRecipe(animal.id as string as AnimalId, count);
-  return cellsFrom(cuts, animal.box.width).map(cellPath);
+  return cutPaths(sliceRecipe(animal.id as string as AnimalId, count), animal.box.width);
 }
 
 /**
@@ -221,7 +227,7 @@ export function sliceCuts(animal: PieceShape, count: SliceCount): readonly strin
  */
 export function sliceShapes(animal: PieceShape, count: SliceCount): readonly PieceShape[] {
   const recipe = sliceRecipe(animal.id as string as AnimalId, count);
-  const paths = sliceCuts(animal, count);
+  const paths = cutPaths(recipe, animal.box.width);
 
   return paths.map((path, index) => {
     const id = `slice:${animal.id}:${count}:${index}`;
