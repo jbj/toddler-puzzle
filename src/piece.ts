@@ -84,9 +84,16 @@ export function inkOf(shape: PieceShape): Rect {
  * A share of the drawing rather than of the authored box, because a piece cut
  * out of a bigger picture keeps the whole picture's box: measured from the box,
  * a twelfth of a jigsaw would be given a margin a third of its own size, and
- * the tray would be packing margins rather than pieces. Never taken outside the
- * authored box either: an animal drawn to its own edges gets none, and needs
- * none, because the drawing is already there.
+ * the tray would be packing margins rather than pieces. The *margin* is never
+ * taken outside the authored box: an animal drawn to its own edges gets none,
+ * and needs none, because the drawing is already there.
+ *
+ * The thickening that follows it is not clamped, and a sliver lying along an
+ * edge does end up with a box that runs outside the authored one - the boat's
+ * hull at level 16 by about a twelfth of its box. That is the right way round:
+ * clamping there would push the box off the drawing's centre, and the centre is
+ * the thing the whole rule aims at. Nothing downstream minds, because the tray
+ * cuts its cell from this box rather than from the authored one.
  */
 export const GRAB_PADDING = 0.04;
 

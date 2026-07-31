@@ -601,6 +601,23 @@ describe("a piece's own box", () => {
    * cell from this box, and a margin outside the authored box would ask for
    * space around every animal that no finger has ever been able to grab it by.
    */
+  /**
+   * The other half of the rule above, and the one that looks like a bug: the
+   * *thickening* is not clamped, so a sliver lying along an edge of its box
+   * ends up with a box that runs outside it. That is the right way round.
+   * Clamping would push the box off the centre of the drawing, and the centre
+   * being the drawing's centre is what the placement rule is built on. Nothing
+   * downstream wants the authored box: the tray cuts its cell from this box,
+   * and the canvas holds a piece by this box.
+   */
+  it("lets the thickening leave the box rather than move off the drawing", () => {
+    const sliver = { x: 0, y: 220, width: 240, height: 20 };
+    const grip = gripOf(drawing(sliver));
+    expect(grip.height / grip.width).toBeGreaterThanOrEqual(GRIP_MIN_RATIO - 1e-9);
+    expect(grip.y + grip.height).toBeGreaterThan(BOX.height);
+    expect(boxCenter(grip, grip)).toEqual(boxCenter(sliver, sliver));
+  });
+
   it("keeps the margin inside the piece's own box", () => {
     expect(gripOf(drawing({ x: 0, y: 0, width: 240, height: 240 }))).toEqual({
       x: 0,

@@ -36,10 +36,19 @@ One box per piece, and one rule that uses it.
 then *thickened* so that neither side is less than half the other. The margin is
 a share of the drawing rather than of the authored box - a twelfth of a jigsaw
 keeps the whole picture's box, and measured from that it would be given a margin
-a third of its own size - and it never leaves the authored box, so an animal
-drawn to its own edges gets none and needs none. Thickening is symmetric about
-the drawing's centre, so the box's centre is always the drawing's centre, which
-is the point the game already sparkles on.
+a third of its own size - and the margin never leaves the authored box, so an
+animal drawn to its own edges gets none and needs none. Thickening is symmetric
+about the drawing's centre, so the box's centre is always the drawing's centre,
+which is the point the game already sparkles on.
+
+The thickening is deliberately *not* clamped to the authored box, and a sliver
+lying along an edge gets a box that runs outside it - the boat's hull at level
+16 sits 20 units below its own box. Clamping it there would be the wrong trade:
+it would push the box off the centre of the drawing, and every other thing here
+is built on those two being the same point. Nothing downstream needs the
+authored box anyway - the tray cuts its cell from *this* box, the canvas holds a
+piece by *this* box - so an authored box that a drawing does not fill is a
+statement about where the artwork was drawn, not a fence around the piece.
 
 **The rule** (`onTarget` in `src/layout.ts`) is that a drop is taken when the
 piece's box, put where the finger let go, covers the middle of where that piece
