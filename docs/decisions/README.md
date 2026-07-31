@@ -49,4 +49,5 @@ and an argument nobody can see having changed is worth nothing.
 | [20260730T000400-the-home-screen-icon-is-svg](20260730T000400-the-home-screen-icon-is-svg.md) | Ship an SVG home-screen icon rather than a committed PNG |
 | [20260730T005900-guard-the-sample-against-the-table](20260730T005900-guard-the-sample-against-the-table.md) | Guard the shot run's sample against the level table |
 | [20260730T113000-a-check-explains-its-own-environment](20260730T113000-a-check-explains-its-own-environment.md) | Let a check explain its own environment rather than fail as something else |
+| [20260730T194900-a-grown-up-can-take-a-kind-out](20260730T194900-a-grown-up-can-take-a-kind-out.md) | Let a grown-up switch a kind of puzzle out of the thirty |
 | [20260731T091500-a-rebuilt-picture-fills-the-room](20260731T091500-a-rebuilt-picture-fills-the-room.md) | Let a rebuilt picture fill the room the tray leaves |

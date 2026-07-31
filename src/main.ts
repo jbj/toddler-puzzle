@@ -4,7 +4,7 @@ import { createGame } from "./game";
 import { seededRandom } from "./geometry";
 import { applySettings, createGrownUpPanel } from "./grownups";
 import { ensureKind, recoverWhenPossible } from "./kinds/registry";
-import { LEVEL_COUNT, levelSpec } from "./levels";
+import { LEVEL_COUNT, levelSpec, playableFrom } from "./levels";
 import { browserStorage, createProgressStore } from "./progress";
 import { warmAhead } from "./warm";
 
@@ -30,10 +30,8 @@ const asked = Number(params.get("level"));
 const deepLink = Number.isInteger(asked) && asked >= 1 && asked <= LEVEL_COUNT ? asked : null;
 
 /**
- * A deep link wins over the saved level, and leaves it alone: it goes where it
- * says, and nothing played from there moves the place the child had got to.
- * Without one the game resumes where it was left - which is level 1 for a new
- * player, and level 1 again for a browser that will not store anything.
+ * A deep link is not the child's own progress, so nothing played from one moves
+ * the place they had got to.
  */
 const progress = createProgressStore({
   storage: browserStorage(),
@@ -43,7 +41,19 @@ const progress = createProgressStore({
 // What a grown-up set last time, in force before the first sound can play.
 applySettings(progress.settings());
 
-const startLevel = deepLink ?? progress.read().level;
+/**
+ * A deep link wins over the saved level, and leaves it alone: it goes where it
+ * says, and nothing played from there moves the place the child had got to. It
+ * also ignores the kinds a grown-up has switched off, because it is a tool for
+ * looking at a particular level and has to reach the one it names.
+ *
+ * Without one the game resumes where it was left - which is level 1 for a new
+ * player, and level 1 again for a browser that will not store anything. A level
+ * whose kind has been switched off since it was written down resumes at the
+ * next one that is still in play, rather than at a board the grown-up has said
+ * they do not want.
+ */
+const startLevel = deepLink ?? playableFrom(progress.read().level, progress.settings().kinds);
 
 /**
  * Chapters 1 and 2 are in this file's own bundle, so a new player starts with

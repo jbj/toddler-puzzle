@@ -69,6 +69,13 @@ oversights until you know it, so the reason is written next to the rule.
   cannot find a secret; the panel is the sanctioned exception to the rule above,
   and it earns that by being unreachable by tapping. See
   [decision 20260729T000652](../../docs/decisions/20260729T000652-a-door-for-grown-ups.md).
+- Let a grown-up take a kind of puzzle out of the thirty from that panel, one
+  switch per kind, but never the last one and never by editing the level table.
+  A kind switched off is stepped over; the ramp, its order and the child's
+  screen are unchanged. Why: the thirty levels span about a year of development
+  and no child is at every point of it at once, but a two-year-old handed a
+  nine-piece jigsaw does not stretch, they stop playing. See
+  [decision 20260730T194900](../../docs/decisions/20260730T194900-a-grown-up-can-take-a-kind-out.md).
 - Resume on the level the child stopped on, and treat storage as a nicety rather
   than a dependency: any failure to remember - a browser that refuses, a record
   that is corrupt, a level number the table no longer has - falls back silently
@@ -150,13 +157,18 @@ the child on. The mechanics are in
 
 **A grown-up can steer, from behind a hold.** Thirty levels and options that
 apply across all of them need somebody who can read to be able to say where the
-child should be and how forgiving the game is. So there is one panel, opened by
-holding a labelled "Grown-ups" button for two seconds - taps never open it,
-however many - holding a map of the thirty levels, the switches, and the only
-reset in the game. It is deliberately styled for an adult rather than a child.
-The mechanics are in
+child should be, which kinds of puzzle they are ready for, and how forgiving the
+game is. So there is one panel, opened by holding a labelled "Grown-ups" button
+for two seconds - taps never open it, however many - holding a map of the thirty
+levels, the switches, and the only reset in the game. It is deliberately styled
+for an adult rather than a child. Among the switches is one per kind of puzzle,
+so a parent can take the jigsaws out for a year and leave the animals in; the
+game steps over what is switched off and goes on running forward, and it refuses
+to let the last kind go. The mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
-[decision 20260729T000652](../../docs/decisions/20260729T000652-a-door-for-grown-ups.md).
+[decision 20260729T000652](../../docs/decisions/20260729T000652-a-door-for-grown-ups.md)
+and
+[decision 20260730T194900](../../docs/decisions/20260730T194900-a-grown-up-can-take-a-kind-out.md).
 
 **And it picks up where it left off.** The level being played is remembered
 between sittings, so a child who plays ten minutes a day works along the thirty
