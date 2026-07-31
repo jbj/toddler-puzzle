@@ -33,7 +33,7 @@
  * All values are in logical canvas units; geometry.ts maps them to pixels.
  */
 import { fitScale, scaleRect, scaleSize, type Point, type Rect, type Size } from "./geometry";
-import { isVouchedLevel, type LevelSpec } from "./levels";
+import { isVouchedLevel, type LevelSpec, type PuzzleKindId } from "./levels";
 import { assertUniquePieceIds, inkOf, type PieceId, type PieceShape } from "./piece";
 
 /**
@@ -162,6 +162,21 @@ export interface Layout {
   readonly canvas: Size;
   /** The square every target is drawn to fit inside, and every piece with it. */
   readonly slotSize: number;
+  /**
+   * How big a piece is drawn while it *waits*, as a fraction of the size it
+   * lands at. One almost everywhere: a piece is normally the size of the hole
+   * it drops into, which is how a two-year-old tells which hole that is.
+   *
+   * It is below one on a picture board, and only there. The pieces of a cut-up
+   * picture tile it exactly, so a tray holding all of them at the size they
+   * land at needs as much room as the picture does - which is what kept the
+   * picture down to about a tenth of the board. Letting a piece wait smaller
+   * than it lands is what buys the picture the rest of the board, and the floor
+   * under it is `COMPOSITION.minWaitingScale`. Use `waitingHome` rather than
+   * this number: a piece shrinks about its own drawing's centre, so where its
+   * box corner goes is not where it would go at full size.
+   */
+  readonly waitingScale: number;
   /** What each of this level's pieces and targets measures, and how forgiving. */
   readonly boxes: ReadonlyMap<PieceId, PieceBox>;
   /** Top of the scene; the tray occupies everything above it. */
@@ -258,6 +273,51 @@ interface SceneRow {
   readonly count: number;
 }
 
+/**
+ * Where a waiting piece is actually drawn: the corner to translate its box to,
+ * and the fraction of full size to draw it at from there.
+ *
+ * A piece that waits smaller than it lands shrinks **about its own drawing's
+ * centre**, not about its box corner - the box of a jigsaw piece is the whole
+ * picture, so shrinking about the corner would swing the drawing halfway across
+ * the board. Centred on the ink, a piece grows in place when it is picked up
+ * and the child's finger is still on the bit they aimed at.
+ *
+ * `trayHome` stays what it always was: where the piece's box goes. This is that
+ * corner adjusted for the shrink, and is what the board and the hint draw with.
+ */
+export function waitingHome(
+  layout: Layout,
+  piece: PieceId,
+): { readonly at: Point; readonly shrink: number } {
+  const home = trayHome(layout, piece);
+  const { ink } = boxOf(layout, piece);
+  const shrink = layout.waitingScale;
+  return {
+    at: {
+      x: home.x + (ink.x + ink.width / 2) * (1 - shrink),
+      y: home.y + (ink.y + ink.height / 2) * (1 - shrink),
+    },
+    shrink,
+  };
+}
+
+/**
+ * What a piece draws while it waits, relative to its box corner: the same ink,
+ * shrunk about its own centre. The same rectangle as `PieceBox.ink` wherever a
+ * piece waits at the size it lands at, which is everywhere but a picture board.
+ */
+export function waitingInk(layout: Layout, piece: PieceId): Rect {
+  const { ink } = boxOf(layout, piece);
+  const shrink = layout.waitingScale;
+  return {
+    x: ink.x + (ink.width * (1 - shrink)) / 2,
+    y: ink.y + (ink.height * (1 - shrink)) / 2,
+    width: ink.width * shrink,
+    height: ink.height * shrink,
+  };
+}
+
 /** One tray cell: which piece of the cast waits there, and the room it has. */
 interface TrayCell {
   readonly piece: number;
@@ -268,6 +328,8 @@ interface Arrangement {
   readonly canvas: Size;
   /** The square a target of any proportions is drawn to fit inside. */
   readonly slotSize: number;
+  /** What a waiting piece is drawn at, as a fraction of `slotSize`. */
+  readonly waitingScale: number;
   readonly sceneTop: number;
   readonly horizon: number;
   readonly bands: readonly GroundBand[];
@@ -380,6 +442,7 @@ function fromArrangement(
     targets,
     canvas,
     slotSize,
+    waitingScale: arrangement.waitingScale,
     boxes,
     sceneTop: arrangement.sceneTop,
     horizon: arrangement.horizon,
@@ -527,7 +590,88 @@ const COMPOSITION = {
    * of the way back up. A board that fails here is a board to make roomier.
    */
   minPieceInk: 0.065,
+  /**
+   * The smallest a piece may be drawn while it waits, as a fraction of the size
+   * it lands at - on each axis, so two thirds here is four ninths of the area.
+   *
+   * It applies to a picture board and nowhere else, and it is the price of one.
+   * The pieces of a cut-up picture tile it exactly, so a tray that holds them
+   * all at the size they land at needs the picture's own area over again, and
+   * the picture is squeezed into a third of the board at best. Two thirds is
+   * as far as that trade goes: below it a piece stops reading as the thing that
+   * fits the shape it is next to, which is the whole skill the game is built
+   * on. See
+   * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+   */
+  minWaitingScale: 2 / 3,
+  /**
+   * How much of the canvas's shorter side a picture board keeps clear around
+   * the picture, on every side.
+   *
+   * Small, and not nothing. A picture is drawn to the room it is given, and a
+   * room measured to the canvas edge puts the picture's own border half over
+   * the tray's lip at the top and hard against the bottom of the screen, which
+   * reads as tucked under the shelf rather than as standing on the board. This
+   * costs about three per cent of the picture and is the difference between a
+   * board that fills and a board that overflows.
+   */
+  pictureMargin: 0.022,
+  /**
+   * What a picture board's tray keeps clear between a waiting piece and the
+   * edge of the sand it stands on, as a share of the largest drawing waiting
+   * there.
+   *
+   * A share of the *piece* rather than of the slot, and that is the whole
+   * point. Everywhere else a slot is about the size of the piece standing in
+   * it, so `sideMargin` and `trayPad` are measured against the thing they are
+   * holding apart. On a picture board the slot is the whole picture and a
+   * waiting piece is a fraction of it, so the same numbers put a third of a
+   * picture's width of sand around a single shard - a tray half again as wide
+   * as it needs to be to hold anything, and every unit of it taken off the
+   * picture. Measured against the piece, the tray is as big as what stands in
+   * it and the rest goes back to the board.
+   */
+  trayEdge: 0.13,
+  /**
+   * What a picture board's tray keeps between one waiting piece and the next,
+   * as a share of the largest drawing waiting there. Wider than `trayEdge`,
+   * because two pieces side by side have to read as two things to pick up
+   * rather than as one shape with a crack in it.
+   */
+  trayGap: 0.2,
 } as const;
+
+/**
+ * What a tray keeps clear around and between the pieces waiting in it, in slot
+ * units.
+ *
+ * A record rather than four reads of `COMPOSITION` because a picture board
+ * measures them against something else; see `pictureTrayPad`.
+ */
+interface TrayPad {
+  /** Kept between a waiting piece and each end of the sand it stands on. */
+  readonly margin: number;
+  /** Kept between neighbouring pieces along a shelf. */
+  readonly gap: number;
+  /** Kept above, below and between the shelves of a band. */
+  readonly pad: number;
+  /** Kept between a gutter's column and the scene beside it. */
+  readonly inside: number;
+}
+
+/**
+ * What a tray keeps clear on an ordinary board: shares of the slot, like every
+ * other gap in the composition, because there a slot is about the size of the
+ * piece standing in it.
+ */
+const SLOT_TRAY: TrayPad = {
+  margin: COMPOSITION.sideMargin,
+  gap: COMPOSITION.columnGap,
+  pad: COMPOSITION.trayPad,
+  // Half a column gap, so two gutters put a whole one between the pieces and
+  // the scene, the same as two neighbours in a row put between themselves.
+  inside: COMPOSITION.columnGap / 2,
+};
 
 /** `count` pieces over `rows` rows, as evenly as possible, fullest row first. */
 function splitRows(count: number, rows: number): number[] {
@@ -613,10 +757,9 @@ function inkShares(pieces: readonly PieceShape[]): Size[] {
 }
 
 /** What a row of these drawings takes across the canvas, in slot units. */
-function spanOf(widths: readonly number[]): number {
-  const { sideMargin, columnGap } = COMPOSITION;
+function spanOf(widths: readonly number[], pad: TrayPad = SLOT_TRAY): number {
   return (
-    widths.reduce((sum, width) => sum + width, 0) + (widths.length - 1) * columnGap + 2 * sideMargin
+    widths.reduce((sum, width) => sum + width, 0) + (widths.length - 1) * pad.gap + 2 * pad.margin
   );
 }
 
@@ -637,14 +780,19 @@ function spanOf(widths: readonly number[]): number {
  * row so the *other* rows can be shallow. Which of them wins depends on the
  * cast, so neither is chosen here.
  */
-function packShelves(shares: readonly Size[], rows: number, order: readonly number[]): Shelf[] {
+function packShelves(
+  shares: readonly Size[],
+  rows: number,
+  order: readonly number[],
+  pad: TrayPad,
+): Shelf[] {
   const packed: number[][] = Array.from({ length: rows }, () => []);
   const widths: number[][] = Array.from({ length: rows }, () => []);
   for (const index of order) {
     const share = shares[index] as Size;
     let best = 0;
     for (let row = 1; row < rows; row++) {
-      if (spanOf(widths[row] as number[]) < spanOf(widths[best] as number[])) best = row;
+      if (spanOf(widths[row] as number[], pad) < spanOf(widths[best] as number[], pad)) best = row;
     }
     (packed[best] as number[]).push(index);
     (widths[best] as number[]).push(share.width);
@@ -655,7 +803,10 @@ function packShelves(shares: readonly Size[], rows: number, order: readonly numb
     const inOrder = [...indices].sort((a, b) => a - b);
     return {
       pieces: inOrder,
-      span: spanOf(inOrder.map((index) => (shares[index] as Size).width)),
+      span: spanOf(
+        inOrder.map((index) => (shares[index] as Size).width),
+        pad,
+      ),
       height: Math.max(...inOrder.map((index) => (shares[index] as Size).height)),
     };
   });
@@ -667,17 +818,19 @@ const orderedBy = (shares: readonly Size[], measure: (share: Size) => number): n
     .sort((a, b) => measure(shares[b] as Size) - measure(shares[a] as Size) || a - b);
 
 /** The two packings of this cast into `rows` shelves that are worth costing. */
-function shelvings(shares: readonly Size[], rows: number): Shelf[][] {
+function shelvings(shares: readonly Size[], rows: number, pad: TrayPad = SLOT_TRAY): Shelf[][] {
   return [
     packShelves(
       shares,
       rows,
       orderedBy(shares, (share) => share.width),
+      pad,
     ),
     packShelves(
       shares,
       rows,
       orderedBy(shares, (share) => share.height),
+      pad,
     ),
   ];
 }
@@ -687,7 +840,7 @@ function shelvings(shares: readonly Size[], rows: number): Shelf[][] {
  * shorter. Only two, one either side, because the point of the arrangement is
  * that the picture keeps the middle of the board.
  */
-function gutterings(shares: readonly Size[]): Column[] {
+function gutterings(shares: readonly Size[], pad: TrayPad = SLOT_TRAY): Column[] {
   const packed: number[][] = [[], []];
   const depths = [0, 0];
   for (const index of orderedBy(shares, (share) => share.height)) {
@@ -700,7 +853,7 @@ function gutterings(shares: readonly Size[]): Column[] {
     return {
       pieces: inOrder,
       width: Math.max(...inOrder.map((index) => (shares[index] as Size).width), 0),
-      depth: (depths[at] as number) + (inOrder.length + 1) * COMPOSITION.trayPad,
+      depth: (depths[at] as number) + (inOrder.length + 1) * pad.pad,
     };
   });
 }
@@ -738,7 +891,7 @@ function planFor(
   const trayHeight =
     tray.shape === "shelves"
       ? tray.shelves.reduce((sum, shelf) => sum + shelf.height, 0) +
-        (tray.shelves.length + 1) * COMPOSITION.trayPad
+        (tray.shelves.length + 1) * SLOT_TRAY.pad
       : 0;
   const sceneSpan =
     tray.shape === "shelves"
@@ -776,6 +929,23 @@ function planFor(
 const gutterWidth = (columns: readonly Column[]): number =>
   Math.max(...columns.map((column) => column.width));
 
+/**
+ * How deep a band of shelves is at this tray slot size. The one place the
+ * answer is worked out, so what a picture board plans around and what
+ * `shelveTray` then lays out cannot drift apart.
+ */
+const shelvedDepth = (shelves: readonly Shelf[], slotSize: number, pad: TrayPad): number =>
+  Math.round(
+    (shelves.reduce((sum, shelf) => sum + shelf.height, 0) + (shelves.length + 1) * pad.pad) *
+      slotSize,
+  );
+
+/** How far in from each side a pair of gutters reaches, at this tray slot size. */
+const gutterEdge = (columns: readonly Column[], slotSize: number, pad: TrayPad): number =>
+  Math.round(pad.margin * slotSize) +
+  gutterWidth(columns) * slotSize +
+  Math.round(pad.inside * slotSize);
+
 interface LaidTray {
   readonly cells: readonly TrayCell[];
   readonly bands: readonly TrayBand[];
@@ -786,26 +956,32 @@ interface LaidTray {
  * A band of shelves across the top: the arrangement every kind uses, and the
  * only one where the tray costs the scene any height.
  */
-function shelveTray(plan: Plan, canvas: Size, slotSize: number, margin: number): LaidTray {
-  const shelves = plan.tray.shape === "shelves" ? plan.tray.shelves : [];
+function shelveTray(
+  shelves: readonly Shelf[],
+  inks: readonly Size[],
+  canvas: Size,
+  slotSize: number,
+  pad: TrayPad,
+): LaidTray {
   const scaled = (share: number): number => share * slotSize;
+  const margin = Math.round(pad.margin * slotSize);
   const heights = shelves.map((shelf) => scaled(shelf.height));
   const shelved = heights.reduce((sum, height) => sum + height, 0);
-  const sceneTop = Math.round(shelved + (shelves.length + 1) * scaled(COMPOSITION.trayPad));
-  const pad = (sceneTop - shelved) / (shelves.length + 1);
+  const sceneTop = shelvedDepth(shelves, slotSize, pad);
+  const between = (sceneTop - shelved) / (shelves.length + 1);
 
   const cells: TrayCell[] = [];
-  let top = pad;
+  let top = between;
   for (const [index, shelf] of shelves.entries()) {
     const height = heights[index] as number;
-    const widths = shelf.pieces.map((piece) => scaled((plan.inks[piece] as Size).width));
+    const widths = shelf.pieces.map((piece) => scaled((inks[piece] as Size).width));
     for (const [at, x] of spreadCells(widths, canvas.width, margin).entries()) {
       cells.push({
         piece: shelf.pieces[at] as number,
         rect: { x, y: Math.round(top), width: widths[at] as number, height },
       });
     }
-    top += height + pad;
+    top += height + between;
   }
   return {
     cells,
@@ -823,14 +999,14 @@ function shelveTray(plan: Plan, canvas: Size, slotSize: number, margin: number):
  */
 function gutterTray(
   columns: readonly Column[],
-  plan: Plan,
+  inks: readonly Size[],
   canvas: Size,
   slotSize: number,
-  margin: number,
+  pad: TrayPad,
 ): LaidTray {
   const scaled = (share: number): number => share * slotSize;
   const width = scaled(gutterWidth(columns));
-  const edge = margin + width + Math.round(scaled(COMPOSITION.columnGap) / 2);
+  const edge = gutterEdge(columns, slotSize, pad);
   // The column is centred in the sand it stands on rather than pushed against
   // the picture: the shelf is what the child reads as "these are waiting".
   const inset = (edge - width) / 2;
@@ -838,7 +1014,7 @@ function gutterTray(
   const room = canvas.height - COMPOSITION.controlRoom;
   const cells: TrayCell[] = [];
   for (const [side, column] of columns.entries()) {
-    const heights = column.pieces.map((piece) => scaled((plan.inks[piece] as Size).height));
+    const heights = column.pieces.map((piece) => scaled((inks[piece] as Size).height));
     const stacked = heights.reduce((sum, height) => sum + height, 0);
     const pad = (room - stacked) / (column.pieces.length + 1);
     let top = pad;
@@ -864,6 +1040,19 @@ function gutterTray(
   };
 }
 
+/** Lay whichever tray a plan asked for, at the slot size its pieces wait at. */
+function layTray(
+  tray: TrayPlan,
+  inks: readonly Size[],
+  canvas: Size,
+  slotSize: number,
+  pad: TrayPad,
+): LaidTray {
+  return tray.shape === "shelves"
+    ? shelveTray(tray.shelves, inks, canvas, slotSize, pad)
+    : gutterTray(tray.columns, inks, canvas, slotSize, pad);
+}
+
 /**
  * Lay a plan out on the canvas. The tray sits at the top, the ground bands are
  * stacked below it, and the height left over is shared out between the sky gap
@@ -879,8 +1068,9 @@ function compose(view: View, plan: Plan): Arrangement {
   const depths = plan.rises.map((rise, index) => (rise + (plan.drops[index] as number)) * slotSize);
   const rowGap = scaled(COMPOSITION.rowGap);
   const margin = Math.round(scaled(COMPOSITION.sideMargin));
-  const laid = plan.tray.shape === "shelves" ? shelveTray(plan, canvas, slotSize, margin) : null;
-  const sceneTop = laid ? laid.sceneTop : 0;
+  const tray = layTray(plan.tray, plan.inks, canvas, slotSize, SLOT_TRAY);
+  const laid = plan.tray.shape === "shelves" ? tray : null;
+  const sceneTop = tray.sceneTop;
 
   const sceneNeed =
     depths.reduce((sum, depth) => sum + depth, 0) +
@@ -919,16 +1109,17 @@ function compose(view: View, plan: Plan): Arrangement {
     ),
   );
 
-  const gutters =
-    plan.tray.shape === "gutters"
-      ? gutterTray(plan.tray.columns, plan, canvas, slotSize, margin)
-      : null;
-  const tray = laid ?? gutters;
-  if (!tray) throw new Error("A tray is either shelves or gutters; this plan was neither.");
+  const gutters = plan.tray.shape === "gutters" ? tray : null;
+  if (!laid && !gutters) {
+    throw new Error("A tray is either shelves or gutters; this plan was neither.");
+  }
 
   return {
     canvas,
     slotSize,
+    // Every board but a picture board draws a piece the size of the hole it
+    // drops into, which is how a child tells which hole that is.
+    waitingScale: 1,
     sceneTop,
     horizon,
     trayCells: tray.cells,
@@ -968,6 +1159,230 @@ function idealRows(count: number, span: number, width: number): number {
   return Math.min(count, Math.max(1, Math.round(Math.sqrt((count * span) / width))));
 }
 
+/* ---------------------------------------------------------------------------
+ * A picture board
+ *
+ * The kinds that cut one hand-drawn picture up and hand the child the pieces.
+ * They are laid out the other way round from every other board: the tray is
+ * planned first, from what a piece needs to be grabbable, and the picture then
+ * takes *everything else*, aspect ratio allowing, with the light blue behind
+ * showing wherever the ratio does not reach.
+ *
+ * The reason they cannot be composed like anything else is arithmetic. A
+ * cut-up picture's pieces tile it exactly, so a tray holding all of them at the
+ * size they land at needs the picture's own area over again - which capped the
+ * picture at about a tenth of the board and left it standing in a landscape
+ * three quarters empty. So a piece here waits smaller than it lands, and no
+ * smaller than `COMPOSITION.minWaitingScale`. See
+ * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+ * ------------------------------------------------------------------------ */
+
+/**
+ * The kinds whose one target is a picture the board exists to show. Named here
+ * rather than asked of the kind because the composition happens before any kind
+ * is consulted, and because what is being said is a fact about the *board* - a
+ * scene with no landscape in it - rather than about the rules of the puzzle.
+ */
+const BOARD_FILLING_KINDS: ReadonlySet<PuzzleKindId> = new Set<PuzzleKindId>(["jigsaw", "shatter"]);
+
+/** Is this a level where one picture takes the whole board? */
+const takesTheBoard = (level: LevelSpec, targets: readonly PieceShape[]): boolean =>
+  BOARD_FILLING_KINDS.has(level.kind) && targets.length === 1;
+
+/**
+ * What a picture board's tray keeps clear, in slot units - which is to say the
+ * shares above, converted by the size of the largest thing waiting in the tray.
+ *
+ * The margin is the same on both sides of a gutter's column, so the column
+ * stays centred in the sand it stands on; what changes against an ordinary
+ * board is that there is much less sand.
+ */
+const pictureTrayPad = (shares: readonly Size[]): TrayPad => {
+  const largest = Math.max(...shares.map((ink) => Math.max(ink.width, ink.height)));
+  return {
+    margin: COMPOSITION.trayEdge * largest,
+    gap: COMPOSITION.trayGap * largest,
+    pad: COMPOSITION.trayEdge * largest,
+    inside: COMPOSITION.trayEdge * largest,
+  };
+};
+
+/** The slot at which a shape drawn to fit a square exactly fills `room`. */
+const slotFilling = (box: Size, room: Size): number =>
+  Math.max(box.width, box.height) * fitScale(room, box);
+
+/**
+ * The room a tray of this shape leaves the picture, at this tray slot size,
+ * less the margin a picture keeps around itself on every side.
+ */
+function sceneRoom(tray: TrayPlan, canvas: Size, slotSize: number, pad: TrayPad): Rect {
+  const margin = COMPOSITION.pictureMargin * Math.min(canvas.width, canvas.height);
+  const taken =
+    tray.shape === "shelves"
+      ? { top: shelvedDepth(tray.shelves, slotSize, pad), side: 0 }
+      : { top: 0, side: gutterEdge(tray.columns, slotSize, pad) };
+  return {
+    x: taken.side + margin,
+    y: taken.top + margin,
+    width: canvas.width - 2 * (taken.side + margin),
+    height: canvas.height - taken.top - 2 * margin,
+  };
+}
+
+/**
+ * The largest a tray of this shape can be drawn before it stops fitting. Both
+ * measures - a shelf's span, a column's depth - already carry the padding they
+ * were packed with, so this needs no `TrayPad` of its own.
+ */
+function trayCeiling(tray: TrayPlan, canvas: Size): number {
+  if (tray.shape === "shelves") {
+    return canvas.width / Math.max(...tray.shelves.map((shelf) => shelf.span));
+  }
+  // A gutter is capped by its own depth rather than by the canvas: its columns
+  // stop short of `controlRoom` so a piece never waits under the reset button.
+  const depth = Math.max(...tray.columns.map((column) => column.depth));
+  return (canvas.height - COMPOSITION.controlRoom) / depth;
+}
+
+/** One way to lay a picture board out: a tray, and the two sizes it settles. */
+interface PicturePlan {
+  readonly tray: TrayPlan;
+  readonly inks: readonly Size[];
+  /** What this tray keeps clear around the pieces waiting in it. */
+  readonly pad: TrayPad;
+  /** What the picture, and every piece standing in it, is drawn to. */
+  readonly sceneSlot: number;
+  /** What a piece waiting in the tray is drawn to. Never above `sceneSlot`. */
+  readonly traySlot: number;
+}
+
+/**
+ * The best this tray can do for the picture.
+ *
+ * Two things pull against each other and the answer is where they cross. A
+ * bigger tray leaves the picture less room, so the size the picture *fits* into
+ * falls as the tray grows; but a piece may not be drawn below two thirds of
+ * what it lands at, so the size the picture is *allowed* rises with the tray.
+ * Swept rather than solved, because the tray's depth is rounded and a formula
+ * that agreed with `shelvedDepth` today would not have to tomorrow.
+ */
+function bestPicturePlan(
+  tray: TrayPlan,
+  inks: readonly Size[],
+  canvas: Size,
+  box: Size,
+  pad: TrayPad,
+): PicturePlan {
+  let best: PicturePlan = { tray, inks, pad, sceneSlot: 0, traySlot: 0 };
+  for (let traySlot = 1; traySlot <= Math.floor(trayCeiling(tray, canvas)); traySlot++) {
+    const room = sceneRoom(tray, canvas, traySlot, pad);
+    if (room.width <= 0 || room.height <= 0) break;
+    const sceneSlot = Math.floor(
+      Math.min(slotFilling(box, room), traySlot / COMPOSITION.minWaitingScale),
+    );
+    if (sceneSlot > best.sceneSlot) {
+      // A piece never waits larger than it lands: that would be a picture
+      // shrinking as it is built, which is the opposite of the promise.
+      best = { tray, inks, pad, sceneSlot, traySlot: Math.min(traySlot, sceneSlot) };
+    }
+  }
+  return best;
+}
+
+/**
+ * Lay a picture board out: the tray where it was planned, and the picture
+ * centred in everything that is left.
+ *
+ * There is no landscape and no sky here, so `bands` and `decorLines` are empty
+ * and the kind paints a flat backdrop instead (`picture-pieces.ts`). What is
+ * kept is the ground line: the picture stands on one, as every target in this
+ * game does, which is what lets a celebration walk a parade along the bottom of
+ * it without knowing what sort of board it is on.
+ */
+function composePicture(view: View, plan: PicturePlan, picture: PieceShape): Arrangement {
+  const { canvas } = view;
+  const { sceneSlot, traySlot } = plan;
+  const tray = layTray(plan.tray, plan.inks, canvas, traySlot, plan.pad);
+  const room = sceneRoom(plan.tray, canvas, traySlot, plan.pad);
+  const drawn = scaleSize(
+    picture.box,
+    fitScale({ width: sceneSlot, height: sceneSlot }, picture.box),
+  );
+  const groundY = Math.round(room.y + (room.height + drawn.height) / 2);
+
+  const band = tray.bands[0] as TrayBand;
+  return {
+    canvas,
+    slotSize: sceneSlot,
+    waitingScale: sceneSlot > 0 ? traySlot / sceneSlot : 1,
+    sceneTop: tray.sceneTop,
+    // Nothing stands on the horizon here; it is the foot of the picture, so a
+    // rainbow arcs over what the child has just built rather than through it.
+    horizon: groundY,
+    bands: [],
+    trayCells: tray.cells,
+    trayBands: tray.bands,
+    sceneBox: room,
+    // Straight into the empty tray. Every piece is home by the time this is
+    // asked for, so the shelf the child has been taking them off is the one
+    // part of the board with nothing on it - and it is where they are looking.
+    finishCenter:
+      plan.tray.shape === "shelves"
+        ? { x: canvas.width / 2, y: Math.round(tray.sceneTop / 2) }
+        : { x: Math.round(band.rect.width / 2), y: Math.round(canvas.height / 2) },
+    sceneRows: [{ groundY, count: 1 }],
+    sceneMargin: Math.round(COMPOSITION.sideMargin * sceneSlot),
+    decorLines: [],
+  };
+}
+
+/**
+ * Compose a board for a level whose one picture takes it over. Every tray a
+ * cast of this size could be packed into is costed, and the one that leaves the
+ * picture biggest wins; a tie goes to the tray whose pieces wait largest.
+ */
+function arrangePicture(
+  view: View,
+  pieces: readonly PieceShape[],
+  picture: PieceShape,
+): Arrangement {
+  const shares = inkShares(pieces);
+  const pad = pictureTrayPad(shares);
+  const trays: TrayPlan[] = [];
+  for (let trayRows = 1; trayRows <= pieces.length; trayRows++) {
+    for (const shelves of shelvings(shares, trayRows, pad)) {
+      trays.push({ shape: "shelves", shelves });
+    }
+  }
+  if (pieces.length > 1) trays.push({ shape: "gutters", columns: gutterings(shares, pad) });
+
+  const { width } = view.canvas;
+  const smallestInk = COMPOSITION.minPieceInk * width;
+  // Measured on what the child reaches for, which is the piece as it waits.
+  const grabbable = (plan: PicturePlan): boolean =>
+    plan.sceneSlot >= COMPOSITION.minSlot * width &&
+    plan.traySlot * Math.min(...shares.map((ink) => Math.max(ink.width, ink.height))) >=
+      smallestInk;
+
+  const viable = trays
+    .map((tray) => bestPicturePlan(tray, shares, view.canvas, picture.box, pad))
+    .filter(grabbable);
+  if (viable.length === 0) {
+    throw new Error(
+      `${pieces.length} pieces of a picture do not fit the ${view.id} canvas at a size a ` +
+        `toddler could grab.`,
+    );
+  }
+
+  const best = viable.reduce((chosen, plan) =>
+    plan.sceneSlot > chosen.sceneSlot ||
+    (plan.sceneSlot === chosen.sceneSlot && plan.traySlot > chosen.traySlot)
+      ? plan
+      : chosen,
+  );
+  return composePicture(view, best, picture);
+}
+
 /**
  * Compose an arrangement for this cast. Every way of splitting it into rows of
  * ground and rows of tray is costed, and the pieces are made as big as the
@@ -979,15 +1394,23 @@ function idealRows(count: number, span: number, width: number): number {
  * `targets` is what stands in the scene and `pieces` is what waits in the tray.
  * They are usually the same shapes, one hole per piece; a sliced level has
  * fewer targets than pieces, and the two are laid out from their own counts.
+ *
+ * A level whose one target is a picture the board is *for* is composed the
+ * other way round; see `arrangePicture`.
  */
 function arrange(
   view: View,
+  level: LevelSpec,
   pieces: readonly PieceShape[],
   targets: readonly PieceShape[],
 ): Arrangement {
   const count = pieces.length;
   if (count < 1) throw new Error(`A ${view.id} layout needs at least one piece.`);
   if (targets.length < 1) throw new Error(`A ${view.id} layout needs at least one target.`);
+
+  if (takesTheBoard(level, targets)) {
+    return arrangePicture(view, pieces, targets[0] as PieceShape);
+  }
 
   const { width, height } = view.canvas;
   const traySpan = COMPOSITION.trayShare * height;
@@ -1077,7 +1500,7 @@ export function buildLayout(
   pieces: readonly PieceShape[],
   targets: readonly PieceShape[] = pieces,
 ): Layout {
-  return fromArrangement(id, level, pieces, targets, arrange(VIEWS[id], pieces, targets));
+  return fromArrangement(id, level, pieces, targets, arrange(VIEWS[id], level, pieces, targets));
 }
 
 /**

@@ -232,6 +232,27 @@ from a seed is checked both ways round: the same seed twice gives the same
 shards, and two seeds give different ones. What a shattered picture actually
 looks like is `npm run shot`'s, which plays level 26 and finishes it.
 
+`tests/picture-board.test.ts` covers the board both picture chapters are played
+on, which is composed the other way round from every other board: the tray
+first, the picture in everything left. Three of its checks are the ones that
+would otherwise rot silently. **The picture is as big as it is allowed to be**: for
+every jigsaw and shatter level, both orientations, six deals each, either the
+picture reaches an edge of the room the tray left it or the waiting scale is
+sitting on the two-thirds floor - a board where neither is tight has quietly
+stopped growing the picture, and nothing else would say so. **The tray is no
+bigger than what stands in it**: the sand spare around the waiting pieces,
+measured across the direction the tray costs the picture, stays under a third of
+the largest piece, and the tray starts within a fifth of one of the outer edge -
+which is what stops a margin measured against the whole picture creeping back
+in. **The shrink is safe**: a waiting piece is exactly `waitingScale` of its landing ink on both
+axes and concentric with it, which is what makes a piece grow in place under the
+finger instead of leaping across the board when it is picked up. Around those it
+holds the backdrop to being flat colour with no landscape in it, and to asking
+for the page's own `--board-blue` rather than repeating the colour. Whether the
+variable actually reaches both the page and the board, and whether the picture
+really does take the board once it is rendered, are `npm run shot`'s - it reads
+both off a real jigsaw at level 21.
+
 `tests/scene-cells.test.mjs` covers the measure behind "every piece has
 something in it", which is the one piece of real logic in the art scripts. It is
 written as plain ESM rather than TypeScript because it imports
