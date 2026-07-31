@@ -269,7 +269,6 @@ const YELLOW = "#ffcc29";
 const GREEN = "#52b043";
 const BLUE = "#2f8fd8";
 const PINK = "#ef6ea8";
-const BROWN = "#a9714b";
 const SLATE = "#465a6b";
 
 /** A pale window or porthole, drawn inside the part that carries it. */
@@ -536,9 +535,9 @@ export const SCENES: readonly Scene[] = [
         name: "middle",
         shape: { form: "circle", diameter: 68 },
         at: { x: 86, y: 92 },
-        fill: BROWN,
+        fill: "#ffffff",
       },
-      ...ring(5, { x: 120, y: 126 }, 78, 88, "petal", YELLOW),
+      ...ring(5, { x: 120, y: 126 }, 78, 88, "petal", PINK),
     ],
   },
 ];
