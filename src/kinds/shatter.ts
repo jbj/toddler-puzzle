@@ -24,10 +24,9 @@ import { shuffle, type Point } from "../geometry";
 import { boxOf, holeOf, onTarget, type Layout } from "../layout";
 import type { LevelSpec } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
-import { pictureGuide } from "../picture-pieces";
+import { pictureBackdrop, pictureGuide } from "../picture-pieces";
 import { pictureFor, type Picture } from "../pictures";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
-import { renderScenery } from "../scenery";
 import { shatterShapes } from "../shatter";
 
 const ID = "shatter" as const;
@@ -93,10 +92,10 @@ export const shatter: PuzzleKind = {
     return puzzle;
   },
 
-  /** The landscape, with the picture waiting to be put back together in it. */
+  /** Flat colour, with the picture waiting to be put back together on it. */
   backdrop(puzzle: Puzzle, layout: Layout): string {
     const broken = asShatter(puzzle);
-    return `${renderScenery(layout)}<g class="holes">${frame(broken, layout, isWhole(puzzle))}</g>`;
+    return `${pictureBackdrop(layout)}<g class="holes">${frame(broken, layout, isWhole(puzzle))}</g>`;
   },
 
   /**

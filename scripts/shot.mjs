@@ -417,6 +417,29 @@ const cutsInGuide = () => evaluate(`document.querySelectorAll('.hole .cell').len
 /** Is the picture still showing under the frame it is being built in? */
 const guideIsShowing = () =>
   evaluate(`Number(getComputedStyle(document.querySelector('.hole')).opacity) > 0.5`);
+
+/**
+ * The board a cut-up picture is played on, as the browser draws it: what the
+ * picture covers of the stage, and whether the flat backdrop behind it is the
+ * same colour as the page around the stage.
+ *
+ * Both are things only a rendered board can answer. The picture has to take the
+ * board rather than stand in the middle of it, and the colour is one CSS
+ * variable painted in two places - the page's background and the SVG rect - so
+ * what is checked is that the variable actually reaches both.
+ */
+const pictureBoard = () =>
+  evaluate(`(() => {
+    const stage = document.querySelector('#stage').getBoundingClientRect();
+    const hole = document.querySelector('.hole').getBoundingClientRect();
+    const backdrop = document.querySelector('#stage .backdrop rect');
+    return {
+      across: hole.width / stage.width,
+      down: hole.height / stage.height,
+      backdrop: backdrop ? getComputedStyle(backdrop).fill : null,
+      page: getComputedStyle(document.body).backgroundColor,
+    };
+  })()`);
 /**
  * What the cut edges on a set of pieces are doing: how many pieces carry one,
  * and the brightest one showing. Both numbers, because a check that only asked
@@ -1815,6 +1838,19 @@ try {
   check("four pieces, one picture to build them in", (await holeCount()) === 1);
   check("every piece has a cut of its own in the guide", (await cutsInGuide()) === jigsawPieces);
   check("the picture shows under the empty frame", await guideIsShowing());
+  // The picture takes the board rather than standing in the middle of it, and
+  // what is left over is the page's own colour rather than a landscape. Both
+  // are only visible on a rendered board; see decision 20260730T230000.
+  const board = await pictureBoard();
+  check(
+    `the picture takes the board (${(board.across * 100).toFixed(0)}% across, ` +
+      `${(board.down * 100).toFixed(0)}% down)`,
+    Math.max(board.across, board.down) > 0.6,
+  );
+  check(
+    `the blue behind the picture is the blue behind the page (${board.backdrop} / ${board.page})`,
+    board.backdrop !== null && board.backdrop === board.page,
+  );
   // The other half of the rule the finished board is checked against below: a
   // piece waiting in the tray is a piece, and its edge is what says so.
   const looseEdges = await cutEdgesOn(".piece:not(.is-placed)");

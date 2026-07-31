@@ -6,6 +6,7 @@ import {
   clampToCanvas,
   covers,
   fitScale,
+  growAboutCentre,
   rectAt,
   screenToLogical,
   seededRandom,
@@ -23,6 +24,7 @@ import {
   holeOf,
   onTarget,
   trayHome,
+  waitingInk,
   type Layout,
 } from "../src/layout";
 import { LEVELS, LEVEL_COUNT, dealPieces, levelSpec, type LevelSpec } from "../src/levels";
@@ -277,14 +279,26 @@ const cellFor = (layout: Layout, id: PieceShape["id"]): Rect => {
   return cell;
 };
 
-/** Each piece waiting in the tray, with the cell that was cut for it. */
+/**
+ * Each piece waiting in the tray, with the cell that was cut for it.
+ *
+ * `drawn` is what the child can see there, and is the honest end of every
+ * promise about the tray: on a picture board a piece waits smaller than it
+ * lands, so its box and its full-size ink both reach outside the cell while the
+ * drawing sits neatly inside it.
+ */
 const waitingOf = (layout: Layout) =>
-  layout.pieces.map((shape) => ({
-    shape,
-    box: boxOf(layout, shape.id),
-    cell: cellFor(layout, shape.id),
-    home: trayHome(layout, shape.id),
-  }));
+  layout.pieces.map((shape) => {
+    const home = trayHome(layout, shape.id);
+    const ink = waitingInk(layout, shape.id);
+    return {
+      shape,
+      box: boxOf(layout, shape.id),
+      cell: cellFor(layout, shape.id),
+      home,
+      drawn: { x: home.x + ink.x, y: home.y + ink.y, width: ink.width, height: ink.height },
+    };
+  });
 
 /** Is `inner` wholly inside `outer`? Half a unit of slack for the rounding. */
 const inside = (inner: Rect, outer: Rect): boolean =>
@@ -737,13 +751,7 @@ const PROMISES = {
   // part of the box hangs outside it.
   "keeps every waiting piece's drawing inside the tray": (layout) =>
     firstComplaint(
-      waitingOf(layout).map(({ shape, box, home }) => {
-        const drawn = {
-          x: home.x + box.ink.x,
-          y: home.y + box.ink.y,
-          width: box.ink.width,
-          height: box.ink.height,
-        };
+      waitingOf(layout).map(({ shape, drawn }) => {
         if (!inside(drawn, { x: 0, y: 0, ...layout.canvas })) {
           return `${shape.id} waits off the canvas`;
         }
@@ -770,6 +778,10 @@ const PROMISES = {
     // A cell belongs to one piece rather than holding whichever was shuffled
     // into it, so this asks the question that is actually on the board: could
     // the piece waiting there be placed from where it stands?
+    //
+    // `trayHome` is the right end of it even where a piece waits drawn smaller
+    // than it lands: it shrinks about its own centre, so it grows back into
+    // exactly this position the moment it is picked up.
     for (const { shape, home } of waitingOf(layout)) {
       for (const target of placementsOf(layout)) {
         if (onTarget(layout, shape.id, home, target.hole)) {
@@ -783,10 +795,14 @@ const PROMISES = {
   // The reason a grab box needs no clamp of its own. Two boxes that overlapped
   // would make a press ambiguous, and the piece that moved would be whichever
   // happened to be drawn on top.
+  //
+  // Measured on the box as it is *drawn* in the tray: the grab rectangle lives
+  // inside the artwork, so on a picture board it shrinks with it. Shrinking is
+  // about the drawing's centre, which is the box's centre too.
   "keeps the pieces' own boxes apart in the tray": (layout) => {
     const boxes = waitingOf(layout).map(({ shape, box, home }) => ({
       piece: shape.id,
-      rect: rectAt(home, box.grip),
+      rect: growAboutCentre(rectAt(home, box.grip), layout.waitingScale),
     }));
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
@@ -807,9 +823,9 @@ const PROMISES = {
     // The slot is what a target is drawn to; what a hand has to find is the
     // piece's own drawing, which for a slice is a fraction of that.
     return firstComplaint(
-      waitingOf(layout).map(({ shape, box }) => {
-        const drawn = Math.max(box.ink.width, box.ink.height) / layout.canvas.width;
-        return drawn > 0.08 ? null : `${shape.id} draws ${(drawn * 100).toFixed(1)}% of the canvas`;
+      waitingOf(layout).map(({ shape, drawn }) => {
+        const share = Math.max(drawn.width, drawn.height) / layout.canvas.width;
+        return share > 0.08 ? null : `${shape.id} draws ${(share * 100).toFixed(1)}% of the canvas`;
       }),
     );
   },
@@ -844,7 +860,7 @@ describe("composed layouts", () => {
   });
 
   it("keeps every promise for every level of the thirty, as it is played", () => {
-    // The sweep above uses the widest snap radius in the table at every count.
+    // The sweep above uses the most forgiving level in the table at every count.
     // This is the other way round: each level exactly as a child meets it, at
     // its own forgiveness, over a spread of casts. A level whose numbers the
     // composition cannot honour is a level that must not be in the table.
@@ -1183,7 +1199,9 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * `slot` is `slotSize / canvas.width`, which for a picture kind is also the
  * assembled picture's width as a share of the canvas, because a picture is
  * drawn exactly one slot across its longer side. `ink` is the smallest piece's
- * longer side over the same width.
+ * longer side over the same width, measured *as it waits* - on a picture board
+ * that is two thirds of what it lands at, and what the child has to grab is the
+ * one they can see.
  *
  * Raising a number here is a good day. *Lowering* one is a decision, and the
  * pull request that does it has to say which invariant bought the loss.
@@ -1229,26 +1247,26 @@ const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number
   [19, "portrait", 0.388, 0.129],
   [20, "landscape", 0.388, 0.109],
   [20, "portrait", 0.537, 0.152],
-  [21, "landscape", 0.336, 0.167],
-  [21, "portrait", 0.517, 0.258],
-  [22, "landscape", 0.336, 0.167],
-  [22, "portrait", 0.517, 0.258],
-  [23, "landscape", 0.377, 0.145],
-  [23, "portrait", 0.553, 0.214],
-  [24, "landscape", 0.377, 0.145],
-  [24, "portrait", 0.553, 0.214],
-  [25, "landscape", 0.311, 0.103],
-  [25, "portrait", 0.562, 0.187],
-  [26, "landscape", 0.341, 0.137],
-  [26, "portrait", 0.471, 0.201],
+  [21, "landscape", 0.558, 0.186],
+  [21, "portrait", 0.927, 0.309],
+  [22, "landscape", 0.558, 0.186],
+  [22, "portrait", 0.927, 0.309],
+  [23, "landscape", 0.563, 0.145],
+  [23, "portrait", 0.927, 0.238],
+  [24, "landscape", 0.563, 0.145],
+  [24, "portrait", 0.927, 0.238],
+  [25, "landscape", 0.527, 0.117],
+  [25, "portrait", 0.927, 0.206],
+  [26, "landscape", 0.472, 0.133],
+  [26, "portrait", 0.824, 0.231],
   [27, "landscape", 0.193, 0.074],
   [27, "portrait", 0.364, 0.137],
-  [28, "landscape", 0.262, 0.085],
-  [28, "portrait", 0.491, 0.166],
-  [29, "landscape", 0.311, 0.103],
-  [29, "portrait", 0.562, 0.187],
-  [30, "landscape", 0.311, 0.09],
-  [30, "portrait", 0.515, 0.149],
+  [28, "landscape", 0.439, 0.096],
+  [28, "portrait", 0.854, 0.189],
+  [29, "landscape", 0.527, 0.117],
+  [29, "portrait", 0.927, 0.206],
+  [30, "landscape", 0.535, 0.103],
+  [30, "portrait", 0.927, 0.179],
 ];
 
 describe("how big the board gets", () => {
@@ -1273,7 +1291,7 @@ describe("how big the board gets", () => {
         const layout = buildLevelLayout(orientation, level, puzzle.pieces, puzzle.targets);
         worstSlot = Math.min(worstSlot, layout.slotSize / layout.canvas.width);
         for (const piece of layout.pieces) {
-          const { ink } = boxOf(layout, piece.id);
+          const ink = waitingInk(layout, piece.id);
           worstInk = Math.min(worstInk, Math.max(ink.width, ink.height) / layout.canvas.width);
         }
       }

@@ -51,4 +51,5 @@ and an argument nobody can see having changed is worth nothing.
 | [20260730T005900-guard-the-sample-against-the-table](20260730T005900-guard-the-sample-against-the-table.md) | Guard the shot run's sample against the level table |
 | [20260730T113000-a-check-explains-its-own-environment](20260730T113000-a-check-explains-its-own-environment.md) | Let a check explain its own environment rather than fail as something else |
 | [20260730T194900-a-grown-up-can-take-a-kind-out](20260730T194900-a-grown-up-can-take-a-kind-out.md) | Let a grown-up switch a kind of puzzle out of the thirty |
+| [20260730T230000-a-picture-takes-the-board](20260730T230000-a-picture-takes-the-board.md) | Let a picture take the whole board, on flat colour |
 | [20260731T133000-one-box-measures-a-piece](20260731T133000-one-box-measures-a-piece.md) | Measure every piece by one box and place it by one rule |

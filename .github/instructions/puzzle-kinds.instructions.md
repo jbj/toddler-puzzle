@@ -497,6 +497,47 @@ only adopted where it is worth `COMPOSITION.gutterGain` more slot than the best
 shelving, so a marginal win never buys a rearranged board. See
 [decision 20260730T093000](../../docs/decisions/20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters.md).
 
+**A picture takes the whole board, and stands on nothing.** The two kinds that
+cut one hand-drawn picture up - `jigsaw` and `shatter` - are composed by their
+own path, `arrangePicture`, which runs the other way round from the steps above:
+the tray is planned first, and the picture is centred in *everything that is
+left* less `COMPOSITION.pictureMargin`, as large as its aspect ratio allows. There is no landscape behind it -
+`layout.bands` and `layout.decorLines` are empty, and the kinds paint
+`pictureBackdrop` instead of `renderScenery` - because a picture of a farmyard is
+already a scene, and what the aspect ratio does not reach should read as the page
+rather than as a field. `PICTURE_BACKDROP` is the `--board-blue` variable the page's own
+background is painted with rather than a second copy of the colour, so the
+letterbox has no seam in it; the shot run checks the variable reaches both.
+
+That works only because a piece of a picture may **wait smaller than it lands**,
+down to `COMPOSITION.minWaitingScale` (2/3 on each axis) and no further. The
+pieces of a cut-up picture tile it exactly, so a tray holding all of them at
+landing size costs the picture its own area over again; at two thirds it costs
+four ninths, and that difference is the room the picture grows into. Read the
+shrink through `layout.waitingScale`, and place a waiting piece with
+`waitingHome(layout, piece)` rather than `trayHome` - it shrinks the piece about
+its *own drawing's* centre, because a piece of a picture carries the whole
+picture's box and shrinking about the box corner would swing it across the
+board. Everything else - the drag engine, `accepts`, `target`, every kind - keeps
+talking in full-size positions; only the drawing is shrunk, and only while the
+piece is at rest in the tray.
+
+The other half of the room comes from the tray's own margins. Every gap in the
+composition is a share of the slot, which is right everywhere else because a
+slot is about the size of a piece - but on a picture board the slot is the whole
+picture, so those numbers wrap a single shard in a third of a picture's width of
+sand. A picture board's tray therefore passes `pictureTrayPad` down instead: the
+same `TrayPad` record every tray is laid with, but measured in
+`COMPOSITION.trayEdge` and `trayGap`, which are shares of the largest drawing
+waiting there. Keep it that way. A tray padded against the slot is a tray half
+again as big as it needs to be, and all of it comes off the picture.
+
+A board that stops filling the room it was given without sitting on the 2/3
+floor is a regression, as is a tray that spends more sand on itself than the
+pieces standing in it are worth; `tests/picture-board.test.ts` is what catches
+both. See
+[decision 20260730T230000](../../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+
 A tray cell belongs to a *piece*, not to a position: `layout.trayCells` maps a
 piece id to the rectangle it waits in, cut to that piece's own box rather than
 to the largest box in the cast, and `trayHome(layout, piece)` centres it there.
