@@ -136,6 +136,27 @@ Take the value from `npm run art:check`, which measures where the animal
 actually stands. Do not estimate it by eye, and do not nudge it until the animal
 merely looks close.
 
+## Where an animal draws
+
+An animal does not fill its art box. A pig draws a little over half its box's
+height; a monkey draws two thirds of its width. So `ANIMAL_INK` in
+`src/assets.ts` says where each animal's drawing actually sits inside the
+240x240 box - left, top, width, height in art units, stroke and tagged overhang
+included.
+
+That box is what the game measures a piece by: what a hand can grab it by, what
+holds it on the canvas, what the tray packs a cell from, and how close a drop
+has to be
+([decision 20260731T133000](../../docs/decisions/20260731T133000-one-box-measures-a-piece.md)).
+An animal that declared nothing was taken to fill its box, which handed a child
+a pig with the reach of two pigs stacked up.
+
+Take the value from `npm run art:check`, exactly like a foot level, and never by
+eye. The check measures the drawing, insists the declared box contains all of
+it, and refuses a box more than two art units larger than the drawing on any
+side. Redraw an animal and the check will tell you the box has moved and what to
+paste in its place.
+
 ## Where an animal gets cut
 
 Levels 11-15 and 27 hand a child one animal in two to four slices. A slice is
@@ -248,15 +269,15 @@ overhang stays inside its budget. The rule lives in
    something else.
 4. Register the id in `ANIMAL_IDS`, `SOURCES` and `ANIMAL_THEMES` in
    `src/assets.ts`. Every animal belongs to at least one theme; the check says so.
-5. Add its foot level to `FOOT_LEVEL` in `src/assets.ts`, from the value
-   `npm run art:check` reports.
+5. Add its foot level to `FOOT_LEVEL` and its drawn box to `ANIMAL_INK` in
+   `src/assets.ts`, both from the values `npm run art:check` reports.
 6. Run `npm run art:slices` and commit `src/slice-recipes.json`. Nothing works
    out where to cut a new animal at runtime, so an animal with no recipes cannot
    be dealt into a sliced level.
 7. Run `npm run art:check`. It verifies the structure, that the art is not
    clipped by the art box, that nothing hangs outside the silhouette except
-   declared overhangs, that the declared foot level matches the artwork, and that
-   the new silhouette reads differently from every other one in its theme, and
+   declared overhangs, that the declared foot level and drawn box match the
+   artwork, and that the new silhouette reads differently from every other one in its theme, and
    that it can be cut into two, three and four slices that a child can pick up.
    Passing it is the floor, not the finish line: it cannot see any of the
    pitfalls above.
@@ -376,7 +397,8 @@ the ramp - but a scene the table *does* name must exist, and the check says so.
 `npm run art:check` covers the artwork itself, which the unit tests can't see:
 it rasterises each animal and checks that nothing is clipped by the art box,
 that no undeclared detail strays outside the silhouette and declared overhangs
-stay within budget, that `FOOT_LEVEL` matches where the feet actually are, that no two animals in one
+stay within budget, that `FOOT_LEVEL` matches where the feet actually are and `ANIMAL_INK` matches
+where the drawing actually is, that no two animals in one
 theme read the same at a glance, and that every committed slice recipe still
 cuts the animal it was measured from into whole, fair, grabbable pieces. It
 rasterises each scene too, and checks that it uses the picture box, paints all

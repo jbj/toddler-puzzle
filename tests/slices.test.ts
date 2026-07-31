@@ -44,6 +44,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   outline: `outline-of-${id}`,
   artwork: `artwork-of-${id}`,
   box: { width: ART_BOX, height: ART_BOX },
+  inked: { x: 0, y: 0, width: ART_BOX, height: ART_BOX },
   anchor: { x: ART_BOX / 2, y: 200 },
   label: id,
   themes: ["farm", "jungle", "sea"] as const,

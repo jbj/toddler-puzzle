@@ -18,7 +18,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { seededRandom } from "../src/geometry";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk } from "../src/assets";
 import { goalFor, play, thingsFor } from "../src/kinds/play";
 import { buildLevelLayout } from "../src/layout";
 import { ACTIVITIES, LEVELS, type LevelSpec } from "../src/levels";
@@ -30,6 +30,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   outline: "",
   artwork: "",
   box: ANIMAL_BOX,
+  inked: animalInk(id),
   anchor: animalAnchor(id),
   label: id,
 }));

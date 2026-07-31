@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk } from "../src/assets";
 import { seededRandom } from "../src/geometry";
 import { boxOf, buildLevelLayout, holeOf, type Layout } from "../src/layout";
 import { LEVELS, type LevelSpec } from "../src/levels";
@@ -44,6 +44,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id, index) => ({
   outline: `M0 0 h${index + 1} v10 z`,
   artwork: "",
   box: ANIMAL_BOX,
+  inked: animalInk(id),
   anchor: animalAnchor(id),
   label: id,
 }));
@@ -73,6 +74,7 @@ const PLANK: PieceShape = {
   outline: "M0 0 h300 v100 z",
   artwork: "",
   box: { width: 300, height: 100 },
+  inked: { x: 0, y: 0, width: 300, height: 100 },
   anchor: { x: 150, y: 100 },
   label: "plank",
 };
@@ -82,6 +84,7 @@ const POLE: PieceShape = {
   outline: "M0 0 h100 v300 z",
   artwork: "",
   box: { width: 100, height: 300 },
+  inked: { x: 0, y: 0, width: 100, height: 300 },
   anchor: { x: 50, y: 300 },
   label: "pole",
 };

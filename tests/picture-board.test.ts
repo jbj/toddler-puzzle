@@ -17,7 +17,7 @@
  * Whether the flat blue *looks* right behind a picture is `npm run shot`'s.
  */
 import { describe, expect, it } from "vitest";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk } from "../src/assets";
 import { seededRandom } from "../src/geometry";
 import { kindFor, loadAllKinds } from "../src/kinds/registry";
 import { boxOf, buildLevelLayout, holeOf, trayHome, waitingInk } from "../src/layout";
@@ -33,6 +33,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   outline: "",
   artwork: "",
   box: ANIMAL_BOX,
+  inked: animalInk(id),
   anchor: animalAnchor(id),
   label: id,
 }));

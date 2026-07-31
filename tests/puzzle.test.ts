@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk } from "../src/assets";
 import {
   boxCenter,
   clampGripToCanvas,
@@ -28,7 +28,14 @@ import {
   type Layout,
 } from "../src/layout";
 import { LEVELS, LEVEL_COUNT, dealPieces, levelSpec, type LevelSpec } from "../src/levels";
-import { GRIP_MIN_RATIO, gripOf, pieceId, type PieceShape } from "../src/piece";
+import {
+  GRAB_PADDING,
+  GRIP_MIN_RATIO,
+  gripOf,
+  inkOf,
+  pieceId,
+  type PieceShape,
+} from "../src/piece";
 import { SCENES, sceneShapes, scenesOf } from "../src/scenes";
 import { jigsawShapes } from "../src/jigsaw";
 import { loadPictures } from "../src/pictures";
@@ -58,6 +65,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   outline: "",
   artwork: "",
   box: ANIMAL_BOX,
+  inked: animalInk(id),
   anchor: animalAnchor(id),
   label: id,
 }));
@@ -129,6 +137,7 @@ function oddCast(count: number, random: () => number, sit = 0.75): PieceShape[] 
       id: pieceId(`test:piece-${index}`),
       outline: "",
       artwork: "",
+      inked: { x: 0, y: 0, ...box },
       box,
       anchor: { x: box.width / 2, y: Math.round((sit + (1 - sit) * random()) * box.height) },
       label: `piece ${index}`,
@@ -356,12 +365,18 @@ describe("anchors", () => {
   it("stands every piece on one ground line, whatever its anchor", () => {
     for (const level of ANIMAL_LEVELS) {
       for (const cast of castsFor(level)) {
-        // Landscape spreads a level's whole cast along one ground line, so any
-        // difference here is a piece floating or sinking rather than standing.
+        // A piece stands on a line the layout drew, never between two of them:
+        // anything else is a piece floating or sinking rather than standing.
+        // Landscape uses a second line once the cast is big enough that one row
+        // of them would be small, so what is checked is that every animal is on
+        // one of the lines, not that there is only ever one.
         const layout = buildLevelLayout("landscape", level, cast);
-        expect(layout.groundLines).toHaveLength(1);
-        const grounds = layout.pieces.map((shape: PieceShape) => groundOf(layout, shape));
-        for (const ground of grounds) expect(ground).toBeCloseTo(grounds[0]!);
+        expect(layout.groundLines.length).toBeGreaterThanOrEqual(1);
+        for (const shape of layout.pieces) {
+          const ground = groundOf(layout, shape);
+          const nearest = Math.min(...layout.groundLines.map((line) => Math.abs(line - ground)));
+          expect(nearest).toBeLessThan(0.5);
+        }
       }
     }
   });
@@ -544,13 +559,33 @@ describe("a piece's own box", () => {
     }
   });
 
-  it("takes an animal at the size it was measured on the board", () => {
-    // An animal declares no `inked`, so `board.ts` measures its artwork and
-    // hands the measurement in. The box has to follow the drawing either way.
-    const shape = SHAPES[0]!;
-    const measured = gripOf(shape, { x: 30, y: 40, width: 180, height: 160 });
-    expect(measured.x).toBeCloseTo(30 - 6.4);
-    expect(measured.width).toBeCloseTo(180 + 12.8);
+  /**
+   * The bug this rule was written to stop, in one test. An animal is nowhere
+   * near the size of its art box - a pig draws a little over half its box's
+   * height - and while animals were the one kind that declared nothing, they
+   * were taken to fill it, so a whole animal was placed by a box about twice
+   * its own size. Every animal now says where it draws, and this insists the
+   * box is measured from the drawing rather than from the box around it.
+   */
+  it("measures an animal by its drawing, not by its art box", () => {
+    for (const shape of SHAPES) {
+      const drawn = inkOf(shape);
+      expect(drawn.width).toBeLessThan(BOX.width);
+      expect(drawn.height).toBeLessThan(BOX.height);
+
+      // The box is the drawing plus its margin, thickened about the drawing's
+      // own middle - so it holds the drawing, keeps its centre, and is nowhere
+      // near the art box that used to stand in for it.
+      const grip = gripOf(shape);
+      const margin = GRAB_PADDING * Math.min(drawn.width, drawn.height);
+      expect(grip.x).toBeLessThanOrEqual(drawn.x);
+      expect(grip.x + grip.width).toBeGreaterThanOrEqual(drawn.x + drawn.width);
+      expect(boxCenter(grip, grip)).toEqual(boxCenter(drawn, drawn));
+      expect(grip.width * grip.height).toBeLessThan(BOX.width * BOX.height);
+      expect(Math.max(grip.width - drawn.width, grip.height - drawn.height)).toBeLessThan(
+        Math.max(2 * margin, (1 / GRIP_MIN_RATIO - 1) * Math.max(drawn.width, drawn.height)) + 1e-9,
+      );
+    }
   });
 
   it("stays harmless when there is nothing to measure", () => {
@@ -968,19 +1003,22 @@ describe("layouts where several pieces fill one target", () => {
     }
   });
 
-  it("stands a bigger animal than a board of that many whole animals would", () => {
-    // A tray of slices is packed by what each slice draws, not by the animal's
-    // box around it, which is what leaves the animal room to be big enough that
-    // a quarter of it is still worth grabbing.
+  it("stands about as big an animal as a board of that many whole ones", () => {
+    // Cutting an animal up must not shrink it. Every tray is packed by what a
+    // piece *draws* rather than by the box around it, so a board of slices and
+    // a board of the same number of whole animals reserve about the same room -
+    // which is what leaves a quarter of an animal worth grabbing.
+    //
+    // A slice used to come out strictly bigger, back when a whole animal was
+    // the one piece measured by its whole art box; measuring the animal too
+    // took that unearned advantage away rather than taking anything from a
+    // slice. See docs/decisions/20260731T133000-one-box-measures-a-piece.md.
     for (const id of ORIENTATIONS) {
       for (const slices of [2, 3, 4]) {
         const { pieces, targets } = slicedCast(2, slices, seededRandom(slices));
         const sliced = buildLayout(id, MOST_FORGIVING, pieces, targets);
         const whole = buildLayout(id, MOST_FORGIVING, animalCast(pieces.length, seededRandom(1)));
-        // Never smaller, and strictly bigger once the board is busy enough for
-        // the tray to have been what held the animals down.
-        expect(sliced.slotSize).toBeGreaterThanOrEqual(whole.slotSize);
-        if (pieces.length >= 6) expect(sliced.slotSize).toBeGreaterThan(whole.slotSize);
+        expect(sliced.slotSize).toBeGreaterThan(whole.slotSize * 0.95);
       }
     }
   });
@@ -1205,37 +1243,48 @@ describe("layouts for a picture shattered into irregular shards", () => {
  *
  * Raising a number here is a good day. *Lowering* one is a decision, and the
  * pull request that does it has to say which invariant bought the loss.
+ *
+ * The `ink` column for levels 1-10 fell on 2026-07-31 without anything getting
+ * smaller. Those levels stand whole animals, and an animal used to be the one
+ * piece that did not say where it drew, so it was taken to fill its 240x240
+ * art box and this column measured the box. It now measures the drawing, which
+ * is between a half and three quarters of it. Every `slot` on those rows went
+ * *up* at the same time, because a tray packed by the drawing reserves less
+ * room than one packed by the box around it: the animal a child sees is bigger
+ * than it was, and the number beside it is smaller because it is finally
+ * counting the animal. See
+ * docs/decisions/20260731T133000-one-box-measures-a-piece.md.
  */
 const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number, number])[] = [
-  [1, "landscape", 0.203, 0.203],
-  [1, "portrait", 0.291, 0.291],
-  [2, "landscape", 0.203, 0.203],
-  [2, "portrait", 0.291, 0.291],
-  [3, "landscape", 0.203, 0.203],
-  [3, "portrait", 0.291, 0.291],
-  [4, "landscape", 0.203, 0.203],
-  [4, "portrait", 0.291, 0.291],
-  [5, "landscape", 0.203, 0.203],
-  [5, "portrait", 0.265, 0.265],
-  [6, "landscape", 0.203, 0.203],
-  [6, "portrait", 0.265, 0.265],
-  [7, "landscape", 0.203, 0.203],
-  [7, "portrait", 0.274, 0.274],
-  [8, "landscape", 0.203, 0.203],
-  [8, "portrait", 0.278, 0.278],
-  [9, "landscape", 0.164, 0.164],
-  [9, "portrait", 0.265, 0.265],
-  [10, "landscape", 0.137, 0.137],
-  [10, "portrait", 0.265, 0.265],
+  [1, "landscape", 0.222, 0.191],
+  [1, "portrait", 0.317, 0.29],
+  [2, "landscape", 0.222, 0.191],
+  [2, "portrait", 0.317, 0.289],
+  [3, "landscape", 0.222, 0.167],
+  [3, "portrait", 0.317, 0.239],
+  [4, "landscape", 0.212, 0.176],
+  [4, "portrait", 0.302, 0.252],
+  [5, "landscape", 0.212, 0.169],
+  [5, "portrait", 0.282, 0.225],
+  [6, "landscape", 0.212, 0.158],
+  [6, "portrait", 0.288, 0.214],
+  [7, "landscape", 0.203, 0.149],
+  [7, "portrait", 0.286, 0.22],
+  [8, "landscape", 0.203, 0.149],
+  [8, "portrait", 0.286, 0.219],
+  [9, "landscape", 0.164, 0.121],
+  [9, "portrait", 0.265, 0.195],
+  [10, "landscape", 0.137, 0.108],
+  [10, "portrait", 0.265, 0.195],
   [11, "landscape", 0.226, 0.166],
   [11, "portrait", 0.323, 0.239],
-  [12, "landscape", 0.263, 0.138],
-  [12, "portrait", 0.391, 0.197],
+  [12, "landscape", 0.263, 0.14],
+  [12, "portrait", 0.399, 0.216],
   [13, "landscape", 0.226, 0.116],
-  [13, "portrait", 0.323, 0.163],
+  [13, "portrait", 0.323, 0.165],
   [14, "landscape", 0.266, 0.128],
   [14, "portrait", 0.406, 0.19],
-  [15, "landscape", 0.214, 0.089],
+  [15, "landscape", 0.214, 0.092],
   [15, "portrait", 0.35, 0.143],
   [16, "landscape", 0.203, 0.095],
   [16, "portrait", 0.291, 0.135],
@@ -1257,9 +1306,9 @@ const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number
   [24, "portrait", 0.927, 0.238],
   [25, "landscape", 0.527, 0.117],
   [25, "portrait", 0.927, 0.206],
-  [26, "landscape", 0.472, 0.133],
+  [26, "landscape", 0.485, 0.133],
   [26, "portrait", 0.824, 0.231],
-  [27, "landscape", 0.193, 0.074],
+  [27, "landscape", 0.204, 0.077],
   [27, "portrait", 0.364, 0.137],
   [28, "landscape", 0.439, 0.096],
   [28, "portrait", 0.854, 0.189],
@@ -1410,6 +1459,7 @@ const PLANK: PieceShape = {
   outline: "",
   artwork: "",
   box: { width: 300, height: 100 },
+  inked: { x: 0, y: 0, width: 300, height: 100 },
   anchor: { x: 150, y: 100 },
   label: "plank",
 };
@@ -1419,6 +1469,7 @@ const POLE: PieceShape = {
   outline: "",
   artwork: "",
   box: { width: 100, height: 300 },
+  inked: { x: 0, y: 0, width: 100, height: 300 },
   anchor: { x: 50, y: 300 },
   label: "pole",
 };
@@ -1493,8 +1544,13 @@ describe("pieces that are not square", () => {
         }
         expect(boxes[0]!.grip.height).toBeGreaterThan(boxes[0]!.size.height);
         expect(boxes[1]!.grip.width).toBeGreaterThan(boxes[1]!.size.width);
-        // The square animal is left the shape it was drawn.
-        expect(boxes[2]!.grip.width).toBeCloseTo(boxes[2]!.grip.height);
+        // The animal is left the shape it *draws*, which is not the square it
+        // is authored in: an animal fills between a half and three quarters of
+        // its art box, and the box follows the drawing.
+        const drawn = gripOf(cast[2]!);
+        expect(boxes[2]!.grip.width / boxes[2]!.grip.height).toBeCloseTo(
+          drawn.width / drawn.height,
+        );
       });
 
       it("grows the box by the level's forgiveness and nothing else", () => {

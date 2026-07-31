@@ -184,6 +184,23 @@ function declaredFootLevels() {
   return levels;
 }
 
+/**
+ * `ANIMAL_INK` as `src/assets.ts` declares it, keyed by animal: the tuples are
+ * read rather than trusted, so an animal redrawn without re-running this is
+ * caught here instead of by a child aiming at empty box.
+ */
+function declaredInks() {
+  const source = readFileSync(join(root, "src/assets.ts"), "utf8");
+  const table = source.match(/ANIMAL_INK[^=]*=\s*\{([^}]*)\}/);
+  if (!table) throw new Error("could not find ANIMAL_INK in src/assets.ts");
+  const inks = {};
+  for (const [, id, values] of table[1].matchAll(/(\w+)\s*:\s*\[([^\]]*)\]/g)) {
+    const [x, y, width, height] = values.split(",").map(Number);
+    inks[id] = { left: x, top: y, right: x + width, bottom: y + height };
+  }
+  return inks;
+}
+
 function declaredThemes() {
   const source = readFileSync(join(root, "src/assets.ts"), "utf8");
   const table = source.match(/ANIMAL_THEMES[^=]*=\s*\{([^}]*)\}/);
@@ -262,6 +279,53 @@ function suggestedRecipe(silhouette, drawn, count) {
  * search and the check can never drift apart into a table that generates but
  * does not pass.
  */
+/**
+ * How far `ANIMAL_INK` may sit outside the drawing it describes, in art units.
+ *
+ * The declared box is rounded outwards, so it is always a little larger than
+ * what was measured; what this bounds is how much larger. Under half a unit
+ * would fail on a rasteriser a version apart, and two units is a fifth of the
+ * margin a hand is given around a piece, so a table that has drifted this far
+ * is a table someone has to look at.
+ */
+const INK_SLACK = 2;
+
+/**
+ * The box `assets.ts` says an animal draws in against the one it actually
+ * draws in. Declared too small and a piece cannot be grabbed by its own ear;
+ * declared too large and a child places it by aiming at empty box, which is
+ * what a whole animal did before it was measured at all.
+ */
+function checkInk(id, drawn) {
+  const round = (box) => [
+    Math.floor(box.left),
+    Math.floor(box.top),
+    Math.ceil(box.right) - Math.floor(box.left),
+    Math.ceil(box.bottom) - Math.floor(box.top),
+  ];
+  const suggestion = `use \`${id}: [${round(drawn).join(", ")}],\``;
+  const declared = inks[id];
+  if (declared === undefined) {
+    check("has an ANIMAL_INK", false, `add it to src/assets.ts: ${suggestion}`);
+    return;
+  }
+  const outside = [
+    drawn.left - declared.left,
+    drawn.top - declared.top,
+    declared.right - drawn.right,
+    declared.bottom - drawn.bottom,
+  ];
+  const worst = Math.min(...outside);
+  check(
+    "ANIMAL_INK matches the artwork",
+    worst >= 0 && Math.max(...outside) <= INK_SLACK,
+    `declared [${round(declared).join(", ")}], measured ` +
+      `[${drawn.left.toFixed(1)}, ${drawn.top.toFixed(1)}, ` +
+      `${(drawn.right - drawn.left).toFixed(1)}, ${(drawn.bottom - drawn.top).toFixed(1)}] - ` +
+      suggestion,
+  );
+}
+
 function checkSliceRecipes(id, silhouettePng, drawnPng) {
   const silhouette = maskPixels(silhouettePng, scratch, `${id}-silhouette-mask`);
   const drawn = maskPixels(drawnPng, scratch, `${id}-drawn-mask`);
@@ -313,6 +377,7 @@ if (files.length === 0) {
 
 const registered = registeredIds();
 const footLevels = declaredFootLevels();
+const inks = declaredInks();
 const themes = declaredThemes();
 /** Each animal's silhouette as a glance sees it, for the distinctness check. */
 const glances = new Map();
@@ -406,6 +471,8 @@ for (const file of files) {
       `declared ${declared}, measured ${measured.toFixed(1)} - use ${suggested}`,
     );
   }
+
+  checkInk(id, drawn);
 
   checkSliceRecipes(id, silhouette, drawnPng);
 }

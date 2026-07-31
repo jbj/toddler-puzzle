@@ -38,15 +38,22 @@ export interface PieceShape {
   readonly box: Size;
   /**
    * Where inside that box the piece actually draws anything, in box units.
-   * Left out, a piece is taken to fill its box, which is what an animal does.
    *
-   * A piece cut out of a bigger drawing cannot: every slice of one animal has
-   * to keep the animal's box and scale, or the slices would not assemble, so a
-   * slice's box is mostly empty. Everything that measures the piece as a *thing
-   * to grab and to place* goes through `gripOf` below, which starts here, so a
-   * tray of eight slices is not laid out as though it held eight whole animals.
+   * Required, and required of every kind, because everything that measures a
+   * piece as a *thing to grab and to place* goes through `gripOf` below, which
+   * starts here. A piece cut out of a bigger drawing keeps the whole drawing's
+   * box - every slice of one animal has to, or the slices would not assemble -
+   * so a slice's box is mostly empty, and a tray of eight slices must not be
+   * laid out as though it held eight whole animals.
+   *
+   * It used to be optional, and a piece that said nothing was taken to fill its
+   * box. Only the animals said nothing, and no animal fills its box: a pig
+   * draws a little over half its box's height, so a whole pig was placed by a
+   * box twice as tall as the pig. Saying nothing is no longer allowed. An
+   * animal's is measured and committed as `ANIMAL_INK` in `assets.ts`. See
+   * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
    */
-  readonly inked?: Rect;
+  readonly inked: Rect;
   /**
    * Where the piece "sits" within its box, in box units. Standing an animal on
    * a ground line is the special case where the anchor is at its feet.
@@ -64,9 +71,9 @@ export interface PieceShape {
   readonly themes?: readonly ThemeId[];
 }
 
-/** Where a shape draws, in its own box units: what it declared, or all of it. */
+/** Where a shape draws, in its own box units. */
 export function inkOf(shape: PieceShape): Rect {
-  return shape.inked ?? { x: 0, y: 0, width: shape.box.width, height: shape.box.height };
+  return shape.inked;
 }
 
 /**
@@ -101,11 +108,13 @@ export const GRIP_MIN_RATIO = 0.5;
  * questions, one answer, so a piece cannot be easy to pick up and hard to place
  * or the other way about.
  *
- * `drawn` is where the piece draws, for a caller that has measured it rather
- * than being told: an animal declares no `inked` and is measured on the board
- * (`fitGrabBox` in `board.ts`). Left out, the shape is taken at its word.
+ * Every kind is taken at its word about where it draws, and nothing measures a
+ * rendered piece to find out: a box the layout worked out and a box the board
+ * measured could disagree, and then a piece would be grabbable somewhere it
+ * could not be placed from.
  */
-export function gripOf(shape: PieceShape, drawn: Rect = inkOf(shape)): Rect {
+export function gripOf(shape: PieceShape): Rect {
+  const drawn = inkOf(shape);
   const box = { x: 0, y: 0, width: shape.box.width, height: shape.box.height };
   const padding = GRAB_PADDING * Math.min(drawn.width, drawn.height);
   return thickenTo(padWithin(drawn, padding, box), GRIP_MIN_RATIO);

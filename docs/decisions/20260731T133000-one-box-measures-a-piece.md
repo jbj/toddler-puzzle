@@ -88,6 +88,36 @@ the top-lefts of two holes - two pieces of different sizes have their boxes in
 different places inside them, and comparing origins compares nothing a child can
 see.
 
+## An animal is measured too, not assumed to fill its box
+
+Playtesting the rule found one kind still too forgiving: the levels that hand a
+child a whole animal. The box was doing exactly what it was told - it just had
+nothing true to start from. A piece's box grows from what the piece *draws*, and
+every kind said where that was except one. A slice, a jigsaw piece, a shard and a
+shape cut from a picture all carry their drawn bounds; an animal carried none, so
+the code fell back to "it fills its box", and a 240x240 art box became the thing
+a child was aiming with.
+
+No animal fills its box. They occupy between 44% and 72% of it: a pig draws 53%
+of the box's height, a turtle 55%. So a pig's reach was nearly twice as tall as
+the pig, and a drop most of a pig clear of the hole still counted. The tray was
+being packed from that same empty box, which is why animal levels also stood
+their boards smaller than they needed to.
+
+The fix is the same one used for feet: measure it, commit it, and check it.
+`ANIMAL_INK` in `src/assets.ts` holds one rectangle per animal in art units,
+rounded outwards so a box can never clip its own drawing, and `npm run art:check`
+rasterises each animal, insists the declared box contains everything drawn, and
+refuses one that is more than two art units loose on any side. Two units is
+generous enough to survive a rasteriser a version apart and tight enough that a
+redrawn animal cannot quietly keep an old box. The check prints a paste-ready
+line, so nobody has a reason to estimate one.
+
+What a grown-up sees change: a whole animal now has to be dropped roughly over
+its hole rather than anywhere in a box twice its size, and animal boards grew,
+because a tray packed from the drawing needs less room than one packed from the
+box around it.
+
 Superseded nothing, and changed the measure rather than the promise in
 [20260727T072917-generous-snap-radius](20260727T072917-generous-snap-radius.md)
 and
