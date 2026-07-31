@@ -118,8 +118,10 @@ a gap is a stripe of the animal that no slice draws and an overlap is a stripe
 two slices both draw, and neither shows up in a screenshot of a duck that is
 almost right. The kind is rules: every slice of an animal keeps that animal's
 box, anchor and outline and aims at its one hole, a slice is accepted anywhere
-on its own animal and never on the other one, and the hole stays showing until
-the last slice arrives. Where the cuts actually *go* is not checked there - only
+on its own animal and never on the other one, the hole is divided by the very
+paths the slices were clipped with - so the guide draws the line each piece
+lands on rather than a line of its own - and the hole stays showing until the
+last slice arrives. Where the cuts actually *go* is not checked there - only
 `npm run art:check` can see whether a cut severed a leg.
 
 `tests/polygon.test.ts` covers the picture chapter, also in two halves. The

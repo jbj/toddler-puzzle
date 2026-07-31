@@ -24,7 +24,15 @@ import { buildLevelLayout, holeOf, boxOf } from "../src/layout";
 import { sliced } from "../src/kinds/sliced";
 import { LEVELS, type LevelSpec } from "../src/levels";
 import { inkOf, pieceId, assertUniquePieceIds, type PieceShape } from "../src/piece";
-import { SLICE_COUNTS, cellArea, cellsFrom, sliceRecipe, sliceShapes } from "../src/slices";
+import {
+  SLICE_COUNTS,
+  cellArea,
+  cellsFrom,
+  sliceCuts,
+  sliceRecipe,
+  sliceShapes,
+  type SliceCount,
+} from "../src/slices";
 
 /**
  * Stand-in animals rather than the real assets: parsing SVG needs a DOM, and
@@ -280,6 +288,34 @@ describe("the sliced kind", () => {
           expect(sliced.accepts(puzzle, layout, slice.id, away[0]!), slice.id).toBe(false);
         }
       }
+    }
+  });
+
+  it("draws every cut on the hole the slices are heading for", () => {
+    // The same promise the jigsaw's frame makes: the guide shows not just what
+    // is being built but where each piece of it goes, and it shows it with the
+    // very paths the pieces were cut with, so a slice lands on its own line.
+    for (const level of slicedLevels) {
+      const puzzle = dealOf(level, 11);
+      const layout = buildLevelLayout("landscape", level, puzzle.pieces, puzzle.targets);
+      const backdrop = sliced.backdrop(puzzle, layout);
+      const count = (level.pieces / level.targets) as SliceCount;
+
+      let drawn = 0;
+      for (const animal of puzzle.targets) {
+        const cuts = sliceCuts(animal, count);
+        expect(cuts, `level ${level.level}, ${animal.id}`).toHaveLength(count);
+        const mine = puzzle.pieces.filter((slice) => slice.id.startsWith(`slice:${animal.id}:`));
+        for (const path of cuts) {
+          expect(backdrop, `level ${level.level}, ${animal.id}`).toContain(path);
+          expect(
+            mine.filter((slice) => slice.artwork.includes(path)),
+            `level ${level.level}, ${animal.id} cut ${path}`,
+          ).toHaveLength(1);
+          drawn++;
+        }
+      }
+      expect(drawn, `level ${level.level} drew ${drawn} cuts`).toBe(level.pieces);
     }
   });
 

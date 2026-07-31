@@ -130,13 +130,17 @@ dependencies, and there is nothing here that needs one. See
 **Every slice of an animal keeps that animal's box, anchor and outline**, so the
 layout gives them one scale and one origin and they assemble by construction.
 The hole is cut once, from the animal's own silhouette, and stays visible under
-a half-built animal as the guide to what is still missing. A slice aims at its
-own place inside the animal, and is placed by the same box and the same rule as
-every other piece in the game: a quarter of a duck dropped on the duck's nose no
-longer goes home, but a quarter of a duck half a piece out still does. Cut into
-two or three, the pieces overlap so much that a drop on a neighbour's place is a
-near miss anyway - and it lands in the piece's own place, because a piece can
-only ever be right.
+a half-built animal as the guide to what is still missing. The cuts are drawn on
+it too - the same paths the slices were clipped with, clipped to the silhouette
+so a line stops where the animal does - so the guide says where each piece goes
+and not only what is being built, which is the promise a jigsaw's frame and a
+shattered picture's already make. A slice aims at its own place inside the
+animal, and is placed by the same box and the same rule as every other piece in
+the game: a quarter of a duck dropped on the duck's nose no longer goes home, but
+a quarter of a duck half a piece out still does, and the lines are there to be
+aimed at rather than to be hit. Cut into two or three, the pieces overlap so much
+that a drop on a neighbour's place is a near miss anyway - and it lands in the
+piece's own place, because a piece can only ever be right.
 
 **Where the cuts go is measured, not chosen.** `npm run art:slices` searches for
 them offline and writes `src/slice-recipes.json`; `npm run art:check` re-judges
