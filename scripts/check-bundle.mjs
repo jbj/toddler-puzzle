@@ -57,9 +57,16 @@ const kB = 1000;
  * budget is wrong - move it, and say so.
  */
 const BUDGET = {
-  // measured 2026-07-29: 92.7 kB raw, 30.1 kB gzipped
-  initialRaw: 102 * kB,
-  initialGzip: 33 * kB,
+  // raised 2026-07-31, measured at 102.0 kB: sixteen animals now say where they
+  // draw inside their art box instead of being taken to fill it, and a table of
+  // sixteen rectangles is a table that has to ship. It buys back a whole
+  // animal's worth of empty box that a child was placing pieces by.
+  initialRaw: 105 * kB,
+  // raised 2026-07-31, measured at 33.2 kB: the one box every piece is measured
+  // by and the one rule it is placed by are shared, so they load first, while
+  // the four chapter chunks that each carried their own arithmetic got smaller.
+  // The whole game grew 0.2 kB gzipped; what moved is which chunk carries it.
+  initialGzip: 34 * kB,
   // measured 2026-07-29: 152.1 kB raw, 51.8 kB gzipped
   totalRaw: 167 * kB,
   totalGzip: 57 * kB,

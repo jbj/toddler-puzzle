@@ -97,6 +97,12 @@ centre to ink centre with `inkSnapRadius`, which is what a jigsaw, shatter or
 polygon piece actually snaps by. Both are strictly the question that is on the
 board rather than a proxy for it.
 
+The second of those has since been reformulated again, for the same reason and
+one step further: there is no snap radius any more, and the honest form of the
+question is whether one piece's drawing, laid over another's, covers where it
+belongs. See
+[20260731T133000-one-box-measures-a-piece](20260731T133000-one-box-measures-a-piece.md).
+
 Two levels' worth of the win is still on the table and is deliberately left
 there: a scene with several targets (the sliced levels) would gain about a fifth
 from the gutters too, and the deep-column levels would gain about a quarter if

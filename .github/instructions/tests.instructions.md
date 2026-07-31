@@ -12,8 +12,8 @@ The deal is random: tests must not assume one fixed cast, one fixed order, or on
 animal always occupying a particular hole.
 
 Prefer asserting the invariant over snapshotting one deal. Good tests say things
-like holes stay on canvas, snap zones do not overlap, tray slots do not collide,
-and wrong drops return to the tray.
+like holes stay on canvas, no piece reaches another's place, tray slots do not
+collide, and wrong drops return to the tray.
 
 Layouts are composed rather than tabulated, so what is worth testing is the
 promise, not the output. `PROMISES` in `tests/puzzle.test.ts` is a table of them
@@ -78,14 +78,16 @@ half of what it is for.
 ## What `npm run test` covers
 
 Vitest covers the coordinate mapping (including letterboxing in both
-orientations), snap tolerance, clamping, the grab-box geometry - a measured
-drawing grown by its margin and held inside the piece's own box - the random
+orientations), the rule a drop is placed by, clamping, the box geometry - a
+measured drawing grown by its margin, kept inside the authored box and thickened
+so neither side is under half the other - the random
 deal, the shape-match kind's rules - it accepts a sloppy drop on a piece's own
 hole, never accepts anybody else's, and only finishes when the last piece is in
 - and the composed layouts:
 targets stay on canvas and clear of the tray, every piece stands on one of the
-layout's ground lines, snap zones never reach each other, tray slots never
-collide or sit in a target's snap zone, pieces stay big enough to grab, and each
+layout's ground lines, no piece reaches another's place, tray slots never
+collide, never overlap another piece's box or let a piece go home from the tray,
+pieces stay big enough to grab, and each
 orientation fills at least 75% of its viewport. Alongside those it checks what
 composing is *for*: the same cast composes twice the same, a fuller board never
 gets bigger pieces, portrait stacks more rows than landscape spreads, and a cast

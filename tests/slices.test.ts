@@ -19,7 +19,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { ANIMAL_IDS, ART_BOX } from "../src/assets";
-import { boxCenter, seededRandom } from "../src/geometry";
+import { seededRandom } from "../src/geometry";
 import { buildLevelLayout, holeOf, boxOf } from "../src/layout";
 import { sliced } from "../src/kinds/sliced";
 import { LEVELS, type LevelSpec } from "../src/levels";
@@ -44,6 +44,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   outline: `outline-of-${id}`,
   artwork: `artwork-of-${id}`,
   box: { width: ART_BOX, height: ART_BOX },
+  inked: { x: 0, y: 0, width: ART_BOX, height: ART_BOX },
   anchor: { x: ART_BOX / 2, y: 200 },
   label: id,
   themes: ["farm", "jungle", "sea"] as const,
@@ -219,7 +220,7 @@ describe("the sliced kind", () => {
     }
   });
 
-  it("takes a slice dropped anywhere on its animal, and nowhere else", () => {
+  it("takes a slice dropped over its own place, and nowhere else", () => {
     const level = slicedLevels.find((one) => one.targets === 2)!;
     const puzzle = dealOf(level, 5);
     const layout = buildLevelLayout("landscape", level, puzzle.pieces, puzzle.targets);
@@ -228,27 +229,66 @@ describe("the sliced kind", () => {
     for (const slice of puzzle.pieces) {
       const mine = slice.id.startsWith(`slice:${first!.id}:`) ? first! : second!;
       const theirs = mine === first! ? second! : first!;
-      const { size, snapRadius } = boxOf(layout, slice.id);
+      const home = holeOf(layout, mine.id);
+      const { reach } = boxOf(layout, slice.id);
 
-      // Dead centre, and well off centre but still on the animal: a slice does
-      // not have to find the quarter of the hole it came out of.
-      expect(sliced.accepts(puzzle, layout, slice.id, holeOf(layout, mine.id))).toBe(true);
-      const nudged = holeOf(layout, mine.id);
+      // Dead centre, and well off centre but still over its own place: near
+      // enough is still in, it is only "anywhere on the animal" that is gone.
+      expect(sliced.accepts(puzzle, layout, slice.id, home)).toBe(true);
       expect(
         sliced.accepts(puzzle, layout, slice.id, {
-          x: nudged.x + snapRadius * 0.6,
-          y: nudged.y - snapRadius * 0.6,
+          x: home.x + reach.width * 0.45,
+          y: home.y - reach.height * 0.45,
         }),
       ).toBe(true);
 
       // The other animal's hole is never a home, however close the board puts
       // the two: a piece can only ever be right.
-      const wrong = holeOf(layout, theirs.id);
-      const apart = Math.hypot(
-        boxCenter(wrong, size).x - boxCenter(holeOf(layout, mine.id), size).x,
-        boxCenter(wrong, size).y - boxCenter(holeOf(layout, mine.id), size).y,
-      );
-      if (apart > snapRadius) expect(sliced.accepts(puzzle, layout, slice.id, wrong)).toBe(false);
+      expect(sliced.accepts(puzzle, layout, slice.id, holeOf(layout, theirs.id))).toBe(false);
+    }
+  });
+
+  /**
+   * The step up from the old rule, and the reason this file changed: a slice
+   * used to be accepted anywhere on its animal, so a quarter of a duck dropped
+   * on the duck's nose went home. Now it is placed by the same box every other
+   * piece is, and the far side of its own animal is out of reach.
+   *
+   * Asked of the animals cut into four or more, which is where "the far side"
+   * means anything. Cut into two or three, the pieces overlap so much that one
+   * dropped over its neighbour's place is a fraction of a piece out - a near
+   * miss the game has always taken, and taken into the piece's own place, which
+   * is the half of the promise that holds however finely the animal is cut.
+   */
+  it("refuses a slice dropped over the far side of its own animal", () => {
+    for (const level of slicedLevels.filter((one) => one.pieces / one.targets >= 4)) {
+      const puzzle = dealOf(level, 11);
+      const layout = buildLevelLayout("landscape", level, puzzle.pieces, puzzle.targets);
+
+      for (const animal of puzzle.targets) {
+        const home = holeOf(layout, animal.id);
+        const family = puzzle.pieces.filter((one) => one.id.startsWith(`slice:${animal.id}:`));
+        for (const slice of family) {
+          const mine = boxOf(layout, slice.id).ink;
+          // Where this slice would have to be dropped to sit over each sibling's
+          // place: the two share a box and a scale, so the difference between
+          // their drawings is the whole of the offset.
+          const away = family
+            .filter((one) => one.id !== slice.id)
+            .map((sibling) => {
+              const theirs = boxOf(layout, sibling.id).ink;
+              return {
+                x: home.x + (theirs.x + theirs.width / 2) - (mine.x + mine.width / 2),
+                y: home.y + (theirs.y + theirs.height / 2) - (mine.y + mine.height / 2),
+              };
+            })
+            .sort(
+              (a, b) =>
+                Math.hypot(b.x - home.x, b.y - home.y) - Math.hypot(a.x - home.x, a.y - home.y),
+            );
+          expect(sliced.accepts(puzzle, layout, slice.id, away[0]!), slice.id).toBe(false);
+        }
+      }
     }
   });
 

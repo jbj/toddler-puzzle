@@ -7,7 +7,7 @@
  * (`assets.ts`); a jigsaw cutter or a polygon builder can be another without
  * anything downstream having to learn about them.
  */
-import type { Point, Rect, Size } from "./geometry";
+import { padWithin, thickenTo, type Point, type Rect, type Size } from "./geometry";
 import type { ThemeId } from "./themes";
 
 /**
@@ -38,16 +38,22 @@ export interface PieceShape {
   readonly box: Size;
   /**
    * Where inside that box the piece actually draws anything, in box units.
-   * Left out, a piece is taken to fill its box, which is what an animal does.
    *
-   * A piece cut out of a bigger drawing cannot: every slice of one animal has
-   * to keep the animal's box and scale, or the slices would not assemble, so a
-   * slice's box is mostly empty. Everything that measures the piece as a *thing
-   * to grab and to look at* - the tray, the canvas clamp, the grab box - reads
-   * this instead of the box, so a tray of eight slices is not laid out as
-   * though it held eight whole animals.
+   * Required, and required of every kind, because everything that measures a
+   * piece as a *thing to grab and to place* goes through `gripOf` below, which
+   * starts here. A piece cut out of a bigger drawing keeps the whole drawing's
+   * box - every slice of one animal has to, or the slices would not assemble -
+   * so a slice's box is mostly empty, and a tray of eight slices must not be
+   * laid out as though it held eight whole animals.
+   *
+   * It used to be optional, and a piece that said nothing was taken to fill its
+   * box. Only the animals said nothing, and no animal fills its box: a pig
+   * draws a little over half its box's height, so a whole pig was placed by a
+   * box twice as tall as the pig. Saying nothing is no longer allowed. An
+   * animal's is measured and committed as `ANIMAL_INK` in `assets.ts`. See
+   * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
    */
-  readonly inked?: Rect;
+  readonly inked: Rect;
   /**
    * Where the piece "sits" within its box, in box units. Standing an animal on
    * a ground line is the special case where the anchor is at its feet.
@@ -65,9 +71,60 @@ export interface PieceShape {
   readonly themes?: readonly ThemeId[];
 }
 
-/** Where a shape draws, in its own box units: what it declared, or all of it. */
+/** Where a shape draws, in its own box units. */
 export function inkOf(shape: PieceShape): Rect {
-  return shape.inked ?? { x: 0, y: 0, width: shape.box.width, height: shape.box.height };
+  return shape.inked;
+}
+
+/**
+ * How far a piece's box reaches past its drawing, as a fraction of the shorter
+ * side of *that drawing*. Enough to cover the outline's stroke, which measuring
+ * the geometry leaves out, plus a little for a toddler aiming at an edge.
+ *
+ * A share of the drawing rather than of the authored box, because a piece cut
+ * out of a bigger picture keeps the whole picture's box: measured from the box,
+ * a twelfth of a jigsaw would be given a margin a third of its own size, and
+ * the tray would be packing margins rather than pieces. The *margin* is never
+ * taken outside the authored box: an animal drawn to its own edges gets none,
+ * and needs none, because the drawing is already there.
+ *
+ * The thickening that follows it is not clamped, and a sliver lying along an
+ * edge does end up with a box that runs outside the authored one - the boat's
+ * hull at level 16 by about a twelfth of its box. That is the right way round:
+ * clamping there would push the box off the drawing's centre, and the centre is
+ * the thing the whole rule aims at. Nothing downstream minds, because the tray
+ * cuts its cell from this box rather than from the authored one.
+ */
+export const GRAB_PADDING = 0.04;
+
+/**
+ * The thinnest a piece's box may be: no side less than half the other.
+ *
+ * A long thin piece is hard to aim, and a box the shape of the sliver would
+ * give it the least room to be aimed at - punishing the same piece twice. See
+ * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
+ */
+export const GRIP_MIN_RATIO = 0.5;
+
+/**
+ * The one box a piece is measured by: what it draws, given a margin, thickened
+ * so neither side is less than half the other. In the shape's own box units.
+ *
+ * This is what a piece can be grabbed by, what holds it on the canvas, what the
+ * tray packs a cell from, and what decides whether a drop is on target. Four
+ * questions, one answer, so a piece cannot be easy to pick up and hard to place
+ * or the other way about.
+ *
+ * Every kind is taken at its word about where it draws, and nothing measures a
+ * rendered piece to find out: a box the layout worked out and a box the board
+ * measured could disagree, and then a piece would be grabbable somewhere it
+ * could not be placed from.
+ */
+export function gripOf(shape: PieceShape): Rect {
+  const drawn = inkOf(shape);
+  const box = { x: 0, y: 0, width: shape.box.width, height: shape.box.height };
+  const padding = GRAB_PADDING * Math.min(drawn.width, drawn.height);
+  return thickenTo(padWithin(drawn, padding, box), GRIP_MIN_RATIO);
 }
 
 /**

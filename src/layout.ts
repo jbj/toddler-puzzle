@@ -21,49 +21,38 @@
  * Targets and pieces are usually the same shapes, one hole per piece. They part
  * company when a kind fills one target with several pieces - a sliced animal -
  * and the two are then composed from their own counts. A piece is measured for
- * the tray by its *ink* rather than by its box, so a tray of eight slices is
- * not laid out as though it held eight whole animals.
+ * the tray by its *own box* rather than by the box it carries (`gripOf` in
+ * `piece.ts`), so a tray of eight slices is not laid out as though it held
+ * eight whole animals.
  *
  * Composing rather than tabulating is what keeps the invariants true instead of
- * merely tested: a hole cannot land off canvas or under the tray, two snap zones
- * cannot overlap, and two tray slots cannot collide, because the composition
- * leaves room for each of those before it picks a size. The tests say so for
- * every piece count and a spread of random casts.
+ * merely tested: a hole cannot land off canvas or under the tray, no piece laid
+ * over another's place can cover its own, and two tray slots cannot collide,
+ * because the composition leaves room for each of those before it picks a size.
+ * The tests say so for every piece count and a spread of random casts.
  *
  * All values are in logical canvas units; geometry.ts maps them to pixels.
  */
-import { fitScale, scaleRect, scaleSize, type Point, type Rect, type Size } from "./geometry";
+import {
+  boxCenter,
+  covers,
+  fitScale,
+  growAboutCentre,
+  rectAt,
+  scaleRect,
+  scaleSize,
+  type Point,
+  type Rect,
+  type Size,
+} from "./geometry";
 import { isVouchedLevel, type LevelSpec, type PuzzleKindId } from "./levels";
-import { assertUniquePieceIds, inkOf, type PieceId, type PieceShape } from "./piece";
-
-/**
- * How close a piece's centre must get to its hole's centre to snap in, as a
- * fraction of the piece. Deliberately large - about two thirds of a piece -
- * because toddlers have poor fine motor control and near-misses should still
- * feel like a win.
- *
- * This is the floor. A level may be *more* forgiving than this through its
- * `snapForgiveness`, which is what carries a one-year-old through the first
- * chapter; nothing may be less.
- */
-export const SNAP_FRACTION = 0.68;
+import { assertUniquePieceIds, gripOf, inkOf, type PieceId, type PieceShape } from "./piece";
 
 /**
  * While dragging, the piece is held slightly above the finger so a small hand
  * doesn't cover the very thing it's trying to place.
  */
 export const FINGER_LIFT = 34;
-
-/**
- * How far a piece's grab area reaches past its artwork, as a fraction of the
- * shorter side of the authored box. A piece is picked up anywhere inside the
- * box around its drawing, not just where a finger lands on paint, and this is
- * the margin around that drawing: enough to cover the outline's stroke, which
- * measuring the geometry leaves out, plus a little for a toddler aiming at an
- * edge. `padWithin` holds the result inside the authored box, which is what
- * keeps one piece's grab area out of the next one's.
- */
-export const GRAB_PADDING = 0.04;
 
 export interface GroundBand {
   readonly top: number;
@@ -94,18 +83,24 @@ export interface PieceBox {
   /**
    * Where inside that box the piece actually draws, in logical units relative
    * to the box's top-left. The whole box for a piece that fills it; a small
-   * corner of it for a slice cut out of a bigger drawing. This is what the tray
-   * and the canvas clamp measure, because it is the part a child can see.
+   * corner of it for a slice cut out of a bigger drawing. This is what the
+   * sparkle lands on and what the size checks measure.
    */
   readonly ink: Rect;
   /**
-   * How near this piece's centre must get to its target's centre to count as
-   * in. `SNAP_FRACTION` of the piece's *smaller* side, times the level's
-   * `snapForgiveness`, so the circle is generous for a big piece and
-   * correspondingly tighter for a small one, and never reaches further than the
-   * piece does on its narrow axis.
+   * The piece's own box: its drawing, given a margin and thickened so neither
+   * side is less than half the other (`gripOf` in `piece.ts`), in logical units
+   * relative to the box's top-left. What a hand reaches for, what holds the
+   * piece on canvas, and what the tray cuts a cell for.
    */
-  readonly snapRadius: number;
+  readonly grip: Rect;
+  /**
+   * The same box at this level's `snapForgiveness`, grown about its own centre.
+   * A drop is on target when this, put where the finger let go, covers the
+   * centre of where the piece belongs - see `onTarget`. Identical to `grip` on
+   * a level of forgiveness 1, which is where the ramp ends up.
+   */
+  readonly reach: Rect;
 }
 
 /**
@@ -114,37 +109,43 @@ export interface PieceBox {
  * the layout invariants - holes on canvas, tray slots apart - hold whatever
  * shape turns up.
  *
- * `forgiveness` is the level's own multiplier on the snap radius. It is never
- * below 1, so the two-thirds floor holds everywhere and an early level is only
- * ever kinder than that.
+ * `forgiveness` is the level's own multiplier on how far a drop may be out. It
+ * is never below 1, so the box rule is the floor everywhere and an early level
+ * is only ever kinder than that.
  */
 function pieceBox(shape: PieceShape, slotSize: number, forgiveness: number): PieceBox {
   const scale = fitScale({ width: slotSize, height: slotSize }, shape.box);
   const size = scaleSize(shape.box, scale);
+  const grip = scaleRect(gripOf(shape), scale);
   return {
     scale,
     size,
     ink: scaleRect(inkOf(shape), scale),
-    snapRadius: snapRadiusFor(size, forgiveness),
+    grip,
+    reach: growAboutCentre(grip, forgiveness),
   };
 }
 
-/** Two thirds of a size's narrow side, at a level's forgiveness. */
-function snapRadiusFor(size: Size, forgiveness: number): number {
-  return Math.round(Math.min(size.width, size.height) * SNAP_FRACTION * forgiveness);
+/**
+ * The one rule every dragged kind places a drop by: is the piece's box, put
+ * where the finger let go, over the middle of where the piece belongs?
+ *
+ * `at` and `home` are both top-lefts of the piece's authored box - what
+ * `PuzzleKind.accepts` is handed and what `PuzzleKind.target` answers - so a
+ * kind says where the piece goes and nothing about geometry. Because the box is
+ * always centred on what the piece draws, this asks the same question of an
+ * animal, a slice, a shard and a triangle: cover the middle of your place and
+ * you are in.
+ */
+export function onTarget(layout: Layout, piece: PieceId, at: Point, home: Point): boolean {
+  const { grip, reach } = boxOf(layout, piece);
+  return covers(rectAt(at, reach), boxCenter({ x: home.x + grip.x, y: home.y + grip.y }, grip));
 }
 
-/**
- * The same two thirds, measured from what a piece *draws* rather than from the
- * box it carries. For most kinds these are the same circle. They are not for a
- * kind whose pieces all share one big box and each aim at a small part of it: a
- * polygon scene's box is the whole picture, and two thirds of that would accept
- * a roof dropped on a wall. Reaching two thirds of the roof is the promise;
- * `PieceBox.snapRadius` keeps it for a piece that fills its box, and this keeps
- * it for a piece that does not.
- */
-export function inkSnapRadius(layout: Layout, piece: PieceId): number {
-  return snapRadiusFor(boxOf(layout, piece).ink, layout.level.snapForgiveness);
+/** The middle of a piece's box, given the top-left the box sits at. */
+export function gripCentre(layout: Layout, piece: PieceId, at: Point): Point {
+  const { grip } = boxOf(layout, piece);
+  return boxCenter({ x: at.x + grip.x, y: at.y + grip.y }, grip);
 }
 
 export interface Layout {
@@ -246,12 +247,12 @@ export function boxOf(layout: Layout, piece: PieceId): PieceBox {
 
 /**
  * Where a piece waiting in the tray sits: its box top-left, placed so that its
- * *ink* is centred in the cell packed for it. Which cell that is was decided
- * when the tray was packed, from the piece's own drawing, so a piece is placed
- * rather than fitted into a square somebody else's size.
+ * *own box* is centred in the cell packed for it. Which cell that is was decided
+ * when the tray was packed, from the same box, so a piece is placed rather than
+ * fitted into a square somebody else's size.
  *
- * For a piece that fills its box this is simply the cell's own corner, which is
- * what an animal has always got.
+ * For a piece whose box fills the box it carries this is simply the cell's own
+ * corner, near enough, which is what an animal has always got.
  */
 export function trayHome(layout: Layout, piece: PieceId): Point {
   const cell = layout.trayCells.get(piece);
@@ -260,10 +261,10 @@ export function trayHome(layout: Layout, piece: PieceId): Point {
       `Piece "${piece}" has no tray cell in the level ${layout.level.level} ${layout.id} layout.`,
     );
   }
-  const { ink } = boxOf(layout, piece);
+  const { grip } = boxOf(layout, piece);
   return {
-    x: cell.x + (cell.width - ink.width) / 2 - ink.x,
-    y: cell.y + (cell.height - ink.height) / 2 - ink.y,
+    x: cell.x + (cell.width - grip.width) / 2 - grip.x,
+    y: cell.y + (cell.height - grip.height) / 2 - grip.y,
   };
 }
 
@@ -725,8 +726,8 @@ type TrayPlan =
 interface Plan {
   readonly sceneCounts: readonly number[];
   readonly tray: TrayPlan;
-  /** What each piece of the cast draws, in slot units, in cast order. */
-  readonly inks: readonly Size[];
+  /** What each piece of the cast takes up in the tray, in slot units, in cast order. */
+  readonly grips: readonly Size[];
   /** Per scene row, the worst reach above and below its ground line, at slot size 1. */
   readonly rises: readonly number[];
   readonly drops: readonly number[];
@@ -742,19 +743,33 @@ interface Plan {
 }
 
 /**
- * What each piece draws, in slot units. A piece is scaled by the longer side of
- * its authored box, so this is a constant of the cast rather than of the size it
- * ends up at, and it is what the tray is packed by: a piece that draws a corner
- * of a big box - a slice, a jigsaw piece - takes up the corner rather than the
- * box.
+ * What each piece takes up, in slot units, measured by `pick`. A piece is
+ * scaled by the longer side of its authored box, so this is a constant of the
+ * cast rather than of the size it ends up at: a piece that occupies a corner of
+ * a big box - a slice, a jigsaw piece - takes up the corner rather than the box.
  */
-function inkShares(pieces: readonly PieceShape[]): Size[] {
+function sharesOf(pieces: readonly PieceShape[], pick: (shape: PieceShape) => Rect): Size[] {
   return pieces.map((shape) => {
     const scale = 1 / Math.max(shape.box.width, shape.box.height);
-    const ink = inkOf(shape);
-    return { width: ink.width * scale, height: ink.height * scale };
+    const rect = pick(shape);
+    return { width: rect.width * scale, height: rect.height * scale };
   });
 }
+
+/**
+ * What the tray is packed by: each piece's own box, thickened. A cell is cut
+ * for the box a hand reaches for rather than for the drawing inside it, which
+ * is what keeps two neighbours in the tray from sharing a press.
+ */
+const gripShares = (pieces: readonly PieceShape[]): Size[] =>
+  sharesOf(pieces, (shape) => gripOf(shape));
+
+/**
+ * What each piece *draws*. The size floors and the cap on how big a piece may
+ * be are about what a child can see and hold, so they measure the drawing
+ * rather than the margin around it.
+ */
+const inkShares = (pieces: readonly PieceShape[]): Size[] => sharesOf(pieces, inkOf);
 
 /** What a row of these drawings takes across the canvas, in slot units. */
 function spanOf(widths: readonly number[], pad: TrayPad = SLOT_TRAY): number {
@@ -861,12 +876,13 @@ function gutterings(shares: readonly Size[], pad: TrayPad = SLOT_TRAY): Column[]
 function planFor(
   view: View,
   shares: readonly Size[],
+  drawn: readonly Size[],
   targets: readonly PieceShape[],
   sceneRowCount: number,
   tray: TrayPlan,
 ): Plan {
   const sceneCounts = splitRows(targets.length, sceneRowCount);
-  const drawn = shares.map((share) => Math.max(share.width, share.height));
+  const drawnSides = drawn.map((share) => Math.max(share.width, share.height));
 
   const rises: number[] = [];
   const drops: number[] = [];
@@ -904,7 +920,7 @@ function planFor(
 
   const { width, height } = view.canvas;
   const columnRoom = height - COMPOSITION.controlRoom;
-  const largest = Math.max(...drawn);
+  const largest = Math.max(...drawnSides);
   const slotSize = Math.floor(
     Math.min(
       (height * (1 - COMPOSITION.skyShare)) / (sceneHeight + trayHeight),
@@ -916,12 +932,12 @@ function planFor(
   return {
     sceneCounts,
     tray,
-    inks: shares,
+    grips: shares,
     rises,
     drops,
     slotSize,
     largest,
-    smallest: Math.min(...drawn),
+    smallest: Math.min(...drawnSides),
   };
 }
 
@@ -958,7 +974,7 @@ interface LaidTray {
  */
 function shelveTray(
   shelves: readonly Shelf[],
-  inks: readonly Size[],
+  grips: readonly Size[],
   canvas: Size,
   slotSize: number,
   pad: TrayPad,
@@ -974,7 +990,7 @@ function shelveTray(
   let top = between;
   for (const [index, shelf] of shelves.entries()) {
     const height = heights[index] as number;
-    const widths = shelf.pieces.map((piece) => scaled((inks[piece] as Size).width));
+    const widths = shelf.pieces.map((piece) => scaled((grips[piece] as Size).width));
     for (const [at, x] of spreadCells(widths, canvas.width, margin).entries()) {
       cells.push({
         piece: shelf.pieces[at] as number,
@@ -999,7 +1015,7 @@ function shelveTray(
  */
 function gutterTray(
   columns: readonly Column[],
-  inks: readonly Size[],
+  grips: readonly Size[],
   canvas: Size,
   slotSize: number,
   pad: TrayPad,
@@ -1014,7 +1030,7 @@ function gutterTray(
   const room = canvas.height - COMPOSITION.controlRoom;
   const cells: TrayCell[] = [];
   for (const [side, column] of columns.entries()) {
-    const heights = column.pieces.map((piece) => scaled((inks[piece] as Size).height));
+    const heights = column.pieces.map((piece) => scaled((grips[piece] as Size).height));
     const stacked = heights.reduce((sum, height) => sum + height, 0);
     const pad = (room - stacked) / (column.pieces.length + 1);
     let top = pad;
@@ -1043,14 +1059,14 @@ function gutterTray(
 /** Lay whichever tray a plan asked for, at the slot size its pieces wait at. */
 function layTray(
   tray: TrayPlan,
-  inks: readonly Size[],
+  grips: readonly Size[],
   canvas: Size,
   slotSize: number,
   pad: TrayPad,
 ): LaidTray {
   return tray.shape === "shelves"
-    ? shelveTray(tray.shelves, inks, canvas, slotSize, pad)
-    : gutterTray(tray.columns, inks, canvas, slotSize, pad);
+    ? shelveTray(tray.shelves, grips, canvas, slotSize, pad)
+    : gutterTray(tray.columns, grips, canvas, slotSize, pad);
 }
 
 /**
@@ -1068,7 +1084,7 @@ function compose(view: View, plan: Plan): Arrangement {
   const depths = plan.rises.map((rise, index) => (rise + (plan.drops[index] as number)) * slotSize);
   const rowGap = scaled(COMPOSITION.rowGap);
   const margin = Math.round(scaled(COMPOSITION.sideMargin));
-  const tray = layTray(plan.tray, plan.inks, canvas, slotSize, SLOT_TRAY);
+  const tray = layTray(plan.tray, plan.grips, canvas, slotSize, SLOT_TRAY);
   const laid = plan.tray.shape === "shelves" ? tray : null;
   const sceneTop = tray.sceneTop;
 
@@ -1193,12 +1209,16 @@ const takesTheBoard = (level: LevelSpec, targets: readonly PieceShape[]): boolea
  * What a picture board's tray keeps clear, in slot units - which is to say the
  * shares above, converted by the size of the largest thing waiting in the tray.
  *
+ * Measured on the largest *drawing* rather than on the largest box: the cells
+ * are cut from the boxes and already hold the margin a hand needs, so pricing
+ * this off them too would charge the picture for that margin twice.
+ *
  * The margin is the same on both sides of a gutter's column, so the column
  * stays centred in the sand it stands on; what changes against an ordinary
  * board is that there is much less sand.
  */
-const pictureTrayPad = (shares: readonly Size[]): TrayPad => {
-  const largest = Math.max(...shares.map((ink) => Math.max(ink.width, ink.height)));
+const pictureTrayPad = (drawn: readonly Size[]): TrayPad => {
+  const largest = Math.max(...drawn.map((ink) => Math.max(ink.width, ink.height)));
   return {
     margin: COMPOSITION.trayEdge * largest,
     gap: COMPOSITION.trayGap * largest,
@@ -1247,7 +1267,8 @@ function trayCeiling(tray: TrayPlan, canvas: Size): number {
 /** One way to lay a picture board out: a tray, and the two sizes it settles. */
 interface PicturePlan {
   readonly tray: TrayPlan;
-  readonly inks: readonly Size[];
+  /** What each piece of the cast takes up in the tray, in slot units. */
+  readonly grips: readonly Size[];
   /** What this tray keeps clear around the pieces waiting in it. */
   readonly pad: TrayPad;
   /** What the picture, and every piece standing in it, is drawn to. */
@@ -1268,12 +1289,12 @@ interface PicturePlan {
  */
 function bestPicturePlan(
   tray: TrayPlan,
-  inks: readonly Size[],
+  grips: readonly Size[],
   canvas: Size,
   box: Size,
   pad: TrayPad,
 ): PicturePlan {
-  let best: PicturePlan = { tray, inks, pad, sceneSlot: 0, traySlot: 0 };
+  let best: PicturePlan = { tray, grips, pad, sceneSlot: 0, traySlot: 0 };
   for (let traySlot = 1; traySlot <= Math.floor(trayCeiling(tray, canvas)); traySlot++) {
     const room = sceneRoom(tray, canvas, traySlot, pad);
     if (room.width <= 0 || room.height <= 0) break;
@@ -1283,7 +1304,7 @@ function bestPicturePlan(
     if (sceneSlot > best.sceneSlot) {
       // A piece never waits larger than it lands: that would be a picture
       // shrinking as it is built, which is the opposite of the promise.
-      best = { tray, inks, pad, sceneSlot, traySlot: Math.min(traySlot, sceneSlot) };
+      best = { tray, grips, pad, sceneSlot, traySlot: Math.min(traySlot, sceneSlot) };
     }
   }
   return best;
@@ -1302,7 +1323,7 @@ function bestPicturePlan(
 function composePicture(view: View, plan: PicturePlan, picture: PieceShape): Arrangement {
   const { canvas } = view;
   const { sceneSlot, traySlot } = plan;
-  const tray = layTray(plan.tray, plan.inks, canvas, traySlot, plan.pad);
+  const tray = layTray(plan.tray, plan.grips, canvas, traySlot, plan.pad);
   const room = sceneRoom(plan.tray, canvas, traySlot, plan.pad);
   const drawn = scaleSize(
     picture.box,
@@ -1346,8 +1367,11 @@ function arrangePicture(
   pieces: readonly PieceShape[],
   picture: PieceShape,
 ): Arrangement {
-  const shares = inkShares(pieces);
-  const pad = pictureTrayPad(shares);
+  // The same two measures `arrange` takes: the box a hand reaches for, which
+  // the tray cuts its cells from, and the drawing, which the floors are about.
+  const shares = gripShares(pieces);
+  const drawn = inkShares(pieces);
+  const pad = pictureTrayPad(drawn);
   const trays: TrayPlan[] = [];
   for (let trayRows = 1; trayRows <= pieces.length; trayRows++) {
     for (const shelves of shelvings(shares, trayRows, pad)) {
@@ -1358,11 +1382,10 @@ function arrangePicture(
 
   const { width } = view.canvas;
   const smallestInk = COMPOSITION.minPieceInk * width;
-  // Measured on what the child reaches for, which is the piece as it waits.
+  // Measured on what the child sees of the piece as it waits, drawn small.
   const grabbable = (plan: PicturePlan): boolean =>
     plan.sceneSlot >= COMPOSITION.minSlot * width &&
-    plan.traySlot * Math.min(...shares.map((ink) => Math.max(ink.width, ink.height))) >=
-      smallestInk;
+    plan.traySlot * Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height))) >= smallestInk;
 
   const viable = trays
     .map((tray) => bestPicturePlan(tray, shares, view.canvas, picture.box, pad))
@@ -1421,12 +1444,16 @@ function arrange(
   );
   const wantedTrayRows = idealRows(count, traySpan, width);
 
-  const shares = inkShares(pieces);
+  // Two measures of the same cast: what a hand reaches for, which is what the
+  // tray packs cells from, and what the piece draws, which is what the size
+  // floors and the cap on a piece's size are about.
+  const shares = gripShares(pieces);
+  const drawn = inkShares(pieces);
   const plans: Plan[] = [];
   for (let sceneRows = 1; sceneRows <= targets.length; sceneRows++) {
     for (let trayRows = 1; trayRows <= count; trayRows++) {
       for (const shelves of shelvings(shares, trayRows)) {
-        plans.push(planFor(view, shares, targets, sceneRows, { shape: "shelves", shelves }));
+        plans.push(planFor(view, shares, drawn, targets, sceneRows, { shape: "shelves", shelves }));
       }
     }
   }
@@ -1465,7 +1492,7 @@ function arrange(
   // is one target - a picture, keeping the middle of the board - and only where
   // it makes that picture markedly bigger than a band across the top would.
   if (targets.length === 1 && count > 1) {
-    const gutters = planFor(view, shares, targets, 1, {
+    const gutters = planFor(view, shares, drawn, targets, 1, {
       shape: "gutters",
       columns: gutterings(shares),
     });

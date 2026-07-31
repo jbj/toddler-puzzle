@@ -18,15 +18,16 @@
  *    clipping cut them, not where arithmetic put them;
  *  - a slice is only ever accepted by its own animal, so there is still no way
  *    to be wrong;
- *  - and it is accepted anywhere near that animal, not only near where the
- *    slice itself belongs. A quarter of a duck dropped on the duck is a child
- *    who has understood the game.
+ *  - and it is placed by the same rule as every other piece: its own box, where
+ *    the finger let go, over the middle of its own place in the animal. The
+ *    box is generous - a slice too thin to aim at is thickened before anything
+ *    measures it - but a quarter of a duck now goes where that quarter goes.
  *
  * How the slices are cut is `slices.ts`, and where the cuts go is measured
  * offline; neither is this file's business.
  */
-import { boxCenter, isWithinSnapRadius, shuffle, type Point } from "../geometry";
-import { holeOf, boxOf, type Layout } from "../layout";
+import { shuffle, type Point } from "../geometry";
+import { holeOf, boxOf, onTarget, type Layout } from "../layout";
 import { dealTargets } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
@@ -164,13 +165,11 @@ export const sliced: PuzzleKind = {
   },
 
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean {
-    // Measured against the animal, not the slice. A slice carries the whole
-    // animal's box, so this is the same generous circle a whole animal would
-    // get - anywhere on its animal counts, rather than the slice having to find
-    // the quarter of the hole it came out of.
-    const { size, snapRadius } = boxOf(layout, piece);
-    const center = boxCenter(holeOf(layout, animalFor(asSliced(puzzle), piece)), size);
-    return isWithinSnapRadius(boxCenter(at, size), center, snapRadius);
+    // Measured against the slice's own place inside the animal. A slice carries
+    // the whole animal's box, so dropping it on the animal's origin is dropping
+    // it exactly where it belongs, and the rule asks the same of it as of any
+    // other piece: cover the middle of your place and you are in.
+    return onTarget(layout, piece, at, holeOf(layout, animalFor(asSliced(puzzle), piece)));
   },
 
   isComplete(puzzle: Puzzle): boolean {

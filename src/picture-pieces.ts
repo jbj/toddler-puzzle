@@ -105,6 +105,9 @@ export function picturePieces(
       outline: `M0 0 H${box.width} V${box.height} H0 Z`,
       artwork: picture.artwork,
       box,
+      // A scene paints its whole box - `npm run art:check` insists on it - and
+      // the frame is the whole scene, so it is the one shape that fills its box.
+      inked: { x: 0, y: 0, width: box.width, height: box.height },
       anchor,
       label: picture.label,
     },

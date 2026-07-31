@@ -20,7 +20,7 @@
 import { describe, expect, it } from "vitest";
 import { seededRandom } from "../src/geometry";
 import { polygon } from "../src/kinds/polygon";
-import { boxOf, buildLevelLayout, holeOf, inkSnapRadius, type Layout } from "../src/layout";
+import { boxOf, buildLevelLayout, holeOf, type Layout } from "../src/layout";
 import { LEVELS, type LevelSpec } from "../src/levels";
 import { assertUniquePieceIds, type PieceId } from "../src/piece";
 import {
@@ -304,11 +304,11 @@ describe("the polygon kind", () => {
       const layout = buildLevelLayout("landscape", level, puzzle.pieces, puzzle.targets);
       for (const [index, piece] of puzzle.pieces.entries()) {
         const home = spot(scene, layout, index, index);
-        const reach = inkSnapRadius(layout, piece.id);
+        const { reach } = boxOf(layout, piece.id);
         expect(polygon.accepts(puzzle, layout, piece.id, home), piece.id).toBe(true);
-        const near = { x: home.x + reach * 0.6, y: home.y - reach * 0.6 };
+        const near = { x: home.x + reach.width * 0.45, y: home.y - reach.height * 0.45 };
         expect(polygon.accepts(puzzle, layout, piece.id, near), piece.id).toBe(true);
-        const far = { x: home.x + reach * 6, y: home.y + reach * 6 };
+        const far = { x: home.x + reach.width * 6, y: home.y + reach.height * 6 };
         expect(polygon.accepts(puzzle, layout, piece.id, far), piece.id).toBe(false);
       }
     }
