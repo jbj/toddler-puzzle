@@ -476,9 +476,22 @@ its *own drawing's* centre, because a piece of a picture carries the whole
 picture's box and shrinking about the box corner would swing it across the
 board. Everything else - the drag engine, `accepts`, `target`, every kind - keeps
 talking in full-size positions; only the drawing is shrunk, and only while the
-piece is at rest in the tray. A board that stops filling the room it was given
-without sitting on the 2/3 floor is a regression, and
-`tests/picture-board.test.ts` is what catches it. See
+piece is at rest in the tray.
+
+The other half of the room comes from the tray's own margins. Every gap in the
+composition is a share of the slot, which is right everywhere else because a
+slot is about the size of a piece - but on a picture board the slot is the whole
+picture, so those numbers wrap a single shard in a third of a picture's width of
+sand. A picture board's tray therefore passes `pictureTrayPad` down instead: the
+same `TrayPad` record every tray is laid with, but measured in
+`COMPOSITION.trayEdge` and `trayGap`, which are shares of the largest drawing
+waiting there. Keep it that way. A tray padded against the slot is a tray half
+again as big as it needs to be, and all of it comes off the picture.
+
+A board that stops filling the room it was given without sitting on the 2/3
+floor is a regression, as is a tray that spends more sand on itself than the
+pieces standing in it are worth; `tests/picture-board.test.ts` is what catches
+both. See
 [decision 20260730T230000](../../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
 
 A tray cell belongs to a *piece*, not to a position: `layout.trayCells` maps a

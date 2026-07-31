@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
 import { seededRandom } from "../src/geometry";
 import { kindFor, loadAllKinds } from "../src/kinds/registry";
-import { boxOf, buildLevelLayout, holeOf, waitingInk } from "../src/layout";
+import { boxOf, buildLevelLayout, holeOf, trayHome, waitingInk } from "../src/layout";
 import { LEVELS, type LevelSpec } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
 import { PICTURE_BACKDROP, pictureBackdrop } from "../src/picture-pieces";
@@ -110,6 +110,68 @@ describe("the board a picture is rebuilt on", () => {
       expect(at.y, where).toBeGreaterThanOrEqual(layout.sceneTop - 0.5);
       expect(at.x + size.width, where).toBeLessThanOrEqual(layout.canvas.width + 0.5);
       expect(at.y + size.height, where).toBeLessThanOrEqual(layout.canvas.height + 0.5);
+    }
+  });
+
+  it("spends no more sand on the tray than the pieces standing in it are worth", () => {
+    // The other half of the room the picture takes, and the one that is
+    // invisible from the numbers: a tray's margins are shares of the *slot*,
+    // and on a picture board the slot is the whole picture. Left at that a
+    // single shard stands in a third of a picture's width of sand, and every
+    // unit of it is off the picture. Measured across the direction the tray
+    // costs the picture - down for a band, across for a gutter - the sand
+    // spare around the pieces is held to a third of the largest of them.
+    for (const { level, id, layout } of BOARDS) {
+      const drawn = layout.pieces.map((piece) => waitingInk(layout, piece.id));
+      const biggest = Math.max(...drawn.map((ink) => Math.max(ink.width, ink.height)));
+      const across = layout.trayBands[0]!.rect.width < layout.canvas.width;
+      const home = layout.pieces.map((piece) => trayHome(layout, piece.id));
+      const low = Math.min(
+        ...drawn.map((ink, at) => (across ? home[at]!.x + ink.x : home[at]!.y + ink.y)),
+      );
+      const high = Math.max(
+        ...drawn.map((ink, at) =>
+          across ? home[at]!.x + ink.x + ink.width : home[at]!.y + ink.y + ink.height,
+        ),
+      );
+      for (const band of layout.trayBands) {
+        const thickness = across ? band.rect.width : band.rect.height;
+        // A gutter's two bands hold their own pieces; taking the spread of all
+        // of them is the same measure mirrored, because both are the same width.
+        const spare = thickness - Math.min(high - low, thickness);
+        expect(
+          spare / biggest,
+          `level ${level.level} ${id}: ${Math.round(spare)} units of sand around a ` +
+            `${Math.round(biggest)}-unit piece`,
+        ).toBeLessThan(0.34);
+      }
+    }
+  });
+
+  it("stands the pieces near the outside, where the picture is not", () => {
+    // The sand runs to the edge of the canvas either way, so the margin on the
+    // far side of the tray - above a band, outside a gutter - buys nothing and
+    // is charged to the picture. Measured on the piece that comes closest,
+    // because a shelf below the first one is meant to be further in.
+    for (const { level, id, layout } of BOARDS) {
+      const across = layout.trayBands[0]!.rect.width < layout.canvas.width;
+      let outside = Infinity;
+      let biggest = 0;
+      for (const piece of layout.pieces) {
+        const home = trayHome(layout, piece.id);
+        const ink = waitingInk(layout, piece.id);
+        biggest = Math.max(biggest, ink.width, ink.height);
+        outside = Math.min(
+          outside,
+          across
+            ? Math.min(home.x + ink.x, layout.canvas.width - (home.x + ink.x + ink.width))
+            : home.y + ink.y,
+        );
+      }
+      expect(
+        outside / biggest,
+        `level ${level.level} ${id}: the tray starts ${Math.round(outside)} units in`,
+      ).toBeLessThan(0.2);
     }
   });
 

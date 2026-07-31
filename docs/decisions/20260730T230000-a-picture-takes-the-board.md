@@ -63,7 +63,19 @@ the tray now costs the picture less than half of what the picture costs, which
 is where the room comes from. The floor is a floor: the search maximises the
 picture subject to it, so on almost every board it lands exactly on 2/3.
 
-Three details of that are deliberate.
+**A picture board's tray is measured against the pieces, not against the
+slot.** Every gap in the composition is a share of the slot, and everywhere else
+that is exactly right, because a slot is about the size of the piece standing in
+it. On a picture board the slot is the *whole picture* and a waiting piece is a
+fraction of it, so the same numbers put a third of a picture's width of sand
+around a single shard: a gutter half again as wide as it needed to be to hold
+anything, a band a quarter deeper, and all of it charged to the picture.
+`COMPOSITION.trayEdge` and `trayGap` are shares of the largest drawing waiting
+in the tray instead, so the tray is as big as what stands in it. That alone is
+worth about a fifth of the picture's area again, and it is what puts a waiting
+piece near the outer edge of the sand rather than marooned in the middle of it.
+
+Four details of that are deliberate.
 
 **The shrink is about the piece's own drawing, not its box.** A piece of a
 picture carries the *whole picture's* box, so shrinking about the box corner
@@ -91,34 +103,38 @@ picture is the assembled picture's own width, so these are the picture:
 | level | kind | landscape | | portrait | | area |
 | --- | --- | --- | --- | --- | --- | --- |
 | | | before | after | before | after | |
-| 21/22 | jigsaw 4 | 0.336 | 0.504 | 0.517 | 0.920 | 2.25x |
-| 23/24 | jigsaw 6 | 0.377 | 0.504 | 0.553 | 0.873 | 1.79x |
-| 25/29 | jigsaw 9 | 0.311 | 0.500 | 0.562 | 0.864 | 2.58x |
-| 26 | shatter 6 | 0.341 | 0.440 | 0.471 | 0.802 | 1.66x |
-| 28 | shatter 8 | 0.262 | 0.420 | 0.491 | 0.806 | 2.57x |
-| 30 | jigsaw 12 | 0.311 | 0.500 | 0.515 | 0.888 | 2.58x |
+| 21/22 | jigsaw 4 | 0.336 | 0.558 | 0.517 | 0.927 | 2.76x |
+| 23/24 | jigsaw 6 | 0.377 | 0.563 | 0.553 | 0.927 | 2.23x |
+| 25/29 | jigsaw 9 | 0.311 | 0.527 | 0.562 | 0.927 | 2.87x |
+| 26 | shatter 6 | 0.341 | 0.472 | 0.471 | 0.824 | 1.92x |
+| 28 | shatter 8 | 0.262 | 0.439 | 0.491 | 0.854 | 2.81x |
+| 30 | jigsaw 12 | 0.311 | 0.535 | 0.515 | 0.927 | 2.96x |
 
 In portrait the picture now spans between four fifths and the whole of the
 canvas's width. A four-piece jigsaw in portrait went from an eighth of the board
 to two fifths of it.
 
-**Two ink floors went down, and that is the trade that bought the room.** The
-smallest *waiting* piece fell on the two landscape boards where the picture grew
-by less than the 1.5x that exactly pays for a 2/3 shrink: levels 23/24 from
-0.145 of the canvas width to 0.130, and level 26 from 0.137 to 0.122. Both are
-still clear of `COMPOSITION.minPieceInk` (0.065), and on both the piece is drawn
-*larger* than it ever was before the moment it is picked up. The other ten
-picture boards gained on both counts - level 21's portrait ink went from 0.258
-to 0.306, level 28's landscape from 0.085 to 0.092, level 30's from 0.090 to
-0.096. The floors in `tests/puzzle.test.ts` are measured against the waiting
-size from here on, because what a hand has to find is the piece it can see.
+**One ink floor went down, and that is the trade that bought the room.** The
+smallest *waiting* piece on level 26 in landscape fell from 0.137 of the canvas
+width to 0.133 - the one board where the picture grew by less than the 1.5x that
+exactly pays for a 2/3 shrink. It is still well clear of
+`COMPOSITION.minPieceInk` (0.065), and it is the same shard drawn *larger* than
+before the moment it is picked up. The other eleven picture boards gained on
+both counts: level 21's portrait ink went from 0.258 to 0.309, level 23's
+landscape held at 0.145, level 28's landscape went from 0.085 to 0.096 and level
+30's from 0.090 to 0.103. The floors in `tests/puzzle.test.ts` are measured
+against the waiting size from here on, because what a hand has to find is the
+piece it can see.
 
-The guard against the picture quietly shrinking back is
-`tests/picture-board.test.ts`: for every picture level in both orientations over
+The guards against the picture quietly shrinking back are in
+`tests/picture-board.test.ts`. The first: for every picture level in both orientations over
 six deals, either the picture reaches an edge of the room the tray left it, or
 the waiting scale is sitting on the 2/3 floor. A board where neither is tight is
-a board that has stopped growing the picture. It is checked alongside the two
-promises that make the shrink safe - that the waiting ink is exactly
+a board that has stopped growing the picture. Two more hold the tray to the size
+of what stands in it: the sand spare around the pieces, measured across the
+direction the tray costs the picture, stays under a third of the largest piece,
+and the tray starts within a fifth of one of the outer edge. They are checked
+alongside the two promises that make the shrink safe - that the waiting ink is exactly
 `waitingScale` of the landing ink on both axes, and that it is concentric with
 it, which is what makes a piece grow in place rather than jump when it is
 picked up.

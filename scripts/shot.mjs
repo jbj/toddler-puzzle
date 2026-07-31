@@ -1712,7 +1712,7 @@ try {
   check(
     `the picture takes the board (${(board.across * 100).toFixed(0)}% across, ` +
       `${(board.down * 100).toFixed(0)}% down)`,
-    Math.max(board.across, board.down) > 0.55,
+    Math.max(board.across, board.down) > 0.6,
   );
   check(
     `the blue behind the picture is the blue behind the page (${board.backdrop} / ${board.page})`,
