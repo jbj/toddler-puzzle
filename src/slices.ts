@@ -24,6 +24,7 @@
  * contract `FOOT_LEVEL` has, for the same reason.
  */
 import { ART_BOX, type AnimalId } from "./assets";
+import { cutClip, cutEdge, SLICE_OVERLAP } from "./cut";
 import type { Point, Rect } from "./geometry";
 import { pieceId, type PieceShape } from "./piece";
 import recipes from "./slice-recipes.json";
@@ -188,7 +189,8 @@ const clipId = (piece: string, what: string) => `${what}-${piece.replaceAll(":",
  * trick: laid out, all of them get the same scale and the same origin, so they
  * assemble into the animal by construction rather than by arithmetic. What each
  * one draws is the animal's artwork through its own cell, plus the cut edge
- * picked out in white so the join reads as a join.
+ * picked out in white so the join reads as a join - until the slice is home,
+ * when the edge fades and the animal is an animal again (`cut.ts`).
  *
  * `inked` is what makes them behave as separate pieces despite the shared box -
  * the tray packs them by it, the canvas clamp holds them by it, and each gets a
@@ -204,6 +206,7 @@ export function sliceShapes(animal: PieceShape, count: SliceCount): readonly Pie
     const cellClip = clipId(id, "cell");
     const bodyClip = clipId(id, "body");
     const path = cellPath(cell);
+    const cut = cutClip(cellClip, path, SLICE_OVERLAP);
     return {
       id: pieceId(id),
       // The animal's own silhouette: one hole, cut once, that every slice of
@@ -211,12 +214,12 @@ export function sliceShapes(animal: PieceShape, count: SliceCount): readonly Pie
       outline: animal.outline,
       artwork: `<g class="slice">
         <defs>
-          <clipPath id="${cellClip}"><path d="${path}" /></clipPath>
+          ${cut.defs}
           <clipPath id="${bodyClip}"><path d="${animal.outline}" /></clipPath>
         </defs>
-        <g clip-path="url(#${cellClip})">${animal.artwork}</g>
         <g clip-path="url(#${bodyClip})">
-          <path d="${path}" fill="none" stroke="#ffffff" stroke-opacity="0.7" stroke-width="4" />
+          <g ${cut.attrs}>${animal.artwork}</g>
+          ${cutEdge(path, 4, 0.7)}
         </g>
       </g>`,
       box: animal.box,

@@ -139,6 +139,31 @@ them offline and writes `src/slice-recipes.json`; `npm run art:check` re-judges
 what is committed. That contract, and the numbers behind it, are in
 [`art.instructions.md`](art.instructions.md).
 
+**A cut edge belongs to a piece that is still loose**, and that rule is shared
+with the two picture kinds, so it lives in `src/cut.ts` rather than in either
+cutter. Two halves, and neither works without the other:
+
+- the white line along a cut is drawn while the piece is in the tray or under a
+  finger, and fades over the settle once the piece is home - a finished picture
+  with a grid over it is not a finished picture;
+- a finished drawing is clipped a hair wider than it was cut, so its pieces
+  overlap by about a pixel instead of meeting exactly. Two neighbours clipped to
+  the same path each paint the boundary at partial coverage and leave a pale
+  hairline down the join; invisible under a white edge, and all there is to see
+  once it has gone. The overlap cannot show, because every piece of one drawing
+  is that drawing at one scale and one origin.
+
+The wider clip waits for the last piece to *land* - `.cut-art` in `style.css`,
+on the `is-complete` the host puts on the stage, and never on a piece still
+wearing `is-settling` - because it is only free once there is no gap left to
+spill into, and while there is one the guide behind the join is the same picture
+dimmed. `SLICE_OVERLAP` and `PICTURE_OVERLAP` differ because
+the drawings do: a scene is flat and opaque and can take a wide overlap, an
+animal has translucent art that a wide overlap would paint twice and darken.
+Neither the nudged copies in the clip nor either overlap is a fudge to tidy
+away. See
+[decision 20260730T194500](../../docs/decisions/20260730T194500-a-placed-piece-has-no-edge.md).
+
 ## Pictures out of shapes
 
 `src/kinds/polygon.ts` plays levels 16-20: one picture - a house, a boat, a
@@ -218,7 +243,10 @@ through its cell. Nothing intersects artwork with anything, so one scene serves
 a 2x2 board and a 4x3 board without being redrawn, and two neighbours cannot
 draw the same pixel differently. A scene is safe to inline many times over: no
 ids, no outward references, which `npm run art:check` enforces. See
-[`art.instructions.md`](art.instructions.md).
+[`art.instructions.md`](art.instructions.md). The clip itself, and the white
+edge along it that goes when the piece is placed, are `src/cut.ts` and the same
+for both cutters - the rule is under
+[sliced animals](#sliced-animals) above.
 
 **The picture stays under the empty frame.** The guide is the scene itself,
 dimmed, with every cut drawn over it - the *same* path each piece is clipped
