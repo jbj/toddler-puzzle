@@ -32,7 +32,10 @@
  * levels is more than one sitting, so the host tells `progress.ts` which level
  * is being played and the next visit starts there. A grown-up can steer, from
  * the panel in `grownups.ts`, which is what the returned `GameHandle` is for;
- * nothing on the play surface offers it.
+ * nothing on the play surface offers it. That includes taking a whole kind of
+ * puzzle out: the host asks the record which kinds are in play each time it
+ * needs to know where "onwards" leads, so a level of a kind switched off is
+ * stepped over and the end of the game is the end of what is being played.
  *
  * Which tray slot each piece belongs to lives here and survives a re-layout, so
  * rotating the device mid-puzzle does not lose progress.
@@ -58,7 +61,14 @@ import { boxCenter, type Point, type Size } from "./geometry";
 import { clearHint, createIdleHint, drawHint, hintPiece, type IdleHint } from "./hint";
 import { ensureKind, isKindLoaded, kindFor, recoverWhenPossible } from "./kinds/registry";
 import { boxOf, chooseLayout, trayHome, type Layout } from "./layout";
-import { LEVEL_COUNT, endsChapter, levelSpec, nextLevel, type LevelSpec } from "./levels";
+import {
+  endsChapter,
+  isLastPlayable,
+  levelSpec,
+  nextLevel,
+  type EnabledKinds,
+  type LevelSpec,
+} from "./levels";
 import type { PieceId, PieceShape } from "./piece";
 import { createProgressStore, type ProgressStore } from "./progress";
 import type { Puzzle, PuzzleKind } from "./puzzle";
@@ -198,8 +208,16 @@ export function createGame(
     return celebrationModule;
   }
 
+  /**
+   * Which kinds of puzzle a grown-up has left in play, asked at the moment it
+   * matters rather than kept. A switch moved mid-level has to be answered by
+   * the button at the end of that level, not by the next sitting, so nothing
+   * here caches it.
+   */
+  const kindsInPlay = (): EnabledKinds => progress.settings().kinds;
+
   /** The last level of the set gets the finale and the replay arrow. */
-  const isLastLevel = (): boolean => levelNumber === LEVEL_COUNT;
+  const isLastLevel = (): boolean => isLastPlayable(levelNumber, kindsInPlay());
 
   function stateOf(piece: PieceId): PieceState {
     const found = state.get(piece);
@@ -321,7 +339,7 @@ export function createGame(
    */
   async function raiseFinish(dealt: number): Promise<void> {
     let fanfare: CelebrationId | null = null;
-    if (endsChapter(levelNumber)) {
+    if (endsChapter(levelNumber, kindsInPlay())) {
       const module = await loadCelebration().catch(() => null);
       // A board dealt while that was in flight - the reset button, or a level
       // chosen from the panel - is not this board, and must not be finished.
@@ -373,7 +391,7 @@ export function createGame(
       board.fxLayer,
       layout,
       isLastLevel() ? "again" : "next",
-      () => goToLevel(nextLevel(levelNumber)),
+      () => goToLevel(nextLevel(levelNumber, kindsInPlay())),
       celebration && fresh ? FINISH_BUTTON_BEAT_MS : 0,
     );
   }
@@ -464,7 +482,7 @@ export function createGame(
     kind = dealer;
     // Asked for now rather than when the last piece lands, so the party is here
     // by the time there is anything to celebrate.
-    if (endsChapter(levelNumber)) void loadCelebration().catch(() => null);
+    if (endsChapter(levelNumber, kindsInPlay())) void loadCelebration().catch(() => null);
     puzzle = kind.deal({ level, shapes }, random);
     layout = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
     board = mount(layout);

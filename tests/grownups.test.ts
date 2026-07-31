@@ -17,11 +17,26 @@
  */
 import { describe, expect, it } from "vitest";
 import { setSoundEnabled, soundEnabled } from "../src/audio";
-import { HOLD_MS, PROMPT_MS, applySettings, createHoldGate, levelMap } from "../src/grownups";
-import { CHAPTERS, LEVEL_COUNT } from "../src/levels";
-import { DEFAULT_SETTINGS, NEW_PLAYER, type Progress } from "../src/progress";
+import {
+  HOLD_MS,
+  PROMPT_MS,
+  applySettings,
+  createHoldGate,
+  isLastKindOn,
+  levelMap,
+  toggleKind,
+} from "../src/grownups";
+import { CHAPTERS, LEVELS, LEVEL_COUNT, PUZZLE_KINDS, type EnabledKinds } from "../src/levels";
+import { ALL_KINDS, DEFAULT_SETTINGS, NEW_PLAYER, type Progress } from "../src/progress";
 
 const record = (over: Partial<Progress> = {}): Progress => ({ ...NEW_PLAYER, ...over });
+
+/** Everything in play except the kinds named. */
+const without = (...off: readonly (keyof EnabledKinds)[]): EnabledKinds =>
+  Object.fromEntries(PUZZLE_KINDS.map((kind) => [kind, !off.includes(kind)])) as EnabledKinds;
+
+const settings = (kinds: EnabledKinds): Progress =>
+  record({ settings: { ...DEFAULT_SETTINGS, kinds } });
 
 describe("holding the button", () => {
   it("does not open on a tap, however many times it is tapped", () => {
@@ -141,6 +156,59 @@ describe("the level map", () => {
       expect(levels).toHaveLength(5);
       expect(levels[0]).toBe(index * 5 + 1);
     }
+  });
+});
+
+describe("the kind switches", () => {
+  it("turns a kind off and back on again", () => {
+    const off = toggleKind(ALL_KINDS, "jigsaw");
+    expect(off).toEqual({ ...ALL_KINDS, jigsaw: false });
+    expect(off && toggleKind(off, "jigsaw")).toEqual(ALL_KINDS);
+  });
+
+  it("refuses to turn the last kind off, however often it is pressed", () => {
+    let kinds: EnabledKinds = ALL_KINDS;
+    for (const kind of PUZZLE_KINDS.slice(0, -1)) {
+      const next = toggleKind(kinds, kind);
+      expect(next, `turning ${kind} off`).not.toBeNull();
+      if (next) kinds = next;
+    }
+    const last = PUZZLE_KINDS[PUZZLE_KINDS.length - 1];
+    expect(last).toBeDefined();
+    if (!last) return;
+    expect(isLastKindOn(kinds, last)).toBe(true);
+    for (let press = 0; press < 20; press++) expect(toggleKind(kinds, last)).toBeNull();
+    // And a kind already off is not the last one, so its switch stays live.
+    const first = PUZZLE_KINDS[0];
+    expect(first).toBeDefined();
+    if (first) expect(isLastKindOn(kinds, first)).toBe(false);
+  });
+
+  it("holds no kind on while there is more than one", () => {
+    for (const kind of PUZZLE_KINDS) expect(isLastKindOn(ALL_KINDS, kind)).toBe(false);
+  });
+});
+
+describe("the level map with a kind switched off", () => {
+  it("skips nothing while every kind is in play", () => {
+    expect(levelMap(record(), 1).some((entry) => entry.skipped)).toBe(false);
+  });
+
+  it("marks the levels of a kind that has been switched off, and keeps all thirty", () => {
+    const entries = levelMap(settings(without("jigsaw")), 1);
+    expect(entries).toHaveLength(LEVEL_COUNT);
+    expect(entries.filter((entry) => entry.skipped).map((entry) => entry.level)).toEqual(
+      LEVELS.filter((level) => level.kind === "jigsaw").map((level) => level.level),
+    );
+  });
+
+  it("still says where the child is, even on a level being skipped", () => {
+    // A grown-up can send the child to any square, including one whose kind is
+    // switched off; the map has to go on saying both things.
+    const entries = levelMap(settings(without("jigsaw")), 21);
+    const current = entries.find((entry) => entry.current);
+    expect(current?.level).toBe(21);
+    expect(current?.skipped).toBe(true);
   });
 });
 

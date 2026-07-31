@@ -93,6 +93,11 @@ too big to compose above the grabbable size is refused rather than shrunk away.
 
 `tests/levels.test.ts` sweeps the whole table: every level resolves to a
 buildable spec, and the deal is drawn fresh but always the right size. It also
+covers the thirty as a grown-up may have narrowed them - `PUZZLE_KINDS` naming
+every kind of the table and of the registry, levels of a switched-off kind
+stepped over by `nextLevel`, a resume moved forward off one, a chapter still
+ending where it now ends, the finale moving to the last level in play, and every
+kind switched off still leaving a game to play. It also
 covers themed dealing, which is where the interesting failures are: a themed
 level draws only from its own theme, every animal of a theme is reachable, and a
 theme too short for the level's piece count is topped up from the rest of the
@@ -186,7 +191,10 @@ A record carrying a setting this build no longer has - `rotation`, dropped with
 the feature in
 [decision 20260730T203000](../../docs/decisions/20260730T203000-no-rotation-mode.md)
 - is covered there too, because removing a field must never cost a child their
-level.
+level. So is the same thing in reverse: a record written before the per-kind
+switches existed has no `kinds` and must read as the whole ramp, a kind stored
+as something that is not a boolean is read as in play, and a record claiming
+every kind is off is read as every kind on - there is always a game.
 All of them have to end with
 a playable game on a real level, and none of them may throw. The storage object
 is injected, so none of it needs a browser; the DOM-facing ends are covered by
@@ -247,8 +255,9 @@ is unplaced, the first unplaced one when it is not, nothing when the board is
 finished, and ignores a `lastTouched` left over from another board. What the
 glow *looks* like is `npm run shot`'s.
 
-`tests/grownups.test.ts` covers the two parts of the grown-up panel that do not
-need a browser: the hold that opens it, and the level map. The hold is a state
+`tests/grownups.test.ts` covers the three parts of the grown-up panel that do not
+need a browser: the hold that opens it, the level map, and the rule behind the
+per-kind switches. The hold is a state
 machine with the clock passed in, so two hundred taps - none of which may open
 anything - are played through it in a millisecond, alongside a hold that opens,
 a release that empties the ring, two near misses that must not add up to one
@@ -256,8 +265,14 @@ hold, and the "Hold to open" prompt outliving the press that raised it. The map
 is checked for saying what it means: thirty squares in six chapters of five,
 filled only up to `furthest`, exactly one marked current, and the current one
 taken from the game rather than the record, because `?level=` plays a level the
-record was deliberately not told about. The DOM around both - the button, the
-sheet, the switches - is `npm run shot`'s.
+record was deliberately not told about, and its squares mark which levels are
+being skipped without ever dropping below thirty. `toggleKind` is the third:
+pure, so the press that would leave the game with no levels in it can be tried
+twenty times in a test, and `isLastKindOn` is what the panel draws that refusal
+from. The DOM around all of it - the button, the sheet, the switches - is
+`npm run shot`'s, which switches a kind off, watches the map fade its levels,
+switches the kind out from under the child and checks they were moved on, and
+presses the last switch left to see it refuse.
 
 Every animal fills its box, so the layout suite also carries casts that do not:
 grid-cut stand-ins for slices, whose drawing is a corner of a box the size of a

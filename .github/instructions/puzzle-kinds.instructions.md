@@ -100,6 +100,18 @@ read differently at a glance, which `npm run art:check` enforces; see
 Retuning the ramp is a table edit and nothing else. Adding a level means adding a
 record; the layout follows, because nothing downstream knows a level count.
 
+**A grown-up can switch a kind off, and that is a filter over the table rather
+than an edit to it.** `PUZZLE_KINDS` in `src/levels.ts` is the ordered list of
+kinds - `PuzzleKindId` is derived from it, so the panel that offers a switch per
+kind cannot fall behind a seventh one - and `EnabledKinds` is what a grown-up
+left on. `playableLevels` and the functions beside it (`nextLevel`,
+`endsChapter`, `playableFrom`, `isLastPlayable`, `isPlayable`) all take the same
+optional `EnabledKinds` and treat an absent one as "all of them", so nothing
+that does not care has to know. Two rules hold it together: an all-off record
+reads as all-on, because a game with no levels in it is not something to hand a
+child, and the level table itself is never touched. See
+[decision 20260730T194900](../../docs/decisions/20260730T194900-a-grown-up-can-take-a-kind-out.md).
+
 ## Sliced animals
 
 `src/kinds/sliced.ts` plays levels 11-15 and 27: one or two animals, each
@@ -360,8 +372,10 @@ kind was played by shape-match instead so that the table could run ahead of the
 code; that scaffold came down when the last kind landed
 ([decision 20260728T205627](../../docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md)).
 
-Adding a kind is one entry in `LOADERS` in `src/kinds/registry.ts`, and the
-levels that named it start playing it. Do not edit `LEVELS` to switch a kind on.
+Adding a kind is one entry in `LOADERS` in `src/kinds/registry.ts` and one entry
+in `PUZZLE_KINDS` in `src/levels.ts`, and the levels that named it start playing
+it - with a switch of its own in the grown-up panel, which walks that list. Do
+not edit `LEVELS` to switch a kind on.
 
 **A kind is also where the bundle is cut.** A chapter is five levels and, near
 enough, one kind, so splitting by kind is splitting by chapter. `play` and

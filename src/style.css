@@ -368,6 +368,15 @@ body {
   color: var(--grownups-accent);
 }
 
+/* A level the game will step over, because a grown-up switched its kind off.
+   Faded rather than removed: the map is how they see what the switch did, and
+   thirty squares becoming twenty-two would say much less. Still pressable, so
+   a level can be looked at without turning its kind back on first. */
+.grownups-level.is-skipped {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
 /* Options --------------------------------------------------------------- */
 
 .grownups-option {
@@ -424,6 +433,13 @@ body {
 
 .grownups-switch.is-on .grownups-switch-knob {
   transform: translateX(20px);
+}
+
+/* The last kind of puzzle left in play. It cannot be turned off - there has to
+   be a game - so it says so rather than ignoring the press. */
+.grownups-switch:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .grownups-choices {
