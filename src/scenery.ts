@@ -10,7 +10,7 @@
  * ## A backdrop belongs to the level's theme
  *
  * A level names a theme (`themes.ts`) and the deal narrows the cast to it, so
- * the landscape is dealt from the same word: a farm level stands its animals in
+ * the landscape is dealt from the same world: a farm level stands its animals in
  * a field with a barn in it, a sea level stands them on a seabed, a jungle level
  * under a canopy. Each palette and each prop is taken from that theme's
  * hand-drawn picture scene - `farmyard.svg`, `rockpool.svg`, `jungle-path.svg` -

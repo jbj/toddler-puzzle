@@ -241,11 +241,10 @@ const centreOf = (selector) =>
 
 /**
  * Centre of what a piece actually *draws*, the grab box left out. The grab box
- * is the ink padded and then clipped to the piece's own box, so for a piece cut
- * out of a picture it sits a few pixels off-centre - by the padding it lost at
- * the edge it was clipped against, which grows with the picture. Where a piece
- * has come to rest is a question about its drawing, and a shadow is drawn from
- * the same path, so this is the like-for-like measurement.
+ * is the drawing padded and then thickened, so for a long thin piece it is a
+ * good deal taller or wider than what it covers. Where a piece has come to rest
+ * is a question about its drawing, and a shadow is drawn from the same path, so
+ * this is the like-for-like measurement.
  */
 const drawingCentreOf = (pieceId) =>
   evaluate(
@@ -302,6 +301,17 @@ const emptySpotOn = (pieceId) =>
  */
 const holeFor = (pieceId) => (pieceId.startsWith("slice:") ? pieceId.split(":")[1] : pieceId);
 
+/** Where an element's own (0,0) sits on screen, in CSS pixels. */
+const originOf = (selector) =>
+  evaluate(`
+  (() => {
+    const el = document.querySelector(${JSON.stringify(selector)});
+    if (!el) return null;
+    const m = el.getScreenCTM();
+    return m ? { x: m.e, y: m.f } : null;
+  })()
+`);
+
 /**
  * What to aim a piece at. A cut-up picture's hole is the whole picture, whose
  * middle is only one piece's home, so a piece of one aims at the cut its own
@@ -309,11 +319,22 @@ const holeFor = (pieceId) => (pieceId.startsWith("slice:") ? pieceId.split(":")[
  * `src/picture-pieces.ts` for both the jigsaw and the shatter) - which is the
  * same path the piece is clipped from, so aiming its drawing at that cut aims
  * it at where the drawing belongs.
+ *
+ * A slice has no cut drawn for it - the hole is the animal, whole - so it is
+ * aimed by origins instead (`sliceAim` below).
  */
 const targetSelector = (pieceId) =>
   /^(jigsaw|shatter):/.test(pieceId) && pieceId.split(":").length > 2
     ? `.cell[data-piece="${pieceId}"]`
     : `.hole[data-piece="${holeFor(pieceId)}"]`;
+
+/** Where a slice's own place inside its animal is, in CSS pixels. */
+async function sliceAim(pieceId, centre) {
+  const piece = await originOf(`.piece[data-piece="${pieceId}"] .art`);
+  const hole = await originOf(`.hole[data-piece="${holeFor(pieceId)}"]`);
+  if (!piece || !hole || !centre) return null;
+  return { x: centre.x + (hole.x - piece.x), y: centre.y + (hole.y - piece.y) };
+}
 
 /**
  * Drag a piece into its hole. `grabAt` picks it up somewhere other than the
@@ -327,11 +348,19 @@ async function dragAnimal(pieceId, { pauseAtHalfway, grabAt, onto } = {}) {
   // anywhere near the drawing - the box around a slice is mostly the rest of
   // the animal.
   const centre = await centreOf(`.piece[data-piece="${pieceId}"] .grab-box`);
-  const hole = await centreOf(targetSelector(onto ?? pieceId));
-  if (!centre || !hole) throw new Error(`Could not locate piece or hole for "${pieceId}".`);
+  // A slice aims at its own place inside the animal, like every other piece of
+  // a bigger thing. The hole is the whole animal, so its middle is nobody's
+  // home in particular; what the two share is an origin and a scale, so the
+  // offset of a slice's box within its own piece is the offset of its place
+  // within the hole.
+  const aim =
+    !onto && pieceId.startsWith("slice:")
+      ? await sliceAim(pieceId, centre)
+      : await centreOf(targetSelector(onto ?? pieceId));
+  if (!centre || !aim) throw new Error(`Could not locate piece or hole for "${pieceId}".`);
 
   const from = grabAt ?? centre;
-  const to = { x: hole.x + (from.x - centre.x), y: hole.y + (from.y - centre.y) };
+  const to = { x: aim.x + (from.x - centre.x), y: aim.y + (from.y - centre.y) };
 
   await mouse("mousePressed", from.x, from.y);
   const steps = 12;

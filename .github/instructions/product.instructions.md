@@ -47,9 +47,14 @@ oversights until you know it, so the reason is written next to the rule.
   [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); the reasoning
   is
   [decision 20260731T090000](../../docs/decisions/20260731T090000-a-background-belongs-to-the-theme.md).
-- Keep the snap radius deliberately generous, about two thirds of the piece being
-  dropped. Do not tighten it as a cleanup. Why: near misses should count for a
-  toddler.
+- Measure a piece by one box and place it by one rule, in every kind of puzzle:
+  the box is what the piece draws, thickened so neither side is under half the
+  other, and a drop is taken when that box covers the middle of where the piece
+  belongs. The same box is what a piece can be grabbed by, what holds it on the
+  canvas, and what the tray packs a cell from. Do not tighten it, and do not
+  give a kind a rule of its own. Why: near misses should count for a toddler,
+  and forgiveness measured five different ways feels like five different games.
+  See [decision 20260731T133000](../../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
 - Keep the idle hint silent, unrepeated and unearned: it is a glow and never a
   sound, it never counts down or nags a second time, and it costs nothing to have
   needed. Never let it point at a level played by touching, and never let it
@@ -115,17 +120,22 @@ oversights until you know it, so the reason is written next to the rule.
 ## What the invariants add up to
 
 **Everything is forgiving.** A piece only ever snaps into its *own* hole, so it
-is impossible to place an animal "wrongly". The snap radius is deliberately
-large - about two thirds of the piece being dropped, measured per piece rather
-than from one shared square - and any other drop drifts gently back to the tray.
-Pieces are clamped to the canvas by their own bounds, so one can never be dragged
-out of reach. A wrong drop plays a soft, warm tone rather than a buzzer. And a
+is impossible to place an animal "wrongly". Forgiveness is one box and one rule:
+a piece is measured by what it draws, thickened so neither side is under half the
+other, and it goes home when that box - dropped where the finger let go - covers
+the middle of the place it belongs. So half a piece out is in, on any axis, in
+every kind of puzzle, and a long thin sliver is given as much room to aim at as a
+square piece of the same length. Any other drop drifts gently back to the tray.
+The same box is what a piece can be grabbed by, what holds it on the canvas so it
+can never be dragged out of reach, and what the tray reserves a cell from. A
+wrong drop plays a soft, warm tone rather than a buzzer. And a
 child who stops getting anywhere is led rather than left: after a stretch with no
 progress the board glows quietly at both ends of the move it is waiting for - the
 piece, and where the piece goes - silently, with nothing lost and nothing said.
 The mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
-[decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md)
+[decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md),
+[decision 20260731T133000](../../docs/decisions/20260731T133000-one-box-measures-a-piece.md)
 and
 [decision 20260730T213000](../../docs/decisions/20260730T213000-a-hint-points-at-both-ends.md).
 
@@ -183,7 +193,7 @@ doesn't cover it.
 
 **No binary assets, and a budget on the rest.** The animals are hand-authored
 SVG and the sounds are synthesised with the Web Audio API, so there is nothing
-to download and nothing to fail to load. The game is around 35 kB gzipped before
+to download and nothing to fail to load. The game is around 36 kB gzipped before
 the first level appears and around 58 kB in total; `npm run build` fails if
 either grows past its budget. The difference between those two numbers is the
 four later chapters, split into a chunk each and fetched in the background while

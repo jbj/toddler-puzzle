@@ -17,7 +17,7 @@
  * Whether the flat blue *looks* right behind a picture is `npm run shot`'s.
  */
 import { describe, expect, it } from "vitest";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk } from "../src/assets";
 import { seededRandom } from "../src/geometry";
 import { kindFor, loadAllKinds } from "../src/kinds/registry";
 import { boxOf, buildLevelLayout, holeOf, trayHome, waitingInk } from "../src/layout";
@@ -33,6 +33,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   outline: "",
   artwork: "",
   box: ANIMAL_BOX,
+  inked: animalInk(id),
   anchor: animalAnchor(id),
   label: id,
 }));
@@ -121,6 +122,12 @@ describe("the board a picture is rebuilt on", () => {
     // unit of it is off the picture. Measured across the direction the tray
     // costs the picture - down for a band, across for a gutter - the sand
     // spare around the pieces is held to a third of the largest of them.
+    //
+    // A shelf is as tall as the tallest *box* standing on it, not the tallest
+    // drawing, so part of this sand is the margin a hand needs around a piece
+    // it presses - and a shard thickened to 1:2 carries more of it than the
+    // drawing shows. That is what the last hundredth here bought; see
+    // [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
     for (const { level, id, layout } of BOARDS) {
       const drawn = layout.pieces.map((piece) => waitingInk(layout, piece.id));
       const biggest = Math.max(...drawn.map((ink) => Math.max(ink.width, ink.height)));
@@ -143,7 +150,7 @@ describe("the board a picture is rebuilt on", () => {
           spare / biggest,
           `level ${level.level} ${id}: ${Math.round(spare)} units of sand around a ` +
             `${Math.round(biggest)}-unit piece`,
-        ).toBeLessThan(0.34);
+        ).toBeLessThan(0.35);
       }
     }
   });

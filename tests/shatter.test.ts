@@ -23,7 +23,7 @@
 import { describe, expect, it } from "vitest";
 import { seededRandom, type Point } from "../src/geometry";
 import { shatter } from "../src/kinds/shatter";
-import { boxOf, buildLevelLayout, holeOf, inkSnapRadius } from "../src/layout";
+import { boxOf, buildLevelLayout, holeOf } from "../src/layout";
 import { LEVELS, type LevelSpec } from "../src/levels";
 import { assertUniquePieceIds } from "../src/piece";
 import { PICTURE_BOX, loadPictures, pictureFor } from "../src/pictures";
@@ -396,9 +396,9 @@ describe("the shatter kind", () => {
         const home = holeOf(layout, puzzle.targets[0]!.id);
         const { size } = boxOf(layout, puzzle.targets[0]!.id);
         for (const piece of puzzle.pieces) {
-          const reach = inkSnapRadius(layout, piece.id);
+          const { reach } = boxOf(layout, piece.id);
           expect(shatter.accepts(puzzle, layout, piece.id, home), piece.id).toBe(true);
-          const near = { x: home.x + reach * 0.6, y: home.y - reach * 0.6 };
+          const near = { x: home.x + reach.width * 0.45, y: home.y - reach.height * 0.45 };
           expect(shatter.accepts(puzzle, layout, piece.id, near), piece.id).toBe(true);
           // Half a picture out is somebody else's place, and is not taken.
           for (const away of [

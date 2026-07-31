@@ -13,7 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import sceneryRaw from "../src/scenery.ts?raw";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk } from "../src/assets";
 import { buildLevelLayout, type Layout } from "../src/layout";
 import { LEVELS, type LevelSpec } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
@@ -25,6 +25,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   outline: "M0 0 h10 v10 z",
   artwork: "",
   box: ANIMAL_BOX,
+  inked: animalInk(id),
   anchor: animalAnchor(id),
   label: id,
 }));
@@ -157,13 +158,19 @@ describe("what every backdrop owes the board", () => {
 
   it("covers the canvas to the very bottom", () => {
     // A gap under the last band would be a white stripe along the bottom of an
-    // iPad, in whichever theme forgot to paint it.
+    // iPad, in whichever theme forgot to paint it. The sky wash is excluded from
+    // the measure: it is painted full height by construction, so counting it
+    // would make this pass whatever the ground did.
     expect(THEMED_BOARDS.length).toBe(8);
     for (const { theme, layout } of THEMED_BOARDS) {
       const markup = asTheme(layout, theme === "meadow" ? undefined : theme);
-      const reach = [...markup.matchAll(/<rect x="0" y="([\d.]+)" width="\d+" height="([\d.]+)"/g)]
-        .map(([, y, height]) => Number(y) + Number(height))
-        .reduce((low, high) => Math.max(low, high), 0);
+      const bands = [
+        ...markup.matchAll(
+          /<rect x="0" y="([\d.]+)" width="\d+" height="([\d.]+)" fill="(?!url\(#sky\))[^"]+"/g,
+        ),
+      ].map(([, y, height]) => Number(y) + Number(height));
+      expect(bands.length, `${theme} ${layout.id}`).toBeGreaterThan(0);
+      const reach = bands.reduce((low, high) => Math.max(low, high), 0);
       expect(reach, `${theme} ${layout.id}`).toBeGreaterThanOrEqual(layout.canvas.height);
     }
   });

@@ -57,13 +57,16 @@ const kB = 1000;
  * budget is wrong - move it, and say so.
  */
 const BUDGET = {
-  // measured 2026-07-31: 108.5 kB raw, 35.0 kB gzipped. Up from 92.7/30.1 on
-  // 2026-07-29: the themed backgrounds - a farmyard, a jungle canopy and a
-  // seabed, drawn in code so both orientations and every level share them - are
-  // reached by level 6 and so are part of the initial download.
+  // raised 2026-07-31 twice over, and both reasons still apply. Sixteen animals
+  // now say where they draw inside their art box instead of being taken to fill
+  // it, and a table of sixteen rectangles is a table that has to ship; and the
+  // themed backgrounds - a farmyard, a jungle canopy and a seabed, drawn in code
+  // so both orientations and every level share them - are reached by level 6 and
+  // so are part of the initial download.
+  // measured 2026-07-31: 109.9 kB raw, 35.8 kB gzipped
   initialRaw: 116 * kB,
   initialGzip: 37 * kB,
-  // measured 2026-07-31: 169.2 kB raw, 57.5 kB gzipped
+  // measured 2026-07-31: 170.3 kB raw, 58.1 kB gzipped
   totalRaw: 181 * kB,
   totalGzip: 61 * kB,
 };

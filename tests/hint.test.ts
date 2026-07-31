@@ -265,6 +265,7 @@ const shape = (name: string): PieceShape => ({
   outline: "M0 0 H240 V240 H0 Z",
   artwork: "",
   box: { width: 240, height: 240 },
+  inked: { x: 0, y: 0, width: 240, height: 240 },
   anchor: { x: 120, y: 240 },
   label: name,
 });

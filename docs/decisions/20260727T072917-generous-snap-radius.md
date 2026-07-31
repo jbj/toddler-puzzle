@@ -20,5 +20,10 @@ snaps into its own hole.
 Near misses feel like success. A bad drop simply drifts back to the tray with a
 soft warm tone, and it is impossible to solve a stage wrongly.
 
-Layout changes must keep snap zones apart so this generosity does not create
-ambiguous drops.
+Layout changes must keep one target's reach off another's so this generosity
+does not create ambiguous drops.
+
+The generosity is unchanged; what it is *measured* by is not. A radius of two
+thirds of a piece became one box per piece and one rule for every kind - half a
+piece out, on either axis, is in - in
+[20260731T133000-one-box-measures-a-piece](20260731T133000-one-box-measures-a-piece.md).

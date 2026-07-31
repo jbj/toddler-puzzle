@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk } from "../src/assets";
 import { seededRandom } from "../src/geometry";
 import { boxOf, buildLevelLayout, holeOf, type Layout } from "../src/layout";
 import { LEVELS, type LevelSpec } from "../src/levels";
@@ -44,6 +44,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id, index) => ({
   outline: `M0 0 h${index + 1} v10 z`,
   artwork: "",
   box: ANIMAL_BOX,
+  inked: animalInk(id),
   anchor: animalAnchor(id),
   label: id,
 }));
@@ -73,6 +74,7 @@ const PLANK: PieceShape = {
   outline: "M0 0 h300 v100 z",
   artwork: "",
   box: { width: 300, height: 100 },
+  inked: { x: 0, y: 0, width: 300, height: 100 },
   anchor: { x: 150, y: 100 },
   label: "plank",
 };
@@ -82,6 +84,7 @@ const POLE: PieceShape = {
   outline: "M0 0 h100 v300 z",
   artwork: "",
   box: { width: 100, height: 300 },
+  inked: { x: 0, y: 0, width: 100, height: 300 },
   anchor: { x: 50, y: 300 },
   label: "pole",
 };
@@ -143,9 +146,10 @@ describe("shape-match rules", () => {
     for (const { puzzle, layout } of CASES) {
       for (const shape of puzzle.pieces) {
         const hole = holeOf(layout, shape.id);
-        // Well short of this piece's own snap radius, but nowhere near exact.
-        const reach = boxOf(layout, shape.id).snapRadius * 0.6;
-        const sloppy = { x: hole.x + reach, y: hole.y };
+        // Most of the way out of this piece's own box, but still over the
+        // middle of the hole - which is the whole of the rule.
+        const { reach } = boxOf(layout, shape.id);
+        const sloppy = { x: hole.x + reach.width * 0.45, y: hole.y + reach.height * 0.45 };
         expect(shapeMatch.accepts(puzzle, layout, shape.id, sloppy)).toBe(true);
       }
     }
@@ -196,28 +200,28 @@ describe("shape-match with pieces that are not square", () => {
     const puzzle = puzzleOf(THREE_PIECE_LEVEL, MIXED);
 
     describe(`${id} layout`, () => {
-      it("is just as forgiving sideways as it is up and down", () => {
+      it("is forgiving on each axis by however much the piece measures there", () => {
         for (const shape of MIXED) {
           const hole = holeOf(layout, shape.id);
-          const reach = boxOf(layout, shape.id).snapRadius * 0.6;
+          const { reach } = boxOf(layout, shape.id);
           for (const drop of [
-            { x: hole.x + reach, y: hole.y },
-            { x: hole.x - reach, y: hole.y },
-            { x: hole.x, y: hole.y + reach },
-            { x: hole.x, y: hole.y - reach },
+            { x: hole.x + reach.width * 0.45, y: hole.y },
+            { x: hole.x - reach.width * 0.45, y: hole.y },
+            { x: hole.x, y: hole.y + reach.height * 0.45 },
+            { x: hole.x, y: hole.y - reach.height * 0.45 },
           ]) {
             expect(shapeMatch.accepts(puzzle, layout, shape.id, drop)).toBe(true);
           }
         }
       });
 
-      it("turns down a drop past the piece's own radius on either axis", () => {
+      it("turns down a drop past the piece's own box on either axis", () => {
         for (const shape of MIXED) {
           const hole = holeOf(layout, shape.id);
-          const beyond = boxOf(layout, shape.id).snapRadius * 1.2;
+          const { reach } = boxOf(layout, shape.id);
           for (const drop of [
-            { x: hole.x + beyond, y: hole.y },
-            { x: hole.x, y: hole.y + beyond },
+            { x: hole.x + reach.width * 0.6, y: hole.y },
+            { x: hole.x, y: hole.y + reach.height * 0.6 },
           ]) {
             expect(shapeMatch.accepts(puzzle, layout, shape.id, drop)).toBe(false);
           }
@@ -225,11 +229,12 @@ describe("shape-match with pieces that are not square", () => {
       });
 
       it("does not stretch a wide piece's forgiveness over its short axis", () => {
-        // A radius taken from the plank's width would reach three times further
-        // than the plank is tall, so a drop a whole plank clear of the hole
-        // would still snap in. Measured against its own height, it does not.
+        // A reach taken from the plank's width would let a drop a whole plank
+        // clear of the hole count as in. The plank's box is thickened, not
+        // squared: half its own height is as far up or down as it goes.
         const hole = holeOf(layout, PLANK.id);
-        const { size } = boxOf(layout, PLANK.id);
+        const { size, reach } = boxOf(layout, PLANK.id);
+        expect(reach.height).toBeLessThan(size.width);
         const drop = { x: hole.x, y: hole.y + size.width * 0.68 };
         expect(shapeMatch.accepts(puzzle, layout, PLANK.id, drop)).toBe(false);
       });

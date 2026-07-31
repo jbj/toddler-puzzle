@@ -12,7 +12,7 @@
  * level it was - its number, its chapter, its forgiveness.
  */
 import { describe, expect, it } from "vitest";
-import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalThemes } from "../src/assets";
+import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk, animalThemes } from "../src/assets";
 import { seededRandom } from "../src/geometry";
 import { KIND_IDS, isKindRegistered, kindFor, loadAllKinds } from "../src/kinds/registry";
 import { buildLevelLayout } from "../src/layout";
@@ -54,6 +54,7 @@ const SHAPES: readonly PieceShape[] = ANIMAL_IDS.map((id) => ({
   outline: "",
   artwork: "",
   box: ANIMAL_BOX,
+  inked: animalInk(id),
   anchor: animalAnchor(id),
   label: id,
   themes: animalThemes(id),
@@ -65,6 +66,7 @@ const shapeIn = (id: string, ...themes: ThemeId[]): PieceShape => ({
   outline: "",
   artwork: "",
   box: ANIMAL_BOX,
+  inked: { x: 0, y: 0, ...ANIMAL_BOX },
   anchor: { x: 120, y: 200 },
   label: id,
   ...(themes.length > 0 ? { themes } : {}),

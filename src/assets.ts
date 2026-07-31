@@ -15,7 +15,7 @@
  *
  * Nothing but this file knows that a piece happens to be an animal.
  */
-import type { Point, Size } from "./geometry";
+import type { Point, Rect, Size } from "./geometry";
 import { pieceId, type PieceShape } from "./piece";
 import type { ThemeId } from "./themes";
 
@@ -91,6 +91,45 @@ export const animalAnchor = (id: AnimalId): Point => {
   const y = FOOT_LEVEL[id];
   if (y === undefined) throw new Error(`Animal "${id}" has no FOOT_LEVEL.`);
   return { x: ART_BOX / 2, y };
+};
+
+/**
+ * Where each animal actually draws inside its art box - left, top, width,
+ * height in art units - stroke and overhang included, rounded outwards so the
+ * box never clips the drawing. Set these from `npm run art:check`, never by eye.
+ *
+ * Every other kind of piece says where it draws inside the box it carries: a
+ * slice, a jigsaw piece and a shape of a picture all do. An animal that said
+ * nothing was taken to fill its box, and none of them does - a pig draws a
+ * little over half its box's height - so the box a whole animal was placed by
+ * reached most of a pig above and below the pig. See
+ * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
+ */
+const ANIMAL_INK: Record<AnimalId, readonly [number, number, number, number]> = {
+  giraffe: [30, 12, 186, 217],
+  elephant: [40, 62, 177, 157],
+  duck: [19, 35, 206, 168],
+  turtle: [21, 53, 214, 134],
+  rabbit: [29, 7, 198, 208],
+  butterfly: [10, 16, 220, 191],
+  fish: [23, 43, 194, 150],
+  frog: [7, 33, 226, 177],
+  penguin: [36, 17, 168, 202],
+  crab: [5, 41, 230, 174],
+  cow: [17, 37, 202, 178],
+  pig: [19, 72, 200, 129],
+  whale: [15, 16, 205, 177],
+  octopus: [20, 51, 204, 154],
+  monkey: [45, 33, 163, 179],
+  parrot: [25, 27, 190, 182],
+};
+
+/** What an animal draws inside its art box, as a rectangle. */
+export const animalInk = (id: AnimalId): Rect => {
+  const ink = ANIMAL_INK[id];
+  if (ink === undefined) throw new Error(`Animal "${id}" has no ANIMAL_INK.`);
+  const [x, y, width, height] = ink;
+  return { x, y, width, height };
 };
 
 /**
@@ -212,6 +251,7 @@ function parseAnimal(id: AnimalId): PieceShape {
       `<path d="${outline}" ${bodyAttributes(silhouette)} />` +
       `<g>${detail ? detail.innerHTML : ""}</g>`,
     box: ANIMAL_BOX,
+    inked: animalInk(id),
     anchor: animalAnchor(id),
     label: name,
     themes: animalThemes(id),
