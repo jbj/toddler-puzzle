@@ -420,6 +420,8 @@ describe("a burst of sound", () => {
  */
 function fakeSpeakers(): {
   readonly context: { readonly state: string };
+  /** A browser that wants a gesture before it will get up. */
+  refuse: boolean;
   settle(): Promise<void>;
 } {
   let state = "running";
@@ -428,15 +430,21 @@ function fakeSpeakers(): {
     new Promise<void>((resolve) => {
       asked.push({ to, answer: resolve });
     });
-  return {
+  const speakers = {
+    refuse: false,
     context: {
       get state() {
         return state;
       },
       suspend: () => ask("suspended"),
-      resume: () => ask("running"),
+      resume: () =>
+        speakers.refuse ? Promise.reject(new Error("a gesture, please")) : ask("running"),
     } as unknown as { readonly state: string },
     async settle() {
+      // A refused question is answered in a microtask with nothing queued here
+      // at all, so give every answer a turn before the count below decides
+      // there is nothing outstanding.
+      await new Promise((resolve) => setTimeout(resolve, 0));
       // Until nothing is outstanding, since an answer can be what asks the
       // next question.
       for (let round = 0; round < 5 && asked.length > 0; round++) {
@@ -450,6 +458,7 @@ function fakeSpeakers(): {
       }
     },
   };
+  return speakers;
 }
 
 describe("putting the speakers down", () => {
@@ -499,6 +508,28 @@ describe("putting the speakers down", () => {
 
       // And the next look still wakes them: the late answer was dropped, not
       // the intention behind it.
+      sound.stirAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("running");
+    });
+  });
+
+  it("asks again after a browser refuses to get up without a gesture", async () => {
+    await withFakeSpeakers(async (speakers, sound) => {
+      sound.restAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+
+      // A tab looked at again is not a gesture, and a browser may say so. The
+      // speakers stay down rather than being counted as up, because a context
+      // believed to be running is one every sound afterwards is played to.
+      speakers.refuse = true;
+      sound.stirAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+
+      // Then a finger lands, and `rest.ts` asks on its behalf.
+      speakers.refuse = false;
       sound.stirAudio();
       await speakers.settle();
       expect(speakers.context.state).toBe("running");

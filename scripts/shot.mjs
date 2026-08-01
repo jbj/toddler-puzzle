@@ -1135,6 +1135,45 @@ const hintPulse = () =>
   })()
 `);
 
+/**
+ * What the game's own `AudioContext` is doing, once `stageRefusedResume` below
+ * has caught hold of it, or null before then.
+ */
+const speakerState = () => evaluate(`window.__speakers ? window.__speakers.state : null`);
+
+/**
+ * Make the page's speakers able to refuse to get up, the way a browser that
+ * wants a gesture does. No browser can be asked for a refusal on demand, so it
+ * is staged: `resume` is wrapped so that `window.__refuse` decides the answer,
+ * and both it and `suspend` hand back the context they were called on so the
+ * checks can read its state. Wrapping the prototype catches the game's context
+ * whether it was built at load or by the first touch.
+ */
+const stageRefusedResume = () =>
+  evaluate(`
+  (() => {
+    const proto = window.AudioContext.prototype;
+    const resume = proto.resume;
+    const suspend = proto.suspend;
+    window.__refuse = false;
+    window.__speakers = null;
+    proto.resume = function () {
+      window.__speakers = this;
+      return window.__refuse
+        ? Promise.reject(new Error('a gesture, please'))
+        : resume.call(this);
+    };
+    proto.suspend = function () {
+      window.__speakers = this;
+      return suspend.call(this);
+    };
+    return true;
+  })()
+`);
+
+/** Whether the staged speakers say no to the next `resume`. */
+const refuseResume = (refuse) => evaluate(`(window.__refuse = ${refuse ? "true" : "false"})`);
+
 /** Drag every animal still in the tray into its hole. */
 async function solveRemaining() {
   for (const animal of await unplacedAnimals()) await dragAnimal(animal);
@@ -1740,6 +1779,29 @@ try {
   check("a touch wakes the party", (await isAsleep()) === false);
   const wokenParty = await runningAnimations();
   check(`and the sky fills again (${wokenParty} running)`, wokenParty > 0);
+
+  // The speakers are the one thing here that can say no. A tab looked at again
+  // wakes the page with no finger in it, and a browser is entitled to turn down
+  // a `resume()` that came from nobody - which leaves the game silent, since a
+  // suspended context swallows every sound played to it. So the refusal is
+  // staged, and what has to be true is that the next touch asks again.
+  await goToLevel(1, { restAfter: 2 });
+  await stageRefusedResume();
+  const bubble = (await thingsToTouch())[0];
+  if (bubble) await tapAt(bubble.x, bubble.y);
+  await sleep(3200);
+  check("a sleeping board puts the speakers down", (await speakerState()) === "suspended");
+  await refuseResume(true);
+  await tapEmptySpot();
+  check("a wake the speakers refuse still wakes the board", (await isAsleep()) === false);
+  check(
+    "but leaves them down rather than counting them up",
+    (await speakerState()) === "suspended",
+  );
+  await refuseResume(false);
+  await tapEmptySpot();
+  await sleep(200);
+  check("and the next touch asks them again", (await speakerState()) === "running");
 
   // --- level 10: the busiest board of animals ------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for

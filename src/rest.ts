@@ -288,8 +288,17 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
     window.addEventListener(type, run, { capture: true, passive: true });
   };
 
+  // The speakers are asked here as well as in `wake` above, and not only on the
+  // way out of sleep. A wake with no finger in it - a tab looked at again - can
+  // have its `resume()` turned down by a browser that wants a gesture first,
+  // and `audio.ts` leaves the speakers down when that happens so that the next
+  // touch asks again. This is that touch. Asking when they are already up is a
+  // boolean and a return.
   for (const type of ["pointerdown", "pointerup", "keydown", "wheel"]) {
-    listen(type, () => rest.stir());
+    listen(type, () => {
+      rest.stir();
+      stirAudio();
+    });
   }
   listen("pointermove", () => {
     const now = Date.now();
