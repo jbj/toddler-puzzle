@@ -221,12 +221,23 @@ function liveContext(): AudioContext | null {
 /**
  * Browsers block audio until a user gesture. Call this from the first pointer
  * interaction so later sounds are allowed to play.
+ *
+ * This says it is asking, through the same `waking` below that `stirAudio`
+ * uses, because a resume settles a tick or two after it is asked and a lot can
+ * happen in that gap. A tab hidden inside it would otherwise find a context
+ * that is not running yet, decide there was nothing to put down, and leave the
+ * queued resume to bring the speakers up behind a sleeping page - which is the
+ * exact cost `rest.ts` exists to remove.
  */
 export function unlockAudio(): void {
   const ctx = liveContext();
-  if (ctx && ctx.state === "suspended") {
-    void ctx.resume();
-  }
+  if (!ctx || ctx.state !== "suspended") return;
+  const mine = ++asked;
+  waking = true;
+  const settled = (): void => {
+    if (asked === mine) waking = false;
+  };
+  void ctx.resume().then(settled, settled);
 }
 
 /**

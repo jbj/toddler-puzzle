@@ -418,13 +418,13 @@ describe("a burst of sound", () => {
  * browser queues `suspend` and `resume` on one thread, so an answer can arrive
  * long after the question stopped being the current one.
  */
-function fakeSpeakers(): {
+function fakeSpeakers(startState = "running"): {
   readonly context: { readonly state: string };
   /** A browser that wants a gesture before it will get up. */
   refuse: boolean;
   settle(): Promise<void>;
 } {
-  let state = "running";
+  let state = startState;
   let asked: { readonly to: string; readonly answer: () => void }[] = [];
   const ask = (to: string): Promise<void> =>
     new Promise<void>((resolve) => {
@@ -470,8 +470,9 @@ describe("putting the speakers down", () => {
    */
   const withFakeSpeakers = async (
     run: (speakers: ReturnType<typeof fakeSpeakers>, module: typeof audio) => Promise<void>,
+    startState?: string,
   ): Promise<void> => {
-    const speakers = fakeSpeakers();
+    const speakers = fakeSpeakers(startState);
     const globals = globalThis as { window?: unknown };
     const priorWindow = globals.window;
     globals.window = {
@@ -534,5 +535,21 @@ describe("putting the speakers down", () => {
       await speakers.settle();
       expect(speakers.context.state).toBe("running");
     });
+  });
+
+  it("puts them down even when the unlocking tap is still being answered", async () => {
+    await withFakeSpeakers(async (speakers, sound) => {
+      // A browser that blocks audio until it is asked hands back a suspended
+      // context, so the tap above is still waiting on its `resume`.
+      expect(speakers.context.state).toBe("suspended");
+
+      // The app switched away from inside that gap. Nothing is running yet, but
+      // something is on its way to running, and that is what has to be caught:
+      // an unanswered resume would otherwise bring the speakers up behind a
+      // page that has gone to sleep, and nothing would put them down again.
+      sound.restAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+    }, "suspended");
   });
 });
