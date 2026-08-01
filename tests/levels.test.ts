@@ -40,7 +40,7 @@ import {
 } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
 import { kindsAhead } from "../src/warm";
-import { SCENE_SIZES } from "../src/scenes";
+import { sceneById } from "../src/scenes";
 import { THEMES, type ThemeId } from "../src/themes";
 
 // Four of the six kinds are chunks of their own, fetched during play so that
@@ -124,12 +124,41 @@ describe("the level table", () => {
     }
   });
 
-  it("stands exactly one picture in a polygon level", () => {
+  it("stands exactly one picture in a polygon level, the one its row names", () => {
     // The kind builds one scene, and a row asking for two would throw rather
-    // than deal something half-right.
+    // than deal something half-right. Which scene is the row's business too:
+    // it names one from the catalogue, and the two have to agree about how many
+    // pieces it is in, or the level would deal a picture with a hole in it.
     for (const level of LEVELS.filter((one) => one.kind === "polygon")) {
       expect(level.targets, `level ${level.level}`).toBe(1);
-      expect(SCENE_SIZES, `level ${level.level}`).toContain(level.pieces);
+      const named = level.options?.shapePicture;
+      expect(named, `level ${level.level}`).toBeTruthy();
+      const scene = sceneById(named!);
+      expect(scene, `level ${level.level} names "${named}"`).toBeTruthy();
+      expect(scene!.parts, `level ${level.level}`).toHaveLength(level.pieces);
+    }
+  });
+
+  it("is thirty different puzzles: no kind repeats a subject at a size", () => {
+    // What stops two rows being the same level. A level is its kind, its
+    // subject - the activity, the theme, the scene, the shape picture - and its
+    // size, and the table is written so that a reader can see all thirty differ
+    // without playing one. A picture may come back at another size, because a
+    // scene cut four ways and the same scene cut nine ways are two different
+    // things to solve; the same picture at the same size twice is not a level
+    // anybody chose.
+    const seen = new Map<string, number>();
+    for (const level of LEVELS) {
+      const subject =
+        level.theme ??
+        level.options?.scene ??
+        level.options?.shapePicture ??
+        level.options?.activity ??
+        "the whole cast";
+      const key = `${level.kind} / ${subject} / ${level.pieces} pieces`;
+      const before = seen.get(key);
+      expect(before, `level ${level.level} repeats level ${before}: ${key}`).toBeUndefined();
+      seen.set(key, level.level);
     }
   });
 

@@ -1271,6 +1271,14 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * than it was, and the number beside it is smaller because it is finally
  * counting the animal. See
  * docs/decisions/20260731T133000-one-box-measures-a-piece.md.
+ *
+ * Level 17 is the one row that has been lowered on purpose. It used to deal a
+ * four-piece picture and now stands the boat, which is three, and a three-part
+ * picture is drawn in a smaller slot than a four-part one. The loss bought a
+ * chapter whose five levels are five different pictures, named in the table
+ * rather than dealt at random - and the slot it drops to is one the whole
+ * opening chapter already plays at. See
+ * docs/decisions/20260731T152600-a-level-names-what-it-is-made-of.md.
  */
 const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number, number])[] = [
   [1, "landscape", 0.222, 0.191],
@@ -1303,10 +1311,10 @@ const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number
   [14, "portrait", 0.406, 0.19],
   [15, "landscape", 0.214, 0.092],
   [15, "portrait", 0.35, 0.143],
-  [16, "landscape", 0.203, 0.095],
-  [16, "portrait", 0.291, 0.135],
-  [17, "landscape", 0.244, 0.097],
-  [17, "portrait", 0.349, 0.139],
+  [16, "landscape", 0.203, 0.101],
+  [16, "portrait", 0.291, 0.145],
+  [17, "landscape", 0.203, 0.095],
+  [17, "portrait", 0.291, 0.135],
   [18, "landscape", 0.244, 0.097],
   [18, "portrait", 0.349, 0.139],
   [19, "landscape", 0.262, 0.087],

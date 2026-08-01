@@ -94,8 +94,13 @@ gets bigger pieces, portrait stacks more rows than landscape spreads, and a cast
 too big to compose above the grabbable size is refused rather than shrunk away.
 
 `tests/levels.test.ts` sweeps the whole table: every level resolves to a
-buildable spec, and the deal is drawn fresh but always the right size. It also
-covers the thirty as a grown-up may have narrowed them - `PUZZLE_KINDS` naming
+buildable spec, and the deal is drawn fresh but always the right size. It holds
+the rule that keeps the thirty thirty different puzzles - a level is its kind,
+its subject and its size, and no two rows are all three, where the subject is
+the activity, the theme, the scene or the shape picture the row names. A
+duplicate is reported as the two levels that collided; see
+[decision 20260731T152600](../../docs/decisions/20260731T152600-a-level-names-what-it-is-made-of.md).
+It also covers the thirty as a grown-up may have narrowed them - `PUZZLE_KINDS` naming
 every kind of the table and of the registry, levels of a switched-off kind
 stepped over by `nextLevel`, a resume moved forward off one, a chapter still
 ending where it now ends, the finale moving to the last level in play, and every
@@ -129,13 +134,19 @@ catalogue is geometry: every scene's parts stay inside the box and never overlap
 - sampled, because two shapes that share a corner are fine and two that share an
 area are a picture drawn wrong - none is too small for a tray to draw
 grabbably, and any two congruent parts are painted identically, since a swap
-must not change the picture. The kind is rules, and mostly the swap: a piece is
+must not change the picture. Every scene is measured, the spares no level stands
+included, because a spare is there to be dropped into the table later. The kind
+is rules, and mostly the swap: a level stands the picture its row names and
+throws rather than guessing when the row names nothing, names a picture the
+catalogue does not hold or names one of the wrong size; a piece is
 accepted by any free shadow of its own shape and by no other, a shadow already
 filled refuses even a dead-centre drop, congruent shadows sit far enough apart
 that such a drop cannot jump to a twin, the piece displaced by a swap is
 expected somewhere else afterwards, and a picture finishes however the twins
 were shared out - including in reverse order, which is the arrangement an
-identity assignment would fail. `openTargets` is held to the same rule as the
+identity assignment would fail. At most one level of the chapter may stand a
+picture with no two parts alike, since a chapter built on the swap cannot be
+five pictures that never show it. `openTargets` is held to the same rule as the
 drop: for every part of every scene it offers exactly one point per congruent
 place, every point it offers would actually be accepted, the place the piece is
 aimed at now is always among them, and a place stops being offered the moment

@@ -25,6 +25,14 @@
  * one, which is what keeps the game from going stale after three plays.
  * `?seed=` replays a deal exactly by handing the same `random` in.
  *
+ * **A level is its kind, its subject and its size, and no two levels are all
+ * three.** The subject is whatever the row names - the activity, the theme, the
+ * scene, the shape picture - so that no two levels being the same puzzle is
+ * something a reader can check by looking down the table, and a test holds it.
+ * A picture may come back at another size, because a scene cut four ways and
+ * the same scene cut nine ways are two different things to solve; the same
+ * picture at the same size twice is a level nobody chose.
+ *
  * Every kind this table names is built and registered (`kinds/registry.ts`),
  * and the tests hold the two to each other.
  *
@@ -113,6 +121,13 @@ export interface LevelOptions {
   readonly grid?: { readonly columns: number; readonly rows: number };
   /** Which hand-authored scene a picture or tangram kind should cut up. */
   readonly scene?: string;
+  /**
+   * Which shape picture a polygon level stands (`scenes.ts`). A key of its own
+   * rather than `scene`, because the two name different catalogues: `scene` is
+   * a hand-drawn picture from `pictures.ts` that gets cut into pieces, and the
+   * art check reads the table for that word to know what to rasterise.
+   */
+  readonly shapePicture?: string;
   /**
    * Which cause-and-effect activity a `play` level runs. Every `play` level
    * names one; the table's own tests insist on it, because a level that fell
@@ -321,10 +336,13 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.15,
   },
 
-  // Chapter 4: shapes. One picture - a house, a boat, a rocket - built out of
+  // Chapter 4: shapes. One picture - a house, a boat, a car - built out of
   // plain coloured shapes, so every level here stands a single target and deals
-  // the shapes it takes. Which picture is drawn fresh each time from the scenes
-  // of that size (`scenes.ts`), the same way the animal chapters deal a cast.
+  // the shapes it takes. Which picture is the row's business rather than the
+  // deal's: a level names it, the way a jigsaw level names the scene it cuts
+  // up, so no two levels of the chapter can turn out to be the same puzzle.
+  // The catalogue holds more pictures than the chapter has room for; the spares
+  // are there to retune it with.
   {
     level: 16,
     chapter: "shapes",
@@ -332,14 +350,16 @@ export const LEVELS: readonly LevelSpec[] = [
     targets: 1,
     pieces: 3,
     snapForgiveness: 1.15,
+    options: { shapePicture: "house" },
   },
   {
     level: 17,
     chapter: "shapes",
     kind: "polygon",
     targets: 1,
-    pieces: 4,
+    pieces: 3,
     snapForgiveness: 1.1,
+    options: { shapePicture: "boat" },
   },
   {
     level: 18,
@@ -348,6 +368,7 @@ export const LEVELS: readonly LevelSpec[] = [
     targets: 1,
     pieces: 4,
     snapForgiveness: 1.1,
+    options: { shapePicture: "car" },
   },
   {
     level: 19,
@@ -356,6 +377,7 @@ export const LEVELS: readonly LevelSpec[] = [
     targets: 1,
     pieces: 5,
     snapForgiveness: 1.1,
+    options: { shapePicture: "butterfly" },
   },
   {
     level: 20,
@@ -364,6 +386,7 @@ export const LEVELS: readonly LevelSpec[] = [
     targets: 1,
     pieces: 6,
     snapForgiveness: 1.1,
+    options: { shapePicture: "sunflower" },
   },
 
   // Chapter 5: pictures. One hand-drawn scene, cut into a grid of interlocking
@@ -395,7 +418,7 @@ export const LEVELS: readonly LevelSpec[] = [
     targets: 1,
     pieces: 6,
     snapForgiveness: 1.05,
-    options: { grid: { columns: 3, rows: 2 }, scene: "farmyard" },
+    options: { grid: { columns: 3, rows: 2 }, scene: "night-sky" },
   },
   {
     level: 24,
