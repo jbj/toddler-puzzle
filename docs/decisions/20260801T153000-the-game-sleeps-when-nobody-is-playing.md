@@ -52,11 +52,18 @@ bubbles, the parade, the button, and whatever is added next by somebody who has
 never heard of `rest.ts`. Only *running* animations are paused, so each one
 resumes rather than restarting, and none can finish while the page is asleep.
 
-Repeating timers cannot be found that way, so the two the game has ask for
-themselves: `repeatWhileAwake` replaces `setInterval` in `kinds/play.ts` and in
-a celebration's `every`. They stop dead and start again rather than catching up
-on missed ticks, because both are belt-and-braces refills - nothing popped while
-the screen was frozen, so there is nothing to refill.
+Timers cannot be found that way, so the ones the game has ask for themselves.
+`repeatWhileAwake` replaces `setInterval` in `kinds/play.ts` and in a
+celebration's `every`; both are belt-and-braces refills, so they stop dead and
+start again rather than catching up on missed ticks - nothing popped while the
+screen was frozen, so there is nothing to refill.
+
+A one-shot needs more care, because a celebration's `after` is what hands one
+balloon's place on to the next, and the next arrives with an animation of its
+own. Left to `setTimeout` it would go on filling a frozen sky, and the finale -
+which never stops arriving - would do it until the battery went. So
+`afterWhileAwake` stops its clock instead and serves the rest of the wait on
+waking: the balloon still hands on, a moment after somebody comes back.
 
 ### The hint holds, rather than freezing mid-fade
 

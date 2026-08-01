@@ -384,11 +384,15 @@ what the code has to keep true is this.
   Only *running* animations are paused, so each resumes rather than restarting,
   and none can finish while the page is asleep. Do not replace the sweep with a
   list.
-- **A repeating timer asks for itself.** `repeatWhileAwake` in `src/rest.ts`,
-  never `setInterval`, for anything that ticks on its own: the bubbles' refill
-  and a celebration's `every`. They stop dead and start again rather than
-  catching up, because both are belt-and-braces refills and a frozen screen has
-  nothing to refill.
+- **A timer asks for itself.** `repeatWhileAwake` in `src/rest.ts`, never
+  `setInterval`, for anything that ticks on its own: the bubbles' refill and a
+  celebration's `every`. They stop dead and start again rather than catching up,
+  because both are belt-and-braces refills and a frozen screen has nothing to
+  refill. `afterWhileAwake`, never `setTimeout`, for a one-shot that *makes*
+  something - a celebration's `after`, which hands one balloon's place on to the
+  next. That one holds its clock and serves the rest of the wait on waking,
+  because a party whose timers went on firing would fill a frozen sky with new
+  animations nobody is watching.
 - **The hint holds bright.** `[data-asleep] .hint-mark` in `src/style.css` drops
   the pulse and holds the glow, exactly as reduced motion does, because pausing
   a fade could freeze the one thing a stuck child needs to see at its dimmest.

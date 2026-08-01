@@ -138,7 +138,7 @@ export function createRest(options: RestOptions): Rest {
   return rest;
 }
 
-// --- repeating timers ------------------------------------------------------
+// --- timers -----------------------------------------------------------------
 
 /**
  * A repeating timer that only ticks while the game is awake.
@@ -151,41 +151,81 @@ export function createRest(options: RestOptions): Rest {
  * The returned function cancels it, exactly as `clearInterval` did.
  */
 export function repeatWhileAwake(ms: number, run: () => void): () => void {
-  const repeat: Repeat = { ms, run, timer: null };
-  if (!resting) start(repeat);
-  repeats.add(repeat);
-  return () => {
-    halt(repeat);
-    repeats.delete(repeat);
-  };
+  return schedule({ ms, run, once: false, left: ms, since: 0, timer: null });
 }
 
-interface Repeat {
+/**
+ * A one-shot timer whose countdown stops while the game is asleep, and picks up
+ * the rest of it on waking.
+ *
+ * A celebration is what needs this. Every balloon hands its place on to the
+ * next one part way up, on a timer, and the next one arrives with an animation
+ * of its own - so a party left alone with a plain `setTimeout` goes on minting
+ * balloons behind the freeze, for as long as the tablet has battery in the case
+ * of the finale, which never stops arriving. Stopping the clock rather than
+ * dropping the timer is what keeps that a freeze: the balloon still hands on,
+ * a moment after somebody comes back.
+ *
+ * The returned function cancels it, exactly as `clearTimeout` did.
+ */
+export function afterWhileAwake(ms: number, run: () => void): () => void {
+  return schedule({ ms, run, once: true, left: ms, since: 0, timer: null });
+}
+
+interface Timer {
   readonly ms: number;
   readonly run: () => void;
+  readonly once: boolean;
+  /** How much of a one-shot's wait is left to serve. */
+  left: number;
+  /** When the current stretch of it began. */
+  since: number;
   timer: number | null;
 }
 
-const repeats = new Set<Repeat>();
+const timers = new Set<Timer>();
 let resting = false;
+
+function schedule(timer: Timer): () => void {
+  if (!resting) start(timer);
+  timers.add(timer);
+  return () => {
+    halt(timer);
+    timers.delete(timer);
+  };
+}
 
 // Bare rather than `window.`-qualified, so the registry can be played out in
 // Vitest, which runs these tests without a DOM.
-function start(repeat: Repeat): void {
-  repeat.timer ??= setInterval(repeat.run, repeat.ms);
+function start(timer: Timer): void {
+  if (timer.timer !== null) return;
+  timer.since = Date.now();
+  timer.timer = timer.once
+    ? setTimeout(() => {
+        timer.timer = null;
+        timers.delete(timer);
+        timer.run();
+      }, timer.left)
+    : setInterval(timer.run, timer.ms);
 }
 
-function halt(repeat: Repeat): void {
-  if (repeat.timer !== null) clearInterval(repeat.timer);
-  repeat.timer = null;
+function halt(timer: Timer): void {
+  if (timer.timer === null) return;
+  if (timer.once) {
+    clearTimeout(timer.timer);
+    timer.left = Math.max(0, timer.left - (Date.now() - timer.since));
+  } else {
+    clearInterval(timer.timer);
+  }
+  timer.timer = null;
 }
 
-/** Freeze or unfreeze every registered repeat. Exported for the page wiring. */
-export function restRepeats(asleep: boolean): void {
+/** Freeze or unfreeze every registered timer. Exported for the page wiring. */
+export function restTimers(asleep: boolean): void {
   resting = asleep;
-  for (const repeat of repeats) {
-    if (asleep) halt(repeat);
-    else start(repeat);
+  for (const timer of timers) {
+    if (asleep) halt(timer);
+    else start(timer);
   }
 }
 
@@ -224,7 +264,7 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
       // `getAnimations` entirely, which is why it does not need resuming.
       root.dataset["asleep"] = "true";
       freeze();
-      restRepeats(true);
+      restTimers(true);
       restAudio();
     },
     wake() {
@@ -238,7 +278,7 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
         if (animation.playState === "paused") animation.play();
       }
       paused = [];
-      restRepeats(false);
+      restTimers(false);
       stirAudio();
     },
   });

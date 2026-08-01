@@ -11,17 +11,27 @@
  * invisible in a browser until a tablet has been left alone in exactly the
  * wrong way, and both are a counter here.
  *
- * The **repeats** are the timers `document.getAnimations()` cannot find: the
- * bubbles' refill and a celebration's arrivals. What matters is that one
- * registered while the game is asleep does not start ticking, because a
- * celebration mounted by a tablet being turned in a dark room is exactly that.
+ * The **timers** are the ones `document.getAnimations()` cannot find: the
+ * bubbles' refill, a celebration's arrivals, and the wait that hands one
+ * balloon's place on to the next. What matters is that one registered while the
+ * game is asleep does not start ticking, because a celebration mounted by a
+ * tablet being turned in a dark room is exactly that - and that a one-shot
+ * stops its clock rather than losing it, or a balloon that was half way to
+ * handing on would never do it.
  *
  * What sleeping actually looks like - `data-asleep`, nothing running, and a tap
  * that both wakes the page and pops the bubble it landed on - is `npm run
  * shot`'s, which freezes a real level in Chromium.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { REST_DELAY_MS, createRest, repeatWhileAwake, restRepeats, type Rest } from "../src/rest";
+import {
+  REST_DELAY_MS,
+  afterWhileAwake,
+  createRest,
+  repeatWhileAwake,
+  restTimers,
+  type Rest,
+} from "../src/rest";
 
 // --- a fake clock ----------------------------------------------------------
 
@@ -165,11 +175,11 @@ describe("waiting for a game nobody is playing", () => {
   });
 });
 
-// --- the repeats ------------------------------------------------------------
+// --- the timers -------------------------------------------------------------
 
 describe("timers that only tick while the game is awake", () => {
   afterEach(() => {
-    restRepeats(false);
+    restTimers(false);
     vi.useRealTimers();
   });
 
@@ -187,10 +197,10 @@ describe("timers that only tick while the game is awake", () => {
     let ticks = 0;
     const cancel = repeatWhileAwake(100, () => ticks++);
     vi.advanceTimersByTime(150);
-    restRepeats(true);
+    restTimers(true);
     vi.advanceTimersByTime(10_000);
     expect(ticks).toBe(1);
-    restRepeats(false);
+    restTimers(false);
     vi.advanceTimersByTime(150);
     expect(ticks).toBe(2);
     cancel();
@@ -198,14 +208,49 @@ describe("timers that only tick while the game is awake", () => {
 
   it("does not start one registered while the game is asleep", () => {
     vi.useFakeTimers();
-    restRepeats(true);
+    restTimers(true);
     let ticks = 0;
     const cancel = repeatWhileAwake(100, () => ticks++);
     vi.advanceTimersByTime(10_000);
     expect(ticks).toBe(0);
-    restRepeats(false);
+    restTimers(false);
     vi.advanceTimersByTime(150);
     expect(ticks).toBe(1);
+    cancel();
+  });
+
+  it("holds a one-shot's clock while the game sleeps, rather than losing it", () => {
+    vi.useFakeTimers();
+    let fired = 0;
+    afterWhileAwake(100, () => fired++);
+    vi.advanceTimersByTime(60);
+    restTimers(true);
+    vi.advanceTimersByTime(10_000);
+    expect(fired).toBe(0);
+
+    restTimers(false);
+    // The 40ms it had left, and not a millisecond of the ten seconds nobody
+    // was there for.
+    vi.advanceTimersByTime(39);
+    expect(fired).toBe(0);
+    vi.advanceTimersByTime(1);
+    expect(fired).toBe(1);
+
+    // And once only, however long the game goes on.
+    vi.advanceTimersByTime(10_000);
+    expect(fired).toBe(1);
+  });
+
+  it("does not start a one-shot registered while the game is asleep", () => {
+    vi.useFakeTimers();
+    restTimers(true);
+    let fired = 0;
+    const cancel = afterWhileAwake(100, () => fired++);
+    vi.advanceTimersByTime(10_000);
+    expect(fired).toBe(0);
+    restTimers(false);
+    vi.advanceTimersByTime(100);
+    expect(fired).toBe(1);
     cancel();
   });
 
@@ -214,8 +259,8 @@ describe("timers that only tick while the game is awake", () => {
     let ticks = 0;
     const cancel = repeatWhileAwake(100, () => ticks++);
     cancel();
-    restRepeats(true);
-    restRepeats(false);
+    restTimers(true);
+    restTimers(false);
     vi.advanceTimersByTime(10_000);
     expect(ticks).toBe(0);
   });

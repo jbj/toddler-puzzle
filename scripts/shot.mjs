@@ -1705,6 +1705,29 @@ try {
     (await activityProgress()).touched > poppedBefore,
   );
 
+  // A celebration is the likeliest thing of all for a tablet to be put down on,
+  // and the one that keeps arriving by itself: every balloon hands its place on
+  // to the next one on a timer of its own, and the next one climbs with an
+  // animation of its own. A sleeping party has to stop filling its sky.
+  await goToLevel(5, { restAfter: 3 });
+  await playActivity();
+  check("finishing a chapter raises a celebration to sleep on", (await celebrationName()) !== "");
+  await sleep(4200);
+  check("a celebration left alone goes to sleep", (await isAsleep()) === true);
+  const sleepingParty = await runningAnimations();
+  check(`a sleeping party stands still (${sleepingParty} running)`, sleepingParty === 0);
+  const skyAtOnce = (await celebrationThings()).length;
+  await sleep(2500);
+  const skyLater = (await celebrationThings()).length;
+  check(`and stops arriving (${skyAtOnce} up, ${skyLater} a moment later)`, skyLater === skyAtOnce);
+  const partyOrphans = await runningAnimations();
+  check(`nothing started up behind the freeze (${partyOrphans} running)`, partyOrphans === 0);
+  const sleeper = (await celebrationThings())[0];
+  if (sleeper) await tapAt(sleeper.x, sleeper.y);
+  check("a touch wakes the party", (await isAsleep()) === false);
+  const wokenParty = await runningAnimations();
+  check(`and the sky fills again (${wokenParty} running)`, wokenParty > 0);
+
   // --- level 10: the busiest board of animals ------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for
   // whoever is working on the game; nothing in the game offers it.

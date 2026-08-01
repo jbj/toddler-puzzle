@@ -52,7 +52,7 @@ import type { ChapterId } from "./levels";
 import { prefersReducedMotion } from "./motion";
 import type { PieceShape } from "./piece";
 import { POP_COLOURS, popBurst, releasePoppable, type Poppable } from "./pop";
-import { repeatWhileAwake } from "./rest";
+import { afterWhileAwake, repeatWhileAwake } from "./rest";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -880,7 +880,6 @@ export function createCelebration(id: CelebrationId): Celebration {
     endless,
     mount(stage: CelebrationStage): () => void {
       const timers: (() => void)[] = [];
-      const waits: number[] = [];
       const stops: (() => void)[] = [];
 
       stage.layer.dataset["celebration"] = id;
@@ -904,7 +903,11 @@ export function createCelebration(id: CelebrationId): Celebration {
           timers.push(repeatWhileAwake(ms, run));
         },
         after(ms: number, run: () => void) {
-          waits.push(window.setTimeout(run, ms));
+          // Also through `rest.ts`, and for the same reason: this is the timer
+          // that hands a balloon's place on to the next one, and the next one
+          // arrives with an animation of its own. A plain `setTimeout` would go
+          // on filling a frozen sky nobody is looking at.
+          timers.push(afterWhileAwake(ms, run));
         },
         onStop(run: () => void) {
           stops.push(run);
@@ -915,7 +918,6 @@ export function createCelebration(id: CelebrationId): Celebration {
 
       return () => {
         for (const timer of timers) timer();
-        for (const wait of waits) window.clearTimeout(wait);
         for (const stop of stops) stop();
         stage.layer.replaceChildren();
         delete stage.layer.dataset["celebration"];

@@ -319,11 +319,14 @@ page twice would pause a second set of animations already paused and lose the
 first set, and waking one that is already awake would restart animations nobody
 stopped - so sleep and wake are counted rather than merely observed, alongside a
 hidden tab sleeping without waiting, a stir re-arming rather than queueing, and
-`stop()` leaving nothing frozen behind and never sleeping again. The repeat
+`stop()` leaving nothing frozen behind and never sleeping again. The timer
 registry is the other half: a timer registered through `repeatWhileAwake` ticks
 awake, stops dead asleep without catching up, does not start at all if it was
 registered while the page was already asleep - which is what a celebration
-mounted on a turned tablet does - and stays cancelled either way. What sleeping
+mounted on a turned tablet does - and stays cancelled either way. A one-shot
+through `afterWhileAwake` is held to more than that: it keeps the milliseconds
+it had left, serves exactly those on waking and not one of the ten seconds
+nobody was there for, and fires once. What sleeping
 *looks* like is `npm run shot`'s, which freezes a real bubble level in Chromium
 and checks that nothing is running, that a hinted board holds its glow bright,
 and that the touch which wakes the page also pops the bubble it landed on.
