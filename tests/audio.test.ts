@@ -474,7 +474,7 @@ describe("putting the speakers down", () => {
     };
     try {
       vi.resetModules();
-      const fresh = (await import("../src/audio")) as typeof audio;
+      const fresh = await import("../src/audio");
       // What builds that copy's context, out of the fake `window` above.
       fresh.unlockAudio();
       await run(speakers, fresh);
