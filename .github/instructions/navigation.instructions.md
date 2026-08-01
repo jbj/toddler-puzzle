@@ -69,12 +69,23 @@ row for long.
 
 Thirty levels that all end with the same four-note fanfare and the same 700ms
 sparkle flatten completely, so the fifth level of every chapter ends with a
-celebration instead: balloons, a parade, blossom, a rainbow, fireworks, and
+celebration instead: balloons, a rainbow, blossom, a parade, fireworks, and
 after level 30 the finale. `src/celebration.ts` owns all six; `endsChapter` in
 `src/levels.ts` says when one is due, read off the level table rather than
 written down as a list of level numbers.
 
 The rules a celebration has to keep:
+
+- **It is never made of what the finished board is made of.** A celebration is
+  drawn over the puzzle that has just been solved, and the puzzle stays there to
+  be admired - so anything the two have in common arrives as a second copy of
+  the board. This is why the parade of animals ends the chapter of coloured
+  shapes rather than the chapter of animals, where an elephant walked over the
+  elephant still sitting in its hole, and why it deals its walkers from the
+  animals the board is *not* holding (`paradeCast`) rather than from the pieces
+  just placed. Before hanging a celebration on a chapter, look at what that
+  chapter's fifth level leaves on the screen. The reasoning is
+  [decision 20260801T160000](../../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
 
 - **It is played, not watched.** Everything in one answers a finger in the tick
   the finger landed - a balloon pops, an animal hops, a tap paints the next arc

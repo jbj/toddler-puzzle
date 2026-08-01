@@ -46,9 +46,9 @@ import type { Size } from "./geometry";
  * How far a slice of an animal may spill past its cut, in the units the animal
  * is drawn in.
  *
- * Held to a hair, because an animal's artwork is not all opaque - a wing, an
- * ear and a snout are painted translucent over the body (`parrot.svg`,
- * `cow.svg`, `elephant.svg`, `pig.svg`) - and anything two neighbours both draw
+ * Held to a hair, because an animal's artwork is not all opaque - a tail
+ * feather and a trunk wrinkle are painted translucent over the body
+ * (`parrot.svg`, `elephant.svg`) - and anything two neighbours both draw
  * is painted twice. A hair's worth is thinner than the hairline it closes; a
  * wide band would trade a pale seam for a dark one.
  */

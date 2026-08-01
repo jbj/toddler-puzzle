@@ -128,6 +128,9 @@ and wake without sitting through two minutes to do it.
   sleep can land back on a party that has stopped refilling. That is already
   what a backgrounded tab did, and what is afloat still bursts, so it is left
   alone.
-- The initial bundle grew by about 0.7 kB gzipped, to 36.5 kB of a 37.0 kB
-  budget. The budget was not raised, and the next change to the entry chunk will
-  find it tight.
+- The initial bundle grew by about 0.8 kB gzipped, which took it past the 37 kB
+  budget it shared with two other changes landing the same day. The gzipped
+  budget was raised to 38 kB and said out loud, per the rule in
+  `scripts/check-bundle.mjs`: this is the rare growth that buys frames back
+  rather than spending them, and `rest.ts` has to be in the entry chunk to buy
+  any of them. The raw budget was left where it was.
