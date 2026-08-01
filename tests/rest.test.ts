@@ -36,6 +36,11 @@ function fakeTimers(): {
   let armed: { id: number; run: () => void; ms: number } | null = null;
   return {
     setTimer: (run, ms) => {
+      // A rest has one wait at a time, and arming a second without dropping the
+      // first is the leak worth catching: on a real page it would be a timer
+      // per touch, all of them still pending. Silently overwriting `armed` here
+      // would let that through.
+      if (armed) throw new Error("A timer was armed while another was pending.");
       const id = next++;
       armed = { id, run, ms };
       return id;
