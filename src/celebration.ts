@@ -60,6 +60,7 @@ import type { ChapterId } from "./levels";
 import { prefersReducedMotion } from "./motion";
 import type { PieceShape } from "./piece";
 import { POP_COLOURS, popBurst, releasePoppable, type Poppable } from "./pop";
+import { afterWhileAwake, repeatWhileAwake } from "./rest";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -915,8 +916,7 @@ export function createCelebration(id: CelebrationId): Celebration {
     id,
     endless,
     mount(stage: CelebrationStage): () => void {
-      const timers: number[] = [];
-      const waits: number[] = [];
+      const timers: (() => void)[] = [];
       const stops: (() => void)[] = [];
 
       stage.layer.dataset["celebration"] = id;
@@ -932,10 +932,19 @@ export function createCelebration(id: CelebrationId): Celebration {
         answered: () => answered,
         arriving: () => endless || Date.now() < until,
         every(ms: number, run: () => void) {
-          timers.push(window.setInterval(run, ms));
+          // Through `rest.ts` rather than `setInterval`, so a party nobody is
+          // watching stops arriving along with everything else on the page and
+          // picks up where it was when a finger comes back. The finale most of
+          // all: it is the one thing here that would otherwise go on launching
+          // fireworks into an empty room for as long as the tablet had battery.
+          timers.push(repeatWhileAwake(ms, run));
         },
         after(ms: number, run: () => void) {
-          waits.push(window.setTimeout(run, ms));
+          // Also through `rest.ts`, and for the same reason: this is the timer
+          // that hands a balloon's place on to the next one, and the next one
+          // arrives with an animation of its own. A plain `setTimeout` would go
+          // on filling a frozen sky nobody is looking at.
+          timers.push(afterWhileAwake(ms, run));
         },
         onStop(run: () => void) {
           stops.push(run);
@@ -945,8 +954,7 @@ export function createCelebration(id: CelebrationId): Celebration {
       ACTS[id](party);
 
       return () => {
-        for (const timer of timers) window.clearInterval(timer);
-        for (const wait of waits) window.clearTimeout(wait);
+        for (const timer of timers) timer();
         for (const stop of stops) stop();
         stage.layer.replaceChildren();
         delete stage.layer.dataset["celebration"];

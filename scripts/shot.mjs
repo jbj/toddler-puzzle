@@ -879,26 +879,31 @@ async function pressInPanel(selector) {
 }
 
 /**
- * Watch the long timers the page arms from now on. The prompt that answers a
- * tap is taken down on a timer of its own, and a toddler taps far faster than
- * it expires, so the interesting question is whether the tenth tap leaves ten
- * timers pending or one. Only long timers are counted, which leaves the
- * two-second one that arms the opening out of it.
+ * Watch the long timers the page arms from now on, and how long each is for.
+ * The prompt that answers a tap is taken down on a timer of its own, and a
+ * toddler taps far faster than it expires, so the interesting question is
+ * whether the tenth tap leaves ten timers pending or one each. Only long timers
+ * are counted, which leaves the two-second one that arms the opening out of it.
+ *
+ * Two things arm one: "Hold to open" (`PROMPT_MS` in src/grownups.ts) and the
+ * wait before the page puts itself to sleep (`REST_DELAY_MS` in src/rest.ts),
+ * which every tap re-arms. Reporting the delays rather than a bare count is
+ * what makes a third one show up as itself rather than as an off-by-one.
  */
 const watchLongTimers = () =>
   evaluate(`
   (() => {
-    const armed = new Set();
+    const armed = new Map();
     const setLater = window.setTimeout.bind(window);
     const clearLater = window.clearTimeout.bind(window);
     window.setTimeout = (fn, ms, ...rest) => {
       let id;
       id = setLater((...args) => { armed.delete(id); fn(...args); }, ms, ...rest);
-      if (ms > 3000) armed.add(id);
+      if (ms > 3000) armed.set(id, ms);
       return id;
     };
     window.clearTimeout = (id) => { armed.delete(id); clearLater(id); };
-    window.__longTimers = () => armed.size;
+    window.__longTimers = () => [...armed.values()].sort((a, b) => a - b);
     window.__stopWatchingTimers = () => {
       window.setTimeout = setLater;
       window.clearTimeout = clearLater;
@@ -937,9 +942,16 @@ async function holdGrownUps({ pauseAtHalfway } = {}) {
  * working on the game - reaching level 30 by playing the twenty-nine before it
  * would take minutes - and is not a difficulty picker: nothing in the game
  * offers it, and the player cannot read.
+ *
+ * `restAfter` is the same sort of tool: seconds of nobody playing before the
+ * page freezes itself, instead of the two minutes a child gets. Without it this
+ * run could not watch the game go to sleep at all.
  */
-async function goToLevel(level) {
-  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?level=${level}&seed=${SEED}` });
+async function goToLevel(level, { restAfter } = {}) {
+  const rest = restAfter === undefined ? "" : `&rest=${restAfter}`;
+  await send("Page.navigate", {
+    url: `http://127.0.0.1:${PORT}/?level=${level}&seed=${SEED}${rest}`,
+  });
   await sleep(900);
 }
 
@@ -1091,6 +1103,93 @@ async function hintAfterAWhile() {
   await sleep(HINT_WINDOW_MS);
   return hintOnBoard();
 }
+
+// --- the game asleep ------------------------------------------------------
+// Two quiet minutes and the page stops drawing altogether: every animation
+// paused where it stood, every repeating timer stopped, the speakers put down.
+// The first touch undoes all of it, and does whatever it was going to do as
+// well. Only a real browser can show any of that, so it is checked here.
+// `?rest=` shortens the two minutes so the run does not have to sit through
+// them. See src/rest.ts.
+
+/** Whether the page has frozen itself. */
+const isAsleep = () => evaluate(`document.documentElement.dataset.asleep === 'true'`);
+
+/**
+ * How many animations are actually running. This is the number the whole thing
+ * is about: a sleeping game has to be at zero, and a woken one above it.
+ */
+const runningAnimations = () =>
+  evaluate(`document.getAnimations().filter((a) => a.playState === 'running').length`);
+
+/**
+ * How many running animations are drawing something that is no longer on the
+ * page. Waking a board that was rebuilt while it slept is where these would
+ * come from, and a board nobody can see is the one thing worse than a board
+ * that moves when it should be still.
+ */
+const orphanAnimations = () =>
+  evaluate(`
+  document
+    .getAnimations()
+    .filter((a) => a.playState === 'running' && a.effect?.target && !a.effect.target.isConnected)
+    .length
+`);
+
+/**
+ * How the bright end of a hint is being drawn. A pulse paused wherever the fade
+ * had reached could freeze the one thing a stuck child needs to see at its
+ * dimmest, so a sleeping hint holds instead - the same as it does for a player
+ * who asked for less motion.
+ */
+const hintPulse = () =>
+  evaluate(`
+  (() => {
+    const mark = document.querySelector('#stage .hint-mark:not(.is-quiet)');
+    if (!mark) return null;
+    const style = getComputedStyle(mark);
+    return { animation: style.animationName, opacity: Number(style.opacity) };
+  })()
+`);
+
+/**
+ * What the game's own `AudioContext` is doing, once `stageRefusedResume` below
+ * has caught hold of it, or null before then.
+ */
+const speakerState = () => evaluate(`window.__speakers ? window.__speakers.state : null`);
+
+/**
+ * Make the page's speakers able to refuse to get up, the way a browser that
+ * wants a gesture does. No browser can be asked for a refusal on demand, so it
+ * is staged: `resume` is wrapped so that `window.__refuse` decides the answer,
+ * and both it and `suspend` hand back the context they were called on so the
+ * checks can read its state. Wrapping the prototype catches the game's context
+ * whether it was built at load or by the first touch.
+ */
+const stageRefusedResume = () =>
+  evaluate(`
+  (() => {
+    const proto = window.AudioContext.prototype;
+    const resume = proto.resume;
+    const suspend = proto.suspend;
+    window.__refuse = false;
+    window.__speakers = null;
+    proto.resume = function () {
+      window.__speakers = this;
+      return window.__refuse
+        ? Promise.reject(new Error('a gesture, please'))
+        : resume.call(this);
+    };
+    proto.suspend = function () {
+      window.__speakers = this;
+      return suspend.call(this);
+    };
+    return true;
+  })()
+`);
+
+/** Whether the staged speakers say no to the next `resume`. */
+const refuseResume = (refuse) => evaluate(`(window.__refuse = ${refuse ? "true" : "false"})`);
 
 /** Drag every animal still in the tray into its hole. */
 async function solveRemaining() {
@@ -1452,7 +1551,13 @@ try {
   check("tapping the button never opens the panel", (await panelIsOpen()) === false);
   check("tapping it answers with 'Hold to open'", (await holdPromptShown()) === true);
   const pending = await longTimersPending();
-  check(`ten taps leave one timer behind, not ten (${pending})`, pending === 1);
+  // One wait each, re-armed rather than piled up: the prompt coming down, and
+  // the page's own wait before it goes to sleep. Ten taps that left ten of
+  // either behind would be a leak.
+  check(
+    `ten taps leave one wait each behind, not ten (${pending.join("ms, ")}ms)`,
+    pending.length === 2 && new Set(pending).size === 2,
+  );
   await stopWatchingTimers();
 
   await holdGrownUps({ pauseAtHalfway: () => shot("08-grownups-hold") });
@@ -1607,6 +1712,116 @@ try {
   check("level 3 is played by touching", (await kindName()) === "play");
   const onTouchLevel = await hintAfterAWhile();
   check("a level played by touching is never hinted at", onTouchLevel === null);
+
+  // --- the game asleep ------------------------------------------------------
+  // Nothing on this screen moves while nobody is playing with it. `?rest=`
+  // makes the two minutes a few seconds; everything else is the game as a child
+  // would leave it. See src/rest.ts.
+
+  // A board with a hint on it is the awkward case: the help has to stay, and it
+  // has to stay *visible*, rather than being frozen wherever the fade was.
+  await goToLevel(6, { restAfter: 7 });
+  const sleepingGlow = await hintAfterAWhile();
+  check("a hinted board goes to sleep with the hint on it", sleepingGlow !== null);
+  check("the game sleeps when nobody plays with it", (await isAsleep()) === true);
+  const asleepOn6 = await runningAnimations();
+  check(`nothing is left running on a sleeping board (${asleepOn6})`, asleepOn6 === 0);
+  const pulse = await hintPulse();
+  check(
+    `a sleeping hint holds rather than pulsing (${pulse ? pulse.animation : "no hint"})`,
+    pulse !== null && pulse.animation === "none",
+  );
+  check(
+    `and holds bright rather than mid-fade (${pulse ? pulse.opacity.toFixed(2) : "no hint"})`,
+    pulse !== null && pulse.opacity >= 0.8,
+  );
+  await tapEmptySpot();
+  check("a touch wakes it", (await isAsleep()) === false);
+
+  // The bubbles are the busiest thing the game leaves running by itself, and
+  // the level where waking has to do two things at once: the finger that wakes
+  // the page is the finger that pops the bubble it landed on.
+  await goToLevel(1, { restAfter: 2 });
+  check("level 1 is played by touching", (await kindName()) === "play");
+  const awakeBubbles = await runningAnimations();
+  check(`the bubbles are moving to begin with (${awakeBubbles})`, awakeBubbles > 0);
+  await sleep(3200);
+  check("a board left alone stops moving", (await isAsleep()) === true);
+  const asleepBubbles = await runningAnimations();
+  check(`the bubbles stop with it (${asleepBubbles} running)`, asleepBubbles === 0);
+
+  // Turning a tablet that is already asleep rebuilds the board for the new
+  // shape, and the rebuilt board must arrive as still as the one it replaced.
+  await setViewport(480, 900);
+  await sleep(900);
+  check("turning a sleeping tablet leaves it asleep", (await isAsleep()) === true);
+  const turnedAsleep = await runningAnimations();
+  check(`a board rebuilt while asleep stays still (${turnedAsleep} running)`, turnedAsleep === 0);
+  await setViewport(1280, 800);
+  await sleep(900);
+  check("nothing has woken the board up", (await isAsleep()) === true);
+  const turnedBack = await runningAnimations();
+  check(`and turning it back leaves it still too (${turnedBack} running)`, turnedBack === 0);
+
+  const frozen = await thingsToTouch();
+  const poppedBefore = (await activityProgress()).touched;
+  check("a sleeping board still has its bubbles on it", frozen.length > 0);
+  await tapAt(frozen[0].x, frozen[0].y);
+  check("a touch wakes the board", (await isAsleep()) === false);
+  const wokeBubbles = await runningAnimations();
+  check(`the bubbles move again (${wokeBubbles})`, wokeBubbles > 0);
+  const orphans = await orphanAnimations();
+  check(`and nothing woke up on the board it replaced (${orphans} off the page)`, orphans === 0);
+  check(
+    "and the touch that woke it popped the bubble it landed on",
+    (await activityProgress()).touched > poppedBefore,
+  );
+
+  // A celebration is the likeliest thing of all for a tablet to be put down on,
+  // and the one that keeps arriving by itself: every balloon hands its place on
+  // to the next one on a timer of its own, and the next one climbs with an
+  // animation of its own. A sleeping party has to stop filling its sky.
+  await goToLevel(5, { restAfter: 3 });
+  await playActivity();
+  check("finishing a chapter raises a celebration to sleep on", (await celebrationName()) !== "");
+  await sleep(4200);
+  check("a celebration left alone goes to sleep", (await isAsleep()) === true);
+  const sleepingParty = await runningAnimations();
+  check(`a sleeping party stands still (${sleepingParty} running)`, sleepingParty === 0);
+  const skyAtOnce = (await celebrationThings()).length;
+  await sleep(2500);
+  const skyLater = (await celebrationThings()).length;
+  check(`and stops arriving (${skyAtOnce} up, ${skyLater} a moment later)`, skyLater === skyAtOnce);
+  const partyOrphans = await runningAnimations();
+  check(`nothing started up behind the freeze (${partyOrphans} running)`, partyOrphans === 0);
+  const sleeper = (await celebrationThings())[0];
+  if (sleeper) await tapAt(sleeper.x, sleeper.y);
+  check("a touch wakes the party", (await isAsleep()) === false);
+  const wokenParty = await runningAnimations();
+  check(`and the sky fills again (${wokenParty} running)`, wokenParty > 0);
+
+  // The speakers are the one thing here that can say no. A tab looked at again
+  // wakes the page with no finger in it, and a browser is entitled to turn down
+  // a `resume()` that came from nobody - which leaves the game silent, since a
+  // suspended context swallows every sound played to it. So the refusal is
+  // staged, and what has to be true is that the next touch asks again.
+  await goToLevel(1, { restAfter: 2 });
+  await stageRefusedResume();
+  const bubble = (await thingsToTouch())[0];
+  if (bubble) await tapAt(bubble.x, bubble.y);
+  await sleep(3200);
+  check("a sleeping board puts the speakers down", (await speakerState()) === "suspended");
+  await refuseResume(true);
+  await tapEmptySpot();
+  check("a wake the speakers refuse still wakes the board", (await isAsleep()) === false);
+  check(
+    "but leaves them down rather than counting them up",
+    (await speakerState()) === "suspended",
+  );
+  await refuseResume(false);
+  await tapEmptySpot();
+  await sleep(200);
+  check("and the next touch asks them again", (await speakerState()) === "running");
 
   // --- level 10: the busiest board of animals ------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for

@@ -197,7 +197,10 @@ voice exceeds the gain ceiling, that nothing but a sine or a triangle is ever
 asked for, that every pitch sits on the ladder, and that two hundred pops in one
 tick neither throw nor outrun the voice budget, and disconnect what they used.
 Whether any of it sounds *nice* is nobody's test; whether it sounds harsh is
-`npm run audio:check`'s.
+`npm run audio:check`'s. One case in that suite works the other seam instead: a
+fake `window` the module builds its own context out of, answering `suspend` and
+`resume` in the order it was asked, so that a tab shown and hidden again before
+a resume has been answered can be played out and the speakers held down.
 
 `tests/progress.test.ts` covers what is remembered between sittings, and is
 mostly the unhappy paths, because that is what the storage layer is for: a
@@ -313,6 +316,25 @@ one on the shorter clock, and `hintPiece` picks the last-touched piece while it
 is unplaced, the first unplaced one when it is not, nothing when the board is
 finished, and ignores a `lastTouched` left over from another board. What the
 glow *looks* like is `npm run shot`'s.
+
+`tests/rest.test.ts` covers what the game does when nobody is playing it, in the
+same shape: the wait is a state machine with its timers passed in, so two idle
+minutes are played out in a microsecond. The counters are the point - freezing a
+page twice would pause a second set of animations already paused and lose the
+first set, and waking one that is already awake would restart animations nobody
+stopped - so sleep and wake are counted rather than merely observed, alongside a
+hidden tab sleeping without waiting, a stir re-arming rather than queueing, and
+`stop()` leaving nothing frozen behind and never sleeping again. The timer
+registry is the other half: a timer registered through `repeatWhileAwake` ticks
+awake, stops dead asleep without catching up, does not start at all if it was
+registered while the page was already asleep - which is what a celebration
+mounted on a turned tablet does - and stays cancelled either way. A one-shot
+through `afterWhileAwake` is held to more than that: it keeps the milliseconds
+it had left, serves exactly those on waking and not one of the ten seconds
+nobody was there for, and fires once. What sleeping
+*looks* like is `npm run shot`'s, which freezes a real bubble level in Chromium
+and checks that nothing is running, that a hinted board holds its glow bright,
+and that the touch which wakes the page also pops the bubble it landed on.
 
 `tests/grownups.test.ts` covers the three parts of the grown-up panel that do not
 need a browser: the hold that opens it, the level map, and the rule behind the

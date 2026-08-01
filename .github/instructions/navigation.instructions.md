@@ -1,7 +1,7 @@
 ---
 name: "Navigation and feel"
 description: "How the game moves between levels, how a chapter and the game end, what the buttons and dots are for, and the feedback and toddler-proofing around a drag."
-applyTo: "src/game.ts,src/celebrate.ts,src/celebration.ts,src/drag.ts,src/audio.ts,src/grownups.ts,src/main.ts,src/style.css,index.html"
+applyTo: "src/game.ts,src/celebrate.ts,src/celebration.ts,src/drag.ts,src/audio.ts,src/grownups.ts,src/hint.ts,src/rest.ts,src/main.ts,src/style.css,index.html"
 ---
 
 # Navigation and feel
@@ -375,6 +375,56 @@ what the code has to keep true is this.
   at a steady opacity instead of breathing.
 - **It is drawn into `board.hintLayer`**, directly over the backdrop and under
   everything else, so the glow sits on the hole and beneath the pieces.
+- **A hint on a sleeping page holds rather than pausing mid-fade.** See
+  [when nobody is playing](#when-nobody-is-playing) below.
+
+## When nobody is playing
+
+`src/rest.ts` owns it. Two minutes with nothing touched - or the instant the tab
+is hidden - and the whole page freezes: every running animation paused, every
+repeating timer stopped, the speakers put down. Anything that says somebody is
+there undoes all of it: a touch, a key, a wheel, a mouse crossing the board, or
+the tab being looked at again. The reasoning is
+[decision 20260801T153000](../../docs/decisions/20260801T153000-the-game-sleeps-when-nobody-is-playing.md);
+what the code has to keep true is this.
+
+- **It is a freeze, never a state change.** No level moves, no celebration ends,
+  nothing is put away, and nothing in the game is told it happened. Every
+  animation resumes from where it stood. This is what lets a finale that "never
+  winds down" sleep without winding down.
+- **Sleeping is `document.getAnimations()`, on purpose.** A register of
+  animations to keep in step would be missing the one somebody forgot to add.
+  Only *running* animations are paused, so each resumes rather than restarting,
+  and none can finish while the page is asleep. Do not replace the sweep with a
+  list.
+- **A timer asks for itself.** `repeatWhileAwake` in `src/rest.ts`, never
+  `setInterval`, for anything that ticks on its own: the bubbles' refill and a
+  celebration's `every`. They stop dead and start again rather than catching up,
+  because both are belt-and-braces refills and a frozen screen has nothing to
+  refill. `afterWhileAwake`, never `setTimeout`, for a one-shot that *makes*
+  something - a celebration's `after`, which hands one balloon's place on to the
+  next. That one holds its clock and serves the rest of the wait on waking,
+  because a party whose timers went on firing would fill a frozen sky with new
+  animations nobody is watching.
+- **The hint holds bright.** `[data-asleep] .hint-mark` in `src/style.css` drops
+  the pulse and holds the glow, exactly as reduced motion does, because pausing
+  a fade could freeze the one thing a stuck child needs to see at its dimmest.
+- **Waking happens in the capture phase, and the same touch still plays.** A
+  finger landing on a bubble wakes the page and then pops the bubble. A child
+  must never have to tap twice, and must never meet a tap that does nothing. A
+  tab looked at again wakes it without being touched, because sleep is a way of
+  costing nothing while nobody is there rather than a lock, and a board hanging
+  motionless is a poor thing to come back to.
+- **The speakers come back in time to be heard.** `restAudio` suspends the
+  context and `stirAudio` resumes it; because `resume()` settles a tick or two
+  later, `audio.ts` counts a resume in flight as playable, or the first sound
+  after every sleep would be swallowed. Only a context that has never been
+  unlocked is still refused.
+- **Two minutes is a constant, and there is no control for it.** Not on the play
+  surface and not in the grown-up panel: it changes nothing the child can see.
+  `?rest=2` sleeps after two seconds instead - a tool for working on the game,
+  like `?seed=` and `?level=`, and what `npm run shot` uses to watch a real
+  board freeze, hold its hint, and wake to a popped bubble.
 
 ## Drag feel
 

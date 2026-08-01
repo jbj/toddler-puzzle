@@ -63,9 +63,15 @@ const BUDGET = {
   // themed backgrounds - a farmyard, a jungle canopy and a seabed, drawn in code
   // so both orientations and every level share them - are reached by level 6 and
   // so are part of the initial download.
-  // measured 2026-07-31: 109.9 kB raw, 35.8 kB gzipped
+  // raised 2026-08-01, gzipped only: the game now stops costing anything when
+  // nobody is playing it - the wait, the timer registry, the page-wide freeze
+  // and the speakers being put down are all needed before the first level, and
+  // `rest.ts` is imported by the entry for that reason. It buys frames back
+  // rather than spending them, which is the one kind of growth this file should
+  // be easy about, and the raw budget still holds.
+  // measured 2026-08-01: 113.4 kB raw, 37.1 kB gzipped
   initialRaw: 116 * kB,
-  initialGzip: 37 * kB,
+  initialGzip: 38 * kB,
   // measured 2026-07-31: 170.3 kB raw, 58.1 kB gzipped
   totalRaw: 181 * kB,
   totalGzip: 61 * kB,

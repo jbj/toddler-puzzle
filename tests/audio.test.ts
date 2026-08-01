@@ -14,7 +14,7 @@
  * is `npm run audio:check`, which renders every one of these through a real
  * `OfflineAudioContext` in Chromium and measures it.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as audio from "../src/audio";
 import { CELEBRATIONS, type CelebrationId } from "../src/celebration";
 import type { PuzzleKindId } from "../src/levels";
@@ -403,5 +403,153 @@ describe("a burst of sound", () => {
       expect(osc.started).not.toBeNull();
       expect(osc.stopped ?? 0).toBeGreaterThan(osc.started ?? 0);
     }
+  });
+});
+
+// --- the speakers while nobody is playing ----------------------------------
+
+/**
+ * `restAudio` and `stirAudio` are the one pair here that works on the game's
+ * own context rather than the stand-in above - putting a context down is
+ * something only real speakers can be asked to do - so this stands a fake
+ * `window` up and lets the module build its context out of it.
+ *
+ * The fake answers in the order it was asked, which is the whole point: a
+ * browser queues `suspend` and `resume` on one thread, so an answer can arrive
+ * long after the question stopped being the current one.
+ */
+function fakeSpeakers(startState = "running"): {
+  readonly context: { readonly state: string };
+  /** A browser that wants a gesture before it will get up. */
+  refuse: boolean;
+  settle(): Promise<void>;
+} {
+  let state = startState;
+  let asked: { readonly to: string; readonly answer: () => void }[] = [];
+  const ask = (to: string): Promise<void> =>
+    new Promise<void>((resolve) => {
+      asked.push({ to, answer: resolve });
+    });
+  const speakers = {
+    refuse: false,
+    context: {
+      get state() {
+        return state;
+      },
+      suspend: () => ask("suspended"),
+      resume: () =>
+        speakers.refuse ? Promise.reject(new Error("a gesture, please")) : ask("running"),
+    } as unknown as { readonly state: string },
+    async settle() {
+      // A refused question is answered in a microtask with nothing queued here
+      // at all, so give every answer a turn before the count below decides
+      // there is nothing outstanding.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      // Until nothing is outstanding, since an answer can be what asks the
+      // next question.
+      for (let round = 0; round < 5 && asked.length > 0; round++) {
+        const held = asked;
+        asked = [];
+        for (const one of held) {
+          state = one.to;
+          one.answer();
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    },
+  };
+  return speakers;
+}
+
+describe("putting the speakers down", () => {
+  /**
+   * A copy of the module all to itself, because this is the one test that lets
+   * `audio.ts` build its own context rather than being handed one: the fake
+   * below would otherwise be left behind in a module-level variable for
+   * everything that ran after it.
+   */
+  const withFakeSpeakers = async (
+    run: (speakers: ReturnType<typeof fakeSpeakers>, module: typeof audio) => Promise<void>,
+    startState?: string,
+  ): Promise<void> => {
+    const speakers = fakeSpeakers(startState);
+    const globals = globalThis as { window?: unknown };
+    const priorWindow = globals.window;
+    globals.window = {
+      AudioContext: class {
+        constructor() {
+          return speakers.context;
+        }
+      },
+    };
+    try {
+      vi.resetModules();
+      const fresh = await import("../src/audio");
+      // What builds that copy's context, out of the fake `window` above.
+      fresh.unlockAudio();
+      await run(speakers, fresh);
+    } finally {
+      if (priorWindow === undefined) delete globals.window;
+      else globals.window = priorWindow;
+      vi.resetModules();
+    }
+  };
+
+  it("keeps them down when a tab is shown and hidden again in one breath", async () => {
+    await withFakeSpeakers(async (speakers, sound) => {
+      sound.restAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+
+      // Looked at, then hidden again before the resume has been answered.
+      sound.stirAudio();
+      sound.restAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+
+      // And the next look still wakes them: the late answer was dropped, not
+      // the intention behind it.
+      sound.stirAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("running");
+    });
+  });
+
+  it("asks again after a browser refuses to get up without a gesture", async () => {
+    await withFakeSpeakers(async (speakers, sound) => {
+      sound.restAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+
+      // A tab looked at again is not a gesture, and a browser may say so. The
+      // speakers stay down rather than being counted as up, because a context
+      // believed to be running is one every sound afterwards is played to.
+      speakers.refuse = true;
+      sound.stirAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+
+      // Then a finger lands, and `rest.ts` asks on its behalf.
+      speakers.refuse = false;
+      sound.stirAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("running");
+    });
+  });
+
+  it("puts them down even when the unlocking tap is still being answered", async () => {
+    await withFakeSpeakers(async (speakers, sound) => {
+      // A browser that blocks audio until it is asked hands back a suspended
+      // context, so the tap above is still waiting on its `resume`.
+      expect(speakers.context.state).toBe("suspended");
+
+      // The app switched away from inside that gap. Nothing is running yet, but
+      // something is on its way to running, and that is what has to be caught:
+      // an unanswered resume would otherwise bring the speakers up behind a
+      // page that has gone to sleep, and nothing would put them down again.
+      sound.restAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+    }, "suspended");
   });
 });

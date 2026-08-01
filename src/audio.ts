@@ -221,12 +221,88 @@ function liveContext(): AudioContext | null {
 /**
  * Browsers block audio until a user gesture. Call this from the first pointer
  * interaction so later sounds are allowed to play.
+ *
+ * This says it is asking, through the same `waking` below that `stirAudio`
+ * uses, because a resume settles a tick or two after it is asked and a lot can
+ * happen in that gap. A tab hidden inside it would otherwise find a context
+ * that is not running yet, decide there was nothing to put down, and leave the
+ * queued resume to bring the speakers up behind a sleeping page - which is the
+ * exact cost `rest.ts` exists to remove.
  */
 export function unlockAudio(): void {
   const ctx = liveContext();
-  if (ctx && ctx.state === "suspended") {
-    void ctx.resume();
-  }
+  if (!ctx || ctx.state !== "suspended") return;
+  const mine = ++asked;
+  waking = true;
+  const settled = (): void => {
+    if (asked === mine) waking = false;
+  };
+  void ctx.resume().then(settled, settled);
+}
+
+/**
+ * Whether the context has been put down by `restAudio`, and whether it has been
+ * asked to get up again and not yet said that it has.
+ *
+ * The second of those is the whole reason this pair is not just two one-liners.
+ * `resume()` settles a tick or two after it is asked, and the tap that asks is
+ * the same tap that pops a bubble - so without `waking` the guard in `play`
+ * below would swallow the first sound after every sleep, which is precisely the
+ * sound a child comes back for. A suspended context's clock is frozen rather
+ * than stuck at zero, so a note scheduled a hair after `currentTime` while the
+ * resume is in flight lands the moment the speakers come back.
+ */
+let rested = false;
+let waking = false;
+
+/**
+ * Which of the two below asked last. Both settle a tick or two after they are
+ * asked, and a tab shown and hidden again in that gap - one flick through the
+ * app switcher - would otherwise have the earlier answer arrive last and leave
+ * the speakers running to nobody. An answer to a stale question is dropped.
+ */
+let asked = 0;
+
+/**
+ * Put the speakers down until somebody comes back. A running `AudioContext`
+ * renders silence at the sample rate for as long as it is running, which is
+ * exactly the sort of thing `rest.ts` exists to stop.
+ *
+ * A context that is suspended because it was never unlocked is left alone: it
+ * costs nothing, and claiming it here would have `stirAudio` try to start
+ * speakers no finger has ever asked for.
+ */
+export function restAudio(): void {
+  // Already down and staying down is nothing to do; down but on its way back up
+  // is exactly the case this has to act on.
+  if (!context || (rested && !waking)) return;
+  if (!waking && context.state !== "running") return;
+  const mine = ++asked;
+  rested = true;
+  waking = false;
+  void context.suspend().catch(() => {
+    if (asked === mine) rested = false;
+  });
+}
+
+/** Pick them up again. Only ever undoes a `restAudio`; never unlocks. */
+export function stirAudio(): void {
+  if (!context || !rested || waking) return;
+  const mine = ++asked;
+  waking = true;
+  void context.resume().then(
+    () => {
+      if (asked !== mine) return;
+      rested = false;
+      waking = false;
+    },
+    () => {
+      // A resume can be refused - a browser that wants a gesture, and a tab
+      // being looked at again is not one. Left `rested`, so the next thing the
+      // child touches asks again rather than playing to sleeping speakers.
+      if (asked === mine) waking = false;
+    },
+  );
 }
 
 /**
@@ -351,8 +427,11 @@ function play(phrase: Phrase): void {
   const ctx = provided ?? liveContext();
   if (!ctx) return;
   // A context that has never been unlocked has a clock stuck at zero, so
-  // everything scheduled into it would arrive at once the moment it started.
-  if (!provided && ctx.state !== "running") return;
+  // everything scheduled into it would arrive at once the moment it started. A
+  // context this game put to sleep is a different case - its clock is frozen
+  // where it stood - so a sound asked for in the same breath as the resume is
+  // scheduled rather than dropped; see `waking` above.
+  if (!provided && ctx.state !== "running" && !waking) return;
   schedule(ctx, busFor(ctx), phrase, ctx.currentTime);
 }
 
