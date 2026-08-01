@@ -635,6 +635,19 @@ const celebrationPlayed = () =>
 /** What a finger could land on in the celebration itself. */
 const celebrationThings = () => thingsToTouch("#stage .celebration");
 
+/** Who is walking in the parade, by piece id. */
+const paradingPieces = () =>
+  evaluate(
+    `[...document.querySelectorAll('#stage .celebration [data-piece]')].map((el) => el.dataset.piece)`,
+  );
+
+/** How many things the celebration has added to the board, for the rule above. */
+const parading = async () => (await paradingPieces()).length;
+
+/** How much of the rainbow is up. */
+const rainbowArcs = () =>
+  evaluate(`document.querySelectorAll('#stage .celebration .rainbow-arc').length`);
+
 /** Whether night has fallen over the finished picture, for the fireworks. */
 const nightHasFallen = () =>
   evaluate(`
@@ -1623,28 +1636,37 @@ try {
   check("dragging works in the portrait layout", (await placedCount()) === 6);
   await shot("13-portrait-complete");
 
-  // --- the end of chapter 2: a parade ---------------------------------------
-  // The animals just matched walk across the board, and every one of them hops
-  // and sings when it is poked. In portrait as it happens, which is the point:
-  // a celebration is composed from the layout like everything else.
-  check("finishing chapter 2 raises the parade", (await celebrationName()) === "parade");
-  check("the parade has the screen to itself first", (await finishButtons()) === 0);
-  const marchers = await evaluate(
-    `[...document.querySelectorAll('#stage .celebration [data-piece]')].map((el) => el.dataset.piece)`,
-  );
+  // --- the end of chapter 2: a rainbow --------------------------------------
+  // The one celebration the child *makes*. A tap anywhere paints the next arc,
+  // and an arc arrives by itself every second or two - so it draws itself for a
+  // child who is only watching, and is painted by a child who is not. In
+  // portrait as it happens, which is the point: a celebration is composed from
+  // the layout like everything else.
+  check("finishing chapter 2 raises the rainbow", (await celebrationName()) === "rainbow");
+  check("the rainbow has the screen to itself first", (await finishButtons()) === 0);
+  // The rule the chapter-2 celebration is chosen by: a celebration is never
+  // made of what the board is made of, so a board of animals gets one with no
+  // animal in it. See docs/decisions/20260801T160000.
+  check("nothing on a board of animals is celebrated with more animals", (await parading()) === 0);
+  const arcsAtFirst = await rainbowArcs();
+  const skyOverAnimals = await celebrationThings();
   check(
-    `every animal just placed is parading, once each (${marchers.length})`,
-    marchers.length === 6 && new Set(marchers).size === 6,
+    "the whole sky is the target",
+    skyOverAnimals.some((thing) => thing.touch === "sky"),
   );
-  const hops = await playCelebration(3);
-  check(`a poked animal answers (${hops.missed} missed)`, hops.missed === 0);
-  check("the parade lets the way onwards through", (await waitForFinishButton()) === true);
+  await playCelebration(4);
+  const arcsAfter = await rainbowArcs();
+  check(`tapping paints arcs (${arcsAtFirst} to ${arcsAfter})`, arcsAfter > arcsAtFirst);
+  await sleep(2200);
+  const arcsAlone = await rainbowArcs();
+  check(`an arc arrives even if nobody taps (${arcsAlone})`, arcsAlone > arcsAfter);
+  check("the rainbow lets the way onwards through", (await waitForFinishButton()) === true);
   check("a middle level offers the next puzzle", (await finishLabel()) === "Next puzzle");
   // A celebration is never interrupted by a hint. The board it was armed
-  // against finished before the parade was built, and the hint went with it.
-  const duringParade = await hintAfterAWhile();
-  check("nothing is hinted at during a celebration", duringParade === null);
-  await shot("13b-chapter2-parade");
+  // against finished before the rainbow was painted, and the hint went with it.
+  const duringRainbow = await hintAfterAWhile();
+  check("nothing is hinted at during a celebration", duringRainbow === null);
+  await shot("13b-chapter2-rainbow");
 
   // Hints back off, so the rest of the run's screenshots show the levels rather
   // than a glow that happened to be due when the shutter went.
@@ -1800,31 +1822,50 @@ try {
   check("the picture finishes however the twins were shared out", (await placedCount()) === 6);
   await shot("22-level20-built");
 
-  // --- the end of chapter 4: a rainbow --------------------------------------
-  // The one celebration the child *makes*. A tap anywhere paints the next arc,
-  // and an arc arrives by itself every second or two - so it draws itself for a
-  // child who is only watching, and is painted by a child who is not.
-  check("finishing chapter 4 raises the rainbow", (await celebrationName()) === "rainbow");
-  const arcsAtFirst = await evaluate(
-    `document.querySelectorAll('#stage .celebration .rainbow-arc').length`,
-  );
-  const skyToTap = await celebrationThings();
+  // --- the end of chapter 4: a parade ---------------------------------------
+  // Animals walk across the finished sunflower, and every one of them hops and
+  // sings when it is poked. The board underneath is built of plain coloured
+  // shapes, so the only animals on the screen are the ones walking: a
+  // celebration is never made of what the board is made of, which is why the
+  // parade ends this chapter rather than the chapter of animals. See
+  // docs/decisions/20260801T160000.
+  check("finishing chapter 4 raises the parade", (await celebrationName()) === "parade");
+  check("the parade has the screen to itself first", (await finishButtons()) === 0);
+  const marchers = await paradingPieces();
   check(
-    "the whole sky is the target",
-    skyToTap.some((thing) => thing.touch === "sky"),
+    `animals parade, each of them once (${marchers.length})`,
+    marchers.length === 5 && new Set(marchers).size === 5,
   );
-  await playCelebration(4);
-  const arcsAfter = await evaluate(
-    `document.querySelectorAll('#stage .celebration .rainbow-arc').length`,
+  const shapesPlaced = await animalsOnBoard();
+  check(
+    "none of them is a piece the finished board is already holding",
+    marchers.every((piece) => !shapesPlaced.includes(piece)),
   );
-  check(`tapping paints arcs (${arcsAtFirst} to ${arcsAfter})`, arcsAfter > arcsAtFirst);
-  await sleep(2200);
-  const arcsAlone = await evaluate(
-    `document.querySelectorAll('#stage .celebration .rainbow-arc').length`,
+  const hops = await playCelebration(3);
+  check(`a poked animal answers (${hops.missed} missed)`, hops.missed === 0);
+  check("the parade lets the way onwards through", (await waitForFinishButton()) === true);
+  await shot("22b-chapter4-parade");
+
+  // Portrait is where a parade over a finished board reads busiest, and it is
+  // where the parade this one replaced failed (#65). So the same moment, turned
+  // ninety degrees: the celebration is built again from the new layout, and what
+  // has been played with is counted outside the board and survives.
+  await setViewport(480, 900);
+  await sleep(600);
+  check("the parade is turned with the board", (await layoutName()) === "portrait");
+  check("rotation stays on the same level", (await levelNumber()) === 20);
+  check("the parade is rebuilt rather than lost", (await celebrationName()) === "parade");
+  // A re-mounted parade is dealt again from the level's own random, which has
+  // moved on - so it is a full parade rather than the same five animals.
+  const stillWalking = await paradingPieces();
+  check(
+    `a whole parade is dealt again in portrait (${stillWalking.length})`,
+    stillWalking.length === 5,
   );
-  check(`an arc arrives even if nobody taps (${arcsAlone})`, arcsAlone > arcsAfter);
-  check("the rainbow lets the way onwards through", (await waitForFinishButton()) === true);
-  await shot("22b-chapter4-rainbow");
+  check("the way onwards does not make the child wait twice", (await finishButtons()) > 0);
+  await shot("22c-chapter4-parade-portrait");
+  await setViewport(1280, 800);
+  await sleep(600);
 
   // --- level 21: a picture cut up -------------------------------------------
   // The jigsaw chapter. One picture is one hole however many pieces it is in,

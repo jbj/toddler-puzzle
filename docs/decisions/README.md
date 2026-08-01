@@ -55,3 +55,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260731T090000-a-background-belongs-to-the-theme](20260731T090000-a-background-belongs-to-the-theme.md) | Give a themed level the world its cast lives in |
 | [20260731T133000-one-box-measures-a-piece](20260731T133000-one-box-measures-a-piece.md) | Measure every piece by one box and place it by one rule |
 | [20260731T152600-a-level-names-what-it-is-made-of](20260731T152600-a-level-names-what-it-is-made-of.md) | Name a level's subject in the table, so no two levels are the same puzzle |
+| [20260801T160000-a-celebration-is-not-made-of-the-board](20260801T160000-a-celebration-is-not-made-of-the-board.md) | Never make a celebration out of what the finished board is made of |

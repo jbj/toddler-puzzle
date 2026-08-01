@@ -14,6 +14,14 @@
  * answer. So every celebration is a thing to do: balloons to pop, animals to
  * poke, a sky to fire into, a rainbow to paint. Nothing here is a film.
  *
+ * **A celebration is never made of what the finished board is made of.** It is
+ * drawn over the puzzle the child has just solved, so anything it has in common
+ * with that puzzle arrives as a second copy of it: the parade of animals ended
+ * the chapter of animals once, and an elephant walking over an elephant is one
+ * busy picture rather than one thing happening. That is why the parade is hung
+ * on the chapter of coloured shapes and deals from the animals the board is not
+ * holding. See [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
+ *
  * **A celebration is not a level, and deliberately not a `PuzzleKind`.** A kind
  * is dealt a cast, composes a layout, cuts holes, judges drops, and above all is
  * named by a row of the thirty-level table - the one place difficulty is tuned.
@@ -72,14 +80,20 @@ export type CelebrationId = "balloons" | "parade" | "petals" | "rainbow" | "fire
  *
  * The order is a ramp of its own. The first chapter's is the balloons, because
  * a one-year-old has just spent five levels learning that a finger makes things
- * happen and a balloon is that sentence again. The last is the finale, which is
- * every other celebration at once and never stops.
+ * happen and a balloon is that sentence again; the rainbow follows it, because
+ * a finger that bursts a thing and a finger that builds a thing are one step
+ * apart. The last is the finale, which is every other celebration at once and
+ * never stops.
+ *
+ * The rest of the order is settled by the rule at the top of this file: the
+ * parade is made of animals, so it ends the chapter of coloured shapes and not
+ * the chapter of animals, where it used to walk an elephant over an elephant.
  */
 export const CELEBRATIONS: Record<ChapterId, CelebrationId> = {
   "first-touches": "balloons",
-  animals: "parade",
+  animals: "rainbow",
   "sliced-animals": "petals",
-  shapes: "rainbow",
+  shapes: "parade",
   pictures: "fireworks",
   mastery: "finale",
 };
@@ -102,9 +116,14 @@ export interface CelebrationStage {
   /** Above everything: where a sparkle goes, and where the button already is. */
   readonly fxLayer: SVGGElement;
   readonly layout: Layout;
-  /** The pieces the child has just placed, for a parade of them. */
+  /**
+   * The pieces this level was dealt - what the finished board is holding, and
+   * so what a celebration may *not* draw. The parade reads it as an exclusion
+   * list rather than as a cast: an animal standing in its own hole must not
+   * also be walking over it.
+   */
   readonly pieces: readonly PieceShape[];
-  /** Every shape the game has, for a finale that wants all of them. */
+  /** Every shape the game has, for a parade or a finale to deal from. */
   readonly cast: readonly PieceShape[];
   /** The level's own random source, so `?seed=` still means something. */
   readonly random: () => number;
@@ -160,8 +179,8 @@ const TUNING = {
   paradeWidth: 0.19,
   /** How fast one walks, in logical units per millisecond. */
   paradeSpeed: 0.055,
-  /** How many animals walk in a finale, at most. */
-  finaleParade: 5,
+  /** How many animals walk in a parade, at most - a chapter's or the finale's. */
+  paradeAtOnce: 5,
   arcs: 7,
   /** How often an arc paints itself if nobody asks for one. */
   arcEvery: 1800,
@@ -494,11 +513,29 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
 }
 
 // --- a parade ---------------------------------------------------------------
-// The animals the child has just matched, walking across the board. Every one of
-// them answers a touch with a hop and a note, so a parade is something to poke
-// rather than something to sit through.
+// Animals walking across the board. Every one of them answers a touch with a hop
+// and a note, so a parade is something to poke rather than something to sit
+// through.
+//
+// They are dealt from the whole roster rather than from the pieces the child
+// has just placed, and anything the finished board is holding is left out of
+// the deal. A parade made of the board's own pieces was the same animals twice
+// over - one set still in their holes, one set walking over them - which reads
+// as one busy picture rather than as one thing happening. See
+// [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
 
-function parade(party: Party, cast: readonly PieceShape[]): void {
+/** The animals to walk: dealt from the roster, minus whatever is on the board. */
+function paradeCast(stage: CelebrationStage): readonly PieceShape[] {
+  const onTheBoard = new Set(stage.pieces.map((piece) => piece.id));
+  const spare = stage.cast.filter((shape) => !onTheBoard.has(shape.id));
+  // The board's own pieces only when there is nothing else left to walk, which
+  // no level of the thirty does - an empty parade would be worse than a busy one.
+  const roster = spare.length > 0 ? spare : stage.cast;
+  return shuffle(roster, stage.random).slice(0, TUNING.paradeAtOnce);
+}
+
+function parade(party: Party): void {
+  const cast = paradeCast(party.stage);
   const { layer, layout } = party.stage;
   const { width } = layout.canvas;
   const still = prefersReducedMotion();
@@ -829,7 +866,7 @@ function nightSky(party: Party): void {
 // it starts the whole thing again at the bubbles.
 
 function finale(party: Party): void {
-  const { layer, layout, cast, random } = party.stage;
+  const { layer, layout } = party.stage;
   // Order is what a finger hits: later siblings sit on top. So the rainbow is
   // laid down first as scenery, the sky that answers a stray tap next, and
   // everything with a shape of its own above both - a balloon under a finger
@@ -845,14 +882,14 @@ function finale(party: Party): void {
   rockets(party);
   balloons(party, { at: 4 });
   petals(party, { at: 4 });
-  parade(party, shuffle(cast, random).slice(0, TUNING.finaleParade));
+  parade(party);
 }
 
 // --- the celebrations -------------------------------------------------------
 
 const ACTS: Record<CelebrationId, (party: Party) => void> = {
   balloons: (party) => balloons(party),
-  parade: (party) => parade(party, party.stage.pieces),
+  parade: (party) => parade(party),
   petals: (party) => petals(party),
   rainbow: (party) => rainbow(party),
   fireworks: (party) => fireworks(party),
