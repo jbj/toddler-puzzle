@@ -754,6 +754,23 @@ async function tapAt(x, y) {
 }
 
 /**
+ * Deal this level again, by pressing the child's own reset button.
+ *
+ * Every activity level opens the way onwards ten seconds after it was *dealt*,
+ * whatever has been touched (`ACTIVITY_PATIENCE_MS` in src/kinds/play.ts). A
+ * play-through that has been stopping to check things and take screenshots has
+ * spent some of those ten seconds, so before an activity this run means to
+ * finish by touching, it deals the level again and starts from a full ten. At
+ * the end of a chapter that is what makes the beat before the button
+ * measurable at all: the celebration is then raised at a moment this run knows.
+ */
+async function dealAgain() {
+  await evaluate(`document.querySelector('#stage [aria-label="Start a fresh puzzle"]')
+    .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
+  await sleep(600);
+}
+
+/**
  * Touch things until the level says it is done, one at a time, checking as it
  * goes that progress only ever climbs and that there is always something left
  * to touch. Throws if the board ever runs dry, which is the shape a stuck level
@@ -1219,7 +1236,7 @@ try {
   }
 
   // And no way to get stuck: pop them and more arrive.
-  const pops = await playActivity({ shotAt: { after: 3, name: "02-level1-popping" } });
+  const pops = await playActivity({ shotAt: { after: 2, name: "02-level1-popping" } });
   const popped = await activityProgress();
   check(`the level finishes on touches alone (${pops.taps} taps)`, popped.touched >= popped.goal);
   check(`every touch on a bubble popped it (${pops.missed} missed)`, pops.missed === 0);
@@ -1300,6 +1317,9 @@ try {
   check("moves on to level 5", (await levelNumber()) === 5);
   check("level 5 is played by touching", (await kindName()) === "play");
   check("level 5 is the scene that answers", (await activityName()) === "alive");
+  // From here the run is measuring the moment a chapter ends, so it starts the
+  // level from a full ten seconds rather than from whatever is left of them.
+  await dealAgain();
   const scene = await activityProgress();
   const alive = await thingsToTouch();
   check(
@@ -2130,10 +2150,7 @@ try {
   const beforeReset = await thingsToTouch();
   await tapAt(beforeReset[0].x, beforeReset[0].y);
   check("a bubble popped before the reset counted", (await activityProgress()).touched === 1);
-  await evaluate(`document.querySelector('.reset-button').dispatchEvent(
-    new PointerEvent('pointerdown', { bubbles: true })
-  )`);
-  await sleep(600);
+  await dealAgain();
   check("reset deals a fresh puzzle", (await placedCount()) === 0);
   check("reset keeps the level", (await levelNumber()) === 1);
   check("reset starts the touching over", (await activityProgress()).touched === 0);
@@ -2142,6 +2159,32 @@ try {
     `reset leaves one screenful of bubbles, not two (${afterReset2.length})`,
     afterReset2.length >= 1 && afterReset2.length <= 8,
   );
+
+  // --- a child who touches nothing ------------------------------------------
+  // The goal is what an activity asks for; the clock is what it settles for. A
+  // one-year-old does not read a level as a task with a number to reach, and a
+  // child patting the same cloud for a minute is doing exactly what the level
+  // is for - so ten seconds after it was dealt the way onwards is up whatever
+  // has been touched. It is a second way out and never a way on: nothing is
+  // taken off the screen, nothing is counted as touched that was not, and the
+  // child still presses the button themselves. The board above was just dealt
+  // again, so those ten seconds start here. See src/kinds/play.ts and
+  // decision 20260801T163000.
+  check("no way onwards in the first moments", (await finishButtons()) === 0);
+  const lentOut = await waitForFinishButton(14_000);
+  check(
+    "a level nobody touches opens the way onwards anyway",
+    lentOut === true && (await finishButtons()) === 1,
+  );
+  const untouched = await activityProgress();
+  check(`the clock touches nothing itself (${untouched.touched})`, untouched.touched === 0);
+  check("the level is still the level", (await levelNumber()) === 1);
+  // And it is still something to play with: the way out is an offer, not an end.
+  const stillAfloat = await thingsToTouch();
+  check(`bubbles are still there to pop (${stillAfloat.length})`, stillAfloat.length >= 1);
+  await tapAt(stillAfloat[0].x, stillAfloat[0].y);
+  check("a bubble still pops with the way out up", (await activityProgress()).touched === 1);
+  await shot("31a-level1-waited-out");
 
   const castForSeed = async (seed) => {
     await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?level=10&seed=${seed}` });
@@ -2160,6 +2203,7 @@ try {
   await setViewport(700, 1000);
   await goToLevel(5);
   check("the scene composes in portrait too", (await layoutName()) === "portrait");
+  await dealAgain();
   const turned = await thingsToTouch();
   const turnedGoal = (await activityProgress()).goal;
   check(

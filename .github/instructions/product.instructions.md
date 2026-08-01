@@ -111,11 +111,17 @@ oversights until you know it, so the reason is written next to the rule.
   small hands need large things to grab.
 - Keep the opening chapter playable without a drag. Levels 1, 3 and 5 are
   cause-and-effect levels - touch a thing, a thing happens - and they end when
-  enough things have been touched rather than when a tray is empty. Never make
-  one of them require aiming, carrying or letting go. Why: dragging is a chain
-  of three things a one-year-old can do none of, and a first screen they cannot
-  work is a closed door rather than a gentle beginning. See
-  [decision 20260729T072100](../../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md).
+  enough things have been touched rather than when a tray is empty, or when the
+  level's ten seconds are up, whichever comes first. Ask for a handful of
+  touches, never a screenful, and never make one of them require aiming,
+  carrying or letting go. Why: dragging is a chain of three things a one-year-old
+  can do none of, and a first screen they cannot work is a closed door rather
+  than a gentle beginning - and a child who does not know they are counting up to
+  something must not be able to miss the way onwards by playing the level the way
+  it was meant to be played. See
+  [decision 20260729T072100](../../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md)
+  and
+  [decision 20260801T163000](../../docs/decisions/20260801T163000-a-touch-level-lets-a-child-out.md).
 
 ## What the invariants add up to
 
@@ -144,9 +150,14 @@ and 5 are cause and effect - bubbles that burst under a finger, bushes that
 uncover an animal, a scene where the sun and the clouds and the animals all
 answer - and levels 2 and 4 are the smallest drags the game can ask for. A
 one-year-old who cannot yet pinch, carry and let go still wins something, and
-finds the drag waiting whenever they are ready for it. The mechanics are in
+finds the drag waiting whenever they are ready for it. Those three levels ask
+for a handful of touches and then let the child out anyway: ten seconds in, the
+same button as every other level is up whatever has been touched, and nothing is
+taken off the screen when it arrives. The mechanics are in
 [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); the reasoning is
-[decision 20260729T072100](../../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md).
+[decision 20260729T072100](../../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md)
+and
+[decision 20260801T163000](../../docs/decisions/20260801T163000-a-touch-level-lets-a-child-out.md).
 
 **The game only ever moves forward.** There is no menu and no difficulty picker
 in front of the child: the thirty levels are always played in the same order, the

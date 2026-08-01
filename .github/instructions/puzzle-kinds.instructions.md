@@ -382,7 +382,7 @@ to a default would be a level nobody chose.
 - **alive** is a scene where everything answers - the sun spins, a cloud drifts
   along, an animal waggles.
 
-Three rules run through all three, and they are the level rather than polish:
+Four rules run through all three, and they are the level rather than polish:
 
 **There is no way to be wrong.** Nothing is picked up, so nothing can be dropped
 anywhere; `accepts` returns false for everything it is offered. A touch that
@@ -394,6 +394,19 @@ more touches than it gave the child things to touch - and for everything but
 peekaboo it asks for strictly fewer, because a child who has decided a
 particular cloud is not for them is not going to change their mind. A bubble
 that drifts away untouched is replaced at once.
+
+**There is always a way out.** The goal is what a level *asks* for - three
+bubbles, two things in a scene, every bush - and `ACTIVITY_PATIENCE_MS` is what
+it settles for: ten seconds after the level was dealt, the way onwards is up
+whatever has been touched. `isComplete` reads that deadline as well as the
+count, and `play` arms a timer that calls `host.touched()` with no point, so the
+host looks again without sparkling at a finger that was not there. It ends
+nothing else - the things on screen go on answering, the level is not taken
+away, and the child still presses the button themselves. The deadline is stamped
+on the *puzzle* when it is dealt, so turning the tablet does not hand out
+another ten seconds and the reset button starts them over.
+[Decision 20260801T163000](../../docs/decisions/20260801T163000-a-touch-level-lets-a-child-out.md)
+is why, and why the goals are as small as they are.
 
 **The answer is immediate.** `pointerdown`, not click, and nothing waits for an
 animation before it answers. An animation may run *after* the answer; the sound,

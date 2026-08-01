@@ -298,9 +298,11 @@ what the code has to keep true is this.
 - On a level played by touching (`PuzzleKind.play`), the host does the same for
   a touch: the kind reports one through `host.touched(at)` and gets a sparkle
   there and a check for completion, so a bubble bursting and an animal landing
-  are answered the same way. Everything else about the response - the sound, the
-  spin, the bush going - belongs to the kind, and all of it happens in the tick
-  the finger landed. See
+  are answered the same way. The same call with no point is the kind saying the
+  puzzle moved on without a finger - an activity's ten seconds running out - and
+  it gets the check without the sparkle, because nothing was touched. Everything
+  else about the response - the sound, the spin, the bush going - belongs to the
+  kind, and all of it happens in the tick the finger landed. See
   [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
 - `prefers-reduced-motion` is honoured throughout, and `prefersReducedMotion()`
   in `src/motion.ts` is the one place that is asked: the settle transition and

@@ -148,9 +148,12 @@ export interface ActivityHost {
    */
   readonly layer: SVGGElement;
   /**
-   * Something was touched and the puzzle moved on. The host sparkles there and
-   * asks `isComplete` whether that was the last one. Sound is the kind's own,
-   * because only the kind knows whether that was a pop or a quack.
+   * Something moved the puzzle on, and the host should look again at
+   * `isComplete`. With a point - a finger landed there - the host sparkles on
+   * the spot; without one the puzzle moved on by itself, which for an activity
+   * means its ten seconds ran out, and nothing sparkles because nothing was
+   * touched. Sound is the kind's own, because only the kind knows whether that
+   * was a pop or a quack.
    */
-  touched(at: Point): void;
+  touched(at?: Point): void;
 }

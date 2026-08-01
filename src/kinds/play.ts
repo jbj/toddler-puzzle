@@ -4,8 +4,9 @@
  * The first chapter's other levels ask for a drag, and dragging is genuinely
  * beyond many one-year-olds. These are the levels that are not: nothing waits in
  * a tray, nothing has to be aimed anywhere, and the level ends when enough
- * things have been touched. Three of them, chosen by the level table's
- * `options.activity`:
+ * things have been touched - or, whatever has been touched, when the level's ten
+ * seconds are up (`ACTIVITY_PATIENCE_MS`). Three of them, chosen by the level
+ * table's `options.activity`:
  *
  *  - **bubbles** rise from the bottom of the screen and burst under a finger;
  *  - **peekaboo** hides an animal behind a bush, and a touch uncovers it;
@@ -22,6 +23,8 @@
  * **There is no way to get stuck.** Whatever is still to be touched is on
  * screen, and stays on screen: a bubble that drifts away untouched is replaced
  * at once, and there are always more things to touch than the level asks for.
+ * A child who touches none of it is not stuck either: after ten seconds the way
+ * onwards is up anyway, and the level goes on answering a finger regardless.
  *
  * **The answer is immediate.** `pointerdown`, not click, and nothing waits for
  * an animation before it answers. An animation may run *after* the answer - the
@@ -65,10 +68,14 @@ const TUNING = {
   bubbleSway: 0.05,
   /** How far below the bottom edge a replacement bubble comes in from. */
   bubbleEntry: 0.06,
-  /** How many bubbles to burst to finish the level. */
-  bubbleGoal: 6,
-  /** How many things to touch to finish an `alive` scene. */
-  aliveGoal: 4,
+  /**
+   * How many bubbles to burst to finish the level. Half a screenful rather
+   * than the whole one: the way onwards is the reward, and a child who has to
+   * clear the sky to earn it has been set a chore. See `ACTIVITY_PATIENCE_MS`.
+   */
+  bubbleGoal: 3,
+  /** How many things to touch to finish an `alive` scene, for the same reason. */
+  aliveGoal: 2,
   /** The sun's radius, as a fraction of the canvas width. */
   sunRadius: 0.075,
   /** A cloud's width, as a fraction of the canvas width. */
@@ -78,6 +85,31 @@ const TUNING = {
   /** How far a bush reaches past the box of the animal it hides. */
   bushGrowth: 1.05,
 } as const;
+
+/**
+ * How long a cause-and-effect level waits before it opens the way onwards
+ * whatever has been touched.
+ *
+ * The goals above are what the level *asks* for; this is what it settles for.
+ * A one-year-old does not read a level as a task with a completion condition:
+ * they poke the thing that answers, and then they poke it again, and the idea
+ * that some number of pokes buys the next screen is not one they have. A child
+ * who is doing exactly what the level is for - patting the same cow eleven
+ * times - would otherwise never see the button, and neither would a child who
+ * put the tablet down for a moment on the wrong side of the goal.
+ *
+ * So the clock is a second way out and never a way on: it raises the same
+ * button the goal raises, and nothing is taken away when it does. Whatever is
+ * on screen goes on answering a finger, the level is still there to play, and
+ * the child still presses the button themselves - the same reason a celebration
+ * has a span but never changes the level (`celebration.ts`).
+ *
+ * Ten seconds is long enough that a child getting on with it finishes by
+ * touching, which is what the level is teaching, and short enough that a child
+ * who is not getting anywhere is never stuck watching. See
+ * [decision 20260801T163000](../../docs/decisions/20260801T163000-a-touch-level-lets-a-child-out.md).
+ */
+export const ACTIVITY_PATIENCE_MS = 10_000;
 
 /** How long a response takes; under `prefers-reduced-motion`, no time at all. */
 const beat = (ms: number): number => (prefersReducedMotion() ? 1 : ms);
@@ -94,6 +126,13 @@ interface ActivityPuzzle extends Puzzle {
   readonly goal: number;
   /** What has been touched so far. Nothing here is ever untouched again. */
   readonly touched: Set<string>;
+  /**
+   * When the level opens the way onwards regardless: a moment, not a countdown.
+   * It is stamped when the level is *dealt* rather than when it is drawn, so
+   * turning the tablet re-mounts the activity without handing out another ten
+   * seconds - the same reason a celebration's span is a deadline.
+   */
+  readonly finishesBy: number;
   /**
    * The level's own random source, kept so that things minted later - a bubble
    * that arrives a minute in - come out of the same stream as the deal and
@@ -520,6 +559,7 @@ export const play: PuzzleKind = {
       activity,
       goal: goalFor(activity, pieces.length),
       touched: new Set<string>(),
+      finishesBy: Date.now() + ACTIVITY_PATIENCE_MS,
       random,
     };
     return puzzle;
@@ -552,9 +592,15 @@ export const play: PuzzleKind = {
     return false;
   },
 
+  /**
+   * Enough things touched, or long enough waited. The clock is the second of
+   * those and never undoes the first: a level that is over stays over, because
+   * both the touches and the deadline live on the puzzle, which outlives the
+   * board. See `ACTIVITY_PATIENCE_MS`.
+   */
   isComplete(puzzle: Puzzle): boolean {
     const activity = asActivity(puzzle);
-    return activity.touched.size >= activity.goal;
+    return activity.touched.size >= activity.goal || Date.now() >= activity.finishesBy;
   },
 
   play(puzzle: Puzzle, layout: Layout, host: ActivityHost): () => void {
@@ -569,8 +615,25 @@ export const play: PuzzleKind = {
     };
     host.layer.dataset["touched"] = String(activity.touched.size);
 
-    if (activity.activity === "bubbles") return playBubbles(activity, layout, host, record);
-    if (activity.activity === "peekaboo") return playPeekaboo(activity, layout, host, record);
-    return playAlive(activity, layout, host, record);
+    // Nothing was touched, so nothing sparkles and nothing is counted: this
+    // only asks the host to look again, and `isComplete` answers from the
+    // clock. A board mounted after the deadline has already passed asks at
+    // once, which is what a rotation ten seconds in wants.
+    const clock = window.setTimeout(
+      () => host.touched(),
+      Math.max(0, activity.finishesBy - Date.now()),
+    );
+
+    const stop =
+      activity.activity === "bubbles"
+        ? playBubbles(activity, layout, host, record)
+        : activity.activity === "peekaboo"
+          ? playPeekaboo(activity, layout, host, record)
+          : playAlive(activity, layout, host, record);
+
+    return () => {
+      window.clearTimeout(clock);
+      stop();
+    };
   },
 };

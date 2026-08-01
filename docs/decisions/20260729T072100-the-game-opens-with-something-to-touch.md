@@ -32,7 +32,10 @@ A kind can now be played without the drag engine. `PuzzleKind` gained an
 optional `play()` hook, and the host skips building tray pieces and starting the
 drag engine for a kind that implements it. `isComplete` was already part of the
 contract, which is what made this possible without a second host: an activity
-level finishes when enough things have been touched, not when a tray is empty.
+level finishes when enough things have been touched, not when a tray is empty -
+and, since
+[20260801T163000](20260801T163000-a-touch-level-lets-a-child-out.md), after ten
+seconds however little was touched.
 
 The chapter is one level longer in feel than it is in count, because a touch
 level is over in well under a minute. That is the intent - the point of the
