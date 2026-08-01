@@ -38,6 +38,15 @@ oversights until you know it, so the reason is written next to the rule.
 - Let a piece snap only into its own hole. Make it impossible to place an animal
   wrongly; a wrong drop drifts back to the tray with a soft warm tone, never a
   buzzer. Why: the game should correct imprecision without scolding.
+- Paint no animal into a background, ever, in any theme. A themed level stands
+  its cast in that theme's world - the farmyard, the jungle path, under water -
+  but the farmyard's cow is drawn there as a tractor and the rockpool's crab is
+  left out. Why: a cow standing in the field beside a cow-shaped hole tells a
+  two-year-old, correctly as far as they can tell, that the cow they are holding
+  is already there. The backdrop rules are in
+  [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); the reasoning
+  is
+  [decision 20260731T090000](../../docs/decisions/20260731T090000-a-background-belongs-to-the-theme.md).
 - Measure a piece by one box and place it by one rule, in every kind of puzzle:
   the box is what the piece draws, thickened so neither side is under half the
   other, and a drop is taken when that box covers the middle of where the piece
@@ -184,8 +193,8 @@ doesn't cover it.
 
 **No binary assets, and a budget on the rest.** The animals are hand-authored
 SVG and the sounds are synthesised with the Web Audio API, so there is nothing
-to download and nothing to fail to load. The game is around 30 kB gzipped before
-the first level appears and around 52 kB in total; `npm run build` fails if
+to download and nothing to fail to load. The game is around 36 kB gzipped before
+the first level appears and around 58 kB in total; `npm run build` fails if
 either grows past its budget. The difference between those two numbers is the
 four later chapters, split into a chunk each and fetched in the background while
 the child plays the first one, so nothing arrives later than it used to and no

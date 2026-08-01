@@ -52,4 +52,5 @@ and an argument nobody can see having changed is worth nothing.
 | [20260730T113000-a-check-explains-its-own-environment](20260730T113000-a-check-explains-its-own-environment.md) | Let a check explain its own environment rather than fail as something else |
 | [20260730T194900-a-grown-up-can-take-a-kind-out](20260730T194900-a-grown-up-can-take-a-kind-out.md) | Let a grown-up switch a kind of puzzle out of the thirty |
 | [20260730T230000-a-picture-takes-the-board](20260730T230000-a-picture-takes-the-board.md) | Let a picture take the whole board, on flat colour |
+| [20260731T090000-a-background-belongs-to-the-theme](20260731T090000-a-background-belongs-to-the-theme.md) | Give a themed level the world its cast lives in |
 | [20260731T133000-one-box-measures-a-piece](20260731T133000-one-box-measures-a-piece.md) | Measure every piece by one box and place it by one rule |

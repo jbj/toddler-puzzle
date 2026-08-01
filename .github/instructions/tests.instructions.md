@@ -205,6 +205,24 @@ is injected, so none of it needs a browser; the DOM-facing ends are covered by
 `npm run shot`, which reloads the page and checks the game comes back where it
 was.
 
+`tests/scenery.test.ts` covers the background a level is played against. The
+theme is the interesting part, so it is checked at both ends: every level in the
+table and every theme the game names resolves to a backdrop - a theme added
+without one cannot fall back to the meadow quietly - and every themed level's
+markup is checked to carry its own world's colours and *none* of the other
+worlds', which is what three themes all quietly rendering the meadow would fail.
+The four backdrops are then rendered onto one and the same board, geometry held
+still, so whatever differs is the backdrop's doing rather than the layout's. The
+rest is what a backdrop owes whichever board it is behind, in every theme: the
+ground reaches the bottom of the canvas, `tray: false` leaves the shelf out, and
+`sky: false` leaves the air and the distance out while keeping the wash and the
+ground - because `kinds/play.ts` draws its own sky and a barn behind the bubbles
+would be the second one. Last, it reads `src/scenery.ts` itself with the comments
+stripped and fails if an animal's name appears in the code, which is the
+no-animal-in-a-background rule as a check. What any of it *looks* like is
+`npm run shot`'s: `09b-idle-hint` is farm, `10-level10-start` and
+`12-portrait-level10` are sea, `14-level14-sliced` is jungle.
+
 `tests/pictures.test.ts` covers the jigsaw scene library: that every registered
 scene loads and comes back with artwork safe to inline more than once in one
 document, that every scene the level table names resolves to one, that an
