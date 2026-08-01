@@ -10,7 +10,7 @@ body {
   padding: 0;
   height: 100%;
   overflow: hidden;
-  background: #6fb8d4;
+  background: var(--board-blue, #6fb8d4);
   font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
 
   /* Toddler-proofing: no accidental zoom, selection, or callout menus. */
@@ -31,6 +31,12 @@ body {
    the sites read a variable it can set. The `, 0px` fallback keeps a phone or a
    desktop, where the inset is genuinely absent, at zero. */
 :root {
+  /* The colour behind everything. The canvas keeps its aspect ratio inside the
+     window, so this shows above and below it whatever the screen; a picture
+     board paints the same variable behind the picture (`picture-pieces.ts`), so
+     the letterbox has no seam in it and the two cannot drift apart. */
+  --board-blue: #6fb8d4;
+
   --inset-top: env(safe-area-inset-top, 0px);
   --inset-right: env(safe-area-inset-right, 0px);
   --inset-bottom: env(safe-area-inset-bottom, 0px);

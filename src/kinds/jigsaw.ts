@@ -23,24 +23,21 @@
  * guide is drawn by `picture-pieces.ts`, because a shattered picture wants the
  * same one.
  *
- * The other difference from slices is where a piece may be dropped. A slice is
- * accepted anywhere on its animal, because a quarter of a duck has no home of
- * its own worth insisting on. A piece of a picture does have one - it is the
- * bit with the tractor in it - so a piece is measured against *its own cell*,
- * at the game's ordinary two thirds of the piece being dropped. On a 2x2 board
- * that circle is most of the picture; on a 4x3 it is most of a cell in every
- * direction. Generous, and still a placement.
+ * Where a piece may be dropped is the game's one rule, the same one a slice, an
+ * animal and a shape are placed by: the piece's own box, put where the finger
+ * let go, over the middle of its own cell - the bit with the tractor in it. On
+ * a 2x2 board that box is most of the picture; on a 4x3 it is most of a cell in
+ * every direction. Generous, and still a placement.
  */
-import { boxCenter, distance, shuffle, type Point } from "../geometry";
-import { boxOf, holeOf, inkSnapRadius, type Layout } from "../layout";
+import { shuffle, type Point } from "../geometry";
+import { boxOf, holeOf, onTarget, type Layout } from "../layout";
 import type { Grid } from "../jigsaw";
 import { jigsawShapes } from "../jigsaw";
-import { pictureGuide } from "../picture-pieces";
+import { pictureBackdrop, pictureGuide } from "../picture-pieces";
 import type { LevelSpec } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
 import { pictureFor, type Picture } from "../pictures";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
-import { renderScenery } from "../scenery";
 
 const ID = "jigsaw" as const;
 
@@ -92,12 +89,6 @@ function frame(puzzle: JigsawPuzzle, layout: Layout, filled: boolean): string {
   });
 }
 
-/** Where a piece's drawing sits, given the top-left of its box. */
-function inkCentre(layout: Layout, piece: PieceId, at: Point): Point {
-  const { ink } = boxOf(layout, piece);
-  return boxCenter({ x: at.x + ink.x, y: at.y + ink.y }, ink);
-}
-
 export const jigsaw: PuzzleKind = {
   id: ID,
 
@@ -129,10 +120,10 @@ export const jigsaw: PuzzleKind = {
     return puzzle;
   },
 
-  /** The landscape, with the picture waiting to be rebuilt in it. */
+  /** Flat colour, with the picture waiting to be rebuilt on it. */
   backdrop(puzzle: Puzzle, layout: Layout): string {
     const jig = asJigsaw(puzzle);
-    return `${renderScenery(layout)}<g class="holes">${frame(jig, layout, isBuilt(puzzle))}</g>`;
+    return `${pictureBackdrop(layout)}<g class="holes">${frame(jig, layout, isBuilt(puzzle))}</g>`;
   },
 
   /**
@@ -146,13 +137,10 @@ export const jigsaw: PuzzleKind = {
   },
 
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean {
-    const home = holeOf(layout, asJigsaw(puzzle).frame.id);
-    // Both measured from what the piece *draws*: its box is the whole picture,
-    // and two thirds of that would take a corner piece dropped on the far side.
-    return (
-      distance(inkCentre(layout, piece, at), inkCentre(layout, piece, home)) <=
-      inkSnapRadius(layout, piece)
-    );
+    // The picture's own origin is where every piece belongs, so the rule reads
+    // the same here as anywhere: this piece's box, dropped here, over the
+    // middle of the place it came out of.
+    return onTarget(layout, piece, at, holeOf(layout, asJigsaw(puzzle).frame.id));
   },
 
   isComplete(puzzle: Puzzle): boolean {

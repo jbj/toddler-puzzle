@@ -7,8 +7,8 @@
  * single target, every piece carries the whole picture box and the picture's
  * anchor so the shards assemble by construction, the picture stays showing
  * faintly under the empty frame with every cut drawn on it, and a piece is
- * accepted near its own place at the game's ordinary two thirds of the piece
- * being dropped.
+ * placed by the game's one rule: its own box, thickened so a splinter is not
+ * punished for being thin, over the middle of its own place.
  *
  * What is different is the cut, and it changes what the child is doing.
  * A jigsaw's pieces are all the same rectangle, so the only thing telling two
@@ -20,14 +20,13 @@
  * content: every shard convex, none of them a splinter, and no two alike
  * (`shatter.ts`).
  */
-import { boxCenter, distance, shuffle, type Point } from "../geometry";
-import { boxOf, holeOf, inkSnapRadius, type Layout } from "../layout";
+import { shuffle, type Point } from "../geometry";
+import { boxOf, holeOf, onTarget, type Layout } from "../layout";
 import type { LevelSpec } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
-import { pictureGuide } from "../picture-pieces";
+import { pictureBackdrop, pictureGuide } from "../picture-pieces";
 import { pictureFor, type Picture } from "../pictures";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
-import { renderScenery } from "../scenery";
 import { shatterShapes } from "../shatter";
 
 const ID = "shatter" as const;
@@ -57,12 +56,6 @@ function frame(puzzle: ShatterPuzzle, layout: Layout, filled: boolean): string {
     scale: boxOf(layout, picture.id).scale,
     filled,
   });
-}
-
-/** Where a piece's drawing sits, given the top-left of its box. */
-function inkCentre(layout: Layout, piece: PieceId, at: Point): Point {
-  const { ink } = boxOf(layout, piece);
-  return boxCenter({ x: at.x + ink.x, y: at.y + ink.y }, ink);
 }
 
 export const shatter: PuzzleKind = {
@@ -99,10 +92,10 @@ export const shatter: PuzzleKind = {
     return puzzle;
   },
 
-  /** The landscape, with the picture waiting to be put back together in it. */
+  /** Flat colour, with the picture waiting to be put back together on it. */
   backdrop(puzzle: Puzzle, layout: Layout): string {
     const broken = asShatter(puzzle);
-    return `${renderScenery(layout)}<g class="holes">${frame(broken, layout, isWhole(puzzle))}</g>`;
+    return `${pictureBackdrop(layout)}<g class="holes">${frame(broken, layout, isWhole(puzzle))}</g>`;
   },
 
   /**
@@ -115,13 +108,10 @@ export const shatter: PuzzleKind = {
   },
 
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean {
-    const home = holeOf(layout, asShatter(puzzle).frame.id);
-    // Both measured from what the piece *draws*: its box is the whole picture,
-    // and two thirds of that would take a shard dropped on the far side.
-    return (
-      distance(inkCentre(layout, piece, at), inkCentre(layout, piece, home)) <=
-      inkSnapRadius(layout, piece)
-    );
+    // The picture's own origin is where every shard belongs, so the rule reads
+    // the same here as anywhere: this shard's box, dropped here, over the
+    // middle of the place it came out of.
+    return onTarget(layout, piece, at, holeOf(layout, asShatter(puzzle).frame.id));
   },
 
   isComplete(puzzle: Puzzle): boolean {

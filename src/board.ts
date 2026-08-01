@@ -7,11 +7,11 @@
  * rectangle over its artwork so it can be picked up anywhere inside that box.
  * See `fitGrabBox`.
  */
-import { padWithin, type Point } from "./geometry";
+import { type Point } from "./geometry";
 import { replayArrow } from "./icons";
-import { GRAB_PADDING, boxOf, type Layout } from "./layout";
+import { boxOf, type Layout } from "./layout";
 import { CHAPTERS, LEVEL_COUNT, chapterNumber } from "./levels";
-import type { PieceId, PieceShape } from "./piece";
+import { gripOf, type PieceId, type PieceShape } from "./piece";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -69,10 +69,19 @@ function group(className?: string): SVGGElement {
   return g;
 }
 
-export function setPiecePosition(piece: SVGGElement, position: Point): void {
+/**
+ * Put a piece where it belongs, at the size it is drawn there.
+ *
+ * `shrink` is one everywhere but the tray of a picture board, where a piece
+ * waits smaller than it lands. Both terms are always written, even when the
+ * scale is one, because a transition can only interpolate between transforms
+ * built the same way: drop the `scale` when it is one and a piece being picked
+ * up would jump rather than grow.
+ */
+export function setPiecePosition(piece: SVGGElement, position: Point, shrink = 1): void {
   // Set via CSS rather than the `transform` attribute so the settle animation
   // in style.css can transition it.
-  piece.style.transform = `translate(${position.x}px, ${position.y}px)`;
+  piece.style.transform = `translate(${position.x}px, ${position.y}px) scale(${shrink})`;
 }
 
 function buildPiece(shape: PieceShape, scale: number): SVGGElement {
@@ -98,6 +107,12 @@ function buildPiece(shape: PieceShape, scale: number): SVGGElement {
  * Do not delete this as unused markup - nothing else makes those places
  * grabbable. The reasoning is decision 0010.
  *
+ * The rectangle is the piece's own box, `gripOf` in `piece.ts`, which is the
+ * same box the layout packs the tray from and the same box a drop is placed by.
+ * That is what stops a piece being easy to pick up and hard to put down, and it
+ * is why nothing here clamps the box to the authored one: the tray cuts a cell
+ * for this box, so one piece's grab area cannot reach into its neighbour's.
+ *
  * Three details are load-bearing:
  *
  *  - it goes *inside* the artwork group, so it is in authored units and moves
@@ -107,24 +122,20 @@ function buildPiece(shape: PieceShape, scale: number): SVGGElement {
  *    `fill="none"` would not be, and leaving `pointer-events` alone lets
  *    `.piece.is-placed` in style.css go on switching the whole piece off.
  *
- * A shape that declares its own `inked` bounds is taken at its word rather than
- * measured. A slice is drawn by clipping a whole animal, and `getBBox` does not
- * see a clip: measuring one would hand every slice of an animal the same
- * animal-sized grab box, and three of those in a tray would fight over a press.
+ * The shape is taken at its word about where it draws, never measured here. A
+ * slice is drawn by clipping a whole animal and `getBBox` does not see a clip,
+ * so measuring would hand every slice of an animal the same animal-sized grab
+ * box; and a box measured here could differ from the one the layout placed the
+ * piece by, which is a piece grabbable somewhere it cannot be dropped from.
  */
 function fitGrabBox(piece: SVGGElement, shape: PieceShape): void {
   const art = piece.querySelector(".art");
   if (!(art instanceof SVGGElement)) return;
 
-  // In the element's own units, i.e. before its `scale()`. Measured rather than
-  // declared per animal, so redrawing one moves its grab box with it.
-  const drawn = shape.inked ?? art.getBBox();
-  // An unmeasurable piece keeps the artwork it already had to be grabbed by,
-  // which is no worse than having no grab box at all.
-  if (drawn.width <= 0 || drawn.height <= 0) return;
-
-  const padding = GRAB_PADDING * Math.min(shape.box.width, shape.box.height);
-  const box = padWithin(drawn, padding, shape.box);
+  // A piece that draws nothing is nothing to grab, and the arithmetic has to
+  // say so rather than divide by it. It keeps the artwork it already had.
+  const box = gripOf(shape);
+  if (box.width <= 0 || box.height <= 0) return;
 
   const rect = document.createElementNS(SVG_NS, "rect");
   rect.setAttribute("class", "grab-box");

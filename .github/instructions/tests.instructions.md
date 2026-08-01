@@ -12,8 +12,8 @@ The deal is random: tests must not assume one fixed cast, one fixed order, or on
 animal always occupying a particular hole.
 
 Prefer asserting the invariant over snapshotting one deal. Good tests say things
-like holes stay on canvas, snap zones do not overlap, tray slots do not collide,
-and wrong drops return to the tray.
+like holes stay on canvas, no piece reaches another's place, tray slots do not
+collide, and wrong drops return to the tray.
 
 Layouts are composed rather than tabulated, so what is worth testing is the
 promise, not the output. `PROMISES` in `tests/puzzle.test.ts` is a table of them
@@ -78,14 +78,16 @@ half of what it is for.
 ## What `npm run test` covers
 
 Vitest covers the coordinate mapping (including letterboxing in both
-orientations), snap tolerance, clamping, the grab-box geometry - a measured
-drawing grown by its margin and held inside the piece's own box - the random
+orientations), the rule a drop is placed by, clamping, the box geometry - a
+measured drawing grown by its margin, kept inside the authored box and thickened
+so neither side is under half the other - the random
 deal, the shape-match kind's rules - it accepts a sloppy drop on a piece's own
 hole, never accepts anybody else's, and only finishes when the last piece is in
 - and the composed layouts:
 targets stay on canvas and clear of the tray, every piece stands on one of the
-layout's ground lines, snap zones never reach each other, tray slots never
-collide or sit in a target's snap zone, pieces stay big enough to grab, and each
+layout's ground lines, no piece reaches another's place, tray slots never
+collide, never overlap another piece's box or let a piece go home from the tray,
+pieces stay big enough to grab, and each
 orientation fills at least 75% of its viewport. Alongside those it checks what
 composing is *for*: the same cast composes twice the same, a fuller board never
 gets bigger pieces, portrait stacks more rows than landscape spreads, and a cast
@@ -98,8 +100,7 @@ its subject and its size, and no two rows are all three, where the subject is
 the activity, the theme, the scene or the shape picture the row names. A
 duplicate is reported as the two levels that collided; see
 [decision 20260731T152600](../../docs/decisions/20260731T152600-a-level-names-what-it-is-made-of.md).
-It also
-covers the thirty as a grown-up may have narrowed them - `PUZZLE_KINDS` naming
+It also covers the thirty as a grown-up may have narrowed them - `PUZZLE_KINDS` naming
 every kind of the table and of the registry, levels of a switched-off kind
 stepped over by `nextLevel`, a resume moved forward off one, a chapter still
 ending where it now ends, the finale moving to the last level in play, and every
@@ -122,8 +123,10 @@ a gap is a stripe of the animal that no slice draws and an overlap is a stripe
 two slices both draw, and neither shows up in a screenshot of a duck that is
 almost right. The kind is rules: every slice of an animal keeps that animal's
 box, anchor and outline and aims at its one hole, a slice is accepted anywhere
-on its own animal and never on the other one, and the hole stays showing until
-the last slice arrives. Where the cuts actually *go* is not checked there - only
+on its own animal and never on the other one, the hole is divided by the very
+paths the slices were clipped with - so the guide draws the line each piece
+lands on rather than a line of its own - and the hole stays showing until the
+last slice arrives. Where the cuts actually *go* is not checked there - only
 `npm run art:check` can see whether a cut severed a leg.
 
 `tests/polygon.test.ts` covers the picture chapter, also in two halves. The
@@ -213,6 +216,24 @@ is injected, so none of it needs a browser; the DOM-facing ends are covered by
 `npm run shot`, which reloads the page and checks the game comes back where it
 was.
 
+`tests/scenery.test.ts` covers the background a level is played against. The
+theme is the interesting part, so it is checked at both ends: every level in the
+table and every theme the game names resolves to a backdrop - a theme added
+without one cannot fall back to the meadow quietly - and every themed level's
+markup is checked to carry its own world's colours and *none* of the other
+worlds', which is what three themes all quietly rendering the meadow would fail.
+The four backdrops are then rendered onto one and the same board, geometry held
+still, so whatever differs is the backdrop's doing rather than the layout's. The
+rest is what a backdrop owes whichever board it is behind, in every theme: the
+ground reaches the bottom of the canvas, `tray: false` leaves the shelf out, and
+`sky: false` leaves the air and the distance out while keeping the wash and the
+ground - because `kinds/play.ts` draws its own sky and a barn behind the bubbles
+would be the second one. Last, it reads `src/scenery.ts` itself with the comments
+stripped and fails if an animal's name appears in the code, which is the
+no-animal-in-a-background rule as a check. What any of it *looks* like is
+`npm run shot`'s: `09b-idle-hint` is farm, `10-level10-start` and
+`12-portrait-level10` are sea, `14-level14-sliced` is jungle.
+
 `tests/pictures.test.ts` covers the jigsaw scene library: that every registered
 scene loads and comes back with artwork safe to inline more than once in one
 document, that every scene the level table names resolves to one, that an
@@ -243,6 +264,27 @@ floors: area share, fatness, spread, and no two shards alike. Reproducibility
 from a seed is checked both ways round: the same seed twice gives the same
 shards, and two seeds give different ones. What a shattered picture actually
 looks like is `npm run shot`'s, which plays level 26 and finishes it.
+
+`tests/picture-board.test.ts` covers the board both picture chapters are played
+on, which is composed the other way round from every other board: the tray
+first, the picture in everything left. Three of its checks are the ones that
+would otherwise rot silently. **The picture is as big as it is allowed to be**: for
+every jigsaw and shatter level, both orientations, six deals each, either the
+picture reaches an edge of the room the tray left it or the waiting scale is
+sitting on the two-thirds floor - a board where neither is tight has quietly
+stopped growing the picture, and nothing else would say so. **The tray is no
+bigger than what stands in it**: the sand spare around the waiting pieces,
+measured across the direction the tray costs the picture, stays under a third of
+the largest piece, and the tray starts within a fifth of one of the outer edge -
+which is what stops a margin measured against the whole picture creeping back
+in. **The shrink is safe**: a waiting piece is exactly `waitingScale` of its landing ink on both
+axes and concentric with it, which is what makes a piece grow in place under the
+finger instead of leaping across the board when it is picked up. Around those it
+holds the backdrop to being flat colour with no landscape in it, and to asking
+for the page's own `--board-blue` rather than repeating the colour. Whether the
+variable actually reaches both the page and the board, and whether the picture
+really does take the board once it is rendered, are `npm run shot`'s - it reads
+both off a real jigsaw at level 21.
 
 `tests/scene-cells.test.mjs` covers the measure behind "every piece has
 something in it", which is the one piece of real logic in the art scripts. It is

@@ -161,20 +161,23 @@ export interface LevelSpec {
   /** Pieces in play, which is what the tray and the deal are sized from. */
   readonly pieces: number;
   /**
-   * Multiplies the snap radius (`SNAP_FRACTION` in `layout.ts`). Never below 1:
-   * two thirds of a piece is the floor the whole game is forgiving at, and this
-   * only ever makes an early level more forgiving still. See
+   * Grows the box a piece is placed by (`onTarget` in `layout.ts`) about its
+   * own centre. Never below 1: the piece's own box - half a piece out, on
+   * either axis - is the floor the whole game is forgiving at, and this only
+   * ever makes an early level more forgiving still. See
+   * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md)
+   * and
    * [decision 20260727T072917](../docs/decisions/20260727T072917-generous-snap-radius.md).
    */
   readonly snapForgiveness: number;
   readonly options?: LevelOptions;
 }
 
-/** The floor for `snapForgiveness`: never tighter than two thirds of a piece. */
+/** The floor for `snapForgiveness`: never tighter than the piece's own box. */
 export const MIN_SNAP_FORGIVENESS = 1;
 
 /**
- * The ceiling for `snapForgiveness`. A radius past this starts to reach a
+ * The ceiling for `snapForgiveness`. A box grown past this starts to reach a
  * neighbouring target on a busy board, which would let a piece snap into
  * somebody else's place - the one thing the game may never do.
  */

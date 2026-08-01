@@ -148,9 +148,17 @@ dependencies, and there is nothing here that needs one. See
 **Every slice of an animal keeps that animal's box, anchor and outline**, so the
 layout gives them one scale and one origin and they assemble by construction.
 The hole is cut once, from the animal's own silhouette, and stays visible under
-a half-built animal as the guide to what is still missing. A slice is accepted
-anywhere near *its animal* rather than near the quarter of the hole it came out
-of, which is as forgiving as a whole-animal drop.
+a half-built animal as the guide to what is still missing. The cuts are drawn on
+it too - the same paths the slices were clipped with, clipped to the silhouette
+so a line stops where the animal does - so the guide says where each piece goes
+and not only what is being built, which is the promise a jigsaw's frame and a
+shattered picture's already make. A slice aims at its own place inside the
+animal, and is placed by the same box and the same rule as every other piece in
+the game: a quarter of a duck dropped on the duck's nose no longer goes home, but
+a quarter of a duck half a piece out still does, and the lines are there to be
+aimed at rather than to be hit. Cut into two or three, the pieces overlap so much
+that a drop on a neighbour's place is a near miss anyway - and it lands in the
+piece's own place, because a piece can only ever be right.
 
 **Where the cuts go is measured, not chosen.** `npm run art:slices` searches for
 them offline and writes `src/slice-recipes.json`; `npm run art:check` re-judges
@@ -246,9 +254,9 @@ the code:
 - no part may be much smaller than about a third of the box, or the tray will
   draw it below the size a small hand can grab and the layout will refuse the
   cast outright;
-- congruent places must sit far enough apart that a drop dead-centre on a filled
-  one falls outside its twin's snap radius, or a piece would appear to jump.
-  `tests/polygon.test.ts` measures every scene for it.
+- congruent places must sit far enough apart that a part laid squarely over a
+  filled twin does not cover its own place's middle, or a piece would appear to
+  jump. `tests/polygon.test.ts` measures every scene for it.
 
 ## Jigsaws
 
@@ -287,10 +295,8 @@ whole guide fades only when the last piece is home.
 **One picture is one target**, as a sliced animal and a polygon scene are: every
 piece carries the whole picture box and the picture's anchor, so the layout
 gives them one scale and one origin and they assemble by construction. The table
-says `targets: 1` however many pieces the grid cuts. Unlike a slice - a quarter
-of a duck has no home worth insisting on - a jigsaw piece *does* have a home, so
-it is measured against its own cell at the game's ordinary two thirds of the
-piece being dropped.
+says `targets: 1` however many pieces the grid cuts. A piece is placed against
+its own cell by the game's one rule, exactly as a slice and a scene's part are.
 
 Two sizes are held deliberately, and both are about a small hand rather than
 about the drawing:
@@ -504,8 +510,8 @@ for any cast rather than from a table is
 
 Because room is left for each invariant *before* a size is picked, the
 invariants hold by construction rather than by tuning: a hole cannot land off
-canvas or under the tray, two snap zones cannot overlap, and two tray cells
-cannot collide. `layout.groundLines` says where the lines came out, which is
+canvas or under the tray, no piece laid over its neighbour's place can cover its
+own, and two tray cells cannot collide. `layout.groundLines` says where the lines came out, which is
 what the tests measure a standing piece against, and `layout.trayBands` says
 where the tray came out, which is what the scenery paints and what the tests
 measure a waiting piece against.
@@ -525,9 +531,52 @@ only adopted where it is worth `COMPOSITION.gutterGain` more slot than the best
 shelving, so a marginal win never buys a rearranged board. See
 [decision 20260730T093000](../../docs/decisions/20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters.md).
 
+**A picture takes the whole board, and stands on nothing.** The two kinds that
+cut one hand-drawn picture up - `jigsaw` and `shatter` - are composed by their
+own path, `arrangePicture`, which runs the other way round from the steps above:
+the tray is planned first, and the picture is centred in *everything that is
+left* less `COMPOSITION.pictureMargin`, as large as its aspect ratio allows. There is no landscape behind it -
+`layout.bands` and `layout.decorLines` are empty, and the kinds paint
+`pictureBackdrop` instead of `renderScenery` - because a picture of a farmyard is
+already a scene, and what the aspect ratio does not reach should read as the page
+rather than as a field. `PICTURE_BACKDROP` is the `--board-blue` variable the page's own
+background is painted with rather than a second copy of the colour, so the
+letterbox has no seam in it; the shot run checks the variable reaches both.
+
+That works only because a piece of a picture may **wait smaller than it lands**,
+down to `COMPOSITION.minWaitingScale` (2/3 on each axis) and no further. The
+pieces of a cut-up picture tile it exactly, so a tray holding all of them at
+landing size costs the picture its own area over again; at two thirds it costs
+four ninths, and that difference is the room the picture grows into. Read the
+shrink through `layout.waitingScale`, and place a waiting piece with
+`waitingHome(layout, piece)` rather than `trayHome` - it shrinks the piece about
+its *own drawing's* centre, because a piece of a picture carries the whole
+picture's box and shrinking about the box corner would swing it across the
+board. Everything else - the drag engine, `accepts`, `target`, every kind - keeps
+talking in full-size positions; only the drawing is shrunk, and only while the
+piece is at rest in the tray.
+
+The other half of the room comes from the tray's own margins. Every gap in the
+composition is a share of the slot, which is right everywhere else because a
+slot is about the size of a piece - but on a picture board the slot is the whole
+picture, so those numbers wrap a single shard in a third of a picture's width of
+sand. A picture board's tray therefore passes `pictureTrayPad` down instead: the
+same `TrayPad` record every tray is laid with, but measured in
+`COMPOSITION.trayEdge` and `trayGap`, which are shares of the largest drawing
+waiting there. Keep it that way. A tray padded against the slot is a tray half
+again as big as it needs to be, and all of it comes off the picture.
+
+A board that stops filling the room it was given without sitting on the 2/3
+floor is a regression, as is a tray that spends more sand on itself than the
+pieces standing in it are worth; `tests/picture-board.test.ts` is what catches
+both. See
+[decision 20260730T230000](../../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+
 A tray cell belongs to a *piece*, not to a position: `layout.trayCells` maps a
-piece id to the rectangle it waits in, cut to that piece's own ink rather than
-to the largest ink in the cast, and `trayHome(layout, piece)` centres it there.
+piece id to the rectangle it waits in, cut to that piece's own box rather than
+to the largest box in the cast, and `trayHome(layout, piece)` centres it there.
+Cutting the cell from the same box a piece is grabbed by is what keeps two
+waiting pieces' grab boxes apart, so a press in the tray is never ambiguous.
 Packing the shelf by what each piece draws is worth a fifth of a shatter's tray
 width, because its shards vary; it is worth almost nothing for a jigsaw, whose
 pieces are near enough the same size. The consequence to remember is that the
@@ -536,7 +585,9 @@ was cut for the piece - so **every kind must shuffle its own `pieces`**.
 
 `slotSize` is a square, but a piece need not be. Each piece in play gets its own
 `PieceBox` - `boxOf(layout, piece)` - holding the scale from its authored box to
-logical units, the bounds that produces, and its own snap radius. A piece is
+logical units, the bounds that produces, its `ink` (what it draws), its `grip`
+(the box it is measured by) and its `reach` (that box at this level's
+forgiveness). A piece is
 scaled by its *longer* side, so a plank or a pole still fits the slot it was
 composed into, and is then centred across it. Measure a piece with its
 `PieceBox`, never with `slotSize`: clamping a wide piece as though it were square
@@ -547,13 +598,14 @@ A tray is packed by what a piece *draws*, not by the box it was authored in.
 `PieceShape.inked` is a piece's own bounds within its box, and a piece that
 leaves it out fills its box, which is what every animal does. A slice cannot:
 it keeps the whole animal's box so that the slices assemble, so its box is
-mostly empty. A tray cell is therefore the piece's own ink rather than
-the slot, `trayHome` centres a piece's ink in its cell, `clampInkToCanvas` holds
-a dragged piece on canvas by its ink, and `fitGrabBox` believes a declared
-`inked` over `getBBox` - which cannot see a clip path and would hand every slice
-of an animal the same animal-sized grab box. `minPieceInk` is the floor for the
-drawing where `minSlot` is the floor for the slot; for a cast that fills its
-boxes they are the same floor.
+mostly empty. `gripOf` in `piece.ts` turns that drawing into the piece's own box
+- a margin around it, then thickened - and a tray cell is cut from that rather
+than from the slot, `trayHome` centres a piece's box in its cell,
+`clampGripToCanvas` holds a dragged piece on canvas by the same box, and
+`fitGrabBox` believes a declared `inked` over `getBBox` - which cannot see a clip
+path and would hand every slice of an animal the same animal-sized grab box.
+`minPieceInk` is the floor for the drawing where `minSlot` is the floor for the
+slot; for a cast that fills its boxes they are the same floor.
 
 The ceiling works the same way round: `maxSlot` caps what a piece may *draw*,
 not the slot it is drawn inside. Capping the slot would cap a sliced level by
@@ -564,22 +616,28 @@ same number lets a one-animal, four-slice board stand an animal half as big
 again as a whole animal alone on the board would be, and changes nothing at all
 for a cast that fills its boxes.
 
-`spreadX` spaces each row evenly across the canvas, and each snap radius follows
-that piece's own smaller side, so a busier level automatically gets tighter, more
-accurate snapping instead of overlapping snap zones. Pieces shrink as the board
-fills up along the ramp, which is
-what lets six animals share a single row and still leaves every piece well over a
-tenth of the canvas wide - the size a small hand needs.
+`spreadX` spaces each row evenly across the canvas, and each piece's reach
+follows its own box, so a busier level automatically gets tighter, more accurate
+placing instead of pieces that reach each other's holes. Pieces shrink as the
+board fills up along the ramp, which is what lets six animals share a single row
+and still leaves every piece well over a tenth of the canvas wide - the size a
+small hand needs.
 
-The snap radius stays deliberately generous, about two thirds of the piece it
-belongs to; [decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md)
-explains why tightening it is not a cleanup. A level's `snapForgiveness`
-multiplies it, between `MIN_SNAP_FORGIVENESS` and `MAX_SNAP_FORGIVENESS`, so the
-earliest levels are wildly generous and the last ones merely generous. It is a
-multiplier rather than a radius so that no level can be less forgiving than the
-floor `SNAP_FRACTION` sets, and the layout tests sweep every count at the most
-forgiving value in the table - which is what keeps two snap zones apart at the
-top of the range.
+Placing is one box and one rule for every kind: `onTarget(layout, piece, at,
+home)` in `layout.ts` asks whether the piece's box, put where the finger let go,
+covers the middle of the place the kind named. A kind says *where* a piece
+belongs and nothing about geometry, so no kind can be more or less forgiving
+than another;
+[decision 20260731T133000](../../docs/decisions/20260731T133000-one-box-measures-a-piece.md)
+is the argument, and
+[decision 20260727T072917](../../docs/decisions/20260727T072917-generous-snap-radius.md)
+explains why tightening it is not a cleanup. A level's `snapForgiveness` grows
+that box about its centre, between `MIN_SNAP_FORGIVENESS` and
+`MAX_SNAP_FORGIVENESS`, so the earliest levels are wildly generous and the last
+ones merely generous. It is a multiplier rather than a size of its own, so that
+no level can be less forgiving than the piece's own box, and the layout tests
+sweep every count at the most forgiving value in the table - which is what keeps
+one target's reach off another's at the top of the range.
 
 ## Orientation
 
@@ -595,11 +653,51 @@ The background landscape is generated from the layout (`src/scenery.ts`) rather
 than being a fixed-size image, so every level and both orientations share one
 piece of art.
 
+## The background a theme is played against
+
+A level that names a `theme` gets that theme's world rather than the meadow.
+`src/scenery.ts` holds one `Backdrop` per theme - a sky wash, a far ground, a
+near ground, what furnishes the air, what stands in the distance, and what grows
+on a ground line - and `renderScenery` looks one up from `layout.level.theme`,
+which it already has. Nothing above it passes a theme down.
+
+Each themed backdrop is redrawn in code from that theme's hand-drawn picture
+scene, in the same palette and the same flat-shape language: `farm` from
+`farmyard.svg`, `jungle` from `jungle-path.svg`, `sea` from `rockpool.svg` read
+underwater. The scenes are not inlined - each is a fixed-size picture with a
+shape in every quarter, which is a jigsaw's contract rather than a backdrop's.
+
+Rules for a backdrop, all of them deliberate:
+
+- **No animal is ever painted into a background.** A cow standing in the field
+  beside a cow-shaped hole tells a two-year-old that the cow they are holding is
+  already placed. The farmyard's cow is drawn here as a tractor; the rockpool's
+  crab and the jungle's bird are left out. The scene SVGs themselves keep theirs -
+  there an animal is part of the picture being assembled.
+- **The ground is chosen for what stands on it.** Pieces stand on the ground
+  bands, so no themed ground may be darker than the animals on it: the jungle
+  floor stays green because the monkey is brown, the seabed stays pale sand
+  because the whale and the fish are blue.
+- **Props stay near the horizon.** The middle of the board is where the holes
+  are; scenery behind a hole is clutter.
+- **The furniture is never themed.** The tray, the buttons, the dots and the hole
+  treatment are identical in every level - a child learns them once.
+- **A level with no theme is the meadow, unchanged.**
+
+Adding a theme means adding its `Backdrop`; a theme without one fails
+`tests/scenery.test.ts` rather than falling back silently. A `jigsaw` or
+`shatter` level has no backdrop of any kind - a picture takes the whole board and
+stands on flat colour, as above - so a theme on one of those would reach the cast
+and nothing else. Backgrounds are art, so a change to one is reviewed by
+rendering it in both orientations and looking at it. See
+[decision 20260731T090000](../../docs/decisions/20260731T090000-a-background-belongs-to-the-theme.md).
+
 ## Rules for changing layout
 
 Tune `COMPOSITION`, not the output. Every number in it is a fraction of a slot
 or of the canvas, and several of them are load-bearing: `columnGap` and `rowGap`
-are what hold two snap zones apart, `footRoom` is what keeps a hole clear of the
+are what hold one target's reach off another's, `footRoom` is what keeps a hole
+clear of the
 tray, `controlRoom` is what keeps a gutter clear of the buttons, and `minSlot`
 is what keeps a piece grabbable. Reaching past them to nudge
 a coordinate would move a piece without moving the room left for it.
@@ -623,9 +721,10 @@ pieces of no particular shape:
 - every piece fits the slot it was dealt into, whatever its proportions;
 - targets stay on canvas and clear of the tray;
 - every piece stands on one of the layout's ground lines;
-- snap zones never reach each other;
-- tray cells stay on one of the tray's bands, never collide, and never sit in a
-  target's snap zone;
+- no piece laid squarely over another's place covers its own;
+- tray cells stay on one of the tray's bands, never collide, never overlap
+  another piece's box, and never sit where the piece waiting in them would be
+  taken home;
 - pieces stay grabbable - over a tenth of the canvas wide;
 - each orientation fills at least 75% of its viewport.
 

@@ -28,7 +28,7 @@
 import { describe, expect, it } from "vitest";
 import { seededRandom } from "../src/geometry";
 import { jigsaw } from "../src/kinds/jigsaw";
-import { boxOf, buildLevelLayout, holeOf, inkSnapRadius } from "../src/layout";
+import { boxOf, buildLevelLayout, holeOf } from "../src/layout";
 import { LEVELS, type LevelSpec } from "../src/levels";
 import { assertUniquePieceIds } from "../src/piece";
 import { PICTURE_BOX, loadPictures, pictureFor } from "../src/pictures";
@@ -398,9 +398,9 @@ describe("the jigsaw kind", () => {
           height: (PICTURE_BOX.height / grid.rows) * scale,
         };
         for (const piece of puzzle.pieces) {
-          const reach = inkSnapRadius(layout, piece.id);
+          const { reach } = boxOf(layout, piece.id);
           expect(jigsaw.accepts(puzzle, layout, piece.id, home), piece.id).toBe(true);
-          const near = { x: home.x + reach * 0.6, y: home.y - reach * 0.6 };
+          const near = { x: home.x + reach.width * 0.45, y: home.y - reach.height * 0.45 };
           expect(jigsaw.accepts(puzzle, layout, piece.id, near), piece.id).toBe(true);
           // A whole cell out is another piece's place, and is not taken.
           for (const away of [

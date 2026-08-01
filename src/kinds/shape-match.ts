@@ -12,8 +12,8 @@
  *  - dropping near enough counts as in;
  *  - the level ends when every piece is standing in its hole.
  */
-import { boxCenter, isWithinSnapRadius, type Point } from "../geometry";
-import { holeOf, boxOf, type Layout } from "../layout";
+import { type Point } from "../geometry";
+import { holeOf, boxOf, onTarget, type Layout } from "../layout";
 import { dealPieces } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
 import type { Deal, Puzzle, PuzzleKind } from "../puzzle";
@@ -71,11 +71,10 @@ export const shapeMatch: PuzzleKind = {
   },
 
   accepts(_puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean {
-    // Both centres are measured with this piece's own bounds, so the snap point
-    // stays inside the piece however wide or thin it happens to be.
-    const { size, snapRadius } = boxOf(layout, piece);
-    const center = boxCenter(holeOf(layout, piece), size);
-    return isWithinSnapRadius(boxCenter(at, size), center, snapRadius);
+    // The one rule: the piece's own box, dropped here, over the middle of its
+    // own hole. Its hole and no other's, so a wrong drop is impossible rather
+    // than corrected.
+    return onTarget(layout, piece, at, holeOf(layout, piece));
   },
 
   isComplete(puzzle: Puzzle): boolean {
