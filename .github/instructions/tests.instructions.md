@@ -192,7 +192,10 @@ voice exceeds the gain ceiling, that nothing but a sine or a triangle is ever
 asked for, that every pitch sits on the ladder, and that two hundred pops in one
 tick neither throw nor outrun the voice budget, and disconnect what they used.
 Whether any of it sounds *nice* is nobody's test; whether it sounds harsh is
-`npm run audio:check`'s.
+`npm run audio:check`'s. One case in that suite works the other seam instead: a
+fake `window` the module builds its own context out of, answering `suspend` and
+`resume` in the order it was asked, so that a tab shown and hidden again before
+a resume has been answered can be played out and the speakers held down.
 
 `tests/progress.test.ts` covers what is remembered between sittings, and is
 mostly the unhappy paths, because that is what the storage layer is for: a

@@ -405,3 +405,96 @@ describe("a burst of sound", () => {
     }
   });
 });
+
+// --- the speakers while nobody is playing ----------------------------------
+
+/**
+ * `restAudio` and `stirAudio` are the one pair here that works on the game's
+ * own context rather than the stand-in above - putting a context down is
+ * something only real speakers can be asked to do - so this stands a fake
+ * `window` up and lets the module build its context out of it.
+ *
+ * The fake answers in the order it was asked, which is the whole point: a
+ * browser queues `suspend` and `resume` on one thread, so an answer can arrive
+ * long after the question stopped being the current one.
+ */
+function fakeSpeakers(): {
+  readonly context: { readonly state: string };
+  settle(): Promise<void>;
+} {
+  let state = "running";
+  let asked: { readonly to: string; readonly answer: () => void }[] = [];
+  const ask = (to: string): Promise<void> =>
+    new Promise<void>((resolve) => {
+      asked.push({ to, answer: resolve });
+    });
+  return {
+    context: {
+      get state() {
+        return state;
+      },
+      suspend: () => ask("suspended"),
+      resume: () => ask("running"),
+    } as unknown as { readonly state: string },
+    async settle() {
+      // Until nothing is outstanding, since an answer can be what asks the
+      // next question.
+      for (let round = 0; round < 5 && asked.length > 0; round++) {
+        const held = asked;
+        asked = [];
+        for (const one of held) {
+          state = one.to;
+          one.answer();
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    },
+  };
+}
+
+describe("putting the speakers down", () => {
+  const withFakeSpeakers = async (
+    run: (speakers: ReturnType<typeof fakeSpeakers>) => Promise<void>,
+  ): Promise<void> => {
+    const speakers = fakeSpeakers();
+    const globals = globalThis as { window?: unknown };
+    const priorWindow = globals.window;
+    globals.window = {
+      AudioContext: class {
+        constructor() {
+          return speakers.context;
+        }
+      },
+    };
+    audio.useAudioContext(null);
+    try {
+      // What builds the module's context, out of the fake `window` above.
+      audio.unlockAudio();
+      await run(speakers);
+    } finally {
+      if (priorWindow === undefined) delete globals.window;
+      else globals.window = priorWindow;
+      audio.useAudioContext(ctx as unknown as BaseAudioContext);
+    }
+  };
+
+  it("keeps them down when a tab is shown and hidden again in one breath", async () => {
+    await withFakeSpeakers(async (speakers) => {
+      audio.restAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+
+      // Looked at, then hidden again before the resume has been answered.
+      audio.stirAudio();
+      audio.restAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("suspended");
+
+      // And the next look still wakes them: the late answer was dropped, not
+      // the intention behind it.
+      audio.stirAudio();
+      await speakers.settle();
+      expect(speakers.context.state).toBe("running");
+    });
+  });
+});

@@ -245,24 +245,43 @@ let rested = false;
 let waking = false;
 
 /**
+ * Which of the two below asked last. Both settle a tick or two after they are
+ * asked, and a tab shown and hidden again in that gap - one flick through the
+ * app switcher - would otherwise have the earlier answer arrive last and leave
+ * the speakers running to nobody. An answer to a stale question is dropped.
+ */
+let asked = 0;
+
+/**
  * Put the speakers down until somebody comes back. A running `AudioContext`
  * renders silence at the sample rate for as long as it is running, which is
  * exactly the sort of thing `rest.ts` exists to stop.
+ *
+ * A context that is suspended because it was never unlocked is left alone: it
+ * costs nothing, and claiming it here would have `stirAudio` try to start
+ * speakers no finger has ever asked for.
  */
 export function restAudio(): void {
-  if (!context || context.state !== "running") return;
+  // Already down and staying down is nothing to do; down but on its way back up
+  // is exactly the case this has to act on.
+  if (!context || (rested && !waking)) return;
+  if (!waking && context.state !== "running") return;
+  const mine = ++asked;
   rested = true;
+  waking = false;
   void context.suspend().catch(() => {
-    rested = false;
+    if (asked === mine) rested = false;
   });
 }
 
 /** Pick them up again. Only ever undoes a `restAudio`; never unlocks. */
 export function stirAudio(): void {
   if (!context || !rested || waking) return;
+  const mine = ++asked;
   waking = true;
   void context.resume().then(
     () => {
+      if (asked !== mine) return;
       rested = false;
       waking = false;
     },
@@ -270,7 +289,7 @@ export function stirAudio(): void {
       // A resume can be refused - a browser that wants a gesture, and a tab
       // being looked at again is not one. Left `rested`, so the next thing the
       // child touches asks again rather than playing to sleeping speakers.
-      waking = false;
+      if (asked === mine) waking = false;
     },
   );
 }
