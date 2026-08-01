@@ -369,8 +369,9 @@ what the code has to keep true is this.
 
 `src/rest.ts` owns it. Two minutes with nothing touched - or the instant the tab
 is hidden - and the whole page freezes: every running animation paused, every
-repeating timer stopped, the speakers put down. The first touch undoes all of
-it. The reasoning is
+repeating timer stopped, the speakers put down. Anything that says somebody is
+there undoes all of it: a touch, a key, a wheel, a mouse crossing the board, or
+the tab being looked at again. The reasoning is
 [decision 20260801T153000](../../docs/decisions/20260801T153000-the-game-sleeps-when-nobody-is-playing.md);
 what the code has to keep true is this.
 
@@ -393,7 +394,10 @@ what the code has to keep true is this.
   a fade could freeze the one thing a stuck child needs to see at its dimmest.
 - **Waking happens in the capture phase, and the same touch still plays.** A
   finger landing on a bubble wakes the page and then pops the bubble. A child
-  must never have to tap twice, and must never meet a tap that does nothing.
+  must never have to tap twice, and must never meet a tap that does nothing. A
+  tab looked at again wakes it without being touched, because sleep is a way of
+  costing nothing while nobody is there rather than a lock, and a board hanging
+  motionless is a poor thing to come back to.
 - **The speakers come back in time to be heard.** `restAudio` suspends the
   context and `stirAudio` resumes it; because `resume()` settles a tick or two
   later, `audio.ts` counts a resume in flight as playable, or the first sound

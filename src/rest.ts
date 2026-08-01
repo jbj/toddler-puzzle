@@ -10,7 +10,9 @@
  * all of that until its battery went.
  *
  * So after two minutes with nothing touched - and the moment the tab is hidden -
- * the whole page is frozen, and the first finger to land unfreezes it.
+ * the whole page is frozen, and anything that says somebody is there unfreezes
+ * it: a finger, a key, a mouse crossing the board, or the tab being looked at
+ * again.
  *
  * **A freeze, never a state change.** Nothing ends, nothing advances, nothing is
  * put away: every animation is paused where it stood and resumed from there, so
@@ -251,7 +253,10 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
 
   // A tab put behind another window, a screen locked, an app switched away
   // from: none of that is worth a single further frame, and the two-minute wait
-  // would go on drawing for two more minutes of nobody looking.
+  // would go on drawing for two more minutes of nobody looking. Looked at
+  // again is somebody there, so it wakes without waiting to be touched: a
+  // screenful of bubbles hanging still is a poor thing to come back to, and the
+  // saving that matters - a tablet face up on the sofa - is untouched by this.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") rest.restNow();
     else rest.stir();

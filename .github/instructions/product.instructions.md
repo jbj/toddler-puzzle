@@ -99,7 +99,8 @@ oversights until you know it, so the reason is written next to the rule.
   [decision 20260728T212500](../../docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
 - Let nothing on the screen move while nobody is playing with it. Two minutes
   untouched, or a hidden tab, and the whole page freezes - every animation, every
-  repeating timer, the speakers - until a finger lands. A freeze is never a
+  repeating timer, the speakers - until somebody is there again: a finger, or the
+  tab being looked at once more. A freeze is never a
   change: nothing ends, nothing advances, and the touch that wakes the game
   plays it too. Why: a two-year-old does not close a tab, so the realistic end
   of every session is a tablet put down on whatever was on screen, and the game
@@ -203,7 +204,8 @@ doesn't cover it.
 behind another window, and the whole page freezes: the hint holds instead of
 pulsing, the bubbles hang where they are, a celebration stands still, and the
 speakers are put down. A finger starts all of it again exactly where it stopped,
-and pops the bubble it landed on while it is at it. Nothing ends and nothing
+and pops the bubble it landed on while it is at it - as does coming back to the
+tab at all. Nothing ends and nothing
 moves on, because a two-year-old does not close a tab and the game they left is
 the game they should come back to. The mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is

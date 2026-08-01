@@ -26,7 +26,8 @@ then draws until the battery goes.
 ## Decision
 
 After two minutes with nothing touched - and the instant the tab is hidden - the
-whole page freezes. The first touch unfreezes it.
+whole page freezes. Anything that says somebody is there unfreezes it: a touch,
+a key, a wheel, a mouse crossing the board, or the tab being looked at again.
 
 ### It is a freeze, not a state change
 
@@ -75,6 +76,13 @@ The wake listeners are in the capture phase, so a finger landing on a bubble
 wakes the page and then pops the bubble, in that order. A child never has to tap
 twice, and never taps a screen that ignores them - which for a two-year-old is
 indistinguishable from a broken toy.
+
+A tab being looked at again wakes it too, without waiting to be touched. Sleep
+is a way of costing nothing while nobody is there, not a lock, and somebody
+switching back to the game *is* somebody being there: a screenful of bubbles
+hanging motionless is a poor invitation to the child who came back for them, and
+the first thing they do is touch it anyway. The saving that matters is the
+tablet face up on the sofa, and that one is untouched either way.
 
 The speakers are the awkward half of that. `AudioContext.resume()` settles a
 tick or two after it is asked, and the tap that asks is the tap that wants a
