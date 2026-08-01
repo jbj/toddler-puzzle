@@ -598,7 +598,7 @@ export function createGame(
       stopActivity = kind.play(puzzle, next, {
         layer: built.activityLayer,
         touched: (at) => {
-          sparkleBurst(built.fxLayer, at);
+          if (at) sparkleBurst(built.fxLayer, at);
           checkComplete();
         },
       });

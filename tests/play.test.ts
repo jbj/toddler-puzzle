@@ -2,24 +2,26 @@
  * The cause-and-effect levels: the three activities a one-year-old can play
  * before they can drag anything.
  *
- * What is checked here is the two promises the levels are built on, because
- * both of them are properties of the rules rather than of the drawing:
+ * What is checked here is the promises the levels are built on, because every
+ * one of them is a property of the rules rather than of the drawing:
  *
  *  - **there is no way to be wrong.** Nothing is picked up, so nothing can be
  *    dropped anywhere; the kind accepts no drop at all, whatever it is offered.
  *  - **there is no way to get stuck.** Every activity puts at least as many
  *    things on screen as it asks the child to touch, and for everything but
  *    peekaboo strictly more, so ignoring one thing can never end the game.
+ *  - **and there is always a way out.** A level that has been touched enough is
+ *    over, and so is one that has been up for ten seconds, whatever was touched.
  *
  * What is *not* checked here is what the levels look like or feel like, because
  * none of that survives leaving the browser: whether a bubble is big enough to
  * hit, whether a touch registers, and whether a level can be finished by
  * touching alone are all played for real by `npm run shot`.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { seededRandom } from "../src/geometry";
 import { ANIMAL_BOX, ANIMAL_IDS, animalAnchor, animalInk } from "../src/assets";
-import { goalFor, play, thingsFor } from "../src/kinds/play";
+import { ACTIVITY_PATIENCE_MS, goalFor, play, thingsFor } from "../src/kinds/play";
 import { buildLevelLayout } from "../src/layout";
 import { ACTIVITIES, LEVELS, type LevelSpec } from "../src/levels";
 import { pieceId, type PieceShape } from "../src/piece";
@@ -46,6 +48,21 @@ const touched = (puzzle: Puzzle): Set<string> =>
   (puzzle as Puzzle & { readonly touched: Set<string> }).touched;
 
 const goalOf = (puzzle: Puzzle): number => (puzzle as Puzzle & { readonly goal: number }).goal;
+
+/**
+ * Run something with the clock stopped. `isComplete` reads the wall clock, so a
+ * test that asserts a level is *not* over yet has to own the time it takes -
+ * and one that waited ten real seconds for the other half is a test nobody
+ * runs. Vitest's fake timers move `Date.now` with them, which is what both need.
+ */
+function atAStandstill(run: (tick: (ms: number) => void) => void): void {
+  vi.useFakeTimers();
+  try {
+    run((ms) => vi.advanceTimersByTime(ms));
+  } finally {
+    vi.useRealTimers();
+  }
+}
 
 describe("the level table's activities", () => {
   it("gives the first chapter something to touch as well as something to drag", () => {
@@ -158,17 +175,28 @@ describe("no way to get stuck", () => {
   });
 
   it("finishes on touches alone, and never before the goal", () => {
-    for (const level of PLAY_LEVELS) {
-      const puzzle = dealt(level);
-      const goal = goalOf(puzzle);
-      for (let n = 0; n < goal; n++) {
-        expect(play.isComplete(puzzle), `level ${level.level} after ${n}`).toBe(false);
-        touched(puzzle).add(`thing-${n}`);
+    atAStandstill(() => {
+      for (const level of PLAY_LEVELS) {
+        const puzzle = dealt(level);
+        const goal = goalOf(puzzle);
+        for (let n = 0; n < goal; n++) {
+          expect(play.isComplete(puzzle), `level ${level.level} after ${n}`).toBe(false);
+          touched(puzzle).add(`thing-${n}`);
+        }
+        expect(play.isComplete(puzzle)).toBe(true);
+        // Nothing here is ever untouched again, so the level cannot come undone.
+        touched(puzzle).add("thing-again");
+        expect(play.isComplete(puzzle)).toBe(true);
       }
-      expect(play.isComplete(puzzle)).toBe(true);
-      // Nothing here is ever untouched again, so the level cannot come undone.
-      touched(puzzle).add("thing-again");
-      expect(play.isComplete(puzzle)).toBe(true);
+    });
+  });
+
+  it("asks for no more than a handful of touches on any level there is", () => {
+    // The goal is what a child has to reach before the way onwards is offered,
+    // and a one-year-old is not counting up to it. Half a screenful of bubbles
+    // is a moment; a whole screenful is a chore with a reward at the end.
+    for (const level of PLAY_LEVELS) {
+      expect(goalOf(dealt(level)), `level ${level.level}`).toBeLessThanOrEqual(3);
     }
   });
 
@@ -177,6 +205,49 @@ describe("no way to get stuck", () => {
     const puzzle = dealt(level);
     for (let n = 0; n < 20; n++) touched(puzzle).add("the same bush");
     expect(touched(puzzle).size).toBe(1);
+  });
+});
+
+describe("there is always a way out", () => {
+  it("opens the way onwards after ten seconds, with nothing touched at all", () => {
+    // The clock is a second way out and never a way on: the level is over in
+    // the sense that raises the button, and nothing else about it changes.
+    atAStandstill((tick) => {
+      for (const level of PLAY_LEVELS) {
+        const puzzle = dealt(level);
+        tick(ACTIVITY_PATIENCE_MS - 1);
+        expect(play.isComplete(puzzle), `level ${level.level} a moment before`).toBe(false);
+        tick(1);
+        expect(play.isComplete(puzzle), `level ${level.level} at ten seconds`).toBe(true);
+        expect(touched(puzzle).size, `level ${level.level} touched nothing`).toBe(0);
+      }
+    });
+  });
+
+  it("counts the ten seconds from the deal, not from the last touch", () => {
+    // The board is rebuilt when the tablet is turned and the puzzle is not, so
+    // the deadline lives with the touches rather than on the board: a rotation
+    // nine seconds in must not hand out another ten.
+    atAStandstill((tick) => {
+      const level = PLAY_LEVELS[0] as LevelSpec;
+      const puzzle = dealt(level);
+      tick(ACTIVITY_PATIENCE_MS - 500);
+      touched(puzzle).add("a bubble");
+      expect(play.isComplete(puzzle)).toBe(false);
+      tick(500);
+      expect(play.isComplete(puzzle)).toBe(true);
+    });
+  });
+
+  it("gives a freshly dealt level its own ten seconds", () => {
+    // The reset button deals the same level again, so a level dealt after the
+    // clock has run out has to be one to play rather than one already over.
+    atAStandstill((tick) => {
+      const level = PLAY_LEVELS[0] as LevelSpec;
+      expect(play.isComplete(dealt(level))).toBe(false);
+      tick(ACTIVITY_PATIENCE_MS * 3);
+      expect(play.isComplete(dealt(level))).toBe(false);
+    });
   });
 });
 

@@ -153,7 +153,7 @@ aimed at now is always among them, and a place stops being offered the moment
 something is standing in it. Whether a scene *reads* as a house is not checked
 there; only a screenshot can see that.
 
-`tests/play.test.ts` covers the cause-and-effect levels, and it covers the two
+`tests/play.test.ts` covers the cause-and-effect levels, and it covers the
 promises rather than the drawing, because those are properties of the rules and
 the drawing does not survive leaving the browser. **No way to be wrong**: the
 kind accepts no drop at all, wherever it is offered - dead centre on a hole
@@ -161,9 +161,14 @@ included - and deals nothing into `placed`. **No way to get stuck**: for every
 activity and every cast size the goal is no more than the number of things the
 activity puts on screen, and for everything but peekaboo strictly fewer, so a
 child who ignores one thing can still finish; the level is not complete before
-the goal and never comes undone after it. It also holds the table to naming an
-activity on every `play` level, to naming each of them only once, and to opening
-the first chapter on one. Whether a bubble is big enough to hit, whether a touch
+the goal and never comes undone after it, and no level on the table asks for
+more than a handful of touches. **Always a way out**: ten seconds after a deal,
+every activity is complete with nothing touched at all, those ten seconds are
+counted from the deal rather than from the last touch, and a fresh deal gets its
+own ten - the clock reads `Date.now()`, so those tests stop it with vitest's
+fake timers rather than waiting. It also holds the table to naming an activity
+on every `play` level, to naming each of them only once, and to opening the
+first chapter on one. Whether a bubble is big enough to hit, whether a touch
 registers and whether the level can actually be finished by touching are all
 `npm run shot`'s.
 
