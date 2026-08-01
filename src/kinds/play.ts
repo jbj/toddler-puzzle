@@ -40,6 +40,7 @@ import { prefersReducedMotion } from "../motion";
 import type { PieceId, PieceShape } from "../piece";
 import { POP_COLOURS, releasePoppable, type Poppable } from "../pop";
 import type { ActivityHost, Deal, Puzzle, PuzzleKind } from "../puzzle";
+import { repeatWhileAwake } from "../rest";
 import { renderScenery } from "../scenery";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -271,11 +272,13 @@ function playBubbles(
   topUp();
   // A belt-and-braces refill. `topUp` already runs on every pop and every
   // escape; this is what covers a tab that was in the background while the
-  // animations were not running.
-  const timer = window.setInterval(topUp, 1500);
+  // animations were not running. It stops while the game is asleep, along with
+  // everything else on the page (`rest.ts`), and there is nothing to refill
+  // there: a frozen bubble is a bubble that has neither popped nor escaped.
+  const timer = repeatWhileAwake(1500, topUp);
 
   return () => {
-    window.clearInterval(timer);
+    timer();
     for (const bubble of afloat) bubble.remove();
     afloat.clear();
   };

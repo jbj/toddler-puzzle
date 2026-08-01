@@ -193,6 +193,21 @@ body {
   }
 }
 
+/* A sleeping game says the same thing again (`rest.ts`). Everything else on the
+   page is paused where it stood, which for a pulse would mean freezing it at
+   whatever the fade had reached - possibly at its dimmest, on the one thing on
+   screen a stuck child needs to be able to see. So the hint holds, exactly as
+   it does for a player who asked for less motion, and `animation: none` takes
+   it out of the sweep rather than leaving it paused. */
+[data-asleep] .hint-mark {
+  animation: none;
+  opacity: 0.85;
+}
+
+[data-asleep] .hint-mark.is-quiet {
+  opacity: 0.5;
+}
+
 .reset-button {
   cursor: pointer;
 }

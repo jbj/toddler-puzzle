@@ -6,6 +6,7 @@ import { applySettings, createGrownUpPanel } from "./grownups";
 import { ensureKind, recoverWhenPossible } from "./kinds/registry";
 import { LEVEL_COUNT, levelSpec, playableFrom } from "./levels";
 import { browserStorage, createProgressStore } from "./progress";
+import { startResting } from "./rest";
 import { warmAhead } from "./warm";
 
 const root = document.querySelector<HTMLElement>("#app");
@@ -30,6 +31,17 @@ const asked = Number(params.get("level"));
 const deepLink = Number.isInteger(asked) && asked >= 1 && asked <= LEVEL_COUNT ? asked : null;
 
 /**
+ * `?rest=2` sleeps after two *seconds* instead of two minutes. Like `?level=`
+ * it is a tool for working on the game rather than a setting: `npm run shot`
+ * uses it to watch a real board freeze and wake without waiting two minutes for
+ * it, and there is nothing in the game that offers it. Out of range values are
+ * ignored rather than argued with.
+ */
+const restSeconds = Number(params.get("rest"));
+const restDelayMs =
+  Number.isFinite(restSeconds) && restSeconds > 0 ? restSeconds * 1000 : undefined;
+
+/**
  * A deep link is not the child's own progress, so nothing played from one moves
  * the place they had got to.
  */
@@ -40,6 +52,14 @@ const progress = createProgressStore({
 
 // What a grown-up set last time, in force before the first sound can play.
 applySettings(progress.settings());
+
+/**
+ * Nothing on this screen moves while nobody is playing with it. Started here
+ * rather than inside the game, because it is the *page* that goes still - the
+ * board, whatever celebration is up, and the speakers - and because a game that
+ * never got its first chunk should stop drawing too.
+ */
+startResting(restDelayMs === undefined ? {} : { delayMs: restDelayMs });
 
 /**
  * A deep link wins over the saved level, and leaves it alone: it goes where it

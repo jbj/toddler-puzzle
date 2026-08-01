@@ -849,26 +849,31 @@ async function pressInPanel(selector) {
 }
 
 /**
- * Watch the long timers the page arms from now on. The prompt that answers a
- * tap is taken down on a timer of its own, and a toddler taps far faster than
- * it expires, so the interesting question is whether the tenth tap leaves ten
- * timers pending or one. Only long timers are counted, which leaves the
- * two-second one that arms the opening out of it.
+ * Watch the long timers the page arms from now on, and how long each is for.
+ * The prompt that answers a tap is taken down on a timer of its own, and a
+ * toddler taps far faster than it expires, so the interesting question is
+ * whether the tenth tap leaves ten timers pending or one each. Only long timers
+ * are counted, which leaves the two-second one that arms the opening out of it.
+ *
+ * Two things arm one: "Hold to open" (`PROMPT_MS` in src/grownups.ts) and the
+ * wait before the page puts itself to sleep (`REST_DELAY_MS` in src/rest.ts),
+ * which every tap re-arms. Reporting the delays rather than a bare count is
+ * what makes a third one show up as itself rather than as an off-by-one.
  */
 const watchLongTimers = () =>
   evaluate(`
   (() => {
-    const armed = new Set();
+    const armed = new Map();
     const setLater = window.setTimeout.bind(window);
     const clearLater = window.clearTimeout.bind(window);
     window.setTimeout = (fn, ms, ...rest) => {
       let id;
       id = setLater((...args) => { armed.delete(id); fn(...args); }, ms, ...rest);
-      if (ms > 3000) armed.add(id);
+      if (ms > 3000) armed.set(id, ms);
       return id;
     };
     window.clearTimeout = (id) => { armed.delete(id); clearLater(id); };
-    window.__longTimers = () => armed.size;
+    window.__longTimers = () => [...armed.values()].sort((a, b) => a - b);
     window.__stopWatchingTimers = () => {
       window.setTimeout = setLater;
       window.clearTimeout = clearLater;
@@ -907,9 +912,16 @@ async function holdGrownUps({ pauseAtHalfway } = {}) {
  * working on the game - reaching level 30 by playing the twenty-nine before it
  * would take minutes - and is not a difficulty picker: nothing in the game
  * offers it, and the player cannot read.
+ *
+ * `restAfter` is the same sort of tool: seconds of nobody playing before the
+ * page freezes itself, instead of the two minutes a child gets. Without it this
+ * run could not watch the game go to sleep at all.
  */
-async function goToLevel(level) {
-  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?level=${level}&seed=${SEED}` });
+async function goToLevel(level, { restAfter } = {}) {
+  const rest = restAfter === undefined ? "" : `&rest=${restAfter}`;
+  await send("Page.navigate", {
+    url: `http://127.0.0.1:${PORT}/?level=${level}&seed=${SEED}${rest}`,
+  });
   await sleep(900);
 }
 
@@ -1061,6 +1073,40 @@ async function hintAfterAWhile() {
   await sleep(HINT_WINDOW_MS);
   return hintOnBoard();
 }
+
+// --- the game asleep ------------------------------------------------------
+// Two quiet minutes and the page stops drawing altogether: every animation
+// paused where it stood, every repeating timer stopped, the speakers put down.
+// The first touch undoes all of it, and does whatever it was going to do as
+// well. Only a real browser can show any of that, so it is checked here.
+// `?rest=` shortens the two minutes so the run does not have to sit through
+// them. See src/rest.ts.
+
+/** Whether the page has frozen itself. */
+const isAsleep = () => evaluate(`document.documentElement.dataset.asleep === 'true'`);
+
+/**
+ * How many animations are actually running. This is the number the whole thing
+ * is about: a sleeping game has to be at zero, and a woken one above it.
+ */
+const runningAnimations = () =>
+  evaluate(`document.getAnimations().filter((a) => a.playState === 'running').length`);
+
+/**
+ * How the bright end of a hint is being drawn. A pulse paused wherever the fade
+ * had reached could freeze the one thing a stuck child needs to see at its
+ * dimmest, so a sleeping hint holds instead - the same as it does for a player
+ * who asked for less motion.
+ */
+const hintPulse = () =>
+  evaluate(`
+  (() => {
+    const mark = document.querySelector('#stage .hint-mark:not(.is-quiet)');
+    if (!mark) return null;
+    const style = getComputedStyle(mark);
+    return { animation: style.animationName, opacity: Number(style.opacity) };
+  })()
+`);
 
 /** Drag every animal still in the tray into its hole. */
 async function solveRemaining() {
@@ -1419,7 +1465,13 @@ try {
   check("tapping the button never opens the panel", (await panelIsOpen()) === false);
   check("tapping it answers with 'Hold to open'", (await holdPromptShown()) === true);
   const pending = await longTimersPending();
-  check(`ten taps leave one timer behind, not ten (${pending})`, pending === 1);
+  // One wait each, re-armed rather than piled up: the prompt coming down, and
+  // the page's own wait before it goes to sleep. Ten taps that left ten of
+  // either behind would be a leak.
+  check(
+    `ten taps leave one wait each behind, not ten (${pending.join("ms, ")}ms)`,
+    pending.length === 2 && new Set(pending).size === 2,
+  );
   await stopWatchingTimers();
 
   await holdGrownUps({ pauseAtHalfway: () => shot("08-grownups-hold") });
@@ -1574,6 +1626,55 @@ try {
   check("level 3 is played by touching", (await kindName()) === "play");
   const onTouchLevel = await hintAfterAWhile();
   check("a level played by touching is never hinted at", onTouchLevel === null);
+
+  // --- the game asleep ------------------------------------------------------
+  // Nothing on this screen moves while nobody is playing with it. `?rest=`
+  // makes the two minutes a few seconds; everything else is the game as a child
+  // would leave it. See src/rest.ts.
+
+  // A board with a hint on it is the awkward case: the help has to stay, and it
+  // has to stay *visible*, rather than being frozen wherever the fade was.
+  await goToLevel(6, { restAfter: 7 });
+  const sleepingGlow = await hintAfterAWhile();
+  check("a hinted board goes to sleep with the hint on it", sleepingGlow !== null);
+  check("the game sleeps when nobody plays with it", (await isAsleep()) === true);
+  const asleepOn6 = await runningAnimations();
+  check(`nothing is left running on a sleeping board (${asleepOn6})`, asleepOn6 === 0);
+  const pulse = await hintPulse();
+  check(
+    `a sleeping hint holds rather than pulsing (${pulse ? pulse.animation : "no hint"})`,
+    pulse !== null && pulse.animation === "none",
+  );
+  check(
+    `and holds bright rather than mid-fade (${pulse ? pulse.opacity.toFixed(2) : "no hint"})`,
+    pulse !== null && pulse.opacity >= 0.8,
+  );
+  await tapEmptySpot();
+  check("a touch wakes it", (await isAsleep()) === false);
+
+  // The bubbles are the busiest thing the game leaves running by itself, and
+  // the level where waking has to do two things at once: the finger that wakes
+  // the page is the finger that pops the bubble it landed on.
+  await goToLevel(1, { restAfter: 2 });
+  check("level 1 is played by touching", (await kindName()) === "play");
+  const awakeBubbles = await runningAnimations();
+  check(`the bubbles are moving to begin with (${awakeBubbles})`, awakeBubbles > 0);
+  await sleep(3200);
+  check("a board left alone stops moving", (await isAsleep()) === true);
+  const asleepBubbles = await runningAnimations();
+  check(`the bubbles stop with it (${asleepBubbles} running)`, asleepBubbles === 0);
+
+  const frozen = await thingsToTouch();
+  const poppedBefore = (await activityProgress()).touched;
+  check("a sleeping board still has its bubbles on it", frozen.length > 0);
+  await tapAt(frozen[0].x, frozen[0].y);
+  check("a touch wakes the board", (await isAsleep()) === false);
+  const wokeBubbles = await runningAnimations();
+  check(`the bubbles move again (${wokeBubbles})`, wokeBubbles > 0);
+  check(
+    "and the touch that woke it popped the bubble it landed on",
+    (await activityProgress()).touched > poppedBefore,
+  );
 
   // --- level 10: the busiest board of animals ------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for

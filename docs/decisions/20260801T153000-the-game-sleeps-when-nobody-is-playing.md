@@ -1,0 +1,118 @@
+# 20260801T153000. The game sleeps when nobody is playing
+
+## Context
+
+A board left alone went on drawing forever.
+
+The idle hint was the suspicion that started this - `.hint-mark` runs
+`hint-pulse ... infinite`, and an opacity animation on an SVG element repaints
+rather than composites on the browsers this game is for, so a glow nobody is
+looking at costs a repaint every frame for as long as the tablet is awake. It
+was a good suspicion and an incomplete one. Four other things run with nobody in
+the room:
+
+- the bubbles drift, respawn as they escape, and are topped up by a
+  `setInterval` that never stops;
+- the finish button breathes on `iterations: Infinity` until it is pressed, and
+  nothing presses it;
+- a chapter celebration walks its parade round on an infinite animation and
+  refills its sky on a timer - and the finale, by design, never stops arriving;
+- the `AudioContext`, once unlocked, renders silence at the sample rate.
+
+A two-year-old does not close a tab. The realistic end of a session is a tablet
+put down on whatever was on screen, which is very often a celebration, and it
+then draws until the battery goes.
+
+## Decision
+
+After two minutes with nothing touched - and the instant the tab is hidden - the
+whole page freezes. The first touch unfreezes it.
+
+### It is a freeze, not a state change
+
+Nothing ends, nothing advances, nothing is put away. Every running animation is
+paused where it stands and resumed from there, so the game the child comes back
+to is the one they left, moving again.
+
+That is what keeps this from arguing with the celebration invariants. The finale
+"never winds down" and no clock ever moves a child on: a sleeping finale has not
+wound down, and sleeping moves nobody anywhere. A grown-up who walks past sees a
+still picture rather than a finished one, and a finger starts the fireworks
+again mid-arc.
+
+### `document.getAnimations()`, rather than a register of animations
+
+Every animation in the game could have been handed to this module as it was
+created. That is a list to keep in step with a codebase, and the animation
+somebody forgot to add would be exactly the one still running.
+
+Asking the document what is running instead catches the CSS pulse, the drifting
+bubbles, the parade, the button, and whatever is added next by somebody who has
+never heard of `rest.ts`. Only *running* animations are paused, so each one
+resumes rather than restarting, and none can finish while the page is asleep.
+
+Repeating timers cannot be found that way, so the two the game has ask for
+themselves: `repeatWhileAwake` replaces `setInterval` in `kinds/play.ts` and in
+a celebration's `every`. They stop dead and start again rather than catching up
+on missed ticks, because both are belt-and-braces refills - nothing popped while
+the screen was frozen, so there is nothing to refill.
+
+### The hint holds, rather than freezing mid-fade
+
+Pausing the hint's pulse would freeze it at whatever opacity the fade had
+reached, which can be its dimmest - on the one thing on screen a stuck child
+needs to be able to see.
+
+So a sleeping page gets the treatment `prefers-reduced-motion` already gets:
+`[data-asleep] .hint-mark` drops the animation and holds the glow bright. The
+help survives the sleep, exactly as it survives a request for less motion. It
+also means the hint is out of `getAnimations()` by the time the sweep runs, so
+it needs no resuming.
+
+### The touch that wakes the game also plays the game
+
+The wake listeners are in the capture phase, so a finger landing on a bubble
+wakes the page and then pops the bubble, in that order. A child never has to tap
+twice, and never taps a screen that ignores them - which for a two-year-old is
+indistinguishable from a broken toy.
+
+The speakers are the awkward half of that. `AudioContext.resume()` settles a
+tick or two after it is asked, and the tap that asks is the tap that wants a
+sound: the guard in `audio.ts` would have dropped it for being scheduled into a
+context that was not yet running. A suspended context's clock is frozen rather
+than stuck at zero, so a note scheduled a hair after `currentTime` lands the
+moment the speakers come back; the guard now lets a resume that is in flight
+through, and only a context that has never been unlocked is still refused.
+
+### Two minutes, in code, with no switch
+
+Long enough that it is never the child who wakes it - a two-year-old who is
+thinking, or being talked to, or fetching a different toy to put on the screen,
+is back well inside two minutes - and short enough that a tablet left face up on
+the sofa stops drawing within the same minute somebody would have noticed.
+
+There is no control for it. Not on the play surface, which has no settings at
+all, and not in the grown-up panel either: every option in that panel changes
+what the child gets, and this one changes nothing they can see. `?rest=2` sleeps
+after two seconds instead, in the same spirit as `?seed=` and `?level=` - a tool
+for working on the game, and what lets `npm run shot` watch a real board freeze
+and wake without sitting through two minutes to do it.
+
+## Consequences
+
+- `src/rest.ts` is the one home for it: the wait, the repeat registry, and the
+  page wiring. The rule half takes its timers as arguments, like `hint.ts` and
+  `grownups.ts` before it, so two idle minutes are played out in a microsecond
+  in Vitest.
+- Sleep is invisible to the rest of the game. No kind, no celebration and no
+  level knows it happened; the only trace is `data-asleep` on the document,
+  which the stylesheet and the screenshot run read.
+- Bubbles hanging still in mid-air is the visible cost, and it lasts until the
+  first touch. It reads as bubbles hanging rather than as a broken screen.
+- A celebration's arrival window is wall-clock (`Date.now() < until`), so a long
+  sleep can land back on a party that has stopped refilling. That is already
+  what a backgrounded tab did, and what is afloat still bursts, so it is left
+  alone.
+- The initial bundle grew by about 0.7 kB gzipped, to 36.5 kB of a 37.0 kB
+  budget. The budget was not raised, and the next change to the entry chunk will
+  find it tight.

@@ -230,6 +230,52 @@ export function unlockAudio(): void {
 }
 
 /**
+ * Whether the context has been put down by `restAudio`, and whether it has been
+ * asked to get up again and not yet said that it has.
+ *
+ * The second of those is the whole reason this pair is not just two one-liners.
+ * `resume()` settles a tick or two after it is asked, and the tap that asks is
+ * the same tap that pops a bubble - so without `waking` the guard in `play`
+ * below would swallow the first sound after every sleep, which is precisely the
+ * sound a child comes back for. A suspended context's clock is frozen rather
+ * than stuck at zero, so a note scheduled a hair after `currentTime` while the
+ * resume is in flight lands the moment the speakers come back.
+ */
+let rested = false;
+let waking = false;
+
+/**
+ * Put the speakers down until somebody comes back. A running `AudioContext`
+ * renders silence at the sample rate for as long as it is running, which is
+ * exactly the sort of thing `rest.ts` exists to stop.
+ */
+export function restAudio(): void {
+  if (!context || context.state !== "running") return;
+  rested = true;
+  void context.suspend().catch(() => {
+    rested = false;
+  });
+}
+
+/** Pick them up again. Only ever undoes a `restAudio`; never unlocks. */
+export function stirAudio(): void {
+  if (!context || !rested || waking) return;
+  waking = true;
+  void context.resume().then(
+    () => {
+      rested = false;
+      waking = false;
+    },
+    () => {
+      // A resume can be refused - a browser that wants a gesture, and a tab
+      // being looked at again is not one. Left `rested`, so the next thing the
+      // child touches asks again rather than playing to sleeping speakers.
+      waking = false;
+    },
+  );
+}
+
+/**
  * Voices allowed to be in the air at once. A chapter celebration is the first
  * thing in this game that can ask for a lot at speed - thirty balloons popped
  * in ten seconds, over a fanfare - and browsers cap concurrent nodes. Past the
@@ -351,8 +397,11 @@ function play(phrase: Phrase): void {
   const ctx = provided ?? liveContext();
   if (!ctx) return;
   // A context that has never been unlocked has a clock stuck at zero, so
-  // everything scheduled into it would arrive at once the moment it started.
-  if (!provided && ctx.state !== "running") return;
+  // everything scheduled into it would arrive at once the moment it started. A
+  // context this game put to sleep is a different case - its clock is frozen
+  // where it stood - so a sound asked for in the same breath as the resume is
+  // scheduled rather than dropped; see `waking` above.
+  if (!provided && ctx.state !== "running" && !waking) return;
   schedule(ctx, busFor(ctx), phrase, ctx.currentTime);
 }
 

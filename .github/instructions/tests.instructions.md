@@ -309,6 +309,22 @@ is unplaced, the first unplaced one when it is not, nothing when the board is
 finished, and ignores a `lastTouched` left over from another board. What the
 glow *looks* like is `npm run shot`'s.
 
+`tests/rest.test.ts` covers what the game does when nobody is playing it, in the
+same shape: the wait is a state machine with its timers passed in, so two idle
+minutes are played out in a microsecond. The counters are the point - freezing a
+page twice would pause a second set of animations already paused and lose the
+first set, and waking one that is already awake would restart animations nobody
+stopped - so sleep and wake are counted rather than merely observed, alongside a
+hidden tab sleeping without waiting, a stir re-arming rather than queueing, and
+`stop()` leaving nothing frozen behind and never sleeping again. The repeat
+registry is the other half: a timer registered through `repeatWhileAwake` ticks
+awake, stops dead asleep without catching up, does not start at all if it was
+registered while the page was already asleep - which is what a celebration
+mounted on a turned tablet does - and stays cancelled either way. What sleeping
+*looks* like is `npm run shot`'s, which freezes a real bubble level in Chromium
+and checks that nothing is running, that a hinted board holds its glow bright,
+and that the touch which wakes the page also pops the bubble it landed on.
+
 `tests/grownups.test.ts` covers the three parts of the grown-up panel that do not
 need a browser: the hold that opens it, the level map, and the rule behind the
 per-kind switches. The hold is a state

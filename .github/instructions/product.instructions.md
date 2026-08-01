@@ -97,6 +97,14 @@ oversights until you know it, so the reason is written next to the rule.
   on the sight of `localStorage`, and a toy that will not start is worse than a
   toy that forgets. See
   [decision 20260728T212500](../../docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
+- Let nothing on the screen move while nobody is playing with it. Two minutes
+  untouched, or a hidden tab, and the whole page freezes - every animation, every
+  repeating timer, the speakers - until a finger lands. A freeze is never a
+  change: nothing ends, nothing advances, and the touch that wakes the game
+  plays it too. Why: a two-year-old does not close a tab, so the realistic end
+  of every session is a tablet put down on whatever was on screen, and the game
+  should stop costing anything the moment it stops being played. See
+  [decision 20260801T153000](../../docs/decisions/20260801T153000-the-game-sleeps-when-nobody-is-playing.md).
 - Keep the project free of binary assets, runtime dependencies, and network
   requests. Art is hand-authored SVG; sound is synthesised with the Web Audio
   API. Why: there is nothing to download and nothing to fail to load.
@@ -190,6 +198,16 @@ that will not store anything simply starts at level 1 - and the mechanics are in
 context menus and native image dragging are all disabled. Every target is large.
 While dragging, the piece is held slightly above the finger so a small hand
 doesn't cover it.
+
+**And it stops when it is put down.** Two minutes untouched, or a tab going
+behind another window, and the whole page freezes: the hint holds instead of
+pulsing, the bubbles hang where they are, a celebration stands still, and the
+speakers are put down. A finger starts all of it again exactly where it stopped,
+and pops the bubble it landed on while it is at it. Nothing ends and nothing
+moves on, because a two-year-old does not close a tab and the game they left is
+the game they should come back to. The mechanics are in
+[`navigation.instructions.md`](navigation.instructions.md); the reasoning is
+[decision 20260801T153000](../../docs/decisions/20260801T153000-the-game-sleeps-when-nobody-is-playing.md).
 
 **No binary assets, and a budget on the rest.** The animals are hand-authored
 SVG and the sounds are synthesised with the Web Audio API, so there is nothing

@@ -162,6 +162,7 @@ Why each of those stops the run rather than being written down and hoped for is
 | `src/audio.ts` | Every sound in the game, as data: one pentatonic ladder, voices, phrases, and the single gate the sound toggle sits on |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `src/hint.ts` | The idle hint: how long a board is left alone, which piece it is about, and the glow at both ends |
+| `src/rest.ts` | What the game does when nobody is playing it: the two-minute wait, the freeze that stops every animation and repeating timer, and the touch that undoes it |
 | `src/celebration.ts` | What the end of a chapter looks like, and what the end of the game looks like. Six celebrations, all played rather than watched. A chunk of its own, asked for when a chapter-ending level is dealt |
 | `src/warm.ts` | Pulls every deferred chunk in during play, in the order the levels will want it, so no level seam ever waits for the network |
 | `scripts/preview.mjs` | Renders the art for review: a contact sheet, one animal large, or a scene under its cut grids |
