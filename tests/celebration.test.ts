@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import {
   CELEBRATIONS,
   CELEBRATION_SPAN_MS,
+  type CelebrationId,
   FINALE,
   arcsPainted,
   celebrationFor,
@@ -66,7 +67,7 @@ describe("which chapter ends with what", () => {
    * [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
    */
   it("never walks a parade of animals over a board of animals", () => {
-    const paradeIn = new Set<string>(["parade", FINALE]);
+    const paradeIn = new Set<CelebrationId>(["parade", FINALE]);
     const animalKinds = new Set<PuzzleKindId>(["play", "shape-match", "sliced"]);
     for (const chapter of CHAPTERS) {
       if (!paradeIn.has(celebrationFor(chapter))) continue;

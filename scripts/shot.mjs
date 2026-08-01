@@ -1855,8 +1855,13 @@ try {
   check("the parade is turned with the board", (await layoutName()) === "portrait");
   check("rotation stays on the same level", (await levelNumber()) === 20);
   check("the parade is rebuilt rather than lost", (await celebrationName()) === "parade");
+  // A re-mounted parade is dealt again from the level's own random, which has
+  // moved on - so it is a full parade rather than the same five animals.
   const stillWalking = await paradingPieces();
-  check(`the same animals walk in portrait (${stillWalking.length})`, stillWalking.length === 5);
+  check(
+    `a whole parade is dealt again in portrait (${stillWalking.length})`,
+    stillWalking.length === 5,
+  );
   check("the way onwards does not make the child wait twice", (await finishButtons()) > 0);
   await shot("22c-chapter4-parade-portrait");
   await setViewport(1280, 800);
