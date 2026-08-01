@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
   <!--
-    Cow, facing left. Tall on long legs with the head carried high on a neck,
-    which is what keeps it apart from the pig it shares the farm with. The two
-    horns are part of the outline, not a mark inside it, so they survive at the
-    size a hole is cut at.
+    Cow, facing the camera. Head first: the horns and the ears are cut into the
+    outline rather than painted on, so the head is still a cow's head at the
+    size a hole is cut at. The body is that same path opened out at the cheeks
+    and carried down into the barrel and two front legs. Tall and narrow on
+    purpose - the pig it shares the farm with is low, wide and side-on.
   -->
   <path
     id="silhouette"
@@ -11,68 +12,66 @@
     stroke="#7c7368"
     stroke-width="5"
     stroke-linejoin="round"
-    d="M26 46
-       C30 36 42 38 44 50
-       C50 44 58 44 62 50
-       C66 38 78 36 82 46
-       C90 48 102 52 104 62
-       C104 72 94 76 88 74
-       C97 86 105 96 110 108
-       C142 104 176 112 194 132
-       C208 146 208 156 200 162
-       L200 202 Q200 212 190 212 Q180 212 180 202 L180 166
-       L166 168
-       L166 202 Q166 212 156 212 Q146 212 146 202 L146 164
-       C126 168 108 168 96 164
-       L96 202 Q96 212 86 212 Q76 212 76 202 L76 160
-       L64 158
-       L64 202 Q64 212 54 212 Q44 212 44 202 L44 154
-       C32 146 28 136 34 126
-       C46 118 56 112 60 102
-       C52 101 42 100 34 96
-       C24 91 20 82 20 72
-       C20 58 23 50 26 46 Z"
+    d="M 120 27
+       C 128 27 134 30 137 35
+       C 145 27 154 22 162 21
+       C 169 21 170 27 168 33
+       C 164 41 158 46 149 49
+       C 157 54 161 60 162 68
+       C 172 60 184 65 189 79
+       C 190 90 174 98 161 89
+       C 161 98 157 106 150 112
+       C 160 117 172 126 178 141
+       C 185 156 183 171 174 181
+       L 174 200
+       Q 174 215 162 215
+       Q 149 215 149 200
+       L 149 185
+       C 137 194 103 194 91 185
+       L 91 200
+       Q 91 215 78 215
+       Q 66 215 66 200
+       L 66 181
+       C 57 171 55 156 62 141
+       C 68 126 80 117 90 112
+       C 83 106 79 98 79 89
+       C 66 98 50 90 51 79
+       C 56 65 68 60 78 68
+       C 79 60 83 54 91 49
+       C 82 46 76 41 72 33
+       C 70 27 71 21 78 21
+       C 86 22 95 27 103 35
+       C 106 30 112 27 120 27
+       Z"
   />
   <g id="detail">
+    <!-- inner ears -->
+    <ellipse cx="172" cy="80" rx="10" ry="6" fill="#e0d6c6" transform="rotate(14 172 80)" />
+    <ellipse cx="68" cy="80" rx="10" ry="6" fill="#e0d6c6" transform="rotate(-14 68 80)" />
+    <!-- eyes -->
+    <circle cx="104" cy="69" r="9" fill="#2b3440" />
+    <circle cx="136" cy="69" r="9" fill="#2b3440" />
     <!-- muzzle -->
-    <ellipse cx="44" cy="78" rx="14" ry="12" fill="#f0c3c6" stroke="#7c7368" stroke-width="4" />
-    <circle cx="38" cy="74" r="3.5" fill="#a8797c" />
-    <circle cx="38" cy="85" r="3.5" fill="#a8797c" />
-    <!-- eye -->
-    <circle cx="54" cy="57" r="7" fill="#2b3440" />
-    <!-- inner ear, inside the lobe the outline already carries -->
-    <ellipse cx="94" cy="62" rx="6" ry="7" fill="#e0d6c6" transform="rotate(20 94 62)" />
-    <!-- patches -->
+    <ellipse cx="120" cy="96" rx="27" ry="13" fill="#f0c3c6" />
+    <ellipse cx="110" cy="95" rx="4" ry="5" fill="#a8797c" />
+    <ellipse cx="130" cy="95" rx="4" ry="5" fill="#a8797c" />
+    <!-- body patches -->
     <path
-      d="M120 116 C136 108 156 112 162 126 C166 138 154 148 138 146
-         C122 144 112 128 120 116 Z"
+      d="M 153 131 C 168 133 174 148 167 158 C 160 169 143 166 139 154 C 135 142 142 128 153 131 Z"
       fill="#3f4650"
     />
     <path
-      d="M178 134 C190 134 198 142 196 152 C194 160 184 162 178 156
-         C172 148 172 138 178 134 Z"
+      d="M 76 150 C 89 148 95 158 91 169 C 87 177 72 177 68 166 C 65 158 68 152 76 150 Z"
       fill="#3f4650"
     />
     <path
-      d="M96 136 C108 134 116 143 112 152 C106 160 94 160 90 152 C86 143 90 138 96 136 Z"
+      d="M 120 160 C 130 158 139 166 135 175 C 130 182 118 182 114 175 C 111 168 114 161 120 160 Z"
       fill="#3f4650"
     />
-    <!-- hooves -->
-    <g fill="none" stroke="#7c7368" stroke-width="9" stroke-linecap="round" opacity="0.5">
-      <path d="M52 202 h4" />
-      <path d="M84 202 h4" />
-      <path d="M154 202 h4" />
-      <path d="M188 202 h4" />
+    <!-- hooves, following the silhouette's own toes -->
+    <g fill="#7c7368">
+      <path d="M 149 200 Q 149 215 162 215 Q 174 215 174 200 Z" />
+      <path d="M 66 200 Q 66 215 78 215 Q 91 215 91 200 Z" />
     </g>
-    <!-- tail with a tuft, budgeted overhang -->
-    <path
-      d="M203 144 C213 154 216 172 212 186"
-      fill="none"
-      stroke="#7c7368"
-      stroke-width="5"
-      stroke-linecap="round"
-      data-overhang="tail"
-    />
-    <circle cx="211" cy="190" r="8" fill="#3f4650" data-overhang="tail" />
   </g>
 </svg>

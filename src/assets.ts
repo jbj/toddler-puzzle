@@ -78,12 +78,12 @@ const FOOT_LEVEL: Record<AnimalId, number> = {
   frog: 207,
   penguin: 216,
   crab: 212,
-  cow: 212,
-  pig: 198,
+  cow: 215,
+  pig: 202,
   whale: 190,
   octopus: 202,
   monkey: 209,
-  parrot: 206,
+  parrot: 213,
 };
 
 /** Where an animal stands within its art box: on its feet, centred. */
@@ -116,12 +116,12 @@ const ANIMAL_INK: Record<AnimalId, readonly [number, number, number, number]> = 
   frog: [7, 33, 226, 177],
   penguin: [36, 17, 168, 202],
   crab: [5, 41, 230, 174],
-  cow: [17, 37, 202, 178],
-  pig: [19, 72, 200, 129],
+  cow: [48, 18, 144, 200],
+  pig: [17, 50, 219, 155],
   whale: [15, 16, 205, 177],
   octopus: [20, 51, 204, 154],
   monkey: [45, 33, 163, 179],
-  parrot: [25, 27, 190, 182],
+  parrot: [23, 15, 199, 201],
 };
 
 /** What an animal draws inside its art box, as a rectangle. */

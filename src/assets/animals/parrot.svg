@@ -1,9 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
   <!--
-    Parrot, facing left. The hooked beak and the long tail sweeping down to the
-    right are both in the outline, which is what separates it from the jungle's
-    other flier, the butterfly. The dip behind the head is deliberate: without a
-    neck the beak reads as a lump stuck on a ball.
+    Parrot, in profile facing left, perched. The head was drawn first and the
+    outline then opened at the nape, so the hooked beak is part of the one
+    silhouette rather than a mark painted on a ball: the upper mandible curves
+    down past a short lower one, and the notch between them survives at the size
+    a hole is cut. The long tail sweeping down to the right is in the outline
+    too, which is what separates the parrot from the jungle's other flier, the
+    butterfly.
   -->
   <path
     id="silhouette"
@@ -11,46 +14,54 @@
     stroke="#a8382f"
     stroke-width="5"
     stroke-linejoin="round"
-    d="M88 30
-       C112 30 128 48 128 72
-       C124 84 116 90 108 94
-       C138 100 164 118 176 142
-       C192 152 208 170 212 190
-       C202 197 188 192 178 182
-       C170 176 160 170 152 164
-       C142 178 124 188 106 190
-       L106 198 Q106 206 96 206 Q86 206 86 198 L86 190
-       L70 190
-       L70 198 Q70 206 60 206 Q50 206 50 198 L50 186
-       C40 178 36 162 40 148
-       C34 136 34 120 42 110
-       C50 106 56 104 60 100
-       C50 98 40 92 34 84
-       C26 76 26 62 34 54
-       C44 46 58 46 64 52
-       C68 40 76 30 88 30 Z"
+    d="M 91 18
+       C 114 18 130 34 130 58
+       C 141 62 152 73 161 90
+       C 172 112 180 133 185 151
+       C 198 166 210 183 219 202
+       C 207 205 193 196 182 185
+       C 172 176 163 168 156 159
+       C 152 170 144 183 131 192
+       L 131 205
+       Q 131 213 120 213
+       Q 109 213 109 205
+       L 109 198
+       L 98 198
+       L 98 205
+       Q 98 213 87 213
+       Q 77 213 77 205
+       L 77 196
+       C 59 185 38 164 37 133
+       C 37 112 64 103 72 92
+       C 70 89 68 86 66 83
+       C 58 82 51 79 44 72
+       C 41 68 43 64 48 63
+       C 43 65 37 72 32 83
+       C 22 69 26 51 39 42
+       C 47 38 57 38 64 41
+       C 72 28 82 18 91 18
+       Z"
   />
   <g id="detail">
-    <!-- hooked beak -->
+    <!-- beak, on the silhouette's own edges so it cannot drift off the outline -->
     <path
-      d="M67 55 C57 48 44 51 38 60 C32 70 34 80 40 87 C46 93 53 96 59 95
-         C55 82 60 62 70 50 Z"
+      d="M 64 41 C 57 38 47 38 39 42 C 26 51 22 69 32 83 C 37 72 43 65 48 63 C 43 64 41 68 44 72 C 51 79 58 82 66 83 Z"
       fill="#f3e6c8"
       stroke="#a8382f"
       stroke-width="3.5"
       stroke-linejoin="round"
     />
-    <circle cx="56" cy="62" r="3.5" fill="#c2b596" />
-    <!-- eye -->
-    <circle cx="92" cy="64" r="7.5" fill="#2b3440" />
-    <!-- wing -->
+    <circle cx="56" cy="50" r="4" fill="#c2b596" />
+    <!-- bare face patch and eye -->
+    <ellipse cx="88" cy="52" rx="17" ry="16" fill="#f3e6c8" />
+    <circle cx="90" cy="52" r="7" fill="#2b3440" />
+    <!-- folded wing -->
     <path
-      d="M96 116 C124 108 150 126 154 150 C156 166 140 176 122 169
-         C102 161 90 136 96 116 Z"
+      d="M 124 92 C 148 101 165 122 171 144 C 174 157 164 166 149 159 C 128 151 113 116 124 92 Z"
       fill="#f2c14e"
     />
     <path
-      d="M108 130 C126 128 142 140 146 154"
+      d="M 133 110 C 149 117 160 131 164 144"
       fill="none"
       stroke="#d79f2f"
       stroke-width="5"
@@ -58,13 +69,13 @@
     />
     <!-- tail feathers -->
     <g fill="none" stroke="#a8382f" stroke-width="4.5" stroke-linecap="round" opacity="0.65">
-      <path d="M178 148 C190 162 198 176 202 188" />
-      <path d="M166 156 C176 166 182 176 186 184" />
+      <path d="M 182 159 C 193 172 202 185 207 196" />
+      <path d="M 172 166 C 180 174 187 183 191 191" />
     </g>
-    <!-- feet -->
-    <g fill="none" stroke="#c9903a" stroke-width="9" stroke-linecap="round">
-      <path d="M58 198 h4" />
-      <path d="M94 198 h4" />
+    <!-- feet, filled from the silhouette's own stubs -->
+    <g fill="#c9903a">
+      <path d="M 131 200 L 131 205 Q 131 213 120 213 Q 109 213 109 205 L 109 200 Z" />
+      <path d="M 98 200 L 98 205 Q 98 213 87 213 Q 77 213 77 205 L 77 200 Z" />
     </g>
   </g>
 </svg>
