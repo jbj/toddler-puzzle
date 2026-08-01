@@ -1664,6 +1664,19 @@ try {
   const asleepBubbles = await runningAnimations();
   check(`the bubbles stop with it (${asleepBubbles} running)`, asleepBubbles === 0);
 
+  // Turning a tablet that is already asleep rebuilds the board for the new
+  // shape, and the rebuilt board must arrive as still as the one it replaced.
+  await setViewport(480, 900);
+  await sleep(900);
+  check("turning a sleeping tablet leaves it asleep", (await isAsleep()) === true);
+  const turnedAsleep = await runningAnimations();
+  check(`a board rebuilt while asleep stays still (${turnedAsleep} running)`, turnedAsleep === 0);
+  await setViewport(1280, 800);
+  await sleep(900);
+  check("nothing has woken the board up", (await isAsleep()) === true);
+  const turnedBack = await runningAnimations();
+  check(`and turning it back leaves it still too (${turnedBack} running)`, turnedBack === 0);
+
   const frozen = await thingsToTouch();
   const poppedBefore = (await activityProgress()).touched;
   check("a sleeping board still has its bubbles on it", frozen.length > 0);

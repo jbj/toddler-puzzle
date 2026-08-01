@@ -47,6 +47,14 @@ import { restAudio, stirAudio } from "./audio";
  */
 export const REST_DELAY_MS = 120_000;
 
+/**
+ * How long a rebuild for a new orientation is given to finish.
+ *
+ * Longer than the debounce on the resize handler in `game.ts`, which is what
+ * this waits out.
+ */
+const RELAYOUT_SETTLE_MS = 400;
+
 /** The wait, as three verbs. `stop` latches, so a torn-down page draws nothing. */
 export interface Rest {
   /** Something happened. Wake if asleep, and start the wait again. */
@@ -197,6 +205,14 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
   const root = document.documentElement;
   let paused: Animation[] = [];
 
+  const freeze = (): void => {
+    for (const animation of document.getAnimations()) {
+      if (animation.playState !== "running") continue;
+      animation.pause();
+      paused.push(animation);
+    }
+  };
+
   const rest = createRest({
     ...(options.delayMs === undefined ? {} : { delayMs: options.delayMs }),
     sleep() {
@@ -205,11 +221,7 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
       // reached. `animation: none` in the stylesheet takes it out of
       // `getAnimations` entirely, which is why it does not need resuming.
       root.dataset["asleep"] = "true";
-      paused = document.getAnimations().filter((animation) => {
-        if (animation.playState !== "running") return false;
-        animation.pause();
-        return true;
-      });
+      freeze();
       restRepeats(true);
       restAudio();
     },
@@ -243,6 +255,23 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") rest.restNow();
     else rest.stir();
+  });
+
+  // Turning a sleeping tablet is the one thing that can start an animation with
+  // no finger on the screen: `game.ts` rebuilds the board for the new
+  // orientation, and a board rebuilt while the page is asleep arrives with the
+  // bubbles drifting and the finish button breathing again, at nobody. So the
+  // sweep is run once more after the rebuild has settled - comfortably after
+  // that handler's own 150ms debounce - and whatever it catches joins the rest
+  // to be resumed on waking. Everything else that animates needs a touch, and a
+  // touch has already woken the game by the time it gets there.
+  let resweep = 0;
+  listen("resize", () => {
+    if (!rest.asleep()) return;
+    window.clearTimeout(resweep);
+    resweep = window.setTimeout(() => {
+      if (rest.asleep()) freeze();
+    }, RELAYOUT_SETTLE_MS);
   });
 
   return rest;
