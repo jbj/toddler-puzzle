@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
   <!--
-    Pig, facing left. Low, wide and short-legged on purpose: it shares the farm
-    with the cow, and the two have to read differently at tray size, so the pig
-    is a long barrel close to the ground and the cow stands tall. The face runs
-    straight into the back in one line, the way a pig's does.
+    Pig, standing side-on with its head turned to the camera. The head was drawn
+    first, face-on - two triangular ears cut into the outline, the disc snout,
+    two eyes - and the body was then opened out of it to the right, so the
+    barrel, the belly and the four short legs are seen from the side while the
+    face still looks out. That split view is what keeps it apart from the cow it
+    shares the farm with, which faces the camera square on and stands tall.
   -->
   <path
     id="silhouette"
@@ -11,44 +13,50 @@
     stroke="#c47b8e"
     stroke-width="5"
     stroke-linejoin="round"
-    d="M22 128
-       C22 106 40 88 66 82
-       C96 70 150 74 176 96
-       C198 114 200 146 188 164
-       L188 190 Q188 198 178 198 Q168 198 168 190 L168 170
-       L156 172
-       L156 190 Q156 198 146 198 Q136 198 136 190 L136 170
-       C122 174 106 174 94 170
-       L94 190 Q94 198 84 198 Q74 198 74 190 L74 168
-       L64 166
-       L64 190 Q64 198 54 198 Q44 198 44 190 L44 162
-       C32 156 22 144 22 128 Z"
+    d="M78 59.8
+       C88.8 59.8 97.8 62.5 105 67
+       C110.4 58 121.2 52.6 130.2 52.6
+       C135.6 54.4 137.4 61.6 133.8 68.8
+       C130.2 77.8 124.8 83.2 119.4 86.8
+       C138 84 162 84 180 94
+       C204 106 218 128 218 152
+       C218 165 216 173 212 180
+       L212 190 Q212 202 200 202 Q188 202 188 190 L188 180
+       L176 182
+       L176 190 Q176 202 164 202 Q152 202 152 190 L152 180
+       C144 182 132 183 124 182
+       L124 190 Q124 202 112 202 Q100 202 100 190 L100 180
+       L90 178
+       L90 190 Q90 202 78 202 Q66 202 66 190 L66 174
+       C60 160 56.2 139.3 38.4 130.22
+       C29.85 125.95 25.8 120.1 25.8 113.8
+       C25.8 104.8 29.4 94 36.6 86.8
+       C31.2 83.2 25.8 77.8 22.2 68.8
+       C18.6 61.6 20.4 54.4 25.8 52.6
+       C34.8 52.6 45.6 58 51 67
+       C58.2 62.5 67.2 59.8 78 59.8 Z"
   />
   <g id="detail">
+    <!-- inner ears -->
+    <ellipse cx="123" cy="68" rx="7.2" ry="12.6" fill="#e8919f" transform="rotate(34 123 68)" />
+    <ellipse cx="33" cy="68" rx="7.2" ry="12.6" fill="#e8919f" transform="rotate(-34 33 68)" />
+    <!-- eyes -->
+    <circle cx="57" cy="81" r="7.2" fill="#2b3440" />
+    <circle cx="99" cy="81" r="7.2" fill="#2b3440" />
     <!-- snout -->
-    <ellipse cx="43" cy="131" rx="13" ry="15" fill="#e8919f" stroke="#c47b8e" stroke-width="4" />
-    <circle cx="40" cy="125" r="3.5" fill="#a8596c" />
-    <circle cx="40" cy="138" r="3.5" fill="#a8596c" />
-    <!-- eye -->
-    <circle cx="66" cy="112" r="7" fill="#2b3440" />
-    <!-- ear, behind and above the eye where it does not cover the face -->
-    <path
-      d="M78 96 C82 82 96 78 104 86 C106 98 96 110 84 112 C78 112 76 104 78 96 Z"
-      fill="#e8919f"
-      stroke="#c47b8e"
-      stroke-width="4"
-      stroke-linejoin="round"
-    />
-    <!-- trotters -->
-    <g fill="none" stroke="#c47b8e" stroke-width="9" stroke-linecap="round" opacity="0.55">
-      <path d="M50 188 h8" />
-      <path d="M80 188 h8" />
-      <path d="M142 188 h8" />
-      <path d="M174 188 h8" />
+    <ellipse cx="78" cy="112" rx="24" ry="18" fill="#e8919f" stroke="#c47b8e" stroke-width="4" />
+    <ellipse cx="68" cy="112" rx="4.5" ry="6.3" fill="#a8596c" />
+    <ellipse cx="88" cy="112" rx="4.5" ry="6.3" fill="#a8596c" />
+    <!-- trotters, following the silhouette's own toes -->
+    <g fill="#c47b8e">
+      <path d="M188 190 Q188 202 200 202 Q212 202 212 190 Z" />
+      <path d="M152 190 Q152 202 164 202 Q176 202 176 190 Z" />
+      <path d="M100 190 Q100 202 112 202 Q124 202 124 190 Z" />
+      <path d="M66 190 Q66 202 78 202 Q90 202 90 190 Z" />
     </g>
     <!-- curly tail, budgeted overhang -->
     <path
-      d="M192 130 C206 124 212 134 206 142 C200 150 208 158 216 152"
+      d="M214 134 C226 128 232 136 226 144 C221 151 227 158 233 153"
       fill="none"
       stroke="#c47b8e"
       stroke-width="6"

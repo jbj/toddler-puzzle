@@ -674,7 +674,8 @@ describe("the rule a drop is placed by", () => {
     const factor = layout.level.snapForgiveness;
     expect(reach.width).toBeCloseTo(grip.width * factor);
     expect(reach.height).toBeCloseTo(grip.height * factor);
-    expect(boxCenter(reach, reach)).toEqual(boxCenter(grip, grip));
+    expect(boxCenter(reach, reach).x).toBeCloseTo(boxCenter(grip, grip).x);
+    expect(boxCenter(reach, reach).y).toBeCloseTo(boxCenter(grip, grip).y);
   });
 });
 
