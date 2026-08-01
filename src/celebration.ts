@@ -117,10 +117,10 @@ export interface CelebrationStage {
   readonly fxLayer: SVGGElement;
   readonly layout: Layout;
   /**
-   * The pieces the child has just placed - what the finished board is holding,
-   * and so what a celebration may *not* draw. The parade reads it as an
-   * exclusion list rather than as a cast: an animal that is already standing in
-   * its hole must not also be walking over it.
+   * The pieces this level was dealt - what the finished board is holding, and
+   * so what a celebration may *not* draw. The parade reads it as an exclusion
+   * list rather than as a cast: an animal standing in its own hole must not
+   * also be walking over it.
    */
   readonly pieces: readonly PieceShape[];
   /** Every shape the game has, for a parade or a finale to deal from. */

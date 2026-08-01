@@ -73,9 +73,8 @@ describe("which chapter ends with what", () => {
       if (!paradeIn.has(celebrationFor(chapter))) continue;
       const last = LEVELS.filter((level) => level.chapter === chapter).at(-1);
       expect(last, chapter).toBeDefined();
-      expect(animalKinds.has(last?.kind as PuzzleKindId), `${chapter} ends on ${last?.kind}`).toBe(
-        false,
-      );
+      if (!last) continue;
+      expect(animalKinds.has(last.kind), `${chapter} ends on ${last.kind}`).toBe(false);
     }
   });
 });
