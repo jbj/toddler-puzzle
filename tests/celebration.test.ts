@@ -25,6 +25,7 @@ import {
   CHAPTERS,
   LEVELS,
   LEVEL_COUNT,
+  type PuzzleKindId,
   chapterNumber,
   endsChapter,
   levelSpec,
@@ -53,6 +54,27 @@ describe("which chapter ends with what", () => {
     const chapters = new Set<string>(CHAPTERS);
     for (const id of Object.keys(CELEBRATIONS)) {
       expect(chapters.has(id)).toBe(true);
+    }
+  });
+
+  /**
+   * A celebration is never made of what the finished board is made of, and the
+   * parade is made of animals - so it may not end a chapter that finishes on a
+   * board of animals, which is where it used to be. Nothing else here would
+   * notice: the wiring would be perfectly correct and the screen would be two
+   * sets of the same animals. See
+   * [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
+   */
+  it("never walks a parade of animals over a board of animals", () => {
+    const paradeIn = new Set<string>(["parade", FINALE]);
+    const animalKinds = new Set<PuzzleKindId>(["play", "shape-match", "sliced"]);
+    for (const chapter of CHAPTERS) {
+      if (!paradeIn.has(celebrationFor(chapter))) continue;
+      const last = LEVELS.filter((level) => level.chapter === chapter).at(-1);
+      expect(last, chapter).toBeDefined();
+      expect(animalKinds.has(last?.kind as PuzzleKindId), `${chapter} ends on ${last?.kind}`).toBe(
+        false,
+      );
     }
   });
 });

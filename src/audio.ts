@@ -540,7 +540,7 @@ const CHAPTER: Record<CelebrationId, Sounding> = {
   },
   // A tread underneath, because a parade is walked rather than announced.
   parade: {
-    when: "chapter 2 is done and the animals parade",
+    when: "chapter 4 is done and the animals parade",
     phrase: together(
       run([5, 8, 10, 8, 12], { spacing: 0.17, duration: 0.36, gain: 0.13 }),
       run([-5, -2, -5, -2], { spacing: 0.34, duration: 0.3, gain: 0.08, type: "triangle" }),
@@ -557,7 +557,7 @@ const CHAPTER: Record<CelebrationId, Sounding> = {
   // An arch: over the top and down the other side, which is the shape the child
   // is painting a tap at a time.
   rainbow: {
-    when: "chapter 4 is done and a rainbow is painted",
+    when: "chapter 2 is done and a rainbow is painted",
     phrase: together(
       run([5, 7, 9, 10, 12, 10, 9, 7], { spacing: 0.14, duration: 0.42, gain: 0.12 }),
       chord([0, 3], { duration: 1.8, gain: 0.06 }),

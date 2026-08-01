@@ -156,14 +156,18 @@ show a grown-up how far along the set is; they are not a control. See
 [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
 
 **The end of a chapter is a moment, and the end of the game is an ending.** The
-fifth level of every chapter finishes into a celebration - balloons, a parade of
-the animals just matched, blossom, a rainbow the child paints a tap at a time,
+fifth level of every chapter finishes into a celebration - balloons, a rainbow
+the child paints a tap at a time, blossom, a parade of animals to poke,
 fireworks - and level 30 finishes into all of them at once, which never winds
-down. Every one of them is played rather than watched, the button onwards fades
-up a beat in and then stays for the rest of the party, and no clock ever moves
-the child on. The mechanics are in
+down. None of them is ever made of what the finished board is made of, which is
+why the parade walks over the chapter of coloured shapes rather than the chapter
+of animals. Every one of them is played rather than watched, the button onwards
+fades up a beat in and then stays for the rest of the party, and no clock ever
+moves the child on. The mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
-[decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md).
+[decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md)
+and
+[decision 20260801T160000](../../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
 
 **A grown-up can steer, from behind a hold.** Thirty levels and options that
 apply across all of them need somebody who can read to be able to say where the
