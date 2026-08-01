@@ -1093,6 +1093,20 @@ const runningAnimations = () =>
   evaluate(`document.getAnimations().filter((a) => a.playState === 'running').length`);
 
 /**
+ * How many running animations are drawing something that is no longer on the
+ * page. Waking a board that was rebuilt while it slept is where these would
+ * come from, and a board nobody can see is the one thing worse than a board
+ * that moves when it should be still.
+ */
+const orphanAnimations = () =>
+  evaluate(`
+  document
+    .getAnimations()
+    .filter((a) => a.playState === 'running' && a.effect?.target && !a.effect.target.isConnected)
+    .length
+`);
+
+/**
  * How the bright end of a hint is being drawn. A pulse paused wherever the fade
  * had reached could freeze the one thing a stuck child needs to see at its
  * dimmest, so a sleeping hint holds instead - the same as it does for a player
@@ -1684,6 +1698,8 @@ try {
   check("a touch wakes the board", (await isAsleep()) === false);
   const wokeBubbles = await runningAnimations();
   check(`the bubbles move again (${wokeBubbles})`, wokeBubbles > 0);
+  const orphans = await orphanAnimations();
+  check(`and nothing woke up on the board it replaced (${orphans} off the page)`, orphans === 0);
   check(
     "and the touch that woke it popped the bubble it landed on",
     (await activityProgress()).touched > poppedBefore,

@@ -229,7 +229,14 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
     },
     wake() {
       delete root.dataset["asleep"];
-      for (const animation of paused) animation.play();
+      // Only what is still paused. A rebuild while asleep can cancel an
+      // animation out from under the freeze, and `play()` on a cancelled
+      // animation starts it again from the beginning - a state change, on a
+      // board that is no longer on the screen. Resuming is the whole promise
+      // here; restarting is the opposite of it.
+      for (const animation of paused) {
+        if (animation.playState === "paused") animation.play();
+      }
       paused = [];
       restRepeats(false);
       stirAudio();
