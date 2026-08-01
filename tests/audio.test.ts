@@ -14,7 +14,7 @@
  * is `npm run audio:check`, which renders every one of these through a real
  * `OfflineAudioContext` in Chromium and measures it.
  */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as audio from "../src/audio";
 import { CELEBRATIONS, type CelebrationId } from "../src/celebration";
 import type { PuzzleKindId } from "../src/levels";
@@ -453,8 +453,14 @@ function fakeSpeakers(): {
 }
 
 describe("putting the speakers down", () => {
+  /**
+   * A copy of the module all to itself, because this is the one test that lets
+   * `audio.ts` build its own context rather than being handed one: the fake
+   * below would otherwise be left behind in a module-level variable for
+   * everything that ran after it.
+   */
   const withFakeSpeakers = async (
-    run: (speakers: ReturnType<typeof fakeSpeakers>) => Promise<void>,
+    run: (speakers: ReturnType<typeof fakeSpeakers>, module: typeof audio) => Promise<void>,
   ): Promise<void> => {
     const speakers = fakeSpeakers();
     const globals = globalThis as { window?: unknown };
@@ -466,33 +472,34 @@ describe("putting the speakers down", () => {
         }
       },
     };
-    audio.useAudioContext(null);
     try {
-      // What builds the module's context, out of the fake `window` above.
-      audio.unlockAudio();
-      await run(speakers);
+      vi.resetModules();
+      const fresh = (await import("../src/audio")) as typeof audio;
+      // What builds that copy's context, out of the fake `window` above.
+      fresh.unlockAudio();
+      await run(speakers, fresh);
     } finally {
       if (priorWindow === undefined) delete globals.window;
       else globals.window = priorWindow;
-      audio.useAudioContext(ctx as unknown as BaseAudioContext);
+      vi.resetModules();
     }
   };
 
   it("keeps them down when a tab is shown and hidden again in one breath", async () => {
-    await withFakeSpeakers(async (speakers) => {
-      audio.restAudio();
+    await withFakeSpeakers(async (speakers, sound) => {
+      sound.restAudio();
       await speakers.settle();
       expect(speakers.context.state).toBe("suspended");
 
       // Looked at, then hidden again before the resume has been answered.
-      audio.stirAudio();
-      audio.restAudio();
+      sound.stirAudio();
+      sound.restAudio();
       await speakers.settle();
       expect(speakers.context.state).toBe("suspended");
 
       // And the next look still wakes them: the late answer was dropped, not
       // the intention behind it.
-      audio.stirAudio();
+      sound.stirAudio();
       await speakers.settle();
       expect(speakers.context.state).toBe("running");
     });
