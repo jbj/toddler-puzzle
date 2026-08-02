@@ -153,6 +153,13 @@ export function createGame(
    */
   let stopActivity: (() => void) | null = null;
   /**
+   * How to take the drag engine down. It listens on the window as well as on
+   * the stage - a release has to be heard wherever it lands, see `drag.ts` - so
+   * a board that is replaced has to unhook it rather than letting it go with
+   * the element.
+   */
+  let stopDragging: (() => void) | null = null;
+  /**
    * The idle hint watching this board, if this level has one: a level played by
    * touching has nothing to aim at, and a finished level has a celebration on
    * it. Held so that a board being replaced takes its hint with it - see
@@ -534,6 +541,8 @@ export function createGame(
     // into is replaced.
     stopActivity?.();
     stopActivity = null;
+    stopDragging?.();
+    stopDragging = null;
     hint?.stop();
     hint = null;
     stopCelebration?.();
@@ -552,15 +561,16 @@ export function createGame(
     built.stage.addEventListener("pointerdown", () => hint?.stir());
 
     if (!touched) {
-      enableDragging(built.stage, next, {
+      stopDragging = enableDragging(built.stage, next, {
         isDraggable: (piece) => !isPlaced(piece),
         getPosition: (piece) => stateOf(piece).position,
-        onPickUp: (piece, element) => {
+        onPickUp: (piece) => {
           unlockAudio();
           lastTouched = piece;
           // Nothing is hinted at while a piece is in the air, however long it
           // is held there: the child is already doing the thing.
           hint?.pause();
+          const element = elementFor(built.pieces, piece);
           element.classList.add("is-dragging");
           element.classList.remove("is-settling");
           // Re-appending raises the piece above its siblings while it is held.

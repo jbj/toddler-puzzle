@@ -317,6 +317,21 @@ is unplaced, the first unplaced one when it is not, nothing when the board is
 finished, and ignores a `lastTouched` left over from another board. What the
 glow *looks* like is `npm run shot`'s.
 
+`tests/drag.test.ts` covers the drag engine, and almost all of it is the
+sequences that are *not* a clean drag - a release that lands off the stage, a
+capture snatched away, a release that never arrives at all, a second finger
+landing mid-drag, a hidden page, a browser that refuses to capture, and a board
+replaced while a piece is in the air. Each one ends with the same question, and
+it is the one a stuck iPad was answering wrongly: is the next press accepted?
+The rule half (`createDragging`) is pure, so most of it needs nothing but
+points; the wiring is driven through a small fake stage that records which
+listener was registered on which target - the window rather than the stage is
+the whole of the fix, so a check that could not see the target would be no check
+at all. Alongside those it holds the two things a clean drag does owe: the piece
+rides `FINGER_LIFT` above the finger, and its own box stays on the canvas
+however far the finger goes. What a real drag does in a real browser is
+`npm run shot`'s.
+
 `tests/rest.test.ts` covers what the game does when nobody is playing it, in the
 same shape: the wait is a state machine with its timers passed in, so two idle
 minutes are played out in a microsecond. The counters are the point - freezing a

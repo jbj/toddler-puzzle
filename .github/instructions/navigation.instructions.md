@@ -448,6 +448,20 @@ means. Neither is started for a level played by touching. Between them:
   accepted or refused - the difference is where it settles, not how abruptly.
 - Which tray slot each piece belongs to is remembered in the host and survives a
   re-layout, so rotating the device mid-puzzle does not lose progress.
+- **A drag ends however the finger goes away, and a press is never refused.**
+  The engine holds a drag but gates nothing on one: a press on a piece that can
+  be picked up drops whatever was held and takes the new piece, so two hands
+  cannot deadlock; the release is heard on the *window* in the capture phase
+  rather than on the stage, so a lift on the safe-area strip still counts;
+  `lostpointercapture` is a drop; and the page being hidden or unloaded lets go
+  of the piece. Do not put the release back on the stage, and do not restore a
+  press that returns early because something else is notionally still down -
+  that is precisely how a toddler's several fingers used to leave the board
+  dead until it was re-dealt. The rule half (`createDragging`) is pure and
+  covered by `tests/drag.test.ts`; the reasoning is
+  [decision 20260802T170000](../../docs/decisions/20260802T170000-a-drag-ends-however-the-finger-goes-away.md).
+- `enableDragging` returns its teardown, and `game.ts` calls it when a board is
+  replaced. Its listeners are on the window, so they do not go with the stage.
 
 ## Toddler-proofing
 
@@ -459,7 +473,10 @@ all deliberate, and each one is load-bearing:
 - `maximum-scale=1.0, user-scalable=no` in `index.html`, so pinch and double-tap
   cannot zoom the board away;
 - `contextmenu` and `dragstart` are prevented in `src/drag.ts`, because a
-  long-press menu or a native image drag both interrupt play.
+  long-press menu or a native image drag both interrupt play;
+- a `pointerdown` arriving while a piece is held is prevented whatever it landed
+  on, so an extra finger cannot start a native gesture over a drag - which is
+  one of the things that makes WebKit drop the first finger's release.
 
 ## Repeatable runs
 
