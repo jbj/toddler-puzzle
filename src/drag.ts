@@ -229,6 +229,16 @@ export function enableDragging(
     dragging.release(event.pointerId);
   };
 
+  // A second finger can land off the stage (safe-area strip) while a piece is
+  // held. Prevent the browser from turning that press into a native gesture.
+  view.addEventListener(
+    "pointerdown",
+    (event: PointerEvent) => {
+      if (dragging.holding() === null) return;
+      event.preventDefault();
+    },
+    anywhere,
+  );
   view.addEventListener("pointerup", finish, anywhere);
   view.addEventListener("pointercancel", finish, anywhere);
   // The capture being taken away is the piece being taken away: carrying on

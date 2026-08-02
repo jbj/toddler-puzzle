@@ -241,6 +241,10 @@ class FakeTarget {
       listener.run(event);
     }
   }
+
+  forType(type: string): readonly Listener[] {
+    return this.listeners.get(type) ?? [];
+  }
 }
 
 /** Enough of an element for `closest(".piece")` and `dataset` to work. */
@@ -356,6 +360,11 @@ describe("the drag wiring", () => {
     const kit = recorder();
     record = kit.record;
     stop = enableDragging(stage.stage as unknown as SVGSVGElement, LAYOUT, kit.callbacks);
+
+    for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel"] as const) {
+      expect(stage.view.forType(type)).toHaveLength(1);
+      expect(stage.view.forType(type)[0]?.capture).toBe(true);
+    }
   });
 
   it("hears a release that lands anywhere but the stage", () => {
@@ -410,6 +419,16 @@ describe("the drag wiring", () => {
     // the browser may turn into a scroll or a zoom.
     const stray = pointerEvent(2, MIDDLE, stage.stage);
     stage.stage.fire("pointerdown", stray);
+
+    expect(stray.prevented).toBe(true);
+    expect(record.dropped).toEqual([]);
+    expect(record.pickedUp).toEqual([FIRST]);
+  });
+
+  it("prevents a second finger even when it lands off the stage", () => {
+    pressOn(FIRST, 1);
+    const stray = pointerEvent(2, MIDDLE);
+    stage.view.fire("pointerdown", stray);
 
     expect(stray.prevented).toBe(true);
     expect(record.dropped).toEqual([]);
