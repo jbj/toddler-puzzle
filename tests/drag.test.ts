@@ -251,10 +251,8 @@ class FakeElement extends FakeTarget {
 
   closest(selector: string): FakeElement | null {
     const wanted = selector.replace(".", "");
-    for (let node: FakeElement | null = this; node; node = node.parent) {
-      if (node.className.split(" ").includes(wanted)) return node;
-    }
-    return null;
+    if (this.className.split(" ").includes(wanted)) return this;
+    return this.parent?.closest(selector) ?? null;
   }
 }
 
