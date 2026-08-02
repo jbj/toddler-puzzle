@@ -1865,7 +1865,9 @@ try {
       return (r.width * r.height) / (window.innerWidth * window.innerHeight);
     })()
   `);
-  check(`portrait fills the screen (${(coverage * 100).toFixed(0)}%)`, coverage > 0.75);
+  // All of it, not most of it: the canvas is composed for the window, so the
+  // only thing left over is the half unit the long side is rounded to.
+  check(`portrait fills the screen (${(coverage * 100).toFixed(1)}%)`, coverage > 0.99);
 
   await solveRemaining();
   check("dragging works in the portrait layout", (await placedCount()) === 6);
@@ -2516,17 +2518,19 @@ try {
   check("and on the kind that was missing", (await kindName()) === "polygon");
   await shot("36-chunk-arrived-after-reconnect");
 
-  // --- the iPad, at its real sizes ------------------------------------------
-  // iPad is the target device. The board is one of two fixed canvases scaled to
-  // the viewport with `meet`, so the device's aspect ratio only chooses
-  // portrait or landscape and the rest is letterbox. That is easy to reason
-  // about wrongly, so this drives Chromium to the real iPad point sizes and
-  // looks: the whole board on screen, a piece still a tenth of the short side
-  // once the letterbox scale is applied, and how much of the screen is left as
-  // letterbox. A 4:3 iPad in portrait pillarboxes the 1:1.7 canvas - the floors
-  // hold, but the sides go spare - which is a thing to see rather than to hide.
-  // Split View is the narrow width a multitasking iPad can hand the game, and
-  // the case most likely to break a layout. See the iPad decision record.
+  // --- real screens, at their real sizes ------------------------------------
+  // iPad is the target device. The board is composed for the box it is drawn
+  // in - short side always 700 logical units, long side whatever the screen
+  // asks for - so a screen of any shape gets a board of its own shape and there
+  // is no letterbox left to measure. That is easy to reason about wrongly, so
+  // this drives Chromium to the real iPad point sizes and looks: the whole
+  // board on screen, a piece still a tenth of the short side once the scale is
+  // applied, and the board covering essentially all of the screen. Split View
+  // is the narrow width a multitasking iPad can hand the game, and the case
+  // most likely to break a layout. The last two are not devices at all: one
+  // very wide screen and one very tall one, here because nothing special-cases
+  // an extreme ratio and the shot is how a reviewer sees what one looks like.
+  // See the iPad decision record and the screen-shaped board record.
   await send("Network.setBlockedURLs", { urls: [] });
   await setOffline(false);
   const iPads = [
@@ -2537,6 +2541,8 @@ try {
     ["ipad-13-portrait", 1024, 1366, "portrait"],
     ["ipad-13-landscape", 1366, 1024, "landscape"],
     ["ipad-split-view", 375, 1024, "portrait"],
+    ["very-wide", 2400, 800, "landscape"],
+    ["very-tall", 700, 1600, "portrait"],
   ];
   for (const [name, width, height, orientation] of iPads) {
     await setViewport(width, height);
@@ -2569,12 +2575,13 @@ try {
       `${name}: a piece stays big enough to grab (${((board.smallestPiece / board.shortSide) * 100).toFixed(0)}% of the short side)`,
       board.smallestPiece > 0 && board.smallestPiece / board.shortSide >= 0.1,
     );
-    // Portrait on a 4:3 iPad pillarboxes the 1:1.7 canvas, so the sides go
-    // spare; landscape nearly fills. Reported so the letterbox is a number a
-    // reviewer can see next to the screenshot, not a surprise.
+    // The whole screen, whatever its shape. This used to be a letterbox measured
+    // as a number a reviewer could see next to the screenshot - a 4:3 iPad in
+    // portrait spent a fifth of itself on bars - and the number is now the point
+    // rather than the apology.
     check(
-      `${name}: board covers ${(board.coverage * 100).toFixed(0)}% of the screen`,
-      board.coverage >= 0.55,
+      `${name}: board covers ${(board.coverage * 100).toFixed(1)}% of the screen`,
+      board.coverage >= 0.99,
     );
     await shot(`37-${name}`);
   }

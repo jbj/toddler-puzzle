@@ -79,7 +79,34 @@ interface PieceState {
   position: Point;
 }
 
-const viewport = (): Size => ({ width: window.innerWidth, height: window.innerHeight });
+/** A CSS length in pixels, or zero for anything that will not parse. */
+function pixels(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * The box the board is drawn in, which the layout is composed for.
+ *
+ * The element's *content* box rather than the window: `#app` is padded by the
+ * safe-area insets, so on a notched screen the two differ, and a board composed
+ * for the window would letterbox itself inside the very margin the inset
+ * bought. `clientWidth` counts the padding whichever way `box-sizing` falls, so
+ * the padding comes off by hand; a box that measures as nothing - jsdom, or a
+ * board asked about before it is laid out - falls back to the window, which is
+ * the right answer whenever there is no inset and the old one everywhere else.
+ */
+function boxOfElement(element: HTMLElement): Size {
+  const style = element.ownerDocument.defaultView?.getComputedStyle(element);
+  const across = style ? pixels(style.paddingLeft) + pixels(style.paddingRight) : 0;
+  const down = style ? pixels(style.paddingTop) + pixels(style.paddingBottom) : 0;
+  const width = element.clientWidth - across;
+  const height = element.clientHeight - down;
+  return {
+    width: width > 0 ? width : window.innerWidth,
+    height: height > 0 ? height : window.innerHeight,
+  };
+}
 
 export interface GameOptions {
   /**
@@ -165,6 +192,14 @@ export function createGame(
    * from another board is ignored by `hintPiece` rather than trusted.
    */
   let lastTouched: PieceId | null = null;
+  /**
+   * The piece in the air right now, if the child is carrying one. Only ever the
+   * answer to "would rebuilding the board take something out of a hand" - see
+   * `relayout`, which waits for the hand to be empty.
+   */
+  let held: PieceId | null = null;
+  /** A rebuild the screen has asked for and a held piece is holding up. */
+  let relayoutWaiting = false;
   /**
    * The celebration this level ended with, if it ended a chapter. It outlives
    * the board so that turning the tablet mid-party keeps the arcs of a rainbow
@@ -507,7 +542,7 @@ export function createGame(
     // by the time there is anything to celebrate.
     if (endsChapter(levelNumber, kindsInPlay())) void loadCelebration().catch(() => null);
     puzzle = kind.deal({ level, shapes }, random);
-    layout = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
+    layout = chooseLayout(boxOfElement(root), level, puzzle.pieces, puzzle.targets);
     board = mount(layout);
     state.clear();
     // Where a piece waits is settled by the deal rather than shuffled here: a
@@ -542,6 +577,8 @@ export function createGame(
     cancelFinishButton = null;
 
     const touched = kind.play !== undefined;
+    // Whatever was in the air belonged to the board being replaced.
+    held = null;
     const built = buildBoard(root, next, { pieces: !touched });
 
     // Before the drag engine, so that a press which turns out to be a piece
@@ -558,6 +595,7 @@ export function createGame(
         onPickUp: (piece, element) => {
           unlockAudio();
           lastTouched = piece;
+          held = piece;
           // Nothing is hinted at while a piece is in the air, however long it
           // is held there: the child is already doing the thing.
           hint?.pause();
@@ -569,6 +607,7 @@ export function createGame(
         },
         onMove: (piece, position) => moveTo(piece, position, false),
         onDrop: (piece, position) => {
+          held = null;
           elementFor(built.pieces, piece).classList.remove("is-dragging");
           if (kind.accepts(puzzle, layout, piece, position)) {
             // The drop point is the last the kind hears of where the finger was;
@@ -582,6 +621,10 @@ export function createGame(
             // wait starts again from here rather than carrying on.
             hint?.stir();
           }
+          // The hand is empty again, so a screen that changed shape mid-drag
+          // gets its rebuild now - after the drop has been judged, so the piece
+          // lands where the child aimed it and then the board reshapes.
+          if (relayoutWaiting) relayout();
         },
       });
     }
@@ -607,10 +650,28 @@ export function createGame(
     return built;
   }
 
-  /** Rebuild for a new orientation, keeping progress intact. */
+  /**
+   * Rebuild for a screen that has changed shape, keeping progress intact.
+   *
+   * The board is composed for the box it is drawn in rather than for one of two
+   * orientations, so this compares the *canvas* - a turned tablet, a resized
+   * window and a browser collapsing its address bar all land here alike, and a
+   * screen whose shape did not really change still costs nothing.
+   */
   function relayout(): void {
-    const next = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
-    if (next.id === layout.id) return;
+    const next = chooseLayout(boxOfElement(root), level, puzzle.pieces, puzzle.targets);
+    if (next.canvas.width === layout.canvas.width && next.canvas.height === layout.canvas.height) {
+      relayoutWaiting = false;
+      return;
+    }
+    // Never out from under a held piece. Rebuilding the board replaces the
+    // element the finger is carrying, so a phone collapsing its address bar
+    // part way through a drag would drop the animal a child was holding.
+    if (held !== null) {
+      relayoutWaiting = true;
+      return;
+    }
+    relayoutWaiting = false;
     layout = next;
     board = mount(layout);
     render();
