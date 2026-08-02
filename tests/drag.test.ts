@@ -263,8 +263,20 @@ class FakeGroup extends FakeElement {}
 // exist outside a browser. Pointing them at the fakes is what lets the real
 // wiring run here at all.
 const browserGlobals = globalThis as unknown as Record<string, unknown>;
+const originalElement = browserGlobals["Element"];
+const originalGroup = browserGlobals["SVGGElement"];
+
 browserGlobals["Element"] = FakeElement;
 browserGlobals["SVGGElement"] = FakeGroup;
+
+const { afterAll } = await import("vitest");
+afterAll(() => {
+  if (originalElement === undefined) delete browserGlobals["Element"];
+  else browserGlobals["Element"] = originalElement;
+
+  if (originalGroup === undefined) delete browserGlobals["SVGGElement"];
+  else browserGlobals["SVGGElement"] = originalGroup;
+});
 
 interface Stage {
   readonly stage: FakeElement;
