@@ -20,7 +20,8 @@ level - sound, sparkles, the hint, drag, rest - is in
 - Finishing a level clears the tray and puts one big button in it, leading to the
   next level. A touch level has no tray to clear; the same button appears in the
   same place. Every level with a puzzle in it puts that button on top of a
-  celebration, and holds it back for the length of one.
+  celebration, and holds it back `WAY_OUT_MS` (4.5 s) rather than putting it up
+  in the same tick - a fraction of the celebration, which runs on long after.
 - The button after the last level starts the game over (`nextLevel` in
   `src/levels.ts` wraps).
 - No menu, difficulty picker, settings, failure state or score on the play

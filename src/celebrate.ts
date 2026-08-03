@@ -1,8 +1,11 @@
 /**
- * Reward feedback: sparkles when a level is finished, and the big button in the
- * now-empty tray that leads on to the next puzzle - which arrives `WAY_OUT_MS`
- * after the level ends rather than at once, so there is a moment between one
- * puzzle and the next.
+ * Reward feedback: the sparkles, and the big button in the now-empty tray that
+ * leads on to the next puzzle - which arrives `WAY_OUT_MS` after the level ends
+ * rather than at once, so there is a moment between one puzzle and the next.
+ *
+ * A sparkle is the game's yes. `sparkleBurst` marks a piece landing, a bubble
+ * bursting and a thing in a celebration answering a finger; `celebrationBurst`
+ * throws a screenful of them and is what a finished level opens with.
  *
  * The sparkles are the only thing here. What comes down over the board behind
  * them - balloons, beach balls, paper, ribbon - is a celebration, and lives in
