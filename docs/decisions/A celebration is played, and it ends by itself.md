@@ -62,10 +62,11 @@ will press it before they have registered that anything else changed. For those
 children the feature would not exist. A conditioned response beats a novel
 stimulus when both arrive together; it does not beat one that got there first.
 
-So on a chapter end - and only there - the button holds back for
-`FINISH_BUTTON_BEAT_MS` (now `WAY_OUT_MS`, and longer) and then fades up over
-about half a second, by which
-time balloons are already rising and one has usually been popped. Nothing is
+So the button holds back for `FINISH_BUTTON_BEAT_MS` and then fades up over
+about half a second, by which time balloons are already rising and one has
+usually been popped. (On a chapter end and only there, when this was written;
+the record above took the beat to every celebration, lengthened it, and renamed
+the constant `WAY_OUT_MS`.) Nothing is
 taken away by this. The celebration itself answers a finger from its very first
 frame, so the beat is never a wait for *permission to play*, only for permission
 to leave, and it costs a child who genuinely wants out under two seconds. The
