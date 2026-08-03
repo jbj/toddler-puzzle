@@ -16,6 +16,7 @@ import {
   type Rect,
 } from "../src/geometry";
 import {
+  REFERENCE_VIEWS,
   boxOf,
   buildLayout,
   buildLevelLayout,
@@ -23,7 +24,9 @@ import {
   gripCentre,
   holeOf,
   onTarget,
+  spanWidth,
   trayHome,
+  viewFor,
   waitingInk,
   type Layout,
 } from "../src/layout";
@@ -871,15 +874,22 @@ const PROMISES = {
 
   // A piece narrower than a tenth of the canvas is a fiddly target for a small
   // hand, however many pieces the level asks for.
+  //
+  // Measured against the canvas's *nominal* width rather than its real one, for
+  // the reason `spanWidth` exists: a canvas is composed for the screen, so on a
+  // very wide one the real width is mostly extra meadow and a share of it would
+  // shrink as the screen got roomier. On either reference canvas the two are
+  // the same number, so this is the check it has always been.
   "keeps every piece big enough for a toddler to grab": (layout) => {
-    if (layout.slotSize / layout.canvas.width <= 0.1) {
-      return `a ${layout.slotSize} slot on a ${layout.canvas.width} canvas is too small to grab`;
+    const span = spanWidth(layout.canvas);
+    if (layout.slotSize / span <= 0.1) {
+      return `a ${layout.slotSize} slot on a ${span} canvas is too small to grab`;
     }
     // The slot is what a target is drawn to; what a hand has to find is the
     // piece's own drawing, which for a slice is a fraction of that.
     return firstComplaint(
       waitingOf(layout).map(({ shape, drawn }) => {
-        const share = Math.max(drawn.width, drawn.height) / layout.canvas.width;
+        const share = Math.max(drawn.width, drawn.height) / span;
         return share > 0.08 ? null : `${shape.id} draws ${(share * 100).toFixed(1)}% of the canvas`;
       }),
     );
@@ -1396,49 +1406,60 @@ describe("how big the board gets", () => {
 });
 
 /**
- * The board on an iPad, driven at the real viewport sizes rather than reasoned
- * about. `chooseLayout` picks an orientation from the viewport and then composes
- * on one of two fixed canvases; the canvas letterboxes into the viewport with
- * `xMidYMid meet`. An iPad is nearer 1:1.4 than the portrait canvas's 1:1.7, so
- * portrait pillarboxes - the floors are canvas-relative and still hold, but the
- * board does not fill the screen. This measures that waste as a number rather
- * than letting it drift, and proves a piece stays grabbably large in *device*
- * pixels once the letterbox scale is applied. Split View and Slide Over are the
- * narrow widths a multitasking iPad can hand the game, and the case most likely
- * to break a layout, so they are swept too.
+ * The board on a real device, driven at the viewport sizes rather than reasoned
+ * about. The canvas is composed for the box it is drawn in, so what this checks
+ * is that nothing is left over: the board covers the screen it was given, is
+ * never cropped by it, and a piece is still grabbably large in *device* pixels
+ * once the scale is applied. Split View and Slide Over are the narrow widths a
+ * multitasking iPad can hand the game, and the case most likely to break a
+ * layout, so they are swept too.
+ *
+ * This suite used to measure the letterbox instead: an iPad is nearer 1:1.4
+ * than the old portrait canvas's 1:1.7, so a fifth of the screen was bar. The
+ * floors were 0.61 to 0.99 of the screen covered. They are all but 1 now, and
+ * that difference is the whole change. See
+ * docs/decisions/20260801T190000-the-board-is-composed-for-the-screen.md.
  */
-describe("on an iPad", () => {
+describe("on a real screen", () => {
   const dealt = (level: LevelSpec, run: number): Puzzle =>
     kindFor(level).deal({ level, shapes: SHAPES }, seededRandom(level.level * 101 + run));
 
   const DEALS = 8;
 
   /**
-   * `name`, the viewport in CSS points, the orientation the game must pick, and
-   * the least of the screen the board may cover once it has letterboxed. The
-   * coverage floors are measured from this suite, shaded down a hair; a smaller
-   * number than the one measured is a finding to look at, not to paper over.
+   * `name`, the viewport in CSS points, and the orientation the game must pick.
+   *
+   * Coverage is not tabulated any more because there is nothing left to
+   * tabulate: the canvas has the viewport's own ratio to within the half unit
+   * the long side is rounded to, so every one of these covers essentially all
+   * of its screen and the floor below is one number for the lot.
    */
-  const IPAD_VIEWPORTS: readonly (readonly [
+  const VIEWPORTS: readonly (readonly [
     string,
     { width: number; height: number },
     "landscape" | "portrait",
-    number,
   ])[] = [
-    ["mini portrait", { width: 768, height: 1024 }, "portrait", 0.785],
-    ["mini landscape", { width: 1024, height: 768 }, "landscape", 0.93],
-    ['11" portrait', { width: 834, height: 1194 }, "portrait", 0.845],
-    ['11" landscape', { width: 1194, height: 834 }, "landscape", 0.99],
-    ['13" portrait', { width: 1024, height: 1366 }, "portrait", 0.785],
-    ['13" landscape', { width: 1366, height: 1024 }, "landscape", 0.93],
+    ["mini portrait", { width: 768, height: 1024 }, "portrait"],
+    ["mini landscape", { width: 1024, height: 768 }, "landscape"],
+    ['11" portrait', { width: 834, height: 1194 }, "portrait"],
+    ['11" landscape', { width: 1194, height: 834 }, "landscape"],
+    ['13" portrait', { width: 1024, height: 1366 }, "portrait"],
+    ['13" landscape', { width: 1366, height: 1024 }, "landscape"],
     // Split View one-third and Slide Over: far narrower than the device, and
     // always taller than wide, so the game reflows to portrait.
-    ["split view narrow", { width: 375, height: 1024 }, "portrait", 0.61],
-    ["slide over", { width: 320, height: 768 }, "portrait", 0.7],
+    ["split view narrow", { width: 375, height: 1024 }, "portrait"],
+    ["slide over", { width: 320, height: 768 }, "portrait"],
+    // A phone and a laptop, which are the two shapes furthest from either of
+    // the canvases the game used to have.
+    ["phone portrait", { width: 390, height: 844 }, "portrait"],
+    ["laptop", { width: 1440, height: 900 }, "landscape"],
   ];
 
-  for (const [name, viewport, orientation, coverageFloor] of IPAD_VIEWPORTS) {
-    it(`picks ${orientation} for ${name} and keeps a grabbable board`, () => {
+  /** A board may leave this little of the screen uncovered: rounding, and no more. */
+  const COVERAGE_FLOOR = 0.998;
+
+  for (const [name, viewport, orientation] of VIEWPORTS) {
+    it(`fills ${name} with a grabbable board`, () => {
       const level = levelSpec(1);
       const chosen = chooseLayout(viewport, level, dealt(level, 0).pieces);
       expect(chosen.id).toBe(orientation);
@@ -1448,7 +1469,8 @@ describe("on an iPad", () => {
         for (let run = 0; run < DEALS; run++) {
           const puzzle = dealt(spec, run);
           if (puzzle.pieces.length === 0) continue;
-          const layout = buildLevelLayout(orientation, spec, puzzle.pieces, puzzle.targets);
+          const layout = chooseLayout(viewport, spec, puzzle.pieces, puzzle.targets);
+          expect(layout.id).toBe(orientation);
           const scale = fitScale(viewport, layout.canvas);
           const shown = {
             width: layout.canvas.width * scale,
@@ -1461,8 +1483,8 @@ describe("on an iPad", () => {
           expect(shown.height).toBeLessThanOrEqual(viewport.height + 1);
 
           // A piece stays over a tenth of the short side of the screen once the
-          // letterbox scale is applied - the "large things for small hands"
-          // invariant, measured in device pixels rather than canvas units.
+          // scale is applied - the "large things for small hands" invariant,
+          // measured in device pixels rather than canvas units.
           const shortSide = Math.min(viewport.width, viewport.height);
           expect(layout.slotSize * scale).toBeGreaterThanOrEqual(0.1 * shortSide);
 
@@ -1472,7 +1494,124 @@ describe("on an iPad", () => {
           );
         }
       }
-      expect(worstCoverage).toBeGreaterThanOrEqual(coverageFloor);
+      expect(worstCoverage).toBeGreaterThanOrEqual(COVERAGE_FLOOR);
+    });
+  }
+});
+
+/**
+ * Every shape of screen, which is the claim the composition now makes: not two
+ * canvases and a border, but a canvas for whatever the screen is.
+ *
+ * Three things are asked of every ratio from 1:3 to 3:1, across all thirty
+ * levels and several deals. That the board composes at all - `arrange` throws
+ * when no plan clears the piece floors, and a refusal is a child looking at a
+ * level that will not open. That every promise a composition makes still holds,
+ * so a strange ratio is not quietly a different game. And that a piece is never
+ * *smaller in device pixels* than the two fixed canvases would have drawn it on
+ * that same screen: "no worse than today" as a measurement rather than a hope,
+ * with the old arrangement computed from the reference views rather than
+ * remembered.
+ *
+ * Ratios past these are not special-cased anywhere and are not swept here; the
+ * rule simply goes on running, and a 1:4 screen gets a very long thin board.
+ */
+describe("on a screen of any shape", () => {
+  const dealt = (level: LevelSpec, run: number): Puzzle =>
+    kindFor(level).deal({ level, shapes: SHAPES }, seededRandom(level.level * 101 + run));
+
+  const RATIOS = [1, 4 / 3, 1000 / 700, 16 / 9, 2.4, 3];
+  const DEALS = 2;
+  /** The screen's short side in device pixels; the long side follows the ratio. */
+  const SHORT = 800;
+
+  /**
+   * How much of a piece's size, in device pixels, a screen-shaped board has to
+   * keep against the letterboxed one it replaces. Measured across every level,
+   * deal and ratio, and it only bites near square:
+   *
+   * - Between 1:1 and 4:3 *wide*, a picture level's tray stops winning its
+   *   place down the gutters (`gutterGain`) and moves to a band across the top,
+   *   which is a step down of up to a tenth wherever it lands near the
+   *   threshold. The letterboxed board was on the lucky side of the same rule.
+   * - Between 1:1.33 and 1:1.6 *tall*, a two-row board on a squarer canvas has
+   *   less height per unit of width than the old 7:11.8 one did, and the extra
+   *   scale does not quite pay for the row.
+   *
+   * Bought with a quarter to a third more screen covered, a tray at the edge of
+   * the device rather than the edge of a bar, and the scenery filling the
+   * screen. Anything past 16:9 in either direction keeps its size exactly.
+   * Lowering this number is a decision: it is a piece getting smaller.
+   */
+  const KEPT_SIZE = 0.93;
+
+  const screens = RATIOS.flatMap((ratio) => [
+    { name: `wide ${ratio.toFixed(2)}:1`, ratio, width: Math.round(SHORT * ratio), height: SHORT },
+    { name: `tall 1:${ratio.toFixed(2)}`, ratio, width: SHORT, height: Math.round(SHORT * ratio) },
+  ]);
+
+  /** Every level and deal composed for one screen, which most checks below share. */
+  const boardsOn = (screen: { width: number; height: number }): Layout[] =>
+    LEVELS.flatMap((spec) =>
+      Array.from({ length: DEALS }, (_, run) => dealt(spec, run))
+        .filter((puzzle) => puzzle.pieces.length > 0)
+        .map((puzzle) => buildLevelLayout(viewFor(screen), spec, puzzle.pieces, puzzle.targets)),
+    );
+
+  const smallestInk = (layout: Layout): number =>
+    Math.min(
+      ...layout.pieces.map((piece) => {
+        const ink = waitingInk(layout, piece.id);
+        return Math.max(ink.width, ink.height);
+      }),
+    );
+
+  for (const screen of screens) {
+    it(`composes every level on a ${screen.name} screen`, () => {
+      // The refusal is a throw, so composing the lot without one is the check.
+      expect(boardsOn(screen).length).toBeGreaterThan(0);
+    });
+
+    it(`keeps every promise on a ${screen.name} screen`, () => {
+      const complaints = boardsOn(screen).flatMap((layout) =>
+        PROMISED.flatMap(([name, promise]) => {
+          const complaint = promise(layout);
+          return complaint === null ? [] : [`${screen.name} ${layout.id}: ${name}: ${complaint}`];
+        }),
+      );
+      expect(complaints).toEqual([]);
+    });
+
+    it(`fills a ${screen.name} screen with no border`, () => {
+      for (const layout of boardsOn(screen)) {
+        const scale = fitScale(screen, layout.canvas);
+        expect(layout.canvas.width * scale).toBeGreaterThanOrEqual(screen.width - 1);
+        expect(layout.canvas.height * scale).toBeGreaterThanOrEqual(screen.height - 1);
+      }
+    });
+
+    it(`draws nothing smaller on a ${screen.name} screen than the two canvases did`, () => {
+      const before = REFERENCE_VIEWS[screen.height > screen.width ? "portrait" : "landscape"];
+      for (const spec of LEVELS) {
+        for (let run = 0; run < DEALS; run++) {
+          const puzzle = dealt(spec, run);
+          if (puzzle.pieces.length === 0) continue;
+          const now = buildLevelLayout(viewFor(screen), spec, puzzle.pieces, puzzle.targets);
+          const was = buildLevelLayout(before, spec, puzzle.pieces, puzzle.targets);
+          const nowScale = fitScale(screen, now.canvas);
+          const wasScale = fitScale(screen, was.canvas);
+          const where = `level ${spec.level} on ${screen.name}`;
+          // Device pixels on both sides: canvas units are not comparable
+          // between two differently shaped canvases, but what a hand has to
+          // find is.
+          expect(now.slotSize * nowScale, where).toBeGreaterThanOrEqual(
+            was.slotSize * wasScale * KEPT_SIZE,
+          );
+          expect(smallestInk(now) * nowScale, where).toBeGreaterThanOrEqual(
+            smallestInk(was) * wasScale * KEPT_SIZE,
+          );
+        }
+      }
     });
   }
 });
@@ -1637,7 +1776,7 @@ describe("chooseLayout", () => {
     expect(() => chooseLayout({ width: 390, height: 844 }, one, cast(three))).toThrow();
   });
 
-  it("fills a decent share of the viewport in both orientations", () => {
+  it("fills the viewport, whatever shape it is", () => {
     const cases = [
       { width: 1280, height: 800 },
       { width: 390, height: 844 },
@@ -1650,8 +1789,10 @@ describe("chooseLayout", () => {
         const used =
           (layout.canvas.width * scale * layout.canvas.height * scale) /
           (viewport.width * viewport.height);
-        // Letterboxing a landscape canvas into a phone would score ~0.4 here.
-        expect(used).toBeGreaterThan(0.75);
+        // Letterboxing a landscape canvas into a phone would score ~0.4 here,
+        // and the two fixed canvases scored 0.75 to 0.93 on these three. What
+        // is left now is the half unit the canvas's long side rounds to.
+        expect(used).toBeGreaterThan(0.998);
       }
     }
   });

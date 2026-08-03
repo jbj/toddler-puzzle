@@ -19,9 +19,10 @@ Layouts are composed rather than tabulated, so what is worth testing is the
 promise, not the output. `PROMISES` in `tests/puzzle.test.ts` is a table of them
 - each takes a layout and returns what is wrong with it, or null - and each is
 checked against every layout in `COMPOSED`: every piece count a level could ask
-for, in both orientations, over several random casts each. A new property goes
-in that table and is checked everywhere for free; a new piece count needs
-nothing.
+for, in both orientations, over several random casts each - and again over a
+spread of screen ratios, because the canvas is composed for the screen it is on
+rather than picked from two. A new property goes in that table and is checked
+everywhere for free; a new piece count needs nothing.
 
 Two kinds of cast are dealt into it. `animalCast` is the real animals in a random
 order, repeating the list when a count runs past it. `oddCast` is pieces of no
@@ -87,8 +88,10 @@ hole, never accepts anybody else's, and only finishes when the last piece is in
 targets stay on canvas and clear of the tray, every piece stands on one of the
 layout's ground lines, no piece reaches another's place, tray slots never
 collide, never overlap another piece's box or let a piece go home from the tray,
-pieces stay big enough to grab, and each
-orientation fills at least 75% of its viewport. Alongside those it checks what
+pieces stay big enough to grab, and the board
+fills its viewport whatever shape the viewport is - swept from 1:3 to 3:1, where
+it also holds every piece to within 7% of the size the two fixed canvases would
+have drawn it in device pixels. Alongside those it checks what
 composing is *for*: the same cast composes twice the same, a fuller board never
 gets bigger pieces, portrait stacks more rows than landscape spreads, and a cast
 too big to compose above the grabbable size is refused rather than shrunk away.
