@@ -467,7 +467,10 @@ means. Neither is started for a level played by touching. Between them:
   window, a phone collapsing its address bar - and rebuilding replaces the
   element a finger is carrying. `game.ts` remembers the held piece from the drag
   callbacks and defers the rebuild until the piece is let go and its drop has
-  been judged. See
+  been judged - but never from inside the drop itself, since the newest finger
+  wins and a drop may be the first half of a press. The rebuild is queued a tick
+  later, by which time the press has finished and a hand that filled again
+  defers it once more. See
   [decision 20260801T190000](../../docs/decisions/20260801T190000-the-board-is-composed-for-the-screen.md).
 
 ## Toddler-proofing

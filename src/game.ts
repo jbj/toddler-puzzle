@@ -632,9 +632,13 @@ export function createGame(
             hint?.stir();
           }
           // The hand is empty again, so a screen that changed shape mid-drag
-          // gets its rebuild now - after the drop has been judged, so the piece
-          // lands where the child aimed it and then the board reshapes.
-          if (relayoutWaiting) relayout();
+          // gets its rebuild - after the drop has been judged, so the piece
+          // lands where the child aimed it and then the board reshapes. Not
+          // here and now, though: the newest finger wins, so this drop may be
+          // the first half of a press, and rebuilding inside it would pull the
+          // board out from under the piece being picked up. A tick later the
+          // press has finished, and if it took a piece the rebuild waits again.
+          if (relayoutWaiting) queueMicrotask(relayout);
         },
       });
     }
