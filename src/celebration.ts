@@ -621,6 +621,12 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
     const second = POP_COLOURS[(thrown + 2) % POP_COLOURS.length] as string;
     const opening = thrown < options.at;
     const lane = (thrown + 0.5) / options.at;
+    // Which note this ball is on. It starts where the ball was minted, so two
+    // in the air at once rarely sound alike, and it steps on every bounce -
+    // `playBoing` takes a step precisely so that batting one ball about does
+    // not give one note over and over, which is far more of the sound of this
+    // act than meeting a new ball is.
+    let note = thrown;
     thrown++;
 
     const thing = touchable("ball", () => bounce());
@@ -653,6 +659,7 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
     let base: Point = { x: 0, y: 0 };
     let arc = { dx: 0, dy: 0, rise: 0, ms: 1 };
     let flight: Animation | null = null;
+    let spinning: Animation | null = null;
 
     function place(at: Point): void {
       base = at;
@@ -671,6 +678,7 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
       if (gone) return;
       gone = true;
       flight?.cancel();
+      spinning?.cancel();
       thing.remove();
       live.delete(take);
       handOn();
@@ -699,7 +707,11 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
       thrown.addEventListener("finish", take);
       flight = thrown;
       if (!prefersReducedMotion()) {
-        spin.animate(
+        // The old one goes first. A spin never finishes by itself, so a ball
+        // batted about would otherwise be turning under a fresh unending
+        // animation for every time it had been touched.
+        spinning?.cancel();
+        spinning = spin.animate(
           [{ transform: "rotate(0deg)" }, { transform: `rotate(${random() < 0.5 ? -1 : 1}turn)` }],
           { duration: ms * 1.6, iterations: Infinity, easing: "linear" },
         );
@@ -710,7 +722,7 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
     function bounce(): void {
       if (gone) return;
       unlockAudio();
-      playBoing(thrown);
+      playBoing(note++);
       const at = where();
       party.answer(at);
       squash.animate(

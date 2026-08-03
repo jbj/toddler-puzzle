@@ -834,8 +834,9 @@ export function playFirework(step = 0): void {
 }
 
 /**
- * A beach ball caught by a finger and sent back up. `step` is which ball, so a
- * child batting the same one about does not hear one note over and over.
+ * A beach ball caught by a finger and sent back up. `step` walks a note along
+ * on every bounce, and starts where the ball was minted, so a child batting one
+ * ball about does not hear one note over and over.
  */
 export function playBoing(step = 0): void {
   play(boingPhrase(fresh(BOING_ROOT + (((step % 4) + 4) % 4))));

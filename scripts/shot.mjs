@@ -156,8 +156,15 @@ function requiredCoverage() {
   const celebrationSrc = readFileSync(join(root, "src/celebration.ts"), "utf8");
   const namesIn = (type) => {
     const from = celebrationSrc.indexOf(`type ${type}`);
-    const union = celebrationSrc.slice(from, celebrationSrc.indexOf(";", from));
-    return [...union.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    const to = from < 0 ? -1 : celebrationSrc.indexOf(";", from);
+    // Loudly, rather than by returning nothing. A rename that this stopped
+    // finding would leave the set of celebrations empty and every coverage
+    // check below trivially satisfied - a guard that inspects nothing, which
+    // is the one way this whole section could fail without saying so.
+    if (from < 0 || to < 0) throw new Error(`coverage: no \`type ${type}\` in src/celebration.ts`);
+    const names = [...celebrationSrc.slice(from, to).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    if (names.length === 0) throw new Error(`coverage: \`type ${type}\` names nothing`);
+    return names;
   };
   const celebrations = new Set([...namesIn("InterludeId"), ...namesIn("ChapterCelebrationId")]);
 

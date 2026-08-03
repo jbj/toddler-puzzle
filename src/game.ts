@@ -429,8 +429,9 @@ export function createGame(
    * silent and buttonless for as long as the network felt like taking - the
    * trap the paragraph above says this must not be, arrived at by patience
    * rather than by design. So the module has `PARTY_PATIENCE_MS` to turn up,
-   * and after that the level ends without it. This matters most at level 1,
-   * where the chunk has had the least time.
+   * and after that the level ends without it. This matters most at level 2,
+   * the first level that asks for the chunk at all and so the one where it has
+   * had the least time to arrive.
    */
   async function raiseFinish(dealt: number): Promise<void> {
     let chapterEnd: ChapterCelebrationId | null = null;
