@@ -412,14 +412,14 @@ export function createGame(
    * A level played by touching gets no interlude, and no pause either. It is
    * already the thing an interlude is: things on a screen that answer a finger
    * and ask nothing, which the child leaves when they are ready. Following one
-   * with four seconds of paper is the same screen again, and a break from
+   * with four seconds of balloons is the same screen again, and a break from
    * nothing. Such a level that *ends a chapter* still gets the chapter's own
    * celebration - that is a moment being marked rather than a rest being given.
    *
    * The celebration is a chunk of its own, and one that was asked for when this
    * level was dealt, so the wait here is over before it starts. If it somehow
    * is not - a chunk that never arrived - the level ends the way it did before
-   * any of this existed, with its fanfare, its paper and its button, and the
+   * any of this existed, with its fanfare, its sparkle and its button, and the
    * child goes on at once rather than waiting out a pause with nothing in it. A
    * missing party is a disappointment; a missing way out would be a trap.
    *
@@ -463,8 +463,8 @@ export function createGame(
   }
 
   /**
-   * The end of a level: the sparkles, the paper, the celebration and the one
-   * big button onwards.
+   * The end of a level: the sparkles, the celebration and the one big button
+   * onwards.
    *
    * The button *arrives* rather than sitting there, `WAY_OUT_MS` after the level
    * ends. That pause is the point of a celebration between levels - it is what

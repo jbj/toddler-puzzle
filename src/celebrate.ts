@@ -4,8 +4,9 @@
  * after the level ends rather than at once, so there is a moment between one
  * puzzle and the next.
  *
- * The paper that comes down over the whole board at the same time is not here:
- * it opens every celebration and lives with them, in `celebration.ts`.
+ * The sparkles are the only thing here. What comes down over the board behind
+ * them - balloons, beach balls, paper, ribbon - is a celebration, and lives in
+ * `celebration.ts`.
  */
 import type { Point } from "./geometry";
 import { replayArrow } from "./icons";
