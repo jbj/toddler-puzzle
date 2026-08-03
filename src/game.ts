@@ -60,6 +60,7 @@ import { boxOf, chooseLayout, trayHome, waitingHome, type Layout } from "./layou
 import {
   endsChapter,
   isLastPlayable,
+  isPlayedByTouching,
   levelSpec,
   nextLevel,
   type EnabledKinds,
@@ -400,14 +401,20 @@ export function createGame(
    * Raise the end of a level: its fanfare, its celebration, and the button
    * onwards.
    *
-   * Every level ends with a celebration, because a finished board leading
-   * straight into a fresh one is more than a one-year-old can carry. The
-   * twenty-four ordinary levels get an *interlude* - balloons, beach balls,
-   * confetti, streamers, rotated so two levels running never end alike - and
-   * five levels finishing is a bigger moment still, so a chapter ends with one
-   * of its own and the last chapter with the finale, which does not stop. An
-   * ordinary level's fanfare walks a step along the scale each time, with the
-   * interlude's own arrival behind it.
+   * A level ends with a celebration because a finished board leading straight
+   * into a fresh one is more than a one-year-old can carry. Ordinary levels get
+   * an *interlude* - balloons, beach balls, confetti, streamers, rotated so two
+   * levels running never end alike - and five levels finishing is a bigger
+   * moment still, so a chapter ends with one of its own and the last chapter
+   * with the finale, which does not stop. An ordinary level's fanfare walks a
+   * step along the scale each time, with the interlude's own arrival behind it.
+   *
+   * A level played by touching gets no interlude, and no pause either. It is
+   * already the thing an interlude is: things on a screen that answer a finger
+   * and ask nothing, which the child leaves when they are ready. Following one
+   * with four seconds of paper is the same screen again, and a break from
+   * nothing. Such a level that *ends a chapter* still gets the chapter's own
+   * celebration - that is a moment being marked rather than a rest being given.
    *
    * The celebration is a chunk of its own, and one that was asked for when this
    * level was dealt, so the wait here is over before it starts. If it somehow
@@ -428,17 +435,21 @@ export function createGame(
   async function raiseFinish(dealt: number): Promise<void> {
     let chapterEnd: ChapterCelebrationId | null = null;
     let interlude: InterludeId | null = null;
-    const module = await Promise.race([
-      loadCelebration().catch(() => null),
-      new Promise<null>((settle) => {
-        afterWhileAwake(PARTY_PATIENCE_MS, () => settle(null));
-      }),
-    ]);
+    const closesChapter = endsChapter(levelNumber, kindsInPlay());
+    const wants = closesChapter || !isPlayedByTouching(levelNumber);
+    const module = wants
+      ? await Promise.race([
+          loadCelebration().catch(() => null),
+          new Promise<null>((settle) => {
+            afterWhileAwake(PARTY_PATIENCE_MS, () => settle(null));
+          }),
+        ])
+      : null;
     // A board dealt while that was in flight - the reset button, or a level
     // chosen from the panel - is not this board, and must not be finished.
     if (dealt !== deals) return;
     if (module) {
-      if (endsChapter(levelNumber, kindsInPlay())) {
+      if (closesChapter) {
         chapterEnd = module.celebrationFor(level.chapter);
       } else {
         interlude = module.interludeFor(levelNumber);

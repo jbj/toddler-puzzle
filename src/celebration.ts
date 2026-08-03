@@ -299,12 +299,6 @@ const TUNING = {
   confettiSway: 0.16,
   /** How many slips a burst throws, for the scatter a tap puffs up. */
   confettiPuff: 7,
-  /**
-   * How many slips come down over the board when *any* celebration is raised.
-   * Enough that the whole board is under it for a second, and not so many that
-   * a rainbow being painted underneath is hard to see.
-   */
-  openingPaper: 30,
   /** How wide a streamer is, as a fraction of the board's nominal width. */
   streamerWidth: 0.05,
   /** How many hang at once. */
@@ -778,6 +772,15 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
 // look at and the busiest: there is always something falling, none of it asks
 // anything, and a finger anywhere in it puffs a handful back up. It is the
 // interlude for a child who wants to do nothing at all for a moment.
+//
+// It is also the only paper in the game, and that is a rule rather than an
+// accident. Every celebration used to open with a throw of the same slips over
+// the top of whatever it was, and those could not be touched - so the game had
+// paper that answered a finger and paper that ignored one, falling the same way
+// down the same board, and no way for a child to tell which was which. A thing
+// that behaves two ways is worse than a thing that only happens sometimes. So
+// paper falls here and nowhere else; what every celebration opens with is the
+// sparkle burst in `celebrate.ts`, which nothing has ever been able to touch.
 
 /** Paper: flat, bright and opaque, so it reads against sky, sea or night. */
 const CONFETTI_COLOURS: readonly string[] = [
@@ -797,52 +800,6 @@ function slip(size: number, colour: string): SVGGElement {
       width="${size.toFixed(1)}" height="${(size * 0.6).toFixed(1)}"
       rx="${(size * 0.12).toFixed(1)}" fill="${colour}" />`;
   return paper;
-}
-
-/**
- * A throw of paper down the whole board, the moment a celebration is raised.
- *
- * Every celebration opens with this, whichever one it is: it is the "you did
- * it" of the thing, it lands before the act itself has arrived at anything, and
- * it costs a child nothing to ignore. None of it can be touched - the act
- * underneath is what answers a finger, and paper that stole the first tap of a
- * rainbow would be paper in the way.
- */
-function openingPaper(party: Party): void {
-  const { fxLayer, layout, random } = party.stage;
-  if (prefersReducedMotion()) return;
-  const { width, height } = layout.canvas;
-  const size = spanWidth(layout.canvas) * TUNING.confettiWidth;
-  for (let i = 0; i < TUNING.openingPaper; i++) {
-    const paper = slip(
-      size * (0.7 + random() * 0.7),
-      CONFETTI_COLOURS[i % CONFETTI_COLOURS.length] as string,
-    );
-    paper.style.transformOrigin = "0 0";
-    paper.style.pointerEvents = "none";
-    const anchor = group({
-      transform: `translate(${(random() * width).toFixed(1)} ${(-size * (1 + random() * 4)).toFixed(1)})`,
-    });
-    anchor.append(paper);
-    fxLayer.append(anchor);
-    const drift = (random() - 0.5) * width * 0.2;
-    paper
-      .animate(
-        [
-          { transform: "translate(0px, 0px) rotate(0deg)" },
-          {
-            transform: `translate(${drift.toFixed(1)}px, ${(height + size * 5).toFixed(1)}px) rotate(${(random() * 900 - 450).toFixed(0)}deg)`,
-          },
-        ],
-        {
-          duration: 2200 + random() * 1600,
-          delay: random() * 900,
-          easing: "cubic-bezier(0.35, 0.1, 0.6, 1)",
-          fill: "forwards",
-        },
-      )
-      .addEventListener("finish", () => anchor.remove());
-  }
 }
 
 /** A handful thrown up from a point and fading: what a tap answers with. */
@@ -1680,7 +1637,6 @@ export function createCelebration(id: CelebrationId): Celebration {
         },
       };
 
-      openingPaper(party);
       ACTS[id](party);
 
       return () => {

@@ -66,14 +66,17 @@ oversights until you know it, so the reason is written next to the rule.
   are an indicator for a grown-up, not a control, and `?level=` in the URL is a
   tool for working on the game, not a way in. Why: a two-year-old cannot read or
   configure a toy.
-- End every level with a celebration, mark the end of a chapter and the end of
-  the game with a bigger one, and make all of them something to play with rather
-  than something to sit through. Never let a celebration change the level by
-  itself. Hold the button onwards back for the same few seconds after every
-  level - the pause is what the child gets instead of the next board landing on
-  the one they just finished - and never withhold anything else: the celebration
-  answers a finger from its first frame, a celebration that failed to arrive
-  gets no pause at all, and the wait is counted in time somebody was there for.
+- End every level a child had to work at with a celebration, mark the end of a
+  chapter and the end of the game with a bigger one, and make all of them
+  something to play with rather than something to sit through. Never celebrate
+  after a level played by touching unless it also ends a chapter: that level was
+  already an interlude, and following one with another only holds a child away
+  from the next thing. Never let a celebration change the level by itself. Hold
+  the button onwards back for the same few seconds after every celebration - the
+  pause is what the child gets instead of the next board landing on the one they
+  just finished - and never withhold anything else: the celebration answers a
+  finger from its first frame, a celebration that failed to arrive gets no pause
+  at all, and the wait is counted in time somebody was there for.
   Why: thirty identical fanfares stop meaning anything by level twenty, going
   straight from one puzzle into the next is more than a one-year-old can carry,
   and a two-year-old will tap an animation rather than wait for it - so a
@@ -192,10 +195,13 @@ show a grown-up how far along the set is; they are not a control. See
 [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
 
 **Every level ends with a party, and the end of a chapter is a bigger one.**
-Twenty-four levels finish into an interlude - balloons, beach balls, paper,
-ribbon, rotated so two levels running never end alike - which is weather rather
-than an event: there is nothing in one to achieve, and a child who watches it
-without touching anything has played it correctly. The fifth level of every
+Every level with a puzzle in it finishes into an interlude - balloons, beach
+balls, paper, ribbon, rotated so two levels running never end alike - which is
+weather rather than an event: there is nothing in one to achieve, and a child
+who watches it without touching anything has played it correctly. The two
+levels played by touching that do not end a chapter are the exception, and they
+end with nothing: bubbles to burst are already weather, and an interlude after
+one would only be a wait. The fifth level of every
 chapter finishes into something bigger - balloons, a rainbow the child paints a
 tap at a time, blossom, a parade of animals to poke, fireworks - and level 30
 finishes into all of them at once, which never winds down. None of them is ever

@@ -33,6 +33,7 @@ import {
   type PuzzleKindId,
   chapterNumber,
   endsChapter,
+  isPlayedByTouching,
   levelSpec,
 } from "../src/levels";
 
@@ -111,19 +112,43 @@ describe("when a celebration is due", () => {
 });
 
 /**
- * The twenty-four levels that do not end a chapter end with an interlude
- * instead, and the interlude is the whole point of the pause: a child who is
- * handed the next board straight away never gets the breather that made the
- * last one worth finishing. See
+ * The levels that end no chapter end with an interlude instead, and the
+ * interlude is the whole point of the pause: a child who is handed the next
+ * board straight away never gets the breather that made the last one worth
+ * finishing. The exception is a level that is *played* by touching, which is
+ * already what an interlude is and so is followed by one only when it also ends
+ * a chapter. See
  * [decision 20260803T133000](../docs/decisions/20260803T133000-a-celebration-between-every-level.md).
  */
 describe("what an ordinary level ends with", () => {
-  it("gives every level in the game something", () => {
+  /** What the host will actually raise at the end of this level, if anything. */
+  const endOf = (level: number): CelebrationId | null =>
+    endsChapter(level)
+      ? celebrationFor(levelSpec(level).chapter)
+      : isPlayedByTouching(level)
+        ? null
+        : interludeFor(level);
+
+  it("gives every level that is dragged something", () => {
     for (const level of LEVELS) {
-      const id = endsChapter(level.level)
-        ? celebrationFor(level.chapter)
-        : interludeFor(level.level);
-      expect(id, `level ${level.level}`).toBeTruthy();
+      if (isPlayedByTouching(level.level)) continue;
+      expect(endOf(level.level), `level ${level.level}`).toBeTruthy();
+    }
+  });
+
+  it("leaves a level played by touching to be its own celebration", () => {
+    const touched = LEVELS.filter((level) => isPlayedByTouching(level.level));
+    expect(touched.map((level) => level.level)).toEqual([1, 3, 5]);
+    expect(touched.filter((level) => endOf(level.level) === null).map((level) => level.level))
+      // Level 5 ends the first chapter, and a chapter moment is marked whatever
+      // the level before it was made of.
+      .toEqual([1, 3]);
+  });
+
+  it("still never ends two levels running the same way", () => {
+    const raised = LEVELS.map((level) => endOf(level.level)).filter((id) => id !== null);
+    for (let i = 1; i < raised.length; i++) {
+      expect(raised[i], `celebration ${i + 1}`).not.toBe(raised[i - 1]);
     }
   });
 

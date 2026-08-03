@@ -1350,15 +1350,12 @@ try {
   const popped = await activityProgress();
   check(`the level finishes on touches alone (${pops.taps} taps)`, popped.touched >= popped.goal);
   check(`every touch on a bubble popped it (${pops.missed} missed)`, pops.missed === 0);
-  // Not at once: the level ends into an interlude, and the button arrives on
-  // the far side of it. Every level in the game does this now, not only the
-  // five that end a chapter.
-  check("the interlude has the screen to itself first", (await finishButtons()) === 0);
-  check(
-    `level 1 ends with an interlude (${await celebrationName()})`,
-    (await celebrationName()) !== "",
-  );
-  check("finish button appears when complete", (await waitForFinishButton()) === true);
+  // And no interlude after it, which is the one exception to a celebration
+  // between every level: a level made of things that answer a finger is already
+  // what an interlude is, so following it with four seconds of paper is the
+  // same screen again and a rest from nothing. The way onwards is simply there.
+  check("a level played by touching raises no interlude", (await celebrationName()) === "");
+  check("finish button appears when complete", (await waitForFinishButton(2500)) === true);
   check("level 1 offers the next puzzle", (await finishLabel()) === "Next puzzle");
   const refilled = await thingsToTouch();
   check(`bubbles keep arriving (${refilled.length} still afloat)`, refilled.length >= 1);
@@ -1376,9 +1373,9 @@ try {
   check("dragged piece snapped into its hole", (await placedCount()) === 1);
   await sleep(700);
   check("level 2 can be completed", (await placedCount()) === firstCount);
-  // The interlude a level ends into is rotated by level number, so the first
-  // four levels of the run walk through all four of them and the coverage guard
-  // at the end of the run is satisfied by playing rather than by a detour.
+  // The interlude a level ends into is rotated by level number, and this is the
+  // first level of the game to raise one at all.
+  check("a level that was dragged does raise one", (await finishButtons()) === 0);
   const secondInterlude = await celebrationName();
   check(`level 2 ends with its own interlude (${secondInterlude})`, secondInterlude !== "");
   await shot("03a-level2-interlude");
@@ -1408,9 +1405,8 @@ try {
   const found = await activityProgress();
   check(`peekaboo finishes on touches alone (${uncovered.taps} taps)`, found.touched >= found.goal);
   check(`every touch uncovered an animal (${uncovered.missed} missed)`, uncovered.missed === 0);
-  const thirdInterlude = await celebrationName();
-  check(`level 3 ends with its own interlude (${thirdInterlude})`, thirdInterlude !== "");
-  check("peekaboo lets the way onwards through", (await waitForFinishButton()) === true);
+  check("peekaboo raises no interlude either", (await celebrationName()) === "");
+  check("peekaboo lets the way onwards through", (await waitForFinishButton(2500)) === true);
   check("peekaboo offers the next puzzle", (await finishLabel()) === "Next puzzle");
   await shot("05-level3-uncovered");
 
@@ -1448,8 +1444,8 @@ try {
   check(`level 4 ends with its own interlude (${fourthInterlude})`, fourthInterlude !== "");
   await shot("06a-level4-interlude");
   check(
-    `four levels running, four different interludes (${[secondInterlude, thirdInterlude, fourthInterlude].join(", ")})`,
-    new Set([secondInterlude, thirdInterlude, fourthInterlude]).size === 3,
+    `two dragged levels, two different interludes (${secondInterlude}, ${fourthInterlude})`,
+    secondInterlude !== fourthInterlude,
   );
 
   // --- level 5: a scene where everything answers ----------------------------
@@ -1873,6 +1869,23 @@ try {
   await tapEmptySpot();
   await sleep(200);
   check("and the next touch asks them again", (await speakerState()) === "running");
+
+  // --- level 7: the interlude the first chapter never reaches ---------------
+  // Four interludes are rotated by level number, and the first chapter can only
+  // show two of them: three of its five levels are played by touching, and
+  // those raise nothing. So the fourth is picked up here, on the cheapest
+  // level of the second chapter, which is what keeps the coverage guard at the
+  // end of the run satisfied by playing rather than by a detour.
+  await goToLevel(7);
+  check("jumps to level 7", (await levelNumber()) === 7);
+  await solveRemaining();
+  const seventh = await celebrationName();
+  check(`level 7 ends with its own interlude (${seventh})`, seventh !== "");
+  const seventhThings = await celebrationThings();
+  check(
+    `and there is something in it to touch (${seventhThings.length})`,
+    seventhThings.length >= 3,
+  );
 
   // --- level 10: the busiest board of animals ------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for

@@ -26,11 +26,23 @@ and weather is what a tired one-year-old can look at.
 
 ## Decision
 
-**Every level ends with a celebration.** The six that end a chapter keep the
-ones they had. The other twenty-four end with an **interlude**: balloons, beach
-balls, confetti, streamers - four of them, rotated by level number, so two
+**Every level a child had to work at ends with a celebration.** The six that end
+a chapter keep the ones they had. The rest end with an **interlude**: balloons,
+beach balls, confetti, streamers - four of them, rotated by level number, so two
 levels running never end the same way and the same level always ends the way it
 did.
+
+**Except a level that was already one.** Levels 1 and 3 are played by touching:
+bubbles that burst under a finger, bushes that give up an animal. There is no
+puzzle in them to be tired by and no seam to soften - what they *are* is
+something large and slow that answers a finger and asks nothing, which is the
+description of an interlude. Following one with an interlude is following a
+celebration with a celebration, and the effect is not twice as much rest but a
+child kept for four and a half seconds from the first thing in the game they can
+do. So a touch level raises nothing and pauses not at all; the button is there
+as soon as the level is done. Level 5 is played by touching too and still gets
+its chapter moment, because that one marks something - the end of the first five
+- rather than covering a seam.
 
 An interlude is deliberately less than a chapter celebration. It has no event in
 it, nothing arrives that has to be watched, it answers a finger the same way
@@ -83,11 +95,15 @@ thing a one-year-old has to a clock.
   comes back to the celebration they left, and the way onwards arrives in front
   of them.
 
-**The paper is not part of any one celebration.** Every celebration, interlude
-or chapter, opens with a throw of confetti down the whole board. It is the
-"you did it" of the moment, it lands before the act has arrived at anything, and
-none of it can be touched - the act underneath is what answers a finger, and
-paper that stole the first tap of a rainbow would be paper in the way.
+**There is one kind of paper.** An earlier draft of this opened every
+celebration with a throw of confetti that could not be touched, on top of the
+confetti interlude, which could. Two kinds of paper on one screen teaches a
+child that paper sometimes answers and sometimes does not, and a thing that
+answers only sometimes is worse than a thing that never does: they stop trying
+it. So the untouchable throw is gone. What opens a celebration is the sparkle
+burst, which is light rather than an object and was never something to reach
+for; paper falls only in the confetti interlude, and every piece of it can be
+puffed back up.
 
 ## Consequence
 

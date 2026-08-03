@@ -82,8 +82,8 @@ const BUDGET = {
   initialGzip: 39 * kB,
   // raised 2026-08-03: every level now ends with a celebration rather than only
   // the six that end a chapter, so the celebration chunk carries three more
-  // acts - beach balls, confetti and streamers - and the throw of paper that
-  // opens all of them. It is the largest deferred thing in the build and it is
+  // acts - beach balls, confetti and streamers. It is the largest deferred thing
+  // in the build and it is
   // now reached at level 1 instead of level 5, which is the trade: a chunk that
   // was warmed for a chapter ending is warmed for the first level ending, and
   // `warm.ts` already fetches it first. Only the sounds of it landed in the

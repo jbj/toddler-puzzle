@@ -184,8 +184,10 @@ that the finale belongs to the last chapter and to nothing else, that
 `endsChapter` agrees level by level with the chapter numbering it is read from -
 5, 10, 15, 20, 25 and 30 as the table stands - and that a level the table does
 not have ends nothing rather than throwing. Alongside that it holds the tier
-below: that every level in the game ends with *something*, that no two levels
-running draw the same interlude, that the same level always draws the same one,
+below: that every level with a puzzle in it ends with *something* and that the
+levels played by touching end with nothing unless they close a chapter, that no
+two levels running draw the same interlude, that the same level always draws the
+same one,
 that a game uses all of them, and that the pause before the way onwards
 (`WAY_OUT_MS`) is long enough to be a pause and well short of the celebration
 it sits inside. Whether a celebration is *played*, whether the way onwards
@@ -462,10 +464,13 @@ shadow and its twin's are then checked to be among the places offered.
 
 It is the only place a celebration can be *played*, which is the only way to
 find out whether one works. All six chapter celebrations are reached and shot,
-and so is every interlude: the run reads which one each of levels 1 to 4 ends
-with, insists that four levels running give four different ones, and plays the
-second of them to see that an interlude answers a finger without moving the game
-on. The balloons
+and so is every interlude: the run reads which one each of the early levels ends
+with, insists that two dragged levels running give two different ones, checks
+that the levels played by touching raise nothing at all and put the button up at
+once, and plays an interlude to see that it answers a finger without moving the
+game on. The fourth interlude is reached on level 7, because the first chapter
+cannot show all four - three of its five levels are touched rather than dragged.
+The balloons
 are played hardest, because everything that could go wrong with a celebration
 can go wrong with them: the run checks the celebration goes up on finishing
 level 5 and not before, that every balloon is more than a tenth of the board
