@@ -3,12 +3,17 @@
  *
  * The game is thirty levels long and the board fills up as it goes, so a layout
  * has to hold whatever the level table asks for - see `levels.ts`, which is
- * where the curve itself is tuned. Each level is composed afresh in each
- * orientation, because the puzzle reflows rather than just shrinking: a
- * landscape screen gets rows of pieces with the tray at the top, a portrait
- * screen gets narrower rows and a taller tray. Pieces start in the tray so
- * toddlers can drag them down to their holes. Letterboxing a landscape canvas
- * into a phone held upright would leave the pieces far too small to grab.
+ * where the curve itself is tuned. Each level is composed afresh for the screen
+ * it is on, because the puzzle reflows rather than just shrinking: a landscape
+ * screen gets rows of pieces with the tray at the top, a portrait screen gets
+ * narrower rows and a taller tray. Pieces start in the tray so toddlers can drag
+ * them down to their holes. Letterboxing a landscape canvas into a phone held
+ * upright would leave the pieces far too small to grab.
+ *
+ * The canvas is composed rather than chosen: its shorter side is always
+ * `SHORT_SIDE` and its longer side takes whatever room the screen has, so the
+ * board fills the viewport at any ratio and the generated backdrop extends to
+ * meet the edges instead of a border being drawn round it. See `viewFor`.
  *
  * Nothing here is placed by hand. A layout is composed for whatever cast it is
  * given: the targets are split into rows of ground and the pieces into rows of
@@ -463,22 +468,120 @@ function fromArrangement(
 }
 
 /**
- * What one orientation offers: the canvas a puzzle is composed on, and where
- * the sky ends on it. Everything else about a layout is worked out from the
- * cast. The two canvases differ in shape rather than in size, which is what
- * lets the puzzle reflow on an upright phone instead of letterboxing onto it.
+ * What one screen offers: the canvas a puzzle is composed on, and where the sky
+ * ends on it. Everything else about a layout is worked out from the cast.
+ *
+ * A view is composed for the screen rather than chosen from a pair of them; see
+ * `viewFor`. `REFERENCE_VIEWS` holds the two the game grew up on, which are
+ * still what the tests and the measured floor tables are written against.
  */
-interface View {
+export interface View {
   readonly id: Layout["id"];
   readonly canvas: Size;
-  /** Where the horizon sits, as a fraction of the canvas height. */
+  /** Where the horizon sits, as a fraction of the room below the tray. */
   readonly horizonShare: number;
 }
 
-const VIEWS: Record<Layout["id"], View> = {
-  landscape: { id: "landscape", canvas: { width: 1000, height: 700 }, horizonShare: 0.457 },
-  portrait: { id: "portrait", canvas: { width: 700, height: 1180 }, horizonShare: 0.254 },
+/**
+ * The side every canvas keeps, in logical units.
+ *
+ * Both of the canvases this game was built on hold their *shorter* side at 700 -
+ * the landscape one is 700 tall and the portrait one 700 wide - and spend the
+ * long side on whatever room the screen has. That is the whole rule, and
+ * `viewFor` simply runs it continuously instead of at two points.
+ *
+ * It is what makes a piece the same physical size on every screen: the board
+ * fills the viewport, so a logical unit is always `device short side / 700`
+ * however the screen is shaped.
+ */
+const SHORT_SIDE = 700;
+
+/** The shape of the canvas the game was originally drawn for, wide side up. */
+const REFERENCE_RATIO = 1000 / SHORT_SIDE;
+
+/**
+ * A width to measure a *size* against.
+ *
+ * A dozen constants are written as a fraction of the canvas width - the piece
+ * floors here, a bubble's radius, a parade animal's width. On a 3:1 board the
+ * canvas is 2100 wide and every one of them triples: the floors start refusing
+ * levels that compose perfectly well, and a parade animal is drawn taller than
+ * the board it walks across. So a size is measured against the width, but never
+ * more than a board of this height would have had at the reference shape.
+ *
+ * It is exactly 1000 on the landscape canvas and 700 on the portrait one, so
+ * every constant that uses it keeps its value on both of them and neither board
+ * changes. Positions *across* the board - where a bubble is released, how a
+ * parade is spaced - go on using the real width, because those are spreads
+ * rather than sizes.
+ */
+export const spanWidth = (canvas: Size): number =>
+  Math.min(canvas.width, canvas.height * REFERENCE_RATIO);
+
+/** Where the horizon sits on each of the two reference canvases. */
+const HORIZON_SHARE = { landscape: 0.457, portrait: 0.254 } as const;
+
+const viewOf = (canvas: Size, horizonShare: number): View => ({
+  id: canvas.width >= canvas.height ? "landscape" : "portrait",
+  canvas,
+  horizonShare,
+});
+
+/**
+ * The two canvases the game was composed on when there were only two, kept
+ * because the layout tests and the measured floor tables in `puzzle.test.ts`
+ * are written against them. They are members of the family below rather than
+ * exceptions to it: `viewFor` returns exactly these for a 10:7 and a 7:11.8
+ * screen.
+ */
+export const REFERENCE_VIEWS: Record<Layout["id"], View> = {
+  landscape: viewOf({ width: 1000, height: 700 }, HORIZON_SHARE.landscape),
+  portrait: viewOf({ width: 700, height: 1180 }, HORIZON_SHARE.portrait),
 };
+
+const aspectOf = (size: Size): number => size.width / size.height;
+
+/**
+ * Where the sky ends on a canvas of this shape.
+ *
+ * The horizon is the one part of the composition that cannot be worked out from
+ * the cast, so it is interpolated between the two reference views by aspect
+ * ratio and never extrapolated past them: anything wider than the landscape
+ * canvas gets the landscape horizon, anything taller than the portrait canvas
+ * gets the portrait one. Exact at both references, and on any crowded board the
+ * first row of ground clamps it lower anyway (see `compose`).
+ */
+function horizonShareFor(canvas: Size): number {
+  const wide = aspectOf(REFERENCE_VIEWS.landscape.canvas);
+  const tall = aspectOf(REFERENCE_VIEWS.portrait.canvas);
+  const between = Math.min(1, Math.max(0, (aspectOf(canvas) - tall) / (wide - tall)));
+  return HORIZON_SHARE.portrait + between * (HORIZON_SHARE.landscape - HORIZON_SHARE.portrait);
+}
+
+/**
+ * Compose a canvas for the screen the game is actually on.
+ *
+ * The short side is always `SHORT_SIDE`; the long side takes whatever room the
+ * screen has. So the board fills the viewport at every ratio rather than
+ * letterboxing into it, the generated backdrop simply extends to meet the
+ * edges, and the tray stands at the edge of the screen rather than at the edge
+ * of a canvas floating inside it.
+ *
+ * There is no clamp and no special case for a thin screen. Everything a size is
+ * measured against is bounded - `spanWidth`, and `maxSlot` against the shorter
+ * side - so a 3:1 screen composes by the same arithmetic as a 4:3 one; what it
+ * gets is an airier board, never a smaller piece.
+ */
+export function viewFor(container: Size): View {
+  const long = Math.max(container.width, container.height);
+  const short = Math.max(1, Math.min(container.width, container.height));
+  const far = Math.round(SHORT_SIDE * (long / short));
+  const canvas =
+    container.height > container.width
+      ? { width: SHORT_SIDE, height: far }
+      : { width: far, height: SHORT_SIDE };
+  return viewOf(canvas, horizonShareFor(canvas));
+}
 
 /**
  * The composition, as fractions rather than as a table of coordinates. Each of
@@ -1115,7 +1218,7 @@ function compose(view: View, plan: Plan): Arrangement {
     top += depth + rowGap + spare;
   }
 
-  // The horizon is a constant of the orientation until a crowded board pushes
+  // The horizon is a constant of the canvas's shape until a crowded board pushes
   // the first row up to meet it. Expressed as a fraction of the scene height
   // below the tray, so it stays proportionally placed. An animal may stand
   // against the sky; none may stand on it.
@@ -1383,11 +1486,11 @@ function arrangePicture(
   }
   if (pieces.length > 1) trays.push({ shape: "gutters", columns: gutterings(shares, pad) });
 
-  const { width } = view.canvas;
-  const smallestInk = COMPOSITION.minPieceInk * width;
+  const span = spanWidth(view.canvas);
+  const smallestInk = COMPOSITION.minPieceInk * span;
   // Measured on what the child sees of the piece as it waits, drawn small.
   const grabbable = (plan: PicturePlan): boolean =>
-    plan.sceneSlot >= COMPOSITION.minSlot * width &&
+    plan.sceneSlot >= COMPOSITION.minSlot * span &&
     plan.traySlot * Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height))) >= smallestInk;
 
   const viable = trays
@@ -1463,9 +1566,11 @@ function arrange(
 
   // Two floors, and for a cast that fills its boxes they are the same floor: a
   // slot too narrow to aim at, and a piece that draws too little of its slot to
-  // pick up. A slice fails the second one long before the first.
-  const smallest = COMPOSITION.minSlot * width;
-  const smallestInk = COMPOSITION.minPieceInk * width;
+  // pick up. A slice fails the second one long before the first. Both are sizes
+  // rather than spreads, so both are measured against `spanWidth`.
+  const span = spanWidth(view.canvas);
+  const smallest = COMPOSITION.minSlot * span;
+  const smallestInk = COMPOSITION.minPieceInk * span;
   const grabbable = (plan: Plan): boolean =>
     plan.slotSize >= smallest && plan.slotSize * plan.smallest >= smallestInk;
   const viable = plans.filter(grabbable);
@@ -1510,8 +1615,17 @@ const trayRowsOf = (plan: Plan): number =>
   plan.tray.shape === "shelves" ? plan.tray.shelves.length : plan.tray.columns.length;
 
 /**
- * Compose one layout for one orientation around a given cast, however many
- * pieces that cast holds. Layouts are built when a puzzle starts rather than up
+ * Which canvas to compose on, given either one worked out for a screen or the
+ * name of one of the two reference views. The name is a convenience for the
+ * tests and for anything reasoning about "landscape" as a shape rather than as
+ * a particular screen; the game itself always passes a composed view.
+ */
+const viewOrReference = (view: View | Layout["id"]): View =>
+  typeof view === "string" ? REFERENCE_VIEWS[view] : view;
+
+/**
+ * Compose one layout for one canvas around a given cast, however many pieces
+ * that cast holds. Layouts are built when a puzzle starts rather than up
  * front because the cast is random and the ground lines follow it: each shape's
  * anchor sits at a different height inside its box.
  *
@@ -1525,12 +1639,13 @@ const trayRowsOf = (plan: Plan): number =>
  * message - wants to know which level and chapter it is looking at.
  */
 export function buildLayout(
-  id: Layout["id"],
+  view: View | Layout["id"],
   level: LevelSpec,
   pieces: readonly PieceShape[],
   targets: readonly PieceShape[] = pieces,
 ): Layout {
-  return fromArrangement(id, level, pieces, targets, arrange(VIEWS[id], level, pieces, targets));
+  const on = viewOrReference(view);
+  return fromArrangement(on.id, level, pieces, targets, arrange(on, level, pieces, targets));
 }
 
 /**
@@ -1540,7 +1655,7 @@ export function buildLayout(
  * care: `buildLayout` takes any count.
  */
 export function buildLevelLayout(
-  id: Layout["id"],
+  view: View | Layout["id"],
   level: LevelSpec,
   pieces: readonly PieceShape[],
   targets: readonly PieceShape[] = pieces,
@@ -1564,20 +1679,21 @@ export function buildLevelLayout(
       `Level ${level.level} has ${level.targets} targets, but was given ${targets.length}.`,
     );
   }
-  return buildLayout(id, level, pieces, targets);
+  return buildLayout(view, level, pieces, targets);
 }
 
-/** Portrait reflow kicks in once the viewport is taller than it is wide. */
+/**
+ * Compose a level for the box the board is drawn in, whatever shape it is.
+ *
+ * `container` is the box the SVG fills rather than the window: with a safe-area
+ * inset the two differ, and composing for the window would letterbox the board
+ * inside the very margin the inset was for.
+ */
 export function chooseLayout(
-  viewport: Size,
+  container: Size,
   level: LevelSpec,
   pieces: readonly PieceShape[],
   targets: readonly PieceShape[] = pieces,
 ): Layout {
-  return buildLevelLayout(
-    viewport.height > viewport.width ? "portrait" : "landscape",
-    level,
-    pieces,
-    targets,
-  );
+  return buildLevelLayout(viewFor(container), level, pieces, targets);
 }

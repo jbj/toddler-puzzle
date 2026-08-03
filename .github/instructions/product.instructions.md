@@ -124,6 +124,15 @@ oversights until you know it, so the reason is written next to the rule.
   [decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
 - Keep every target large; pieces stay well over a tenth of the canvas wide. Why:
   small hands need large things to grab.
+- Give the board the whole screen, whatever shape the screen is. The canvas is
+  composed for the screen it is drawn on - short side always 700 logical units,
+  long side whatever the ratio asks for - so the tray sits at the edge of the
+  device, the meadow runs to the corners, and there are no bars. Never letterbox
+  a fixed canvas into a screen it does not fit, and never special-case an
+  extreme ratio: the rule goes on running. Why: an iPad in portrait used to
+  spend a fifth of itself on empty border, and a border is screen a two-year-old
+  cannot play on. See
+  [decision 20260801T190000](../../docs/decisions/20260801T190000-the-board-is-composed-for-the-screen.md).
 - Keep the opening chapter playable without a drag. Levels 1, 3 and 5 are
   cause-and-effect levels - touch a thing, a thing happens - and they end when
   enough things have been touched rather than when a tray is empty, or when a

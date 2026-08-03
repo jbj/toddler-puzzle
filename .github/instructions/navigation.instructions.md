@@ -483,6 +483,13 @@ means. Neither is started for a level played by touching. Between them:
   accepted or refused - the difference is where it settles, not how abruptly.
 - Which tray slot each piece belongs to is remembered in the host and survives a
   re-layout, so rotating the device mid-puzzle does not lose progress.
+- A re-layout waits for an empty hand. The board is composed for the box it is
+  drawn in, so *any* change of screen shape rebuilds it - a rotation, a resized
+  window, a phone collapsing its address bar - and rebuilding replaces the
+  element a finger is carrying. `game.ts` remembers the held piece from the drag
+  callbacks and defers the rebuild until the piece is let go and its drop has
+  been judged. See
+  [decision 20260801T190000](../../docs/decisions/20260801T190000-the-board-is-composed-for-the-screen.md).
 
 ## Toddler-proofing
 
