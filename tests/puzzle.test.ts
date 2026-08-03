@@ -1312,7 +1312,7 @@ const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number
   [8, "portrait", 0.286, 0.219],
   [9, "landscape", 0.164, 0.121],
   [9, "portrait", 0.265, 0.195],
-  [10, "landscape", 0.137, 0.108],
+  [10, "landscape", 0.15, 0.111],
   [10, "portrait", 0.265, 0.195],
   [11, "landscape", 0.226, 0.166],
   [11, "portrait", 0.323, 0.239],
@@ -1338,19 +1338,19 @@ const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number
   [21, "portrait", 0.927, 0.309],
   [22, "landscape", 0.558, 0.186],
   [22, "portrait", 0.927, 0.309],
-  [23, "landscape", 0.563, 0.145],
+  [23, "landscape", 0.516, 0.132],
   [23, "portrait", 0.927, 0.238],
-  [24, "landscape", 0.563, 0.145],
+  [24, "landscape", 0.516, 0.132],
   [24, "portrait", 0.927, 0.238],
-  [25, "landscape", 0.527, 0.117],
+  [25, "landscape", 0.512, 0.113],
   [25, "portrait", 0.927, 0.206],
-  [26, "landscape", 0.485, 0.133],
+  [26, "landscape", 0.451, 0.122],
   [26, "portrait", 0.824, 0.231],
-  [27, "landscape", 0.204, 0.077],
+  [27, "landscape", 0.215, 0.082],
   [27, "portrait", 0.364, 0.137],
-  [28, "landscape", 0.439, 0.096],
+  [28, "landscape", 0.426, 0.093],
   [28, "portrait", 0.854, 0.189],
-  [29, "landscape", 0.527, 0.117],
+  [29, "landscape", 0.512, 0.113],
   [29, "portrait", 0.927, 0.206],
   [30, "landscape", 0.535, 0.103],
   [30, "portrait", 0.927, 0.179],
@@ -1565,6 +1565,28 @@ describe("on a screen of any shape", () => {
         return Math.max(ink.width, ink.height);
       }),
     );
+
+  /**
+   * The fault this rule was written for. Level 19 is one butterfly in a square
+   * box with five parts waiting: past about 10:7 both placements draw it at the
+   * same size, because the cap on how big a piece may be drawn has them both,
+   * and the only thing left to tell a playable board from a letterbox is how
+   * much of the canvas the tray is taking. A band across the top of a 3:1
+   * screen is a third of the scarce dimension; two columns are a fifth of the
+   * plentiful one. It used to stand on the top all the way out to 3:1.
+   */
+  it("stands a wide screen's tray down the sides, where the board is", () => {
+    for (const ratio of [2.4, 3]) {
+      const screen = { width: Math.round(SHORT * ratio), height: SHORT };
+      const spec = levelSpec(19);
+      for (let run = 0; run < DEALS; run++) {
+        const puzzle = dealt(spec, run);
+        const layout = buildLevelLayout(viewFor(screen), spec, puzzle.pieces, puzzle.targets);
+        expect(layout.sceneBox.x, `${ratio}:1`).toBeGreaterThan(0);
+        expect(layout.sceneTop, `${ratio}:1`).toBe(0);
+      }
+    }
+  });
 
   for (const screen of screens) {
     it(`composes every level on a ${screen.name} screen`, () => {

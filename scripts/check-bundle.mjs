@@ -69,9 +69,16 @@ const BUDGET = {
   // `rest.ts` is imported by the entry for that reason. It buys frames back
   // rather than spending them, which is the one kind of growth this file should
   // be easy about, and the raw budget still holds.
-  // measured 2026-08-01: 113.4 kB raw, 37.1 kB gzipped
-  initialRaw: 116 * kB,
-  initialGzip: 38 * kB,
+  // raised 2026-08-03, initial only: where the tray goes is now a decision the
+  // game makes rather than a shape it defaults to, and the search that makes it
+  // - `src/fit.ts` - costs both placements, one to half the cast in columns a
+  // side, and the board each would leave. That is about 0.7 kB raw, and it is
+  // bought back on the screen: a piece drawn a third larger on a wide canvas,
+  // and a board that stops being a letterbox. Layout is needed before the first
+  // level by definition, so none of it can be deferred.
+  // measured 2026-08-03: 116.6 kB raw, 38.2 kB gzipped
+  initialRaw: 119 * kB,
+  initialGzip: 39 * kB,
   // measured 2026-07-31: 170.3 kB raw, 58.1 kB gzipped
   totalRaw: 181 * kB,
   totalGzip: 61 * kB,

@@ -26,6 +26,7 @@ import {
   type PictureDemand,
   type Reach,
   type RowsDemand,
+  type RowsFit,
   type TrayPad,
 } from "../src/fit";
 import type { Size } from "../src/geometry";
@@ -59,18 +60,32 @@ const span = (canvas: Size): number => Math.min(canvas.width, canvas.height * (1
 const square = (count: number): Size[] =>
   Array.from({ length: count }, () => ({ width: 1, height: 1 }));
 
+/** A tall narrow piece - a slice of a picture, or a giraffe. */
+const tall = (count: number): Size[] =>
+  Array.from({ length: count }, () => ({ width: 0.4, height: 1 }));
+
 /** A target that stands near the foot of its box, as an animal does. */
 const standing = (count: number): Reach[] =>
   Array.from({ length: count }, () => ({ rise: 0.85, drop: 0.15 }));
 
-const rowsDemand = (canvas: Size, targets: number, pieces: number): RowsDemand => ({
+const rowsDemand = (
+  canvas: Size,
+  targets: number,
+  pieces: number,
+  cast: (count: number) => Size[] = square,
+): RowsDemand => ({
   canvas,
   span: span(canvas),
   reaches: standing(targets),
-  grips: square(pieces),
-  drawn: square(pieces),
+  grips: cast(pieces),
+  drawn: cast(pieces),
   pad: PAD,
 });
+
+const playArea = (fit: RowsFit, canvas: Size): number => {
+  const room = sceneRoom(fit.tray, canvas, fit.slotSize, PAD, 0);
+  return room.width * room.height;
+};
 
 /** A ladder of screen shapes from tall to wide, the game's own range. */
 const CANVASES: readonly Size[] = [
@@ -182,21 +197,61 @@ describe("where the tray goes", () => {
   });
 
   it("never takes the sides at the cost of a smaller puzzle", () => {
+    let taken = 0;
     for (const canvas of CANVASES) {
-      for (let pieces = 2; pieces <= 8; pieces++) {
-        const demand = rowsDemand(canvas, 1, pieces);
-        const chosen = fitRows(demand, LIMITS);
-        if (chosen.tray.place !== "sides") continue;
-        const top = fitRows(demand, { ...LIMITS, gutterGain: Infinity });
-        expect(chosen.slotSize).toBeGreaterThanOrEqual(top.slotSize);
+      for (let targets = 1; targets <= 4; targets++) {
+        for (let pieces = 2; pieces <= 8; pieces++) {
+          const demand = rowsDemand(canvas, targets, pieces);
+          const chosen = fitRows(demand, LIMITS);
+          if (chosen.tray.place !== "sides") continue;
+          taken++;
+          expect(chosen.slotSize).toBeGreaterThanOrEqual(
+            fitRows(demand, { ...LIMITS, gutterGain: Infinity }).slotSize,
+          );
+        }
       }
     }
+    expect(taken, "no board in the sweep took the sides, so nothing was checked").toBeGreaterThan(
+      0,
+    );
   });
 
-  it("stands the pieces at the sides only where there is one target", () => {
+  it("takes the sides for the room when the puzzle cannot be drawn any bigger", () => {
+    // A letterbox screen: both placements are pinned at the cap on how big a
+    // piece may draw, so the only thing left to tell them apart is the board.
+    const canvas = { width: 2400, height: 800 };
+    const demand = rowsDemand(canvas, 1, 4, tall);
+    const top = fitRows(demand, { ...LIMITS, gutterGain: Infinity });
+    const sides = fitRows(demand, LIMITS);
+    expect(sides.tray.place).toBe("sides");
+    expect(sides.slotSize).toBe(top.slotSize);
+    expect(playArea(sides, canvas)).toBeGreaterThanOrEqual(
+      playArea(top, canvas) * LIMITS.gutterGain ** 2,
+    );
+  });
+
+  it("lets a board of several targets stand its pieces at the sides", () => {
+    const canvas = { width: 2400, height: 800 };
+    expect(fitRows(rowsDemand(canvas, 3, 4, tall), LIMITS).tray.place).toBe("sides");
+  });
+
+  it("stands more than one column a side when one would be too deep to fill", () => {
+    // Six pieces in a single column each side would reach further down than a
+    // short canvas has, and cap the slot at what that column could hold; two
+    // columns a side are half as deep and draw the puzzle a fifth bigger.
+    const tray = fitRows(rowsDemand({ width: 1400, height: 800 }, 1, 6), LIMITS).tray;
+    expect(tray.place).toBe("sides");
+    if (tray.place !== "sides") return;
+    expect(tray.columns).toHaveLength(4);
+  });
+
+  it("stands the same number of columns each side, so the scene keeps the middle", () => {
     for (const canvas of CANVASES) {
-      for (let targets = 2; targets <= 6; targets++) {
-        expect(fitRows(rowsDemand(canvas, targets, targets), LIMITS).tray.place).toBe("top");
+      for (let pieces = 2; pieces <= 9; pieces++) {
+        const tray = fitRows(rowsDemand(canvas, 1, pieces), LIMITS).tray;
+        if (tray.place !== "sides") continue;
+        expect(tray.columns.length % 2).toBe(0);
+        expect(tray.columns.flatMap((column) => column.pieces)).toHaveLength(pieces);
       }
     }
   });

@@ -215,15 +215,25 @@ export function shelvings(shares: readonly Size[], rows: number, pad: TrayPad): 
 }
 
 /**
- * The cast stacked into two columns, tallest first into whichever is shallower.
- * Only two, one either side, because the point of the arrangement is that the
- * scene keeps the middle of the board.
+ * The cast stacked into `perSide` columns either side, tallest first into
+ * whichever column is shallowest so far.
+ *
+ * Always the same number each side, because the point of the arrangement is
+ * that the scene keeps the middle of the board. More than one column a side is
+ * worth having where the canvas is wide and short: a side tray is capped by how
+ * deep its deepest column is, so eight pieces in two columns are drawn at half
+ * the size that eight pieces in four are, and on a letterbox screen the width
+ * the extra columns cost is width nothing else wanted.
  */
-export function columnings(shares: readonly Size[], pad: TrayPad): Column[] {
-  const packed: number[][] = [[], []];
-  const depths = [0, 0];
+export function columnings(shares: readonly Size[], pad: TrayPad, perSide = 1): Column[] {
+  const columns = 2 * perSide;
+  const packed: number[][] = Array.from({ length: columns }, () => []);
+  const depths: number[] = Array.from({ length: columns }, () => 0);
   for (const index of orderedBy(shares, (share) => share.height)) {
-    const at = (depths[0] as number) <= (depths[1] as number) ? 0 : 1;
+    let at = 0;
+    for (let column = 1; column < columns; column++) {
+      if ((depths[column] as number) < (depths[at] as number)) at = column;
+    }
     (packed[at] as number[]).push(index);
     depths[at] = (depths[at] as number) + (shares[index] as Size).height;
   }
@@ -237,9 +247,12 @@ export function columnings(shares: readonly Size[], pad: TrayPad): Column[] {
   });
 }
 
-/** Both columns get the width of the deeper drawing, so the scene stays centred. */
+/** Every column gets the width of the widest drawing, so the scene stays centred. */
 export const columnWidth = (columns: readonly Column[]): number =>
   Math.max(...columns.map((column) => column.width));
+
+/** How many columns a side tray stands on each side of the scene. */
+export const columnsPerSide = (columns: readonly Column[]): number => columns.length / 2;
 
 /**
  * How deep a band of shelves is at this tray slot size. The one place the
@@ -253,10 +266,28 @@ export const shelvedDepth = (shelves: readonly Shelf[], slotSize: number, pad: T
   );
 
 /** How far in from each side a side tray reaches, at this tray slot size. */
-export const sideEdge = (columns: readonly Column[], slotSize: number, pad: TrayPad): number =>
-  Math.round(pad.margin * slotSize) +
-  columnWidth(columns) * slotSize +
-  Math.round(pad.inside * slotSize);
+export const sideEdge = (columns: readonly Column[], slotSize: number, pad: TrayPad): number => {
+  const perSide = columnsPerSide(columns);
+  return (
+    Math.round(pad.margin * slotSize) +
+    perSide * columnWidth(columns) * slotSize +
+    (perSide - 1) * Math.round(pad.gap * slotSize) +
+    Math.round(pad.inside * slotSize)
+  );
+};
+
+/**
+ * What a scene row keeps clear at each end of the room it was given, in slot
+ * units.
+ *
+ * A band across the top leaves the scene the whole canvas, so a row is inset by
+ * the margin every row in this game is inset by. Columns down the sides have
+ * already spent that margin on their own sand, and spending it again would
+ * charge the scene twice for the same air and squeeze the row it is holding -
+ * so what is kept there is the half gap the columns were priced against.
+ */
+export const sceneInset = (tray: TrayPlan, pad: TrayPad, margin: number): number =>
+  tray.place === "top" ? margin : pad.gap / 2;
 
 /** How much of the canvas, on each side, a tray of this shape takes from the scene. */
 export function trayTakes(
@@ -297,6 +328,8 @@ export interface Plan {
   readonly rises: readonly number[];
   readonly drops: readonly number[];
   readonly slotSize: number;
+  /** The area of the canvas this tray leaves the play area, in square units. */
+  readonly room: number;
   /** The largest drawing in the cast, on its longer side, in slot units. */
   readonly largest: number;
   /**
@@ -307,9 +340,11 @@ export interface Plan {
   readonly smallest: number;
 }
 
-/** What one side of a side tray takes across the canvas, in slot units. */
-const perSideWidth = (tray: TrayPlan): number =>
-  tray.place === "sides" ? columnWidth(tray.columns) : 0;
+/** The widths a side tray's own columns add to a row, in slot units. */
+const columnSpans = (tray: TrayPlan): number[] =>
+  tray.place === "sides"
+    ? Array.from({ length: columnsPerSide(tray.columns) }, () => columnWidth(tray.columns))
+    : [];
 
 /**
  * Cost one split of the cast: how the targets are shared out into rows of
@@ -352,13 +387,15 @@ export function planFor(
       ? tray.shelves.reduce((sum, shelf) => sum + shelf.height, 0) +
         (tray.shelves.length + 1) * pad.pad
       : 0;
+  // What the widest row takes across the canvas. A side tray's columns are
+  // priced as members of that row, sharing its outer margins and held off the
+  // scene by the gap two neighbours in a row are held apart by - which is where
+  // `sceneInset` gets its half a gap from, and why the two agree.
+  const across = Math.max(...sceneCounts);
+  const scene = Array.from({ length: across }, () => 1);
+  const columns = columnSpans(tray);
   const sceneSpan =
-    tray.place === "top"
-      ? spanOf(
-          Array.from({ length: Math.max(...sceneCounts) }, () => 1),
-          pad,
-        )
-      : spanOf([perSideWidth(tray), 1, perSideWidth(tray)], pad);
+    tray.place === "top" ? spanOf(scene, pad) : spanOf([...columns, ...scene, ...columns], pad);
   const trayWidthSpan =
     tray.place === "top" ? Math.max(...tray.shelves.map((shelf) => shelf.span)) : 0;
   const trayDepth =
@@ -375,12 +412,14 @@ export function planFor(
       (limits.maxSlot * Math.min(width, height)) / largest,
     ),
   );
+  const room = sceneRoom(tray, canvas, slotSize, pad, 0);
   return {
     sceneCounts,
     tray,
     rises,
     drops,
     slotSize,
+    room: Math.max(0, room.width) * Math.max(0, room.height),
     largest,
     smallest: Math.min(...drawnSides),
   };
@@ -416,6 +455,34 @@ export interface RowsFit {
 const trayRowsOf = (plan: Plan): number =>
   plan.tray.place === "top" ? plan.tray.shelves.length : plan.tray.columns.length;
 
+/**
+ * Where the tray goes, given the best each placement can do.
+ *
+ * The tray belongs at the top. A piece is dragged downwards from a shelf across
+ * the top of the board, which is the easiest direction for a small arm, and a
+ * board that stands its pieces somewhere else has to be worth it. So the sides
+ * have to buy one of two things:
+ *
+ *  - **a markedly bigger puzzle** - a tenth again on the size it is drawn at; or
+ *  - **markedly more board to stand it in**, when the puzzle cannot be drawn any
+ *    bigger - and never at the cost of drawing it smaller.
+ *
+ * The second clause is the one that matters on a wide screen, and it is there
+ * because the first cannot see the thing that is actually wrong there. Past a
+ * certain width both placements are pinned at the same size by the cap on how
+ * big a piece may draw, so they compare as equal however lopsided they are -
+ * while the band across the top is spending a third of a short height and two
+ * columns would spend a fifth of a plentiful width. One is a board with room to
+ * play on and the other is a letterbox, and only the area can tell them apart.
+ *
+ * One constant, in one meaning: `gutterGain` is a *linear* tenth, so an area
+ * compares at its square.
+ */
+function takeSides(top: number, sides: number, topRoom: number, sidesRoom: number, gain: number) {
+  if (sides >= top * gain) return true;
+  return sides >= top && sidesRoom >= topRoom * gain * gain;
+}
+
 const asFit = (plan: Plan): RowsFit => ({
   tray: plan.tray,
   sceneCounts: plan.sceneCounts,
@@ -448,12 +515,18 @@ export function fitRows(demand: RowsDemand, limits: Limits): RowsFit {
   const cost = (sceneRows: number, tray: TrayPlan): Plan =>
     planFor(canvas, reaches, drawnSides, sceneRows, tray, pad, limits);
 
-  const plans: Plan[] = [];
+  const topPlans: Plan[] = [];
+  const sidePlans: Plan[] = [];
   for (let sceneRows = 1; sceneRows <= reaches.length; sceneRows++) {
     for (let trayRows = 1; trayRows <= count; trayRows++) {
       for (const shelves of shelvings(grips, trayRows, pad)) {
-        plans.push(cost(sceneRows, { place: "top", shelves }));
+        topPlans.push(cost(sceneRows, { place: "top", shelves }));
       }
+    }
+    // Both sides get the same columns, so a side tray varies by how many
+    // columns it stands each side rather than by how its pieces are packed.
+    for (let perSide = 1; perSide <= Math.floor(count / 2); perSide++) {
+      sidePlans.push(cost(sceneRows, { place: "sides", columns: columnings(grips, pad, perSide) }));
     }
   }
 
@@ -465,14 +538,6 @@ export function fitRows(demand: RowsDemand, limits: Limits): RowsFit {
   const smallestInk = limits.minPieceInk * span;
   const grabbable = (plan: Plan): boolean =>
     plan.slotSize >= smallest && plan.slotSize * plan.smallest >= smallestInk;
-  const viable = plans.filter(grabbable);
-  if (viable.length === 0) {
-    throw new Error(
-      `${count} pieces do not fit a ${canvas.width}x${canvas.height} canvas without ` +
-        `dropping below ${Math.round(smallest)} units each, which is too small for a ` +
-        `toddler to grab.`,
-    );
-  }
 
   const traySpan = limits.trayShare * canvas.height;
   const wantedSceneRows = idealRows(
@@ -481,31 +546,45 @@ export function fitRows(demand: RowsDemand, limits: Limits): RowsFit {
     canvas.width,
   );
   const wantedTrayRows = idealRows(count, traySpan, canvas.width);
-  const biggest = Math.max(...viable.map((plan) => plan.slotSize));
   const misshapen = (plan: Plan): number =>
     Math.abs(plan.sceneCounts.length - wantedSceneRows) +
     Math.abs(trayRowsOf(plan) - wantedTrayRows);
-  const best = viable
-    .filter((plan) => plan.slotSize >= biggest * limits.sizeTolerance)
-    // Plans are in row order, so a tie keeps the one with fewest rows.
-    .reduce((chosen, plan) =>
-      misshapen(plan) < misshapen(chosen) ||
-      (misshapen(plan) === misshapen(chosen) && plan.slotSize > chosen.slotSize)
-        ? plan
-        : chosen,
-    );
 
-  // A tray down the sides is unusual enough to look like a mistake if it bought
-  // nothing, so it has to buy something: it stands only where the scene is one
-  // target - a picture, keeping the middle of the board - and only where it
-  // makes that picture markedly bigger than a band across the top would.
-  if (reaches.length === 1 && count > 1) {
-    const sides = cost(1, { place: "sides", columns: columnings(grips, pad) });
-    if (grabbable(sides) && sides.slotSize >= best.slotSize * limits.gutterGain) {
-      return asFit(sides);
-    }
+  /**
+   * The best of one placement's splits: the biggest, and among the splits that
+   * come out much the same size, the one whose shape suits the canvas.
+   */
+  const bestOf = (plans: readonly Plan[]): Plan | null => {
+    const viable = plans.filter(grabbable);
+    if (viable.length === 0) return null;
+    const biggest = Math.max(...viable.map((plan) => plan.slotSize));
+    return (
+      viable
+        .filter((plan) => plan.slotSize >= biggest * limits.sizeTolerance)
+        // Plans are in row order, so a tie keeps the one with fewest rows.
+        .reduce((chosen, plan) =>
+          misshapen(plan) < misshapen(chosen) ||
+          (misshapen(plan) === misshapen(chosen) && plan.slotSize > chosen.slotSize)
+            ? plan
+            : chosen,
+        )
+    );
+  };
+
+  const top = bestOf(topPlans);
+  const sides = bestOf(sidePlans);
+  if (!top) {
+    if (sides) return asFit(sides);
+    throw new Error(
+      `${count} pieces do not fit a ${canvas.width}x${canvas.height} canvas without ` +
+        `dropping below ${Math.round(smallest)} units each, which is too small for a ` +
+        `toddler to grab.`,
+    );
   }
-  return asFit(best);
+  if (sides && takeSides(top.slotSize, sides.slotSize, top.room, sides.room, limits.gutterGain)) {
+    return asFit(sides);
+  }
+  return asFit(top);
 }
 
 /* ---------------------------------------------------------------------------
@@ -550,6 +629,8 @@ export interface PicturePlan {
   readonly sceneSlot: number;
   /** What a piece waiting in the tray is drawn to. Never above `sceneSlot`. */
   readonly traySlot: number;
+  /** The area of the canvas this tray leaves the picture, in square units. */
+  readonly room: number;
 }
 
 /**
@@ -570,7 +651,7 @@ export function bestPicturePlan(
   limits: Limits,
 ): PicturePlan {
   const margin = limits.pictureMargin * Math.min(canvas.width, canvas.height);
-  let best: PicturePlan = { tray, sceneSlot: 0, traySlot: 0 };
+  let best: PicturePlan = { tray, sceneSlot: 0, traySlot: 0, room: 0 };
   for (let traySlot = 1; traySlot <= Math.floor(trayCeiling(tray, canvas, limits)); traySlot++) {
     const room = sceneRoom(tray, canvas, traySlot, pad, margin);
     if (room.width <= 0 || room.height <= 0) break;
@@ -580,7 +661,12 @@ export function bestPicturePlan(
     if (sceneSlot > best.sceneSlot) {
       // A piece never waits larger than it lands: that would be a picture
       // shrinking as it is built, which is the opposite of the promise.
-      best = { tray, sceneSlot, traySlot: Math.min(traySlot, sceneSlot) };
+      best = {
+        tray,
+        sceneSlot,
+        traySlot: Math.min(traySlot, sceneSlot),
+        room: room.width * room.height,
+      };
     }
   }
   return best;
@@ -601,18 +687,18 @@ export interface PictureDemand {
  * Fit a board whose play area is one picture the board exists to show. Every
  * tray a cast of this size could be packed into is costed, and the one that
  * leaves the picture biggest wins; a tie goes to the tray whose pieces wait
- * largest.
+ * largest. Where the tray goes is then the same question as on any other board,
+ * settled by the same rule - see `takeSides`.
  */
 export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
   const { canvas, span, box, grips, drawn, pad } = demand;
   const count = grips.length;
-  const trays: TrayPlan[] = [];
+  const topTrays: TrayPlan[] = [];
   for (let trayRows = 1; trayRows <= count; trayRows++) {
     for (const shelves of shelvings(grips, trayRows, pad)) {
-      trays.push({ place: "top", shelves });
+      topTrays.push({ place: "top", shelves });
     }
   }
-  if (count > 1) trays.push({ place: "sides", columns: columnings(grips, pad) });
 
   const smallestInk = limits.minPieceInk * span;
   const thinnest = Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height)));
@@ -620,20 +706,35 @@ export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
   const grabbable = (plan: PicturePlan): boolean =>
     plan.sceneSlot >= limits.minSlot * span && plan.traySlot * thinnest >= smallestInk;
 
-  const viable = trays
-    .map((tray) => bestPicturePlan(tray, canvas, box, pad, limits))
-    .filter(grabbable);
-  if (viable.length === 0) {
+  const bestOf = (trays: readonly TrayPlan[]): PicturePlan | null => {
+    const viable = trays
+      .map((tray) => bestPicturePlan(tray, canvas, box, pad, limits))
+      .filter(grabbable);
+    if (viable.length === 0) return null;
+    return viable.reduce((chosen, plan) =>
+      plan.sceneSlot > chosen.sceneSlot ||
+      (plan.sceneSlot === chosen.sceneSlot && plan.traySlot > chosen.traySlot)
+        ? plan
+        : chosen,
+    );
+  };
+
+  const sideTrays: TrayPlan[] = [];
+  for (let perSide = 1; perSide <= Math.floor(count / 2); perSide++) {
+    sideTrays.push({ place: "sides", columns: columnings(grips, pad, perSide) });
+  }
+
+  const top = bestOf(topTrays);
+  const sides = sideTrays.length > 0 ? bestOf(sideTrays) : null;
+  if (!top) {
+    if (sides) return sides;
     throw new Error(
       `${count} pieces of a picture do not fit a ${canvas.width}x${canvas.height} canvas ` +
         `at a size a toddler could grab.`,
     );
   }
-
-  return viable.reduce((chosen, plan) =>
-    plan.sceneSlot > chosen.sceneSlot ||
-    (plan.sceneSlot === chosen.sceneSlot && plan.traySlot > chosen.traySlot)
-      ? plan
-      : chosen,
-  );
+  if (sides && takeSides(top.sceneSlot, sides.sceneSlot, top.room, sides.room, limits.gutterGain)) {
+    return sides;
+  }
+  return top;
 }

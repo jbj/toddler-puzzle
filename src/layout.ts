@@ -57,8 +57,10 @@ import {
 } from "./geometry";
 import {
   columnWidth,
+  columnsPerSide,
   fitPicture,
   fitRows,
+  sceneInset,
   sceneRoom,
   shelvedDepth,
   sideEdge,
@@ -227,8 +229,9 @@ export interface Layout {
   readonly trayCells: ReadonlyMap<PieceId, Rect>;
   /**
    * The sand-coloured shelving the cells stand on, for the scenery to paint.
-   * One band across the top usually; two columns down the sides when a solitary
-   * picture leaves the middle of the canvas to itself.
+   * One band across the top usually; columns down both sides, the same number
+   * each side, when standing them there leaves the scene a markedly better
+   * board - which is mostly what a wide screen does.
    */
   readonly trayBands: readonly TrayBand[];
   /**
@@ -374,11 +377,20 @@ interface Arrangement {
   readonly decorLines: readonly number[];
 }
 
-/** Left edges of `count` evenly spaced boxes, inset by `margin` at both ends. */
-function spreadX(count: number, size: number, width: number, margin: number): number[] {
-  if (count === 1) return [(width - size) / 2];
-  const step = (width - 2 * margin - size) / (count - 1);
-  return Array.from({ length: count }, (_, index) => margin + index * step);
+/**
+ * Left edges of `count` evenly spaced boxes across `room`, inset by `margin` at
+ * both ends.
+ *
+ * Across the room the scene was given rather than across the canvas, because
+ * those are the same thing only while the tray is a band at the top. Standing
+ * the tray down the sides takes the canvas's edges away from the scene, and a
+ * row spread over them would put its outermost holes underneath the pieces
+ * waiting to fill them.
+ */
+function spreadX(count: number, size: number, room: Rect, margin: number): number[] {
+  if (count === 1) return [room.x + (room.width - size) / 2];
+  const step = (room.width - 2 * margin - size) / (count - 1);
+  return Array.from({ length: count }, (_, index) => room.x + margin + index * step);
 }
 
 /**
@@ -453,7 +465,7 @@ function fromArrangement(
   const holes = new Map<PieceId, Point>();
   let next = 0;
   for (const row of sceneRows) {
-    for (const x of spreadX(row.count, slotSize, canvas.width, arrangement.sceneMargin)) {
+    for (const x of spreadX(row.count, slotSize, arrangement.sceneBox, arrangement.sceneMargin)) {
       const shape = targets[next++] as PieceShape;
       const box = boxes.get(shape.id) as PieceBox;
       holes.set(shape.id, standing(shape, box, x, slotSize, row.groundY));
@@ -906,11 +918,20 @@ function gutterTray(
 ): LaidTray {
   const scaled = (share: number): number => share * slotSize;
   const width = scaled(columnWidth(columns));
+  const gap = scaled(pad.gap);
+  const perSide = columnsPerSide(columns);
   const edge = sideEdge(columns, slotSize, pad);
-  // The column is centred in the sand it stands on rather than pushed against
-  // the picture: the shelf is what the child reads as "these are waiting".
-  const inset = (edge - width) / 2;
-  const lefts = [inset, canvas.width - edge + inset];
+  // The columns are centred in the sand they stand on rather than pushed
+  // against the scene: the shelf is what the child reads as "these are
+  // waiting". The left band fills outwards in, the right band inwards out, so
+  // the two are mirrors of each other rather than the same band drawn twice.
+  const taken = perSide * width + (perSide - 1) * gap;
+  const inset = (edge - taken) / 2;
+  const lefts = columns.map((_, at) =>
+    at < perSide
+      ? inset + at * (width + gap)
+      : canvas.width - edge + inset + (at - perSide) * (width + gap),
+  );
   const room = canvas.height - COMPOSITION.controlRoom;
   const cells: TrayCell[] = [];
   for (const [side, column] of columns.entries()) {
@@ -967,7 +988,6 @@ function compose(view: View, fit: RowsFit, grips: readonly Size[]): Arrangement 
   /** How deep each row of ground has to be for the pieces dealt into it. */
   const depths = fit.rises.map((rise, index) => (rise + (fit.drops[index] as number)) * slotSize);
   const rowGap = scaled(COMPOSITION.rowGap);
-  const margin = Math.round(scaled(COMPOSITION.sideMargin));
   const tray = layTray(fit.tray, grips, canvas, slotSize, SLOT_TRAY);
   const laid = fit.tray.place === "top" ? tray : null;
   const sceneTop = tray.sceneTop;
@@ -1044,7 +1064,7 @@ function compose(view: View, fit: RowsFit, grips: readonly Size[]): Arrangement 
       },
     ],
     sceneRows,
-    sceneMargin: margin,
+    sceneMargin: Math.round(sceneInset(fit.tray, SLOT_TRAY, COMPOSITION.sideMargin) * slotSize),
     decorLines: sceneRows.map((row) => Math.round(row.groundY + scaled(COMPOSITION.decorDrop))),
   };
 }
