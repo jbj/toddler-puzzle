@@ -361,7 +361,7 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
   /**
    * A two-state switch for one boolean setting. There is one of them among the
    * options today - rotation mode was dropped rather than built, see
-   * [decision 20260730T203000](../docs/decisions/20260730T203000-no-rotation-mode.md)
+   * docs/decisions/Rotation mode is not built, and the switch is gone.md
    * - and it stays a factory because the next boolean setting should not have
    * to invent this again. The kinds below use the same shape, with a handler of
    * their own.

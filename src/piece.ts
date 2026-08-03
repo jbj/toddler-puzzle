@@ -51,7 +51,7 @@ export interface PieceShape {
    * draws a little over half its box's height, so a whole pig was placed by a
    * box twice as tall as the pig. Saying nothing is no longer allowed. An
    * animal's is measured and committed as `ANIMAL_INK` in `assets.ts`. See
-   * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
+   * docs/decisions/One box measures a piece, and one rule places it.md.
    */
   readonly inked: Rect;
   /**
@@ -102,7 +102,7 @@ export const GRAB_PADDING = 0.04;
  *
  * A long thin piece is hard to aim, and a box the shape of the sliver would
  * give it the least room to be aimed at - punishing the same piece twice. See
- * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
+ * docs/decisions/One box measures a piece, and one rule places it.md.
  */
 export const GRIP_MIN_RATIO = 0.5;
 

@@ -1042,7 +1042,8 @@ describe("layouts where several pieces fill one target", () => {
     // A slice used to come out strictly bigger, back when a whole animal was
     // the one piece measured by its whole art box; measuring the animal too
     // took that unearned advantage away rather than taking anything from a
-    // slice. See docs/decisions/20260731T133000-one-box-measures-a-piece.md.
+    // slice. See docs/decisions/One box measures a piece, and one rule places
+    // it.md.
     for (const id of ORIENTATIONS) {
       for (const slices of [2, 3, 4]) {
         const { pieces, targets } = slicedCast(2, slices, seededRandom(slices));
@@ -1283,7 +1284,7 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * room than one packed by the box around it: the animal a child sees is bigger
  * than it was, and the number beside it is smaller because it is finally
  * counting the animal. See
- * docs/decisions/20260731T133000-one-box-measures-a-piece.md.
+ * docs/decisions/One box measures a piece, and one rule places it.md.
  *
  * Level 17 is the one row that has been lowered on purpose. It used to deal a
  * four-piece picture and now stands the boat, which is three, and a three-part
@@ -1291,7 +1292,7 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * chapter whose five levels are five different pictures, named in the table
  * rather than dealt at random - and the slot it drops to is one the whole
  * opening chapter already plays at. See
- * docs/decisions/20260731T152600-a-level-names-what-it-is-made-of.md.
+ * docs/decisions/A level names what it is made of.md.
  */
 const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number, number])[] = [
   [1, "landscape", 0.222, 0.191],
@@ -1418,7 +1419,7 @@ describe("how big the board gets", () => {
  * than the old portrait canvas's 1:1.7, so a fifth of the screen was bar. The
  * floors were 0.61 to 0.99 of the screen covered. They are all but 1 now, and
  * that difference is the whole change. See
- * docs/decisions/20260801T190000-the-board-is-composed-for-the-screen.md.
+ * docs/decisions/The board is composed for the screen it is on.md.
  */
 describe("on a real screen", () => {
   const dealt = (level: LevelSpec, run: number): Puzzle =>

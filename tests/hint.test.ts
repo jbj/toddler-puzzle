@@ -282,7 +282,7 @@ describe("which piece the hint is about", () => {
   it("is some piece that still needs moving before anything has been touched", () => {
     // The child who has not yet worked out that pieces move is exactly the one
     // the hint exists for, so "nobody has touched anything" must not mean
-    // "no help". See docs/decisions/20260730T213000.
+    // "no help". See docs/decisions/A hint points at both ends.md.
     const first = hintPiece(cast, placed(), null);
     expect(first).not.toBeNull();
     expect(placed().has(first?.id as PieceId)).toBe(false);

@@ -18,9 +18,9 @@
  *
  * It reads `.art/bundle.json`, written by the `bundle-report` plugin in
  * `vite.config.ts`, which is where the import graph is known. See
- * [decision 20260729T223500](../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md)
- * for why the initial figure is the one that matters and the total is still
- * worth watching.
+ * docs/decisions/A chapter is warmed before it is needed, not fetched when it
+ * is.md for why the initial figure is the one that matters and the total is
+ * still worth watching.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

@@ -709,7 +709,7 @@ const COMPOSITION = {
    * as far as that trade goes: below it a piece stops reading as the thing that
    * fits the shape it is next to, which is the whole skill the game is built
    * on. See
-   * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+   * docs/decisions/Let a picture take the whole board.md.
    */
   minWaitingScale: 2 / 3,
   /**
@@ -1296,7 +1296,7 @@ function idealRows(count: number, span: number, width: number): number {
  * picture at about a tenth of the board and left it standing in a landscape
  * three quarters empty. So a piece here waits smaller than it lands, and no
  * smaller than `COMPOSITION.minWaitingScale`. See
- * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+ * docs/decisions/Let a picture take the whole board.md.
  * ------------------------------------------------------------------------ */
 
 /**

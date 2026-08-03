@@ -64,7 +64,7 @@ describe("which chapter ends with what", () => {
    * board of animals, which is where it used to be. Nothing else here would
    * notice: the wiring would be perfectly correct and the screen would be two
    * sets of the same animals. See
-   * [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
+   * docs/decisions/A celebration is not made of the board.md.
    */
   it("never walks a parade of animals over a board of animals", () => {
     const paradeIn = new Set<CelebrationId>(["parade", FINALE]);

@@ -120,7 +120,8 @@ mkdirSync(shotsDir, { recursive: true });
 // table it is meant to sample: these record what the live app actually put on
 // screen as the run played, and the guard at the end of the run holds them
 // against what the source of truth says must be covered. See
-// docs/decisions/20260730T005900-guard-the-sample-against-the-table.md.
+// docs/decisions/Guard the sample against the table, rather than shoot all
+// thirty.md.
 const coveredKinds = new Set();
 const coveredChapters = new Set();
 const coveredCelebrations = new Set();
@@ -847,8 +848,9 @@ const kindIsHeldOn = (kind) =>
 /**
  * Every option the panel offers, by the label a grown-up reads. A switch that
  * does nothing is worse than no switch at all, so what is on this panel is
- * checked rather than assumed - rotation mode was dropped
- * (decision 20260730T203000) and its row went with it.
+ * checked rather than assumed - rotation mode was dropped (see
+ * docs/decisions/Rotation mode is not built, and the switch is gone.md) and its
+ * row went with it.
  */
 const panelOptions = () =>
   evaluate(`[...document.querySelectorAll('.grownups-option-label')].map((el) => el.textContent)`);
@@ -1297,8 +1299,8 @@ try {
   // --- level 1: bubbles ----------------------------------------------------
   // The game opens with something to touch rather than something to drag,
   // because dragging is beyond a one-year-old and a first screen they cannot
-  // work is a closed door. See docs/decisions/20260729T072100 and
-  // src/kinds/play.ts.
+  // work is a closed door. See docs/decisions/Open the game with something to
+  // touch.md and src/kinds/play.ts.
   check("a new player starts on level 1", (await levelNumber()) === 1);
   check("level 1 is in the first chapter", (await chapterName()) === "first-touches");
   check("level 1 is played by touching", (await kindName()) === "play");
@@ -1707,7 +1709,8 @@ try {
 
   // A level played by touching has no tray, no target and no wrong place: a
   // finger anywhere already lands on something that answers, so there is
-  // nothing for a hint to point at. See docs/decisions/20260730T213000.
+  // nothing for a hint to point at. See docs/decisions/A hint points at both
+  // ends.md.
   await goToLevel(3);
   check("level 3 is played by touching", (await kindName()) === "play");
   const onTouchLevel = await hintAfterAWhile();
@@ -1884,7 +1887,7 @@ try {
   check("the rainbow has the screen to itself first", (await finishButtons()) === 0);
   // The rule the chapter-2 celebration is chosen by: a celebration is never
   // made of what the board is made of, so a board of animals gets one with no
-  // animal in it. See docs/decisions/20260801T160000.
+  // animal in it. See docs/decisions/A celebration is not made of the board.md.
   check("nothing on a board of animals is celebrated with more animals", (await parading()) === 0);
   const arcsAtFirst = await rainbowArcs();
   const skyOverAnimals = await celebrationThings();
@@ -2066,7 +2069,7 @@ try {
   // shapes, so the only animals on the screen are the ones walking: a
   // celebration is never made of what the board is made of, which is why the
   // parade ends this chapter rather than the chapter of animals. See
-  // docs/decisions/20260801T160000.
+  // docs/decisions/A celebration is not made of the board.md.
   check("finishing chapter 4 raises the parade", (await celebrationName()) === "parade");
   check("the parade has the screen to itself first", (await finishButtons()) === 0);
   const marchers = await paradingPieces();
@@ -2119,7 +2122,8 @@ try {
   check("the picture shows under the empty frame", await guideIsShowing());
   // The picture takes the board rather than standing in the middle of it, and
   // what is left over is the page's own colour rather than a landscape. Both
-  // are only visible on a rendered board; see decision 20260730T230000.
+  // are only visible on a rendered board; see docs/decisions/Let a picture take
+  // the whole board.md.
   const board = await pictureBoard();
   check(
     `the picture takes the board (${(board.across * 100).toFixed(0)}% across, ` +
@@ -2387,7 +2391,8 @@ try {
   // taken off the screen, nothing is counted as touched that was not, and the
   // child still presses the button themselves. The board above was just dealt
   // again, so those ten seconds start here. See src/kinds/play.ts and
-  // decision 20260801T163000.
+  // docs/decisions/Ask a touch level for a handful, and let the child out
+  // anyway.md.
   check("no way onwards in the first moments", (await finishButtons()) === 0);
   const lentOut = await waitForFinishButton(14_000);
   check(
@@ -2447,8 +2452,8 @@ try {
   // The game is split by chapter, and `warm.ts` fetches every chunk during the
   // first level so a seam never waits. Both halves of that are claims about
   // conditions nobody meets by accident, so this makes them: the network is cut
-  // outright, and a chunk is blocked outright. See
-  // decision 20260729T223500, both halves of it.
+  // outright, and a chunk is blocked outright. See docs/decisions/A chapter is
+  // warmed before it is needed, not fetched when it is.md, both halves of it.
   await setViewport(1280, 800);
   await send("Network.enable");
 
@@ -2730,7 +2735,8 @@ try {
   // sample is held against the table it is meant to sample - what must be
   // covered read from the source of truth, what was covered taken from what the
   // live app reported putting on screen as the run played. See
-  // docs/decisions/20260730T005900-guard-the-sample-against-the-table.md.
+  // docs/decisions/Guard the sample against the table, rather than shoot all
+  // thirty.md.
   const required = requiredCoverage();
 
   // Anti-vacuity first. A coverage check that requires nothing passes while

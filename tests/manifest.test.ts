@@ -39,7 +39,8 @@ describe("the web-app manifest", () => {
 
   it("is relative, so one build works under the Pages sub-path", () => {
     // A leading slash would send add-to-home to the server root, which is not
-    // where the game lives on GitHub Pages. See decision 20260728T103610.
+    // where the game lives on GitHub Pages. See
+    // docs/decisions/Deploy to GitHub Pages from a verified commit.md.
     for (const url of [manifest.start_url, manifest.scope]) {
       expect(url).toBeTruthy();
       expect(url?.startsWith("/")).toBe(false);

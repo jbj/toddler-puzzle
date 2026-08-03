@@ -20,7 +20,7 @@
  * the chapter of animals once, and an elephant walking over an elephant is one
  * busy picture rather than one thing happening. That is why the parade is hung
  * on the chapter of coloured shapes and deals from the animals the board is not
- * holding. See [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
+ * holding. See docs/decisions/A celebration is not made of the board.md.
  *
  * **A celebration is not a level, and deliberately not a `PuzzleKind`.** A kind
  * is dealt a cast, composes a layout, cuts holes, judges drops, and above all is
@@ -30,7 +30,7 @@
  * nobody plays. What it does copy from `PuzzleKind.play` is the *shape*: it is
  * handed a layer, it answers the finger itself, it returns a teardown, and its
  * progress lives outside the board so that turning the tablet does not lose it.
- * See [decision 20260729T152400](../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md).
+ * See docs/decisions/A celebration is played, and it ends by itself.md.
  *
  * **It cannot be a trap at either end.** Two failures are possible and both are
  * closed here:
@@ -531,7 +531,7 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
 // the deal. A parade made of the board's own pieces was the same animals twice
 // over - one set still in their holes, one set walking over them - which reads
 // as one busy picture rather than as one thing happening. See
-// [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
+// docs/decisions/A celebration is not made of the board.md.
 
 /** The animals to walk: dealt from the roster, minus whatever is on the board. */
 function paradeCast(stage: CelebrationStage): readonly PieceShape[] {
