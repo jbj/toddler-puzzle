@@ -16,7 +16,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as audio from "../src/audio";
-import { CELEBRATIONS, type CelebrationId } from "../src/celebration";
+import { CHAPTER_CELEBRATIONS, INTERLUDES, type ChapterCelebrationId } from "../src/celebration";
 import type { PuzzleKindId } from "../src/levels";
 
 // --- a stand-in for Web Audio ---------------------------------------------
@@ -136,6 +136,10 @@ const CALLS: Record<string, () => void> = {
   playFirework: () => audio.playFirework(0),
   playFanfare: () => audio.playFanfare(1),
   playChapterFanfare: () => audio.playChapterFanfare("balloons"),
+  playInterludeFanfare: () => audio.playInterludeFanfare("beach-balls"),
+  playBoing: () => audio.playBoing(0),
+  playRustle: () => audio.playRustle(0),
+  playSwoop: () => audio.playSwoop(0),
 };
 
 describe("the sound switch", () => {
@@ -220,7 +224,7 @@ describe("a voice per kind", () => {
 });
 
 describe("a fanfare per chapter", () => {
-  const ids = Object.values(CELEBRATIONS);
+  const ids: readonly ChapterCelebrationId[] = Object.values(CHAPTER_CELEBRATIONS);
 
   it("gives every celebration one of its own", () => {
     const heard = new Set<string>();
@@ -247,8 +251,45 @@ describe("a fanfare per chapter", () => {
   });
 
   it("gives the last chapter the finale and nobody else", () => {
-    const finale = ids.filter((id: CelebrationId) => id === "finale");
+    const finale = ids.filter((id) => id === "finale");
     expect(finale).toHaveLength(1);
+  });
+});
+
+/**
+ * Every level now ends with a celebration, so the twenty-four ordinary ones
+ * have an arrival of their own behind the level fanfare. They are heard five
+ * times as often as any chapter's, which is the whole reason they have to stay
+ * smaller than one: the moment an interlude sounds like the end of a chapter,
+ * the end of a chapter has stopped being a bigger thing.
+ */
+describe("a fanfare per interlude", () => {
+  it("gives every interlude one of its own", () => {
+    const heard = new Set<string>();
+    for (const id of INTERLUDES) {
+      const fresh = fakeContext();
+      audio.useAudioContext(fresh as unknown as BaseAudioContext);
+      audio.playInterludeFanfare(id);
+      const spelling = pitches(fresh).join(",");
+      expect(spelling.length, id).toBeGreaterThan(0);
+      expect(heard.has(spelling), `${id} sounds exactly like another interlude`).toBe(false);
+      heard.add(spelling);
+    }
+  });
+
+  it("keeps each of them smaller than any chapter's", () => {
+    const spanOf = (name: string): number =>
+      audio.phraseSpan(audio.VOCABULARY.find((sound) => sound.name === name)?.phrase ?? []);
+    const smallestChapter = Math.min(
+      ...Object.keys(CHAPTER_CELEBRATIONS).map((chapter) =>
+        spanOf(`chapter-${CHAPTER_CELEBRATIONS[chapter as keyof typeof CHAPTER_CELEBRATIONS]}`),
+      ),
+    );
+    for (const id of INTERLUDES) {
+      const span = spanOf(`interlude-${id}`);
+      expect(span, id).toBeGreaterThan(0);
+      expect(span, id).toBeLessThan(smallestChapter);
+    }
   });
 });
 

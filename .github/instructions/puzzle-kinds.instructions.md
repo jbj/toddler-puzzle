@@ -137,12 +137,16 @@ Four rules, and they are the level rather than polish:
   everything but peekaboo. A bubble that drifts away untouched is replaced at
   once.
 - **There is always a way out.** The goal is what the level asks for;
-  `ACTIVITY_PATIENCE_MS` is what it settles for - ten seconds after the level was
-  dealt, the way onwards is up whatever has been touched. `isComplete` reads that
+  `ACTIVITY_PATIENCE_MS` is what it settles for - one bubble's climb of the sky
+  after the level was dealt, about eight seconds, and the way onwards is up
+  whatever has been touched. It is a length rather than a round number because
+  that is the one interval on screen a child can watch go by; the pause after
+  every *other* level is timed the same way, off a balloon rather than a bubble
+  (`WAY_OUT_MS` in `src/celebrate.ts`). `isComplete` reads that
   deadline as well as the count, and `play` arms a timer calling `host.touched()`
   with no point, so the host looks again without sparkling at a finger that was
   not there. It ends nothing else. The deadline is stamped on the *puzzle* when it
-  is dealt, so turning the tablet hands out no second ten seconds. See
+  is dealt, so turning the tablet hands out no second clock. See
   [Ask a touch level for a handful, and let the child out anyway](<../../docs/decisions/Ask a touch level for a handful, and let the child out anyway.md>).
 - **The answer is immediate.** `pointerdown`, not click, and nothing waits for an
   animation. An animation may run *after* the answer.

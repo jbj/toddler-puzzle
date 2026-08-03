@@ -282,7 +282,14 @@ for (const file of instructionFiles) {
  * budgeted the way the bundle is: a ceiling that may be raised deliberately and
  * never quietly. The index is held tighter because its job is to be one screen.
  */
-const FILE_CEILING = 16 * 1024;
+// Raised 2026-08-03, 16 -> 17 kB, for `tests.instructions.md`, which arrived at
+// 16284 bytes and then had to describe a celebration after every level rather
+// than after every fifth: a second tier of them in the unit suite, four
+// interludes and two staged conditions in the shot run. The prose was cut back
+// twice first, and the argument behind the tier lives in a decision record
+// rather than here. Deliberately, and said out loud, which is what the comment
+// above asks of anyone raising it.
+const FILE_CEILING = 17 * 1024;
 const INDEX_CEILING = 4 * 1024;
 
 {

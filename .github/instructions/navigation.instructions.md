@@ -19,8 +19,9 @@ level - sound, sparkles, the hint, drag, rest - is in
   `src/levels.ts`, not here.
 - Finishing a level clears the tray and puts one big button in it, leading to the
   next level. A touch level has no tray to clear; the same button appears in the
-  same place. Finishing a chapter's fifth level puts that button on top of a
-  celebration.
+  same place. Every level with a puzzle in it puts that button on top of a
+  celebration, and holds it back `WAY_OUT_MS` (4.5 s) rather than putting it up
+  in the same tick - a fraction of the celebration, which runs on long after.
 - The button after the last level starts the game over (`nextLevel` in
   `src/levels.ts` wraps).
 - No menu, difficulty picker, settings, failure state or score on the play
@@ -45,13 +46,42 @@ level - sound, sparkles, the hint, drag, rest - is in
 - The reset button re-deals the current level through the same path as moving
   between levels (`startPuzzle` in `src/game.ts`).
 
-## The end of a chapter
+## The end of a level
 
-Each chapter's fifth level ends with a celebration instead of the ordinary
-finish - balloons, a rainbow, blossom, a parade, fireworks, and after level 30
-the finale. `src/celebration.ts` owns all six; `endsChapter` in `src/levels.ts`
-says when one is due, read off the level table. See
-[A celebration is played, and it ends by itself](<../../docs/decisions/A celebration is played, and it ends by itself.md>).
+Every level with a puzzle in it ends with a celebration, in two tiers, both owned
+by `src/celebration.ts`:
+
+- the six that end a chapter get the big ones - balloons, a rainbow, blossom, a
+  parade, fireworks, and after level 30 the finale. `CHAPTER_CELEBRATIONS` says
+  which; `endsChapter` in `src/levels.ts` says when one is due, read off the
+  level table.
+- the rest get an **interlude**: balloons, beach balls, confetti, streamers.
+  `INTERLUDES` is the rotation and `interludeFor(level)` picks by level number,
+  so two levels running never end alike and the same level always ends the way
+  it did.
+
+An interlude is deliberately the smaller thing: weather rather than an event.
+Nothing in one has to be watched, it answers a finger the same way wherever it
+is touched, and a child who sits still and looks at it has played it correctly.
+An interlude with something to achieve in it would be a seventh puzzle kind
+nobody asked for. The sound follows the same line - a level's fanfare with the
+interlude's own arrival behind it, always shorter than the shortest chapter
+fanfare.
+
+The exception is a level played by touching that does not also end a chapter -
+levels 1 and 3 as the table stands. `isPlayedByTouching` in `src/levels.ts` says
+which, and `raiseFinish` in `src/game.ts` raises nothing for them: no
+celebration, and so no pause either, with the button up as soon as the level is
+done. Such a level *is* an interlude already - something large and slow that
+answers a finger and asks nothing - so an interlude after one celebrates a
+celebration, and all the pause would do is keep a child from the next thing.
+Level 5 is touched too and keeps its chapter moment, because that one marks the
+end of five levels rather than covering a seam.
+
+See
+[A celebration is played, and it ends by itself](<../../docs/decisions/A celebration is played, and it ends by itself.md>)
+and
+[A celebration between every level](<../../docs/decisions/A celebration between every level.md>).
 
 - **Never made of what the finished board is made of.** The puzzle stays on
   screen to be admired, so anything the celebration shares with it arrives as a
@@ -71,11 +101,27 @@ says when one is due, read off the level table. See
   keeps answering. A floater hands its place on partway through its journey
   (`TUNING.handOnAt`) so a batch released together cannot reach the edge together
   and leave a hole.
-- **The button arrives, but only on a chapter end and only the first time.** It
-  holds back `FINISH_BUTTON_BEAT_MS` (see `src/celebration.ts`) then fades up; the
-  celebration answers a finger throughout that beat. Do not extend the beat to an
-  ordinary level, where the button is the whole reward, and do not re-run it after
-  a rotation: `showFinish` takes a `fresh` flag for exactly that.
+- **The button arrives rather than sitting there, after every celebration and
+  only the first time.** It holds back `WAY_OUT_MS` in `src/celebrate.ts`, which
+  explains the number: 4.5 seconds, one balloon's climb of a landscape board, the
+  same in both orientations and for every celebration. That pause is the point
+  rather than a precaution - it is what the child gets instead of the next board
+  landing on the one they have just finished, and it is what stops the most
+  conditioned thing on the screen being pressed before anything else is noticed.
+  Three things keep it from being a trap, all load-bearing: the celebration
+  answers a finger throughout, so only the way *out* is withheld; a celebration
+  that never arrived gets no pause at all, because an empty wait would be a fault
+  (`showFinish` puts the button up at once when there is no celebration); and the
+  wait runs on `rest.ts` rather than `setTimeout`, so a tablet put down during it
+  does not have the button arrive behind the freeze. Do not re-run it after a
+  rotation: `showFinish` takes a `fresh` flag for exactly that.
+- **There is one kind of paper.** Confetti falls in the confetti interlude and
+  nowhere else, and every slip of it answers a finger. Do not open the other
+  celebrations with a throw of the same paper that cannot be touched: a child
+  cannot tell two identical slips apart, and one that ignores a finger teaches
+  them that paper does. What every celebration opens with instead is the sparkle
+  burst in `celebrate.ts`, which has never been touchable and does not look as if
+  it should be.
 - **Nothing here changes the level by itself.** The finale never winds down; the
   way out is the same button.
 - **Drawn below the effects layer.** `board.celebrationLayer` sits between the

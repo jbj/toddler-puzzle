@@ -4,24 +4,28 @@
  *
  * Almost all of a celebration is a thing on a screen answering a finger, and
  * none of that can be seen from here: the suite runs in node, with no DOM to
- * draw into. What it *is* checked against is the screenshot run, which plays the
- * balloons and the finale for real (`scripts/shot.mjs`).
+ * draw into. What it *is* checked against is the screenshot run, which plays an
+ * interlude, the balloons and the finale for real (`scripts/shot.mjs`).
  *
  * So what is worth asserting here is the wiring nobody would notice was wrong
- * until a child had played twenty-five levels to find out: that every chapter
- * ends with something, that the finale belongs to the end of the game and to
- * nothing else, and that `endsChapter` agrees with the table it is read from.
+ * until a child had played twenty-five levels to find out: that every level
+ * ends with something, that no two levels running end with the same interlude,
+ * that the finale belongs to the end of the game and to nothing else, and that
+ * `endsChapter` agrees with the table it is read from.
  */
 import { describe, expect, it } from "vitest";
 import {
-  CELEBRATIONS,
   CELEBRATION_SPAN_MS,
+  CHAPTER_CELEBRATIONS,
   type CelebrationId,
   FINALE,
+  INTERLUDES,
   arcsPainted,
   celebrationFor,
   createCelebration,
+  interludeFor,
 } from "../src/celebration";
+import { WAY_OUT_MS } from "../src/celebrate";
 import {
   CHAPTERS,
   LEVELS,
@@ -29,6 +33,7 @@ import {
   type PuzzleKindId,
   chapterNumber,
   endsChapter,
+  isPlayedByTouching,
   levelSpec,
 } from "../src/levels";
 
@@ -53,7 +58,7 @@ describe("which chapter ends with what", () => {
 
   it("names nothing that has no chapter to belong to", () => {
     const chapters = new Set<string>(CHAPTERS);
-    for (const id of Object.keys(CELEBRATIONS)) {
+    for (const id of Object.keys(CHAPTER_CELEBRATIONS)) {
       expect(chapters.has(id)).toBe(true);
     }
   });
@@ -106,8 +111,95 @@ describe("when a celebration is due", () => {
   });
 });
 
+/**
+ * The levels that end no chapter end with an interlude instead, and the
+ * interlude is the whole point of the pause: a child who is handed the next
+ * board straight away never gets the breather that made the last one worth
+ * finishing. The exception is a level that is *played* by touching, which is
+ * already what an interlude is and so is followed by one only when it also ends
+ * a chapter. See
+ * `docs/decisions/A celebration between every level.md`.
+ */
+describe("what an ordinary level ends with", () => {
+  /** What the host will actually raise at the end of this level, if anything. */
+  const endOf = (level: number): CelebrationId | null =>
+    endsChapter(level)
+      ? celebrationFor(levelSpec(level).chapter)
+      : isPlayedByTouching(level)
+        ? null
+        : interludeFor(level);
+
+  it("gives every level that is dragged something", () => {
+    for (const level of LEVELS) {
+      if (isPlayedByTouching(level.level)) continue;
+      expect(endOf(level.level), `level ${level.level}`).toBeTruthy();
+    }
+  });
+
+  it("leaves a level played by touching to be its own celebration", () => {
+    const touched = LEVELS.filter((level) => isPlayedByTouching(level.level));
+    expect(touched.map((level) => level.level)).toEqual([1, 3, 5]);
+    expect(touched.filter((level) => endOf(level.level) === null).map((level) => level.level))
+      // Level 5 ends the first chapter, and a chapter moment is marked whatever
+      // the level before it was made of.
+      .toEqual([1, 3]);
+  });
+
+  it("still never ends two levels running the same way", () => {
+    const raised = LEVELS.map((level) => endOf(level.level)).filter((id) => id !== null);
+    for (let i = 1; i < raised.length; i++) {
+      expect(raised[i], `celebration ${i + 1}`).not.toBe(raised[i - 1]);
+    }
+  });
+
+  it("never gives two levels running the same one", () => {
+    for (let level = 1; level < LEVEL_COUNT; level++) {
+      expect(interludeFor(level), `level ${level}`).not.toBe(interludeFor(level + 1));
+    }
+  });
+
+  it("picks the same one every time the same level is played", () => {
+    for (const level of LEVELS) {
+      const first = interludeFor(level.level);
+      expect(interludeFor(level.level), `level ${level.level}`).toBe(first);
+    }
+  });
+
+  it("uses all of them across a game", () => {
+    const seen = new Set(LEVELS.map((level) => interludeFor(level.level)));
+    expect(seen.size).toBe(INTERLUDES.length);
+  });
+
+  it("keeps a chapter's own celebration out of the rotation", () => {
+    const chapters = new Set<CelebrationId>(CHAPTERS.map((chapter) => celebrationFor(chapter)));
+    // Balloons are both, and deliberately: they are the gentlest thing the game
+    // owns, so they end the first chapter as well as taking their turn as an
+    // interlude. Nothing else is allowed to blur the two tiers.
+    for (const id of INTERLUDES) {
+      if (id === "balloons") continue;
+      expect(chapters.has(id), id).toBe(false);
+    }
+  });
+});
+
+/**
+ * The pause is the reason any of this exists, so it is worth a check of its
+ * own: long enough that a one-year-old gets a breather, short enough that the
+ * way onwards is never something to wait out.
+ */
+describe("the pause before the way onwards", () => {
+  it("lasts about as long as a balloon takes to climb the board", () => {
+    expect(WAY_OUT_MS).toBeGreaterThan(3000);
+    expect(WAY_OUT_MS).toBeLessThan(6000);
+  });
+
+  it("is over long before the celebration itself winds down", () => {
+    expect(WAY_OUT_MS).toBeLessThan(CELEBRATION_SPAN_MS / 2);
+  });
+});
+
 describe("a raised celebration", () => {
-  const ids = Object.values(CELEBRATIONS);
+  const ids: CelebrationId[] = [...Object.values(CHAPTER_CELEBRATIONS), ...INTERLUDES];
 
   it("carries the id it was asked for", () => {
     for (const id of ids) expect(createCelebration(id).id).toBe(id);

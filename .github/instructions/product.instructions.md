@@ -62,17 +62,27 @@ you know why; the reason is the clause after the rule, and the record behind it.
   working on the game, not a way in. See
   [Keep the game moving forward](<../../docs/decisions/Keep the game moving forward.md>).
 - Keep the opening chapter playable without a drag. Levels 1, 3 and 5 are
-  cause-and-effect levels that end on a handful of touches, or on the level's
-  ten seconds, whichever comes first. Never ask for aiming, carrying or letting
-  go there, and never ask for a screenful. See
+  cause-and-effect levels that end on a handful of touches, or once a bubble has
+  had time to climb the whole sky, whichever comes first. Never ask for aiming,
+  carrying or letting go there, and never ask for a screenful. See
   [Open the game with something to touch](<../../docs/decisions/Open the game with something to touch.md>)
   and
   [Ask a touch level for a handful, and let the child out anyway](<../../docs/decisions/Ask a touch level for a handful, and let the child out anyway.md>).
-- Mark the end of a chapter and the end of the game, and make both something to
-  play with rather than sit through. A celebration never changes the level by
+- End every level a child had to work at with a celebration, and mark the end of
+  a chapter and the end of the game with a bigger one. Make all of them something
+  to play with rather than sit through. A celebration never changes the level by
   itself, and never runs longer than the first moment without the button onwards
   on screen. See
   [A celebration is played, and it ends by itself](<../../docs/decisions/A celebration is played, and it ends by itself.md>).
+- Never celebrate after a level played by touching unless it also ends a
+  chapter: that level was already an interlude, and following one with another
+  only holds a child away from the next thing.
+- Hold the button onwards back for the same few seconds after every celebration -
+  the pause is what the child gets instead of the next board landing on the one
+  they just finished - and withhold nothing else. The celebration answers a
+  finger from its first frame, a celebration that failed to arrive gets no pause
+  at all, and the wait is counted in time somebody was there for. See
+  [A celebration between every level](<../../docs/decisions/A celebration between every level.md>).
 - Keep everything a grown-up can change behind the two-second hold on the
   "Grown-ups" button, plainly styled for an adult. Not on the play surface, and
   not behind a secret gesture. See

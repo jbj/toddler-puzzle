@@ -1,11 +1,21 @@
 /**
- * Reward feedback: sparkles when a piece lands, and a finish celebration with a
- * big button in the now-empty tray that leads on to the next puzzle.
+ * Reward feedback: the sparkles, and the big button in the now-empty tray that
+ * leads on to the next puzzle - which arrives `WAY_OUT_MS` after the level ends
+ * rather than at once, so there is a moment between one puzzle and the next.
+ *
+ * A sparkle is the game's yes. `sparkleBurst` marks a piece landing, a bubble
+ * bursting and a thing in a celebration answering a finger; `celebrationBurst`
+ * throws a screenful of them and is what a finished level opens with.
+ *
+ * The sparkles are the only thing here. What comes down over the board behind
+ * them - balloons, beach balls, paper, ribbon - is a celebration, and lives in
+ * `celebration.ts`.
  */
 import type { Point } from "./geometry";
 import { replayArrow } from "./icons";
 import type { Layout } from "./layout";
 import { prefersReducedMotion } from "./motion";
+import { afterWhileAwake } from "./rest";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const SPARKLE_COLOURS = ["#ffd23f", "#ff8fa3", "#8ce0ff", "#c9a7f5", "#ffffff"];
@@ -87,20 +97,38 @@ const BUTTON_ICON: Record<FinishButton, string> = {
 };
 
 /**
- * How long the way onward holds back when a chapter celebration is going up.
+ * How long the way onwards holds back while a celebration goes up.
  *
- * By level 25 the child has pressed this button twenty-five times: it is the
- * most conditioned action in the game, and it is a huge saturated yellow disc
- * in the middle of the screen. Put it up at the same instant as four drifting
- * blossoms and a good number of children will press it before they ever notice
- * there was something to play with. So on a chapter end it arrives instead of
- * being there - by which time balloons are already up and one may already have
- * been popped - and the first thing the eye lands on is the thing to play with.
+ * This is the mandatory pause between one level and the next, and it is the
+ * whole of what a celebration between levels is *for*. A finished board leading
+ * straight into a fresh one asks a one-year-old to start again with nothing in
+ * between, and in playtesting that is where they stopped rather than where they
+ * were stretched. So the level ends, something to look at arrives, and the way
+ * onwards is not there yet.
  *
- * Chosen by watching it rather than by picking a number; see
- * `docs/decisions/A celebration is played, and it ends by itself.md`.
+ * There is a second reason, which is why it applied to a chapter end before it
+ * applied to anything: by level 25 the child has pressed this button
+ * twenty-five times. It is the most conditioned action in the game and a huge
+ * saturated yellow disc in the middle of the screen. Put it up in the same tick
+ * as the celebration and a good number of children press it before they notice
+ * there was anything else.
+ *
+ * Four and a half seconds is one balloon's climb of a landscape board - the
+ * time the first thing released has to cross the sky - and it is the same
+ * number in both orientations, because a child who turns the tablet has not
+ * asked for a longer wait. It is deliberately a *number* rather than a
+ * particular balloon: the pause has to be the same whether the celebration is
+ * balloons, beach balls, paper or ribbon. Where it does not apply at all is
+ * where there is no celebration to wait through - a level played by touching,
+ * or a celebration chunk that never arrived - because a pause in front of an
+ * empty board is the trap this is meant not to be.
+ *
+ * Nothing else is withheld. The celebration answers a finger from its first
+ * frame, so this is never a wait for permission to play - only for permission
+ * to leave. See
+ * `docs/decisions/A celebration between every level.md`.
  */
-export const FINISH_BUTTON_BEAT_MS = 1800;
+export const WAY_OUT_MS = 4500;
 
 export function showFinishButton(
   fxLayer: SVGGElement,
@@ -108,13 +136,21 @@ export function showFinishButton(
   kind: FinishButton,
   onPress: () => void,
   /**
-   * Hold the button back for this long, then fade it up. Zero - every ordinary
-   * level - puts it there at once, exactly as before.
+   * Hold the button back for this long, then fade it up. Zero puts it there at
+   * once, which is what a level with no celebration to wait through gets: one
+   * played by touching, a celebration chunk that never arrived, or a board laid
+   * out again after a rotation, where the pause has already been served.
    */
   arriveAfterMs = 0,
 ): () => void {
   if (arriveAfterMs > 0) {
-    const timer = window.setTimeout(() => {
+    // Through `rest.ts` rather than `setTimeout`, so the wait is measured in
+    // time somebody was there for. A tablet put down during the pause would
+    // otherwise have the button appear behind the freeze - fading up and
+    // pulsing on a page that is meant to be standing still, and, worse, waiting
+    // there having been missed. The child comes back to the celebration they
+    // left, and the way onwards arrives a moment later, in front of them.
+    return afterWhileAwake(arriveAfterMs, () => {
       const anchor = finishButton(layout, kind, onPress);
       // Never an invisible hit target: it is in the document only once it has
       // started to show, and it answers a finger from that first frame.
@@ -122,8 +158,7 @@ export function showFinishButton(
         anchor.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 620, easing: "ease-out" });
       }
       fxLayer.append(anchor);
-    }, arriveAfterMs);
-    return () => window.clearTimeout(timer);
+    });
   }
 
   fxLayer.append(finishButton(layout, kind, onPress));

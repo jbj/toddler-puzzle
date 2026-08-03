@@ -599,6 +599,22 @@ export function endsChapter(level: number, enabled?: EnabledKinds): boolean {
 }
 
 /**
+ * Whether this level is played by touching rather than by dragging.
+ *
+ * The three cause-and-effect levels of the first chapter are the ones this is
+ * true of, and what asks is the end of a level rather than the start of one: a
+ * level made of things that answer a finger is already the thing a celebration
+ * between levels is *for*, so there is nothing to give a child a break from and
+ * an interlude after one is the same screen again with different paper on it.
+ * See `raiseFinish` in `game.ts`. A touch level that ends a chapter still gets
+ * the chapter's own celebration, which is a moment rather than a breather.
+ */
+export function isPlayedByTouching(level: number): boolean {
+  if (level < 1 || level > LEVEL_COUNT) return false;
+  return levelSpec(level).kind === "play";
+}
+
+/**
  * The pieces of a themed cast, in the order they were given. A piece joins a
  * theme by listing it (`piece.ts`); a piece with no themes at all is in none of
  * them, which is what makes a provider that does not group its pieces simply

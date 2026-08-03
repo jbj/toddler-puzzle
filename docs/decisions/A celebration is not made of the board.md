@@ -34,7 +34,7 @@ Two changes carry it.
 
 ### The parade ends the chapter of shapes
 
-`CELEBRATIONS` in `src/celebration.ts` maps a chapter to a celebration, and two
+`CHAPTER_CELEBRATIONS` in `src/celebration.ts` maps a chapter to a celebration, and two
 entries swapped: the chapter of animals now ends with the rainbow, and the
 chapter of coloured shapes ends with the parade.
 
@@ -71,8 +71,9 @@ poke them.
 ## Consequences
 
 - The rule is written into `.github/instructions/navigation.instructions.md`
-  under "The end of a chapter", where it is the first thing to check before
-  hanging a new celebration on a chapter.
+  under "The end of a level", where it is the first thing to check before
+  hanging a new celebration on a chapter - and the reason every interlude is
+  made of paper and air rather than of animals.
 - `tests/celebration.test.ts` fails if a chapter whose last level deals animals
   - the `play`, `shape-match` and `sliced` kinds - ends with a parade or with
   the finale. Moving the parade back to chapter 2 is a red test rather than a
