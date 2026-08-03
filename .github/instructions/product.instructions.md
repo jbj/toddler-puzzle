@@ -66,16 +66,22 @@ oversights until you know it, so the reason is written next to the rule.
   are an indicator for a grown-up, not a control, and `?level=` in the URL is a
   tool for working on the game, not a way in. Why: a two-year-old cannot read or
   configure a toy.
-- Mark the end of a chapter and the end of the game, and make both of them
-  something to play with rather than something to sit through. Never let a
-  celebration change the level by itself, and never let one run for more than the
-  first moment without the button onwards on screen - that first moment is the
-  one thing the button waits for, because after twenty-five presses it would
-  otherwise be pressed before the celebration was noticed. Why: thirty identical
-  fanfares stop meaning anything by level twenty, and a two-year-old will tap an
-  animation rather than wait for it - so a celebration that has to be finished is
-  a trap and one that can be left early is a gift. See
-  [decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md).
+- End every level with a celebration, mark the end of a chapter and the end of
+  the game with a bigger one, and make all of them something to play with rather
+  than something to sit through. Never let a celebration change the level by
+  itself. Hold the button onwards back for the same few seconds after every
+  level - the pause is what the child gets instead of the next board landing on
+  the one they just finished - and never withhold anything else: the celebration
+  answers a finger from its first frame, a celebration that failed to arrive
+  gets no pause at all, and the wait is counted in time somebody was there for.
+  Why: thirty identical fanfares stop meaning anything by level twenty, going
+  straight from one puzzle into the next is more than a one-year-old can carry,
+  and a two-year-old will tap an animation rather than wait for it - so a
+  celebration that has to be finished is a trap and one that can be left early
+  is a gift. See
+  [decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md)
+  and
+  [decision 20260803T133000](../../docs/decisions/20260803T133000-a-celebration-between-every-level.md).
 - Keep everything a grown-up can change behind the two-second hold on the
   "Grown-ups" button, and keep the panel behind it plainly styled for an adult.
   Do not move any of it onto the play surface, and do not hide the button behind
@@ -120,9 +126,9 @@ oversights until you know it, so the reason is written next to the rule.
   small hands need large things to grab.
 - Keep the opening chapter playable without a drag. Levels 1, 3 and 5 are
   cause-and-effect levels - touch a thing, a thing happens - and they end when
-  enough things have been touched rather than when a tray is empty, or when the
-  level's ten seconds are up, whichever comes first. Ask for a handful of
-  touches, never a screenful, and never make one of them require aiming,
+  enough things have been touched rather than when a tray is empty, or when a
+  bubble has had time to climb the whole sky, whichever comes first. Ask for a
+  handful of touches, never a screenful, and never make one of them require aiming,
   carrying or letting go. Why: dragging is a chain of three things a one-year-old
   can do none of, and a first screen they cannot work is a closed door rather
   than a gentle beginning - and a child who does not know they are counting up to
@@ -160,9 +166,10 @@ uncover an animal, a scene where the sun and the clouds and the animals all
 answer - and levels 2 and 4 are the smallest drags the game can ask for. A
 one-year-old who cannot yet pinch, carry and let go still wins something, and
 finds the drag waiting whenever they are ready for it. Those three levels ask
-for a handful of touches and then let the child out anyway: ten seconds in, the
-same button as every other level is up whatever has been touched, and nothing is
-taken off the screen when it arrives. The mechanics are in
+for a handful of touches and then let the child out anyway: once a bubble has
+had time to climb the whole sky, the same button as every other level is up
+whatever has been touched, and nothing is taken off the screen when it
+arrives. The mechanics are in
 [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); the reasoning is
 [decision 20260729T072100](../../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md)
 and
@@ -175,17 +182,23 @@ last one starts again at level 1. Six dots by the reset button, one per chapter,
 show a grown-up how far along the set is; they are not a control. See
 [decision 20260727T072917](../../docs/decisions/20260727T072917-no-menu-or-difficulty-picker.md).
 
-**The end of a chapter is a moment, and the end of the game is an ending.** The
-fifth level of every chapter finishes into a celebration - balloons, a rainbow
-the child paints a tap at a time, blossom, a parade of animals to poke,
-fireworks - and level 30 finishes into all of them at once, which never winds
-down. None of them is ever made of what the finished board is made of, which is
-why the parade walks over the chapter of coloured shapes rather than the chapter
-of animals. Every one of them is played rather than watched, the button onwards
-fades up a beat in and then stays for the rest of the party, and no clock ever
+**Every level ends with a party, and the end of a chapter is a bigger one.**
+Twenty-four levels finish into an interlude - balloons, beach balls, paper,
+ribbon, rotated so two levels running never end alike - which is weather rather
+than an event: there is nothing in one to achieve, and a child who watches it
+without touching anything has played it correctly. The fifth level of every
+chapter finishes into something bigger - balloons, a rainbow the child paints a
+tap at a time, blossom, a parade of animals to poke, fireworks - and level 30
+finishes into all of them at once, which never winds down. None of them is ever
+made of what the finished board is made of, which is why the parade walks over
+the chapter of coloured shapes rather than the chapter of animals, and why every
+interlude is made of paper and air. Every one of them is played rather than
+watched, the button onwards fades up four and a half seconds in - one balloon's
+climb of the board - and then stays for the rest of the party, and no clock ever
 moves the child on. The mechanics are in
 [`navigation.instructions.md`](navigation.instructions.md); the reasoning is
-[decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md)
+[decision 20260729T152400](../../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md),
+[decision 20260803T133000](../../docs/decisions/20260803T133000-a-celebration-between-every-level.md)
 and
 [decision 20260801T160000](../../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
 

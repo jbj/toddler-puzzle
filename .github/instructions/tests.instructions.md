@@ -162,27 +162,32 @@ activity and every cast size the goal is no more than the number of things the
 activity puts on screen, and for everything but peekaboo strictly fewer, so a
 child who ignores one thing can still finish; the level is not complete before
 the goal and never comes undone after it, and no level on the table asks for
-more than a handful of touches. **Always a way out**: ten seconds after a deal,
-every activity is complete with nothing touched at all, those ten seconds are
-counted from the deal rather than from the last touch, and a fresh deal gets its
-own ten - the clock reads `Date.now()`, so those tests stop it with vitest's
+more than a handful of touches. **Always a way out**: `ACTIVITY_PATIENCE_MS`
+after a deal, every activity is complete with nothing touched at all, that wait
+is counted from the deal rather than from the last touch, and a fresh deal gets
+its own - the clock reads `Date.now()`, so those tests stop it with vitest's
 fake timers rather than waiting. It also holds the table to naming an activity
 on every `play` level, to naming each of them only once, and to opening the
 first chapter on one. Whether a bubble is big enough to hit, whether a touch
 registers and whether the level can actually be finished by touching are all
 `npm run shot`'s.
 
-`tests/celebration.test.ts` covers where the chapter celebrations fall, and
-almost nothing else, because almost all of a celebration is a thing on a screen
+`tests/celebration.test.ts` covers where the celebrations fall, and almost
+nothing else, because almost all of a celebration is a thing on a screen
 answering a finger and this suite has no screen. What it holds is the wiring
 nobody would notice was wrong until a child had played twenty-five levels to
 find out: that every chapter names a celebration and no two name the same one,
 that the finale belongs to the last chapter and to nothing else, that
 `endsChapter` agrees level by level with the chapter numbering it is read from -
 5, 10, 15, 20, 25 and 30 as the table stands - and that a level the table does
-not have ends nothing rather than throwing. Whether a celebration is *played*,
-whether the way onwards is up while it runs, whether the sky refills and whether
-it survives a rotation are all `npm run shot`'s.
+not have ends nothing rather than throwing. Alongside that it holds the tier
+below: that every level in the game ends with *something*, that no two levels
+running draw the same interlude, that the same level always draws the same one,
+that a game uses all of them, and that the pause before the way onwards
+(`WAY_OUT_MS`) is long enough to be a pause and well short of the celebration
+it sits inside. Whether a celebration is *played*, whether the way onwards
+arrives while it runs, whether the sky refills and whether it survives a
+rotation are all `npm run shot`'s.
 
 `tests/audio.test.ts` covers the *shape* of the sound vocabulary, against a fake
 `AudioContext` handed to the module through `useAudioContext` - a seam that
@@ -192,7 +197,8 @@ own exports, finds every `play` function, and insists each one is silent when
 the toggle is off, so a sound added later that forgets the toggle fails here
 rather than on a train. Around that it holds the things a compiler cannot state:
 that every puzzle kind and every celebration resolves to a phrase and no two
-share one, that a long run of pops never repeats a pitch immediately, that no
+share one, that every chapter fanfare is bigger than an ordinary level's and
+every interlude's arrival smaller than the smallest chapter's, that a long run of pops never repeats a pitch immediately, that no
 voice exceeds the gain ceiling, that nothing but a sine or a triangle is ever
 asked for, that every pitch sits on the ladder, and that two hundred pops in one
 tick neither throw nor outrun the voice budget, and disconnect what they used.
@@ -330,7 +336,7 @@ awake, stops dead asleep without catching up, does not start at all if it was
 registered while the page was already asleep - which is what a celebration
 mounted on a turned tablet does - and stays cancelled either way. A one-shot
 through `afterWhileAwake` is held to more than that: it keeps the milliseconds
-it had left, serves exactly those on waking and not one of the ten seconds
+it had left, serves exactly those on waking and not one of the milliseconds
 nobody was there for, and fires once. What sleeping
 *looks* like is `npm run shot`'s, which freezes a real bubble level in Chromium
 and checks that nothing is running, that a hinted board holds its glow bright,

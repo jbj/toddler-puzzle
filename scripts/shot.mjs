@@ -148,14 +148,18 @@ function requiredCoverage() {
     ...table.matchAll(/level:\s*(\d+),\s*chapter:\s*"([^"]+)",\s*kind:\s*"([^"]+)"/g),
   ].map((m) => ({ level: Number(m[1]), chapter: m[2], kind: m[3] }));
 
-  // Every celebration that exists, from its own union type. The finale is one of
-  // them; it is played at the end of the game rather than a chapter.
+  // Every celebration that exists, from the two union types it is made of: the
+  // interludes, one of which ends each ordinary level, and the chapter ones.
+  // The finale is among the second; it is played at the end of the game rather
+  // than of a chapter. Read as two unions rather than one because `CelebrationId`
+  // is now the sum of them and names nothing itself.
   const celebrationSrc = readFileSync(join(root, "src/celebration.ts"), "utf8");
-  const union = celebrationSrc.slice(
-    celebrationSrc.indexOf("type CelebrationId"),
-    celebrationSrc.indexOf(";", celebrationSrc.indexOf("type CelebrationId")),
-  );
-  const celebrations = new Set([...union.matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+  const namesIn = (type) => {
+    const from = celebrationSrc.indexOf(`type ${type}`);
+    const union = celebrationSrc.slice(from, celebrationSrc.indexOf(";", from));
+    return [...union.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  };
+  const celebrations = new Set([...namesIn("InterludeId"), ...namesIn("ChapterCelebrationId")]);
 
   // Kind and chapter -> the first level that would exercise it, so a miss can
   // name the line to add rather than send someone hunting.
@@ -524,11 +528,15 @@ const finishLabel = () =>
   );
 
 /**
- * Wait for the way onwards to arrive. On an ordinary level it is there the
- * instant the level is finished; at the end of a chapter it holds back for a
- * beat so the celebration is the first thing seen. See FINISH_BUTTON_BEAT_MS.
+ * Wait for the way onwards to arrive. It never arrives at once any more: every
+ * level ends with a celebration, and the button comes up `WAY_OUT_MS` after the
+ * level does - about the time a balloon takes to climb the board - so that the
+ * pause between one puzzle and the next is a pause with something in it. The
+ * default here is that wait with room to spare on a slow machine, and it is
+ * *not* a measurement: what the run checks about the pause it checks by asking
+ * for the button before the wait is over. See WAY_OUT_MS in src/celebrate.ts.
  */
-async function waitForFinishButton(within = 5000) {
+async function waitForFinishButton(within = 9000) {
   const deadline = Date.now() + within;
   while (Date.now() < deadline) {
     if ((await finishButtons()) > 0) return true;
@@ -612,14 +620,17 @@ const thingsToTouch = (scope = "#stage .activity") =>
   })()
 `);
 
-// --- the end of a chapter --------------------------------------------------
-// Five levels finishing is a bigger moment than one level finishing, and the
-// moment is played rather than watched: balloons to pop, a rainbow to paint, a
-// sky to fire into. What this run is really checking is that it is not a trap
-// at either end - the way onwards is up from the first instant, and things keep
-// arriving for a child who has popped the lot. See src/celebration.ts.
+// --- celebrations -----------------------------------------------------------
+// Every level ends with one. Twenty-four of them end with an interlude - paper,
+// balloons, beach balls, ribbon - and the six that end a chapter end with
+// something bigger, because five levels finishing is a bigger moment than one.
+// All of them are played rather than watched: a two-year-old will not sit
+// through a cutscene, they will put a finger on it. What this run is really
+// checking is that none of it is a trap at either end - the way onwards always
+// arrives, and things keep arriving for a child who has popped the lot. See
+// src/celebration.ts.
 
-/** Which celebration is on screen, or "" if this level did not end a chapter. */
+/** Which celebration is on screen, or "" if the level is not finished. */
 const celebrationName = async () => {
   const name = await evaluate(
     `document.querySelector('#stage .celebration')?.dataset.celebration ?? ''`,
@@ -1339,7 +1350,15 @@ try {
   const popped = await activityProgress();
   check(`the level finishes on touches alone (${pops.taps} taps)`, popped.touched >= popped.goal);
   check(`every touch on a bubble popped it (${pops.missed} missed)`, pops.missed === 0);
-  check("finish button appears when complete", (await finishButtons()) === 1);
+  // Not at once: the level ends into an interlude, and the button arrives on
+  // the far side of it. Every level in the game does this now, not only the
+  // five that end a chapter.
+  check("the interlude has the screen to itself first", (await finishButtons()) === 0);
+  check(
+    `level 1 ends with an interlude (${await celebrationName()})`,
+    (await celebrationName()) !== "",
+  );
+  check("finish button appears when complete", (await waitForFinishButton()) === true);
   check("level 1 offers the next puzzle", (await finishLabel()) === "Next puzzle");
   const refilled = await thingsToTouch();
   check(`bubbles keep arriving (${refilled.length} still afloat)`, refilled.length >= 1);
@@ -1357,6 +1376,21 @@ try {
   check("dragged piece snapped into its hole", (await placedCount()) === 1);
   await sleep(700);
   check("level 2 can be completed", (await placedCount()) === firstCount);
+  // The interlude a level ends into is rotated by level number, so the first
+  // four levels of the run walk through all four of them and the coverage guard
+  // at the end of the run is satisfied by playing rather than by a detour.
+  const secondInterlude = await celebrationName();
+  check(`level 2 ends with its own interlude (${secondInterlude})`, secondInterlude !== "");
+  await shot("03a-level2-interlude");
+  // An interlude is weather rather than an event, but it is still played rather
+  // than watched: a finger on it has to do something, or the twenty-four levels
+  // that end in one have a screen the child is locked out of for four seconds.
+  const playedInterlude = await playCelebration(3);
+  check(
+    `the interlude answers a finger (${playedInterlude.missed} missed)`,
+    playedInterlude.missed === 0,
+  );
+  check("and playing it does not move the game on", (await levelNumber()) === 2);
 
   // --- level 3: peekaboo ----------------------------------------------------
   // A bush per animal, and a touch takes the bush away. What has been uncovered
@@ -1374,6 +1408,9 @@ try {
   const found = await activityProgress();
   check(`peekaboo finishes on touches alone (${uncovered.taps} taps)`, found.touched >= found.goal);
   check(`every touch uncovered an animal (${uncovered.missed} missed)`, uncovered.missed === 0);
+  const thirdInterlude = await celebrationName();
+  check(`level 3 ends with its own interlude (${thirdInterlude})`, thirdInterlude !== "");
+  check("peekaboo lets the way onwards through", (await waitForFinishButton()) === true);
   check("peekaboo offers the next puzzle", (await finishLabel()) === "Next puzzle");
   await shot("05-level3-uncovered");
 
@@ -1407,6 +1444,13 @@ try {
 
   await solveRemaining();
   check("level 4 can be completed", (await placedCount()) === 2);
+  const fourthInterlude = await celebrationName();
+  check(`level 4 ends with its own interlude (${fourthInterlude})`, fourthInterlude !== "");
+  await shot("06a-level4-interlude");
+  check(
+    `four levels running, four different interludes (${[secondInterlude, thirdInterlude, fourthInterlude].join(", ")})`,
+    new Set([secondInterlude, thirdInterlude, fourthInterlude]).size === 3,
+  );
 
   // --- level 5: a scene where everything answers ----------------------------
   // The animals, the sun and the clouds all do something when they are touched,
@@ -1417,7 +1461,7 @@ try {
   check("level 5 is played by touching", (await kindName()) === "play");
   check("level 5 is the scene that answers", (await activityName()) === "alive");
   // From here the run is measuring the moment a chapter ends, so it starts the
-  // level from a full ten seconds rather than from whatever is left of them.
+  // level from a whole clock rather than from whatever is left of one.
   await dealAgain();
   const scene = await activityProgress();
   const alive = await thingsToTouch();
@@ -1799,6 +1843,13 @@ try {
   check("a touch wakes the party", (await isAsleep()) === false);
   const wokenParty = await runningAnimations();
   check(`and the sky fills again (${wokenParty} running)`, wokenParty > 0);
+  // The pause before the way onwards is a wait in time somebody was there for.
+  // A tablet put down during it must not have the button arrive behind the
+  // freeze - fading up and pulsing on a page that is meant to be standing
+  // still, and waiting there having been missed. So it is still to come when
+  // the child gets back, and it comes.
+  check("the way onwards did not arrive behind the freeze", (await finishButtons()) === 0);
+  check("and it arrives once somebody is there", (await waitForFinishButton()) === true);
 
   // The speakers are the one thing here that can say no. A tab looked at again
   // wakes the page with no finger in it, and a browser is entitled to turn down
@@ -2379,11 +2430,11 @@ try {
   // The goal is what an activity asks for; the clock is what it settles for. A
   // one-year-old does not read a level as a task with a number to reach, and a
   // child patting the same cloud for a minute is doing exactly what the level
-  // is for - so ten seconds after it was dealt the way onwards is up whatever
-  // has been touched. It is a second way out and never a way on: nothing is
-  // taken off the screen, nothing is counted as touched that was not, and the
-  // child still presses the button themselves. The board above was just dealt
-  // again, so those ten seconds start here. See src/kinds/play.ts and
+  // is for - so once a bubble has had time to climb the whole sky the way
+  // onwards is up whatever has been touched. It is a second way out and never a
+  // way on: nothing is taken off the screen, nothing is counted as touched that
+  // was not, and the child still presses the button themselves. The board above
+  // was just dealt again, so that clock starts here. See src/kinds/play.ts and
   // decision 20260801T163000.
   check("no way onwards in the first moments", (await finishButtons()) === 0);
   const lentOut = await waitForFinishButton(14_000);

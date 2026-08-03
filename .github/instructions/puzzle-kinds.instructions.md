@@ -397,14 +397,18 @@ that drifts away untouched is replaced at once.
 
 **There is always a way out.** The goal is what a level *asks* for - three
 bubbles, two things in a scene, every bush - and `ACTIVITY_PATIENCE_MS` is what
-it settles for: ten seconds after the level was dealt, the way onwards is up
-whatever has been touched. `isComplete` reads that deadline as well as the
+it settles for: one bubble's climb of the sky after the level was dealt - a
+landscape board's height at the speed a bubble rises, about eight seconds - the
+way onwards is up whatever has been touched. It is a length rather than a round
+number of seconds because that is the one interval on screen a child can watch
+go by; the pause before the way onwards after *every* level is timed the same
+way, off a balloon rather than a bubble (`WAY_OUT_MS` in `src/celebrate.ts`). `isComplete` reads that deadline as well as the
 count, and `play` arms a timer that calls `host.touched()` with no point, so the
 host looks again without sparkling at a finger that was not there. It ends
 nothing else - the things on screen go on answering, the level is not taken
 away, and the child still presses the button themselves. The deadline is stamped
 on the *puzzle* when it is dealt, so turning the tablet does not hand out
-another ten seconds and the reset button starts them over.
+another whole clock and the reset button starts it over.
 [Decision 20260801T163000](../../docs/decisions/20260801T163000-a-touch-level-lets-a-child-out.md)
 is why, and why the goals are as small as they are.
 

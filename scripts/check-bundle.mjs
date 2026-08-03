@@ -5,7 +5,7 @@
  * this game, not an accident: a two-year-old's iPad should reach the first
  * level immediately. Nothing was measuring that, so it drifted - the bundle was
  * 24 kB when the ramp was five levels of one kind, and 142 kB by the time six
- * chapters, five kinds, a scene library, six celebrations and a vocabulary of
+ * chapters, five kinds, a scene library, nine celebrations and a vocabulary of
  * sounds had all landed. Every one of those was a good change. Together they
  * were a regression nobody decided on.
  *
@@ -72,9 +72,17 @@ const BUDGET = {
   // measured 2026-08-01: 113.4 kB raw, 37.1 kB gzipped
   initialRaw: 116 * kB,
   initialGzip: 38 * kB,
-  // measured 2026-07-31: 170.3 kB raw, 58.1 kB gzipped
-  totalRaw: 181 * kB,
-  totalGzip: 61 * kB,
+  // raised 2026-08-03: every level now ends with a celebration rather than only
+  // the six that end a chapter, so the celebration chunk carries three more
+  // acts - beach balls, confetti and streamers - and the throw of paper that
+  // opens all of them. It is the largest deferred thing in the build and it is
+  // now reached at level 1 instead of level 5, which is the trade: a chunk that
+  // was warmed for a chapter ending is warmed for the first level ending, and
+  // `warm.ts` already fetches it first. The initial figure is unmoved, which is
+  // the one that decides how long a child waits for the first board.
+  // measured 2026-08-03: 184.8 kB raw, 62.5 kB gzipped
+  totalRaw: 194 * kB,
+  totalGzip: 66 * kB,
 };
 
 /** How many of a chunk's biggest modules to name when a budget is blown. */

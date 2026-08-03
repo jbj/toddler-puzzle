@@ -34,7 +34,7 @@ are only ever two or three of them anyway. Nothing else about the levels
 changes: the same number of things are on screen, they arrive as fast as they
 did, and a child who wants to pop the sky empty still can.
 
-**And add a second way out that costs nothing.** Ten seconds after the level was
+**And add a second way out that costs nothing.** A while after the level was
 dealt (`ACTIVITY_PATIENCE_MS`), the way onwards is up whatever has been touched.
 
 The clock is a way *out* and never a way *on*, and the distinction is the whole
@@ -46,16 +46,26 @@ already follows - a span may end what *arrives*, but nothing in this game moves
 a child on by itself
 ([20260729T152400](20260729T152400-a-celebration-is-played-not-finished.md)).
 
-Ten seconds is long enough that a child who is getting on with it finishes by
-touching - three bubbles is a few seconds - so the lesson of the level, that a
-finger makes things happen, is still what carries them out of it. It is short
-enough that a child who is not getting anywhere never notices they were waiting.
+That while is one bubble's climb of the sky, which is about eight seconds on a
+landscape board. It was a flat ten seconds when this was written; it is now a
+length rather than a round number, and the two are within two seconds of each
+other. The reason for the change is that a bubble crossing the screen is the
+nearest thing a one-year-old has to a clock: wait the whole of it out and you
+have watched one bubble come up from underneath and leave over the top. The
+pause before the way onwards after *every* level is timed the same way, off a
+balloon rather than a bubble
+([20260803T133000](20260803T133000-a-celebration-between-every-level.md)).
+
+It is long enough that a child who is getting on with it finishes by touching -
+three bubbles is a few seconds - so the lesson of the level, that a finger makes
+things happen, is still what carries them out of it. It is short enough that a
+child who is not getting anywhere never notices they were waiting.
 
 The deadline is stamped on the puzzle when it is *dealt*, not when the board is
 drawn. Turning the tablet re-mounts the activity on a new board, and a deadline
-that lived on the board would hand out another ten seconds every rotation - the
+that lived on the board would hand out another whole clock every rotation - the
 same reason a celebration's span is a deadline rather than a countdown. Pressing
-the reset button deals the level again and does start the ten seconds over,
+the reset button deals the level again and does start the clock over,
 which is right: that is a new level as far as the child is concerned.
 
 ## Consequence

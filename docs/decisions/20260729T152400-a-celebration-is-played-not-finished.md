@@ -1,5 +1,13 @@
 # 20260729T152400. A celebration is played, and it ends by itself
 
+> **Partly superseded** by
+> [20260803T133000, a celebration between every level](20260803T133000-a-celebration-between-every-level.md).
+> Everything here about what a celebration *is* still holds. What has moved is
+> where one happens - every level now, not only the six that end a chapter - and
+> how long the way onwards holds back, which is 4.5 seconds rather than the
+> "about two" argued for below, and which is now the point rather than a
+> precaution. Read this one first; it is the argument the later one builds on.
+
 ## Context
 
 Every level in this game used to end the same way: a four-note fanfare, a
@@ -55,7 +63,8 @@ children the feature would not exist. A conditioned response beats a novel
 stimulus when both arrive together; it does not beat one that got there first.
 
 So on a chapter end - and only there - the button holds back for
-`FINISH_BUTTON_BEAT_MS` and then fades up over about half a second, by which
+`FINISH_BUTTON_BEAT_MS` (now `WAY_OUT_MS`, and longer) and then fades up over
+about half a second, by which
 time balloons are already rising and one has usually been popped. Nothing is
 taken away by this. The celebration itself answers a finger from its very first
 frame, so the beat is never a wait for *permission to play*, only for permission

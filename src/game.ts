@@ -43,19 +43,15 @@
 import {
   playChapterFanfare,
   playFanfare,
+  playInterludeFanfare,
   playPickUp,
   playReturn,
   playSnap,
   unlockAudio,
 } from "./audio";
 import { buildBoard, elementFor, setPiecePosition, type Board } from "./board";
-import {
-  FINISH_BUTTON_BEAT_MS,
-  celebrationBurst,
-  showFinishButton,
-  sparkleBurst,
-} from "./celebrate";
-import type { Celebration, CelebrationId } from "./celebration";
+import { WAY_OUT_MS, celebrationBurst, showFinishButton, sparkleBurst } from "./celebrate";
+import type { Celebration, ChapterCelebrationId, InterludeId } from "./celebration";
 import { enableDragging } from "./drag";
 import { boxCenter, type Point, type Size } from "./geometry";
 import { clearHint, createIdleHint, drawHint, hintPiece, type IdleHint } from "./hint";
@@ -344,56 +340,63 @@ export function createGame(
   }
 
   /**
-   * Raise the end of a level: its fanfare, its celebration if it ended a
-   * chapter, and the button onwards.
+   * Raise the end of a level: its fanfare, its celebration, and the button
+   * onwards.
    *
-   * Five levels finishing has to be a bigger moment than one level finishing,
-   * or the thirty flatten into one long identical fanfare. A chapter ends with
-   * a celebration that is played rather than watched (`celebration.ts`); the
-   * last chapter's is the finale, and does not stop. An ordinary level's
-   * fanfare walks a step along the scale each time, so two levels running do
-   * not end identically.
+   * Every level ends with a celebration, because a finished board leading
+   * straight into a fresh one is more than a one-year-old can carry. The
+   * twenty-four ordinary levels get an *interlude* - balloons, beach balls,
+   * confetti, streamers, rotated so two levels running never end alike - and
+   * five levels finishing is a bigger moment still, so a chapter ends with one
+   * of its own and the last chapter with the finale, which does not stop. An
+   * ordinary level's fanfare walks a step along the scale each time, with the
+   * interlude's own arrival behind it.
    *
    * The celebration is a chunk of its own, and one that was asked for when this
    * level was dealt, so the wait here is over before it starts. If it somehow
-   * is not - a chunk that never arrived - the level ends the way an ordinary
-   * one does, with its fanfare and its button, and the child goes on. A missing
-   * party is a disappointment; a missing way out would be a trap.
+   * is not - a chunk that never arrived - the level ends the way it did before
+   * any of this existed, with its fanfare, its paper and its button, and the
+   * child goes on at once rather than waiting out a pause with nothing in it. A
+   * missing party is a disappointment; a missing way out would be a trap.
    */
   async function raiseFinish(dealt: number): Promise<void> {
-    let fanfare: CelebrationId | null = null;
-    if (endsChapter(levelNumber, kindsInPlay())) {
-      const module = await loadCelebration().catch(() => null);
-      // A board dealt while that was in flight - the reset button, or a level
-      // chosen from the panel - is not this board, and must not be finished.
-      if (dealt !== deals) return;
-      if (module) {
-        fanfare = module.celebrationFor(level.chapter);
-        celebration = module.createCelebration(fanfare);
+    let chapterEnd: ChapterCelebrationId | null = null;
+    let interlude: InterludeId | null = null;
+    const module = await loadCelebration().catch(() => null);
+    // A board dealt while that was in flight - the reset button, or a level
+    // chosen from the panel - is not this board, and must not be finished.
+    if (dealt !== deals) return;
+    if (module) {
+      if (endsChapter(levelNumber, kindsInPlay())) {
+        chapterEnd = module.celebrationFor(level.chapter);
+      } else {
+        interlude = module.interludeFor(levelNumber);
       }
+      celebration = module.createCelebration(chapterEnd ?? (interlude as InterludeId));
     }
-    if (fanfare) playChapterFanfare(fanfare);
+    if (chapterEnd) playChapterFanfare(chapterEnd);
     else playFanfare(levelNumber);
+    if (interlude) playInterludeFanfare(interlude);
     showFinish(true);
   }
 
   /**
-   * The end of a level: the sparkles, the celebration if this level ended a
-   * chapter, and the one big button onwards.
+   * The end of a level: the sparkles, the paper, the celebration and the one
+   * big button onwards.
    *
-   * The button goes up *with* the celebration rather than after it, and that is
-   * the whole of what keeps a celebration from being a trap. A child who has
-   * popped every balloon in four seconds already has the way on, and a child who
-   * touches nothing is never waiting for permission to leave. Nothing here moves
-   * them on by itself: a clock that changed the level would take the game away
-   * mid-tap.
+   * The button *arrives* rather than sitting there, `WAY_OUT_MS` after the level
+   * ends. That pause is the point of a celebration between levels - it is what
+   * the child gets instead of the next board landing on top of the one they
+   * have just finished - and it is also what stops the button being pressed
+   * before anything else is noticed, which after twenty-nine presses it
+   * otherwise would be. Nothing else is withheld: the celebration answers a
+   * finger from its first frame, and nothing here moves the child on by itself.
    *
-   * The one qualification is a beat: on a chapter end the button *arrives*
-   * rather than sitting there, because after twenty-five presses it is the most
-   * conditioned thing on the screen and would otherwise be pressed before the
-   * celebration is noticed. See `FINISH_BUTTON_BEAT_MS`. The beat is for a
-   * celebration that has just started, so a tablet turned mid-party puts the
-   * button straight back where it was.
+   * The pause is for a celebration that is actually on the screen, and for one
+   * that has just started. A tablet turned mid-party puts the button straight
+   * back where it was, and a celebration chunk that never arrived leaves an
+   * empty pause nobody would understand - so in both of those the button is
+   * there at once.
    *
    * Called again after a re-layout, which is why it takes only that one fact and
    * reads everything else from the board that is standing now.
@@ -415,7 +418,7 @@ export function createGame(
       layout,
       isLastLevel() ? "again" : "next",
       () => goToLevel(nextLevel(levelNumber, kindsInPlay())),
-      celebration && fresh ? FINISH_BUTTON_BEAT_MS : 0,
+      celebration && fresh ? WAY_OUT_MS : 0,
     );
   }
 
@@ -504,8 +507,10 @@ export function createGame(
     level = next;
     kind = dealer;
     // Asked for now rather than when the last piece lands, so the party is here
-    // by the time there is anything to celebrate.
-    if (endsChapter(levelNumber, kindsInPlay())) void loadCelebration().catch(() => null);
+    // by the time there is anything to celebrate. Every level ends with one, so
+    // this is asked for on every deal - after the first it is a resolved
+    // promise, and `warm.ts` has usually fetched it before level 1 is finished.
+    void loadCelebration().catch(() => null);
     puzzle = kind.deal({ level, shapes }, random);
     layout = chooseLayout(viewport(), level, puzzle.pieces, puzzle.targets);
     board = mount(layout);

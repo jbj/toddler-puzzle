@@ -21,9 +21,10 @@ cannot work is a closed door. What each level holds is the table in
 [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md). Finishing a
 level clears the tray and puts one big button in it, which leads to the next
 level - a level played by touching has no tray to clear, and the same button
-appears in the same place. Finishing the fifth level of a chapter puts that
-button on top of a celebration; see [The end of a chapter](#the-end-of-a-chapter)
-below. The button after the last level starts the whole game
+appears in the same place. Every level puts that button on top of a
+celebration, and the button arrives a few seconds after the level ends rather
+than at once; see [The end of a level](#the-end-of-a-level) below. The button
+after the last level starts the whole game
 over
 (`nextLevel` in `src/levels.ts` wraps). So the only way to go is forward and
 there is never a menu to get lost in.
@@ -65,14 +66,33 @@ moving between levels (`startPuzzle` in `src/game.ts`), so a board is rebuilt
 one way rather than two, and a toddler never sees the same line-up twice in a
 row for long.
 
-## The end of a chapter
+## The end of a level
 
-Thirty levels that all end with the same four-note fanfare and the same 700ms
-sparkle flatten completely, so the fifth level of every chapter ends with a
-celebration instead: balloons, a rainbow, blossom, a parade, fireworks, and
-after level 30 the finale. `src/celebration.ts` owns all six; `endsChapter` in
-`src/levels.ts` says when one is due, read off the level table rather than
-written down as a list of level numbers.
+**Every level ends with a celebration**, in two tiers, both owned by
+`src/celebration.ts`:
+
+- the six that end a chapter get the big ones - balloons, a rainbow, blossom, a
+  parade, fireworks, and after level 30 the finale. `CHAPTER_CELEBRATIONS` says
+  which, keyed by chapter; `endsChapter` in `src/levels.ts` says when one is
+  due, read off the level table rather than written down as a list of level
+  numbers.
+- the other twenty-four get an **interlude**: balloons, beach balls, confetti,
+  streamers. `INTERLUDES` is the rotation and `interludeFor(level)` picks by
+  level number, so two levels running never end the same way and the same level
+  always ends the way it did.
+
+An interlude is deliberately the smaller thing. It is weather rather than an
+event: nothing in one has to be watched, it answers a finger the same way
+wherever it is touched, and a child who sits still and looks at it has played it
+correctly. Keep it that way - an interlude with something to achieve in it is a
+sixth puzzle kind that nobody asked for. The sounds follow the same line: a
+level's fanfare with the interlude's own arrival behind it, and every interlude
+arrival stays shorter than the shortest chapter fanfare.
+
+Thirty levels that all ended with the same four-note fanfare and the same 700 ms
+sparkle flattened completely, and going straight from one board into the next is
+more than a one-year-old can carry. Both of those are why this exists; see
+[decision 20260803T133000](../../docs/decisions/20260803T133000-a-celebration-between-every-level.md).
 
 The rules a celebration has to keep:
 
@@ -105,15 +125,26 @@ The rules a celebration has to keep:
   place on part way through its journey rather than at the edge
   (`TUNING.handOnAt`), so a handful released together cannot reach the edge
   together and leave a hole behind them.
-- **The button arrives rather than sitting there - but only on a chapter end,
-  and only the first time.** It holds back for `FINISH_BUTTON_BEAT_MS`
-  (`src/celebration.ts` explains the number) and then fades up, because after
-  twenty-five presses it is the most conditioned thing on the screen and would
-  otherwise be pressed before the celebration is noticed. The celebration answers
-  a finger throughout that beat, so nothing is withheld except the way out. Do
-  not extend the beat to an ordinary level, where the button is the whole reward,
-  and do not re-run it after a rotation: `showFinish` takes a `fresh` flag for
+- **The button arrives rather than sitting there, after every level, and only
+  the first time.** It holds back for `WAY_OUT_MS` in `src/celebrate.ts`, which
+  explains the number: 4.5 seconds, one balloon's climb of a landscape board,
+  the same in both orientations and for every celebration. That pause is the
+  point rather than a precaution - it is what the child gets instead of the next
+  board landing on the one they have just finished - and it is also what stops
+  the most conditioned thing on the screen being pressed before anything else is
+  noticed. Three things keep it from being a trap, and all three are load-bearing:
+  the celebration answers a finger throughout, so only the way *out* is
+  withheld; a celebration that never arrived gets no pause at all, because an
+  empty wait would be a fault (`showFinish` puts the button up at once if the
+  chunk is missing); and the wait runs on `rest.ts` rather than `setTimeout`, so
+  a tablet put down during it does not have the button arrive behind the freeze.
+  Do not re-run it after a rotation: `showFinish` takes a `fresh` flag for
   exactly that.
+- **The paper belongs to all of them.** Every celebration opens with a throw of
+  confetti down the whole board (`openingPaper`), and none of it can be touched:
+  the act underneath is what answers a finger, and paper that stole the first tap
+  of a rainbow would be paper in the way. Do not give one celebration its own
+  opening.
 - **Nothing here ever changes the level by itself.** A clock that advanced the
   game would take it away mid-tap. The finale does not wind down at all: the end
   of thirty levels is a room to stay in, and the way out is the same button.
@@ -231,7 +262,7 @@ what the code has to keep true is this.
 Every sound in the game is synthesised in `src/audio.ts`. There are no audio
 files; see the no-binary-assets invariant in
 [`product.instructions.md`](product.instructions.md). Thirty levels, six kinds
-and six celebrations need more than four tones, so the file is a small
+and nine celebrations need more than four tones, so the file is a small
 vocabulary rather than a list of hand-tuned copies. The reasoning is
 [decision 20260730T183000](../../docs/decisions/20260730T183000-sounds-are-data-and-the-machine-listens.md);
 what the code has to keep true is this.
@@ -251,9 +282,13 @@ what the code has to keep true is this.
   grown-up meets on a train; `tests/audio.test.ts` enumerates the module's own
   exports and fails if one of them is not silent when sound is off.
 - **A voice per kind, a phrase per celebration.** `playSnap(kind)` is keyed by
-  `Record<PuzzleKindId, Phrase>` and `playChapterFanfare(id)` by
-  `Record<CelebrationId, Phrase>`, so a new kind or celebration without a sound
-  is a compile error rather than a silent fall-through to a default. A wooden
+  `Record<PuzzleKindId, Phrase>`, `playChapterFanfare(id)` by
+  `Record<ChapterCelebrationId, Sounding>` and `playInterludeFanfare(id)` by
+  `Record<InterludeId, Sounding>`, so a new kind or celebration without a sound
+  is a compile error rather than a silent fall-through to a default. An
+  interlude's arrival is always smaller than the smallest chapter fanfare: it is
+  heard five times as often, and the moment the two sound alike the end of a
+  chapter has stopped being a bigger thing. A wooden
   animal seating into its hole, a slice rejoining the animal it was cut from, a
   polygon clicking onto its shadow, two jigsaw pieces meshing and a shard
   settling are five different physical events and sound like it.
@@ -299,7 +334,7 @@ what the code has to keep true is this.
   a touch: the kind reports one through `host.touched(at)` and gets a sparkle
   there and a check for completion, so a bubble bursting and an animal landing
   are answered the same way. The same call with no point is the kind saying the
-  puzzle moved on without a finger - an activity's ten seconds running out - and
+  puzzle moved on without a finger - an activity's clock running out - and
   it gets the check without the sparkle, because nothing was touched. Everything
   else about the response - the sound, the spin, the bush going - belongs to the
   kind, and all of it happens in the tick the finger landed. See

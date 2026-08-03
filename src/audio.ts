@@ -5,7 +5,7 @@
  * load and nothing that can fail to download; see the no-binary-assets
  * invariant in `product.instructions.md`.
  *
- * Thirty levels, six puzzle kinds and six celebrations need more than four
+ * Thirty levels, six puzzle kinds and nine celebrations need more than four
  * tones, and a game a child plays every day is worse for a sound it hears too
  * often than for no sound at all. So the sounds are not written one at a time.
  * There are three things underneath them, and every sound in the game is spelt
@@ -34,7 +34,7 @@
  * `OfflineAudioContext` in Chromium and measures the samples. See
  * [decision 20260730T183000](../docs/decisions/20260730T183000-sounds-are-data-and-the-machine-listens.md).
  */
-import type { CelebrationId } from "./celebration";
+import type { ChapterCelebrationId, InterludeId } from "./celebration";
 import type { PuzzleKindId } from "./levels";
 
 // --- the ladder -----------------------------------------------------------
@@ -534,22 +534,76 @@ const RETURN: Phrase = [
 ];
 
 /**
- * A firework: a rise into three bright specks, rather than a bubble bursting.
- * `step` is which firework this is, and moves the specks along the ladder so
- * that a sky full of them is not one sound repeated.
+ * A firework: a rise into bright specks, rather than a bubble bursting. `step`
+ * is which firework this is, and moves the specks along the ladder so that a
+ * sky full of them is not one sound repeated.
+ *
+ * Four specks rather than three, and a low thump under the rise: the fireworks
+ * are the loudest thing the game has, they are meant to be, and a firework you
+ * only hear at the top of your hearing is a firework with no bang in it.
  */
 function fireworkPhrase(step: number): Phrase {
   const lift = ((step % 5) + 5) % 5;
   return together(
-    [voice(note(2), { to: note(11), duration: 0.24, gain: 0.06 })],
+    [voice(note(2), { to: note(11), duration: 0.24, gain: 0.07 })],
+    delayed(0.2, [voice(note(-5), { to: note(-8), duration: 0.3, gain: 0.1, type: "triangle" })]),
     delayed(
       0.22,
       // Rooted so that the fifth firework's top note is the ladder's C7 and no
       // higher: `lift` is what makes a sky of them musical, and it must not
-      // also be what makes the last one shrill.
-      run([9 + lift, 11 + lift, 10 + lift], { spacing: 0.05, duration: 0.3, gain: 0.07 }),
+      // also be what makes the last one shrill. Four specks over a wider spread
+      // rather than three in a huddle - the break should scatter.
+      run([7 + lift, 9 + lift, 11 + lift, 10 + lift], {
+        spacing: 0.05,
+        duration: 0.32,
+        gain: 0.08,
+      }),
     ),
   );
+}
+
+/** Where a beach ball's boing sits on the ladder. */
+const BOING_ROOT = 3;
+
+/**
+ * A beach ball caught by a finger. The one answer in the game that bends: a
+ * ball is the only thing here that is not taken away by being touched, so what
+ * it says has to sound like something springing rather than something ending.
+ */
+function boingPhrase(degree: number): Phrase {
+  return [
+    voice(note(degree), { to: note(degree + 4), duration: 0.13, gain: 0.15 }),
+    voice(note(degree + 4), {
+      at: 0.1,
+      to: note(degree + 1),
+      duration: 0.24,
+      gain: 0.11,
+      type: "triangle",
+    }),
+  ];
+}
+
+/** Where a handful of paper sits on the ladder. */
+const RUSTLE_ROOT = 7;
+
+/** Confetti puffing up under a finger: soft, papery, and over at once. */
+function rustlePhrase(degree: number): Phrase {
+  return [
+    voice(note(degree), { duration: 0.1, gain: 0.09, type: "triangle" }),
+    voice(note(degree + 2), { at: 0.04, duration: 0.16, gain: 0.08 }),
+    voice(note(degree + 5), { at: 0.08, duration: 0.2, gain: 0.05 }),
+  ];
+}
+
+/** Where a streamer curling away sits on the ladder. */
+const SWOOP_ROOT = 10;
+
+/** A ribbon rolling itself back up: one note falling the length of it. */
+function swoopPhrase(degree: number): Phrase {
+  return [
+    voice(note(degree), { to: note(degree - 5), duration: 0.34, gain: 0.13 }),
+    voice(note(degree - 5), { at: 0.24, duration: 0.26, gain: 0.06, type: "triangle" }),
+  ];
 }
 
 /** The highest degree anything is written at: C7, the pitch ceiling. */
@@ -581,13 +635,26 @@ function plinkPhrase(degree: number): Phrase {
 
 /**
  * A level finished: the rising arpeggio the game has always played, moved a
- * step along the ladder each level. Twenty-four of the thirty levels end on
- * this, so two levels running must not end identically - but it is still the
- * same four notes, because "you did it" should not need learning twice.
+ * step along the ladder each level. Every one of the thirty ends on this or on
+ * a chapter's own, so two levels running must not end identically - but it is
+ * still the same four notes, because "you did it" should not need learning
+ * twice.
+ *
+ * Fuller than it was, and deliberately: it is now the door into a celebration
+ * rather than a full stop, so there is a low pair held under the run and a note
+ * left over the top of it. It stays shorter than any chapter's, which is what
+ * keeps five levels finishing bigger than one.
  */
 function fanfarePhrase(level: number): Phrase {
   const root = 5 + ((((level - 1) % 5) + 5) % 5);
-  return run([root, root + 2, root + 3, root + 5], { spacing: 0.13, duration: 0.4, gain: 0.15 });
+  return together(
+    run([root, root + 2, root + 3, root + 5], { spacing: 0.12, duration: 0.42, gain: 0.16 }),
+    chord([root - 5, root - 3], { duration: 0.8, gain: 0.07, type: "triangle" }),
+    // A degree above the run's own top note and no further: the fifth level's
+    // root is the highest of the five, so anything above this lands off the
+    // ladder at the pitch ceiling.
+    delayed(0.36, [voice(note(root + 6), { duration: 0.5, gain: 0.09 })]),
+  );
 }
 
 /**
@@ -608,7 +675,7 @@ function fanfarePhrase(level: number): Phrase {
  * comment says the sound intended, so a correction is a change to the degrees
  * under the sentence it failed to live up to, not a hunt through the scheduler.
  */
-const CHAPTER: Record<CelebrationId, Sounding> = {
+const CHAPTER: Record<ChapterCelebrationId, Sounding> = {
   // Buoyant and quick, and it ends up in the air rather than coming to rest.
   balloons: {
     when: "chapter 1 is done and the balloons go up",
@@ -659,6 +726,56 @@ const CHAPTER: Record<CelebrationId, Sounding> = {
       delayed(0.5, chord([0, 3, 5], { duration: 2.2, gain: 0.06 })),
       delayed(1.1, [voice(note(15), { duration: 1.4, gain: 0.09 })]),
     ),
+  },
+};
+
+/**
+ * What arrives with an interlude - the celebration after an ordinary level.
+ *
+ * Short, and behind the level's own fanfare rather than instead of it: the
+ * fanfare says the level is done, and this says what is coming up behind it.
+ * Each one is the sound of the thing itself rather than another well done, so
+ * a child hears the difference between paper and ribbon before they see it.
+ *
+ * Deliberately smaller than any chapter's. An interlude happens twenty-four
+ * times and a chapter celebration five, and the moment the two sound alike the
+ * end of a chapter has stopped being a bigger thing.
+ */
+/**
+ * How far behind the level's own fanfare an interlude's arrival sits. Enough
+ * that the two are heard as one thing following another rather than as a
+ * chord.
+ *
+ * Applied when the phrase is played rather than written into the phrase, so
+ * the table below stays a description of the *sound* - and so the harness,
+ * which asks every phrase to arrive on time, is not told that four of them are
+ * allowed to be late. See `playInterludeFanfare`.
+ */
+const LEAD_IN = 0.4;
+
+const INTERLUDE: Record<InterludeId, Sounding> = {
+  // Let go and rising: two lifts and nothing landing.
+  balloons: {
+    when: "a level is done and balloons go up",
+    phrase: together(
+      run([8, 12], { spacing: 0.14, duration: 0.4, gain: 0.09 }),
+      delayed(0.28, [voice(note(13), { duration: 0.6, gain: 0.07 })]),
+    ),
+  },
+  // Thrown: up, over, and down the other side, which is the arc itself.
+  "beach-balls": {
+    when: "a level is done and the beach balls are thrown",
+    phrase: run([7, 11, 9], { spacing: 0.16, duration: 0.36, gain: 0.09 }),
+  },
+  // Scattered rather than played: three specks, close together and high.
+  confetti: {
+    when: "a level is done and the confetti comes down",
+    phrase: run([12, 14, 13], { spacing: 0.07, duration: 0.34, gain: 0.08 }),
+  },
+  // Unrolling: one note stretched out the length of the ribbon.
+  streamers: {
+    when: "a level is done and the streamers unroll",
+    phrase: [voice(note(6), { to: note(11), duration: 0.7, gain: 0.09, type: "triangle" })],
   },
 };
 
@@ -716,13 +833,40 @@ export function playFirework(step = 0): void {
   play(fireworkPhrase(step));
 }
 
+/**
+ * A beach ball caught by a finger and sent back up. `step` is which ball, so a
+ * child batting the same one about does not hear one note over and over.
+ */
+export function playBoing(step = 0): void {
+  play(boingPhrase(fresh(BOING_ROOT + (((step % 4) + 4) % 4))));
+}
+
+/** A handful of confetti puffed up under a finger. */
+export function playRustle(step = 0): void {
+  play(rustlePhrase(fresh(RUSTLE_ROOT + (((step % 3) + 3) % 3))));
+}
+
+/** A streamer curling itself back up after a finger has run into it. */
+export function playSwoop(step = 0): void {
+  play(swoopPhrase(fresh(SWOOP_ROOT + (((step % 3) + 3) % 3))));
+}
+
 /** Rising arpeggio when a level is finished, a step along the ladder each level. */
 export function playFanfare(level = 1): void {
   play(fanfarePhrase(level));
 }
 
+/**
+ * What comes up behind an ordinary level's fanfare: the interlude arriving.
+ * The caller plays both at the end of the level, and `LEAD_IN` is what puts
+ * this one second rather than on top.
+ */
+export function playInterludeFanfare(interlude: InterludeId): void {
+  play(delayed(LEAD_IN, INTERLUDE[interlude].phrase));
+}
+
 /** The end of a chapter, or of the whole game: one phrase per celebration. */
-export function playChapterFanfare(celebration: CelebrationId): void {
+export function playChapterFanfare(celebration: ChapterCelebrationId): void {
   play(CHAPTER[celebration].phrase);
 }
 
@@ -766,6 +910,12 @@ export const VOCABULARY: readonly Sound[] = [
   sound("plink-highest", "the fifth thing in a row answers", plinkPhrase(PLINK_ROOT + 4)),
   sound("firework", "a firework goes up and breaks", fireworkPhrase(0)),
   sound("firework-highest", "the fifth firework in a row", fireworkPhrase(4)),
+  sound("boing", "a beach ball is caught by a finger", boingPhrase(BOING_ROOT)),
+  sound("boing-highest", "the fourth beach ball in a row", boingPhrase(BOING_ROOT + 3)),
+  sound("rustle", "confetti puffs up under a finger", rustlePhrase(RUSTLE_ROOT)),
+  sound("rustle-highest", "the third handful in a row", rustlePhrase(RUSTLE_ROOT + 2)),
+  sound("swoop", "a streamer curls away from a finger", swoopPhrase(SWOOP_ROOT)),
+  sound("swoop-highest", "the third streamer in a row", swoopPhrase(SWOOP_ROOT + 2)),
   ...[1, 2, 3, 4, 5].map((level) =>
     sound(
       `fanfare-${level}`,
@@ -773,5 +923,6 @@ export const VOCABULARY: readonly Sound[] = [
       fanfarePhrase(level),
     ),
   ),
+  ...Object.entries(INTERLUDE).map(([id, one]) => sound(`interlude-${id}`, one.when, one.phrase)),
   ...Object.entries(CHAPTER).map(([id, one]) => sound(`chapter-${id}`, one.when, one.phrase)),
 ];

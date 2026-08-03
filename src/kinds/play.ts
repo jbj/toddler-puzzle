@@ -4,9 +4,9 @@
  * The first chapter's other levels ask for a drag, and dragging is genuinely
  * beyond many one-year-olds. These are the levels that are not: nothing waits in
  * a tray, nothing has to be aimed anywhere, and the level ends when enough
- * things have been touched - or, whatever has been touched, when the level's ten
- * seconds are up (`ACTIVITY_PATIENCE_MS`). Three of them, chosen by the level
- * table's `options.activity`:
+ * things have been touched - or, whatever has been touched, when one bubble's
+ * climb of the sky has gone by (`ACTIVITY_PATIENCE_MS`). Three of them, chosen
+ * by the level table's `options.activity`:
  *
  *  - **bubbles** rise from the bottom of the screen and burst under a finger;
  *  - **peekaboo** hides an animal behind a bush, and a touch uncovers it;
@@ -23,8 +23,9 @@
  * **There is no way to get stuck.** Whatever is still to be touched is on
  * screen, and stays on screen: a bubble that drifts away untouched is replaced
  * at once, and there are always more things to touch than the level asks for.
- * A child who touches none of it is not stuck either: after ten seconds the way
- * onwards is up anyway, and the level goes on answering a finger regardless.
+ * A child who touches none of it is not stuck either: once a bubble has had
+ * time to cross the sky the way onwards is up anyway, and the level goes on
+ * answering a finger regardless.
  *
  * **The answer is immediate.** `pointerdown`, not click, and nothing waits for
  * an animation before it answers. An animation may run *after* the answer - the
@@ -88,6 +89,15 @@ const TUNING = {
 } as const;
 
 /**
+ * How far a bubble has to rise to cross the board, in logical units: the height
+ * of a landscape canvas (`layout.ts`). Written down here rather than read from
+ * the layout because it is a length being used as a *clock* below, and the
+ * clock has to be the same number on a turned tablet - a portrait board is
+ * taller, and a child who rotated it would otherwise be given half a minute.
+ */
+const LANDSCAPE_SKY = 700;
+
+/**
  * How long a cause-and-effect level waits before it opens the way onwards
  * whatever has been touched.
  *
@@ -105,12 +115,18 @@ const TUNING = {
  * the child still presses the button themselves - the same reason a celebration
  * has a span but never changes the level (`celebration.ts`).
  *
- * Ten seconds is long enough that a child getting on with it finishes by
- * touching, which is what the level is teaching, and short enough that a child
- * who is not getting anywhere is never stuck watching. See
+ * The length is one bubble's climb of the sky - a landscape board's height at
+ * the speed a bubble rises - rather than a round number of seconds, because
+ * that is the one interval on screen a child can see go by. Wait it out and you
+ * have watched a bubble come up from underneath and leave over the top, which
+ * is exactly long enough that a child getting on with it finishes by touching
+ * instead, and short enough that a child who is not getting anywhere is never
+ * stuck watching. The pause before the way onwards after *every* level is timed
+ * the same way, off a balloon rather than a bubble
+ * (`WAY_OUT_MS` in `celebrate.ts`). See
  * [decision 20260801T163000](../../docs/decisions/20260801T163000-a-touch-level-lets-a-child-out.md).
  */
-export const ACTIVITY_PATIENCE_MS = 10_000;
+export const ACTIVITY_PATIENCE_MS = Math.round(LANDSCAPE_SKY / TUNING.bubbleSpeed);
 
 /** How long a response takes; under `prefers-reduced-motion`, no time at all. */
 const beat = (ms: number): number => (prefersReducedMotion() ? 1 : ms);
@@ -130,8 +146,8 @@ interface ActivityPuzzle extends Puzzle {
   /**
    * When the level opens the way onwards regardless: a moment, not a countdown.
    * It is stamped when the level is *dealt* rather than when it is drawn, so
-   * turning the tablet re-mounts the activity without handing out another ten
-   * seconds - the same reason a celebration's span is a deadline.
+   * turning the tablet re-mounts the activity without handing out another
+   * bubble's worth - the same reason a celebration's span is a deadline.
    */
   readonly finishesBy: number;
   /**
