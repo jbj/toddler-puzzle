@@ -270,7 +270,7 @@ const TUNING = {
   fireworkRadius: 0.13,
   /** How many breaks one firework makes: a burst, and smaller ones after it. */
   fireworkBreaks: 3,
-  /** A beach ball's radius, as a fraction of the canvas width. */
+  /** A beach ball's radius, as a fraction of the board's nominal width. */
   ballRadius: 0.1,
   /** How many are in the air at once. */
   ballsAtOnce: 4,
@@ -289,7 +289,7 @@ const TUNING = {
   ballPeak: { least: 0.08, most: 0.4 },
   /** How many keyframes an arc is sampled into. Enough to read as a curve. */
   ballSamples: 14,
-  /** A confetti slip's width, as a fraction of the canvas width. */
+  /** A confetti slip's width, as a fraction of the board's nominal width. */
   confettiWidth: 0.045,
   /** How many slips are coming down at once. Paper falls thick. */
   confettiAtOnce: 16,
@@ -305,7 +305,7 @@ const TUNING = {
    * a rainbow being painted underneath is hard to see.
    */
   openingPaper: 30,
-  /** How wide a streamer is, as a fraction of the canvas width. */
+  /** How wide a streamer is, as a fraction of the board's nominal width. */
   streamerWidth: 0.05,
   /** How many hang at once. */
   streamersAtOnce: 5,
@@ -611,6 +611,7 @@ function beachBallPaint(radius: number, colour: string, second: string): string 
 function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAtOnce }): void {
   const { layer, layout, random } = party.stage;
   const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
   const still = prefersReducedMotion();
   const live = new Set<() => void>();
   let holding = 0;
@@ -621,7 +622,7 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
     height * (TUNING.ballPeak.least + random() * (TUNING.ballPeak.most - TUNING.ballPeak.least));
 
   function release(): void {
-    const radius = width * TUNING.ballRadius * (1 + (random() - 0.5) * 0.2);
+    const radius = span * TUNING.ballRadius * (1 + (random() - 0.5) * 0.2);
     const colour = POP_COLOURS[thrown % POP_COLOURS.length] as string;
     const second = POP_COLOURS[(thrown + 2) % POP_COLOURS.length] as string;
     const opening = thrown < options.at;
@@ -805,7 +806,7 @@ function openingPaper(party: Party): void {
   const { fxLayer, layout, random } = party.stage;
   if (prefersReducedMotion()) return;
   const { width, height } = layout.canvas;
-  const size = width * TUNING.confettiWidth;
+  const size = spanWidth(layout.canvas) * TUNING.confettiWidth;
   for (let i = 0; i < TUNING.openingPaper; i++) {
     const paper = slip(
       size * (0.7 + random() * 0.7),
@@ -869,13 +870,14 @@ function confettiPuff(party: Party, at: Point, size: number): void {
 function confetti(party: Party, options: { at: number } = { at: TUNING.confettiAtOnce }): void {
   const { layer, layout, random } = party.stage;
   const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
   const still = prefersReducedMotion();
   const live = new Set<() => void>();
   let holding = 0;
   let minted = 0;
 
   function release(): void {
-    const size = width * TUNING.confettiWidth * (0.7 + random() * 0.7);
+    const size = span * TUNING.confettiWidth * (0.7 + random() * 0.7);
     const colour = CONFETTI_COLOURS[minted % CONFETTI_COLOURS.length] as string;
     const opening = minted < options.at;
     const lane = (minted + 0.5) / options.at;
@@ -990,13 +992,14 @@ function confetti(party: Party, options: { at: number } = { at: TUNING.confettiA
 function streamers(party: Party, options: { at: number } = { at: TUNING.streamersAtOnce }): void {
   const { layer, layout, random } = party.stage;
   const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
   const still = prefersReducedMotion();
   const live = new Set<() => void>();
   let holding = 0;
   let hung = 0;
 
   function release(): void {
-    const band = width * TUNING.streamerWidth;
+    const band = span * TUNING.streamerWidth;
     const colour = CONFETTI_COLOURS[hung % CONFETTI_COLOURS.length] as string;
     const lane = (hung + 0.5) / options.at;
     hung++;
@@ -1082,10 +1085,10 @@ function streamers(party: Party, options: { at: number } = { at: TUNING.streamer
 
     // Unrolled from the top rather than faded in: a streamer arrives by
     // travelling, which is the whole of what there is to watch here.
-    const span = length * 1.25;
+    const dash = length * 1.25;
     for (const path of [grab, ribbon]) {
-      path.style.strokeDasharray = String(span);
-      path.animate([{ strokeDashoffset: span }, { strokeDashoffset: 0 }], {
+      path.style.strokeDasharray = String(dash);
+      path.animate([{ strokeDashoffset: dash }, { strokeDashoffset: 0 }], {
         duration: TUNING.streamerUnrollMs,
         easing: "cubic-bezier(0.3, 0.6, 0.4, 1)",
         fill: "forwards",
