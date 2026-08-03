@@ -58,4 +58,5 @@ and an argument nobody can see having changed is worth nothing.
 | [20260801T153000-the-game-sleeps-when-nobody-is-playing](20260801T153000-the-game-sleeps-when-nobody-is-playing.md) | Freeze the whole page when nobody is playing, and wake it on a touch |
 | [20260801T160000-a-celebration-is-not-made-of-the-board](20260801T160000-a-celebration-is-not-made-of-the-board.md) | Never make a celebration out of what the finished board is made of |
 | [20260801T163000-a-touch-level-lets-a-child-out](20260801T163000-a-touch-level-lets-a-child-out.md) | Ask a touch level for a handful, and open the way onwards after ten seconds |
+| [20260801T190000-the-board-is-composed-for-the-screen](20260801T190000-the-board-is-composed-for-the-screen.md) | Compose the board for the screen it is on rather than letterbox two canvases |
 | [20260802T170000-a-drag-ends-however-the-finger-goes-away](20260802T170000-a-drag-ends-however-the-finger-goes-away.md) | End a drag however the finger goes away, and let the newest finger win |

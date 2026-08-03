@@ -133,7 +133,7 @@ chapters still end where they now end, and the last kind on cannot be turned off
 Nothing about it shows on the child's screen. See
 [decision 20260730T194900](docs/decisions/20260730T194900-a-grown-up-can-take-a-kind-out.md).
 
-Works with a finger or a mouse, in landscape or portrait.
+Works with a finger or a mouse, on a screen of any shape.
 
 ```
 npm install

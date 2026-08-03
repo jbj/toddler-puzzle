@@ -1,8 +1,11 @@
 /**
  * Pure geometry helpers.
  *
- * Everything the game reasons about happens in a fixed "logical" coordinate
- * space (1000x700) which is then scaled to whatever screen we're on. Keeping
+ * Everything the game reasons about happens in a "logical" coordinate space
+ * which is then scaled to whatever screen we're on. That space is composed for
+ * the screen rather than fixed - always 700 logical units across its shorter
+ * side, and as long on the other as the screen's ratio asks for, so the board
+ * fills the screen instead of letterboxing inside it (see `layout.ts`). Keeping
  * these functions pure and side-effect free means the fiddly bits - coordinate
  * mapping and snap detection - can be unit tested without a browser.
  */
@@ -20,7 +23,10 @@ export interface Size {
 export interface Rect extends Point, Size {}
 
 /** Scale factor used by SVG's `preserveAspectRatio="xMidYMid meet"`: the
- * largest uniform scale that still fits the logical canvas in the container. */
+ * largest uniform scale that still fits the logical canvas in the container.
+ * A canvas composed for this container has the container's ratio to within
+ * rounding, so in play this is very nearly `container short side / 700` and
+ * there is nothing left over to letterbox. */
 export function fitScale(container: Size, logical: Size): number {
   return Math.min(container.width / logical.width, container.height / logical.height);
 }

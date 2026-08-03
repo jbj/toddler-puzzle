@@ -55,7 +55,7 @@
 import { playFirework, playPlink, playPop, unlockAudio } from "./audio";
 import { sparkleBurst } from "./celebrate";
 import { shuffle, type Point } from "./geometry";
-import type { Layout } from "./layout";
+import { spanWidth, type Layout } from "./layout";
 import type { ChapterId } from "./levels";
 import { prefersReducedMotion } from "./motion";
 import type { PieceShape } from "./piece";
@@ -143,7 +143,13 @@ export interface Celebration {
   mount(stage: CelebrationStage): () => void;
 }
 
-/** Everything tunable, as fractions of the canvas wherever it is a size. */
+/**
+ * Everything tunable, as fractions of the canvas wherever it is a size.
+ *
+ * A size is a fraction of `spanWidth` and a spread a fraction of the real
+ * width. On a very wide board the two part company, and a parade animal that
+ * grew with the board would be drawn taller than the board it walks across.
+ */
 const TUNING = {
   /** A balloon's radius. Bigger than a bubble: this is a treat, not a level. */
   balloonRadius: 0.088,
@@ -335,13 +341,14 @@ function inLayout(layer: SVGGElement, at: Point, layout: Layout): Point {
 function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsAtOnce }): void {
   const { layer, layout, random } = party.stage;
   const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
   const still = prefersReducedMotion();
   const afloat = new Set<Poppable>();
   let holding = 0;
   let minted = 0;
 
   function release(): void {
-    const radius = width * TUNING.balloonRadius * (1 + (random() - 0.5) * 0.24);
+    const radius = span * TUNING.balloonRadius * (1 + (random() - 0.5) * 0.24);
     const margin = radius + width * 0.03;
     const x = margin + random() * Math.max(1, width - 2 * margin);
     const colour = POP_COLOURS[minted % POP_COLOURS.length] as string;
@@ -394,7 +401,7 @@ function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsA
       onPop: (at) => {
         afloat.delete(balloon);
         unlockAudio();
-        playPop((width * TUNING.balloonRadius) / radius);
+        playPop((span * TUNING.balloonRadius) / radius);
         party.answer(at);
         handOn();
       },
@@ -436,13 +443,14 @@ function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsA
 function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnce }): void {
   const { layer, layout, random } = party.stage;
   const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
   const still = prefersReducedMotion();
   const falling = new Set<Poppable>();
   let holding = 0;
   let minted = 0;
 
   function release(): void {
-    const radius = width * TUNING.petalRadius * (1 + (random() - 0.5) * 0.22);
+    const radius = span * TUNING.petalRadius * (1 + (random() - 0.5) * 0.22);
     const margin = radius + width * 0.02;
     const x = margin + random() * Math.max(1, width - 2 * margin);
     const colour = PETAL_COLOURS[minted % PETAL_COLOURS.length] as string;
@@ -540,8 +548,9 @@ function parade(party: Party): void {
   const { layer, layout } = party.stage;
   const { width } = layout.canvas;
   const still = prefersReducedMotion();
-  const size = width * TUNING.paradeWidth;
-  const span = width + size * 2;
+  const size = spanWidth(layout.canvas) * TUNING.paradeWidth;
+  // What one animal walks: on from off the left edge, off past the right one.
+  const walk = width + size * 2;
 
   cast.forEach((shape, index) => {
     const lane = groundLine(layout, index % Math.max(1, layout.groundLines.length));
@@ -583,7 +592,7 @@ function parade(party: Party): void {
       return;
     }
 
-    const ms = span / TUNING.paradeSpeed;
+    const ms = walk / TUNING.paradeSpeed;
     // A negative delay starts each animal partway along its own walk, which
     // spreads the line out from the first frame rather than after a lap.
     stride.animate(
@@ -725,7 +734,7 @@ function rainbow(party: Party): void {
 function firework(party: Party, at: Point, note: number, byHand: boolean): void {
   const { layer, layout, random } = party.stage;
   const colours = shuffle(POP_COLOURS, random);
-  const radius = layout.canvas.width * TUNING.fireworkRadius;
+  const radius = spanWidth(layout.canvas) * TUNING.fireworkRadius;
   // A bright core under the scatter. The pop palette is pastel, which is right
   // against a daytime sky and almost invisible against a night one, so a
   // firework brings its own light with it.
@@ -782,7 +791,7 @@ function rockets(party: Party): void {
       return;
     }
     const spark = element("circle", {
-      r: String(Math.max(4, layout.canvas.width * 0.008)),
+      r: String(Math.max(4, spanWidth(layout.canvas) * 0.008)),
       fill: "#fff3b0",
       cx: at.x.toFixed(1),
       cy: layout.canvas.height.toFixed(1),

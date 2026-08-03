@@ -652,19 +652,45 @@ no level can be less forgiving than the piece's own box, and the layout tests
 sweep every count at the most forgiving value in the table - which is what keeps
 one target's reach off another's at the top of the range.
 
-## Orientation
+## The shape of the board
 
-The puzzle reflows rather than merely shrinking. Landscape puts the animals in
-one row with the tray beneath; portrait uses shallower rows and spends the saved
-width on a taller tray. A picture being rebuilt reflows further still: landscape
-has room to stand its pieces down the gutters and usually does, portrait has not
-and keeps its shelves. Letterboxing a landscape canvas into an upright phone
-would leave the pieces too small to grab, so `chooseLayout()` picks by aspect
-ratio. Rotating the device mid-puzzle rebuilds the board but keeps progress.
+**The canvas is composed for the screen it is drawn on.** `viewFor(container)`
+in `layout.ts` keeps the canvas's *shorter* side at 700 logical units and gives
+the longer one whatever the container's ratio asks for, so the board has the
+screen's own shape and fills it: no letterbox, the tray at the edge of the
+device rather than the edge of a bar, and the scenery run out to the corners.
+The scale from logical units to device pixels is `device short side / 700` at
+every ratio, so a piece is the same physical size however the screen is shaped.
+`REFERENCE_VIEWS` keeps the two canvases the game used to have - `1000x700` and
+`700x1180` - because the tests and the measured floor tables are written against
+them, and the rule reproduces both exactly. See
+[decision 20260801T190000](../../docs/decisions/20260801T190000-the-board-is-composed-for-the-screen.md).
+
+**A size measured across the board is measured against `spanWidth`, not
+`canvas.width`.** `spanWidth(canvas)` is the width, but never more than a
+landscape-shaped board of this height would have had
+(`min(width, height * 10/7)`). A constant written as a fraction of the width -
+`minSlot`, `minPieceInk`, a bubble's radius, a balloon's, a parade animal's -
+would otherwise treble on a 3:1 screen: the floors would start refusing levels
+that compose perfectly well, and a parade animal would be taller than the board
+it walks across. Positions *across* the board - where a bubble is released, how
+a parade is spaced, the cloud lanes - go on using the real width, because a
+spread is not a size. `spanWidth` is exactly the width on both reference
+canvases, so nothing about either board has changed.
+
+`Layout["id"]` is still `"landscape"` or `"portrait"`, derived from the canvas
+(`width >= height`), and the puzzle reflows between the two rather than merely
+shrinking. Landscape puts the animals in one row with the tray beneath;
+portrait uses shallower rows and spends the saved width on a taller tray. A
+picture being rebuilt reflows further still: landscape has room to stand its
+pieces down the gutters and usually does, portrait has not and keeps its
+shelves. Rotating or resizing the device mid-puzzle rebuilds the board and keeps
+progress - except while a piece is in the air, which `game.ts` waits out rather
+than taking the animal out of a hand.
 
 The background landscape is generated from the layout (`src/scenery.ts`) rather
-than being a fixed-size image, so every level and both orientations share one
-piece of art.
+than being a fixed-size image, so every level and every shape of screen share
+one piece of art: a wider board simply grows more meadow.
 
 ## The background a theme is played against
 
@@ -738,8 +764,13 @@ pieces of no particular shape:
 - tray cells stay on one of the tray's bands, never collide, never overlap
   another piece's box, and never sit where the piece waiting in them would be
   taken home;
-- pieces stay grabbable - over a tenth of the canvas wide;
-- each orientation fills at least 75% of its viewport.
+- pieces stay grabbable - over a tenth of the canvas's nominal width;
+- the board fills its viewport, whatever shape the viewport is.
+
+The same promises are swept again over screens from 1:3 to 3:1 (`on a screen of
+any shape`), which also holds every level's piece to within 7% of the size the
+two fixed canvases would have drawn it on that same screen, measured in device
+pixels - the price of filling the screen, and a number that may not grow.
 
 Alongside them, `how big the board gets` holds a measured floor under every one
 of the thirty levels in both orientations: the slot as a share of the canvas,

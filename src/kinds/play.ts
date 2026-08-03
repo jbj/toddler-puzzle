@@ -37,7 +37,7 @@
  */
 import { playPlink, playPop, playSnap, unlockAudio } from "../audio";
 import { boxCenter, type Point } from "../geometry";
-import { boxOf, holeOf, type Layout } from "../layout";
+import { boxOf, holeOf, spanWidth, type Layout } from "../layout";
 import { dealPieces, type ActivityId } from "../levels";
 import { prefersReducedMotion } from "../motion";
 import type { PieceId, PieceShape } from "../piece";
@@ -55,9 +55,13 @@ const ID = "play" as const;
  * rather than two. The sizes are the numbers to argue with: every one of them
  * is a target a one-year-old has to hit, and all of them are well over a tenth
  * of the canvas wide for that reason.
+ *
+ * A size is measured against `spanWidth` and a spread against the real width;
+ * on a very wide board those part company, and a bubble that grew with the
+ * board would be half the height of the screen.
  */
 const TUNING = {
-  /** A bubble's radius, as a fraction of the canvas width. */
+  /** A bubble's radius, as a fraction of the board's nominal width. */
   bubbleRadius: 0.085,
   /** How much bigger or smaller than that any one bubble may be. */
   bubbleVariation: 0.18,
@@ -77,9 +81,9 @@ const TUNING = {
   bubbleGoal: 3,
   /** How many things to touch to finish an `alive` scene, for the same reason. */
   aliveGoal: 2,
-  /** The sun's radius, as a fraction of the canvas width. */
+  /** The sun's radius, as a fraction of the board's nominal width. */
   sunRadius: 0.075,
-  /** A cloud's width, as a fraction of the canvas width. */
+  /** A cloud's width, as a fraction of the board's nominal width. */
   cloudWidth: 0.2,
   /** How far a touched cloud slides, as a fraction of the canvas width. */
   cloudStep: 0.12,
@@ -240,14 +244,14 @@ function playBubbles(
   record: (thing: string, at: Point) => void,
 ): () => void {
   const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
   const random = puzzle.random;
   const still = prefersReducedMotion();
   const afloat = new Set<Poppable>();
   let minted = 0;
 
   function release(): void {
-    const radius =
-      width * TUNING.bubbleRadius * (1 + (random() - 0.5) * 2 * TUNING.bubbleVariation);
+    const radius = span * TUNING.bubbleRadius * (1 + (random() - 0.5) * 2 * TUNING.bubbleVariation);
     const margin = radius + width * 0.02;
     const x = margin + random() * Math.max(1, width - 2 * margin);
     // Nothing waits in the tray on an activity level and the backdrop paints
@@ -291,7 +295,7 @@ function playBubbles(
         afloat.delete(bubble);
         // A small bubble pops higher than a big one, so a screenful of them
         // does not burst on one note.
-        playPop((width * TUNING.bubbleRadius) / radius);
+        playPop((span * TUNING.bubbleRadius) / radius);
         record(id, at);
         topUp();
       },
@@ -427,6 +431,7 @@ function playAlive(
   record: (thing: string, at: Point) => void,
 ): () => void {
   const { width } = layout.canvas;
+  const span = spanWidth(layout.canvas);
   const band = sky(layout);
 
   // The animals, standing where the layout stood them.
@@ -453,7 +458,7 @@ function playAlive(
   });
 
   // The sun, big enough to hit and hung clear of the top of the scene.
-  const sunRadius = width * TUNING.sunRadius;
+  const sunRadius = span * TUNING.sunRadius;
   const sunAt = {
     x: width - sunRadius - width * 0.05,
     y: Math.max(band.top + sunRadius + 8, band.bottom * 0.34),
@@ -500,7 +505,7 @@ function playAlive(
   host.layer.append(sun);
 
   // The clouds, which slide along when they are touched.
-  const cloudWidth = width * TUNING.cloudWidth;
+  const cloudWidth = span * TUNING.cloudWidth;
   CLOUD_LANES.forEach((share, index) => {
     const at = {
       x: width * share,

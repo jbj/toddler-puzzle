@@ -462,6 +462,13 @@ means. Neither is started for a level played by touching. Between them:
   [decision 20260802T170000](../../docs/decisions/20260802T170000-a-drag-ends-however-the-finger-goes-away.md).
 - `enableDragging` returns its teardown, and `game.ts` calls it when a board is
   replaced. Its listeners are on the window, so they do not go with the stage.
+- A re-layout waits for an empty hand. The board is composed for the box it is
+  drawn in, so *any* change of screen shape rebuilds it - a rotation, a resized
+  window, a phone collapsing its address bar - and rebuilding replaces the
+  element a finger is carrying. `game.ts` remembers the held piece from the drag
+  callbacks and defers the rebuild until the piece is let go and its drop has
+  been judged. See
+  [decision 20260801T190000](../../docs/decisions/20260801T190000-the-board-is-composed-for-the-screen.md).
 
 ## Toddler-proofing
 
