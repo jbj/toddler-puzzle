@@ -460,10 +460,11 @@ export function createGame(
     if (module) {
       if (closesChapter) {
         chapterEnd = module.celebrationFor(level.chapter);
+        celebration = module.createCelebration(chapterEnd);
       } else {
         interlude = module.interludeFor(levelNumber);
+        celebration = module.createCelebration(interlude);
       }
-      celebration = module.createCelebration(chapterEnd ?? (interlude as InterludeId));
     }
     if (chapterEnd) playChapterFanfare(chapterEnd);
     else playFanfare(levelNumber);
