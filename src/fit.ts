@@ -69,8 +69,8 @@ export interface Column {
 }
 
 /**
- * Where the pieces wait: a band of shelves across the top of the board, or one
- * column down each side with the scene between them.
+ * Where the pieces wait: a band of shelves across the top of the board, or the
+ * same number of columns down each side with the scene between them.
  */
 export type TrayPlan =
   | { readonly place: "top"; readonly shelves: readonly Shelf[] }
@@ -600,7 +600,7 @@ export function fitRows(demand: RowsDemand, limits: Limits): RowsFit {
  * they land at needs the picture's own area over again - which capped the
  * picture at about a tenth of the board. So a piece here waits smaller than it
  * lands, and no smaller than `Limits.minWaitingScale`. See
- * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+ * docs/decisions/Let a picture take the whole board.md.
  * ------------------------------------------------------------------------ */
 
 /** The slot at which a shape drawn to fit a square exactly fills `room`. */

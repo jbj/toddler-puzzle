@@ -1032,7 +1032,7 @@ function compose(view: View, fit: RowsFit, grips: readonly Size[]): Arrangement 
 
   const gutters = fit.tray.place === "sides" ? tray : null;
   if (!laid && !gutters) {
-    throw new Error("A tray is either a band or two columns; this fit was neither.");
+    throw new Error("A tray is either a band or columns down the sides; this fit was neither.");
   }
 
   return {
