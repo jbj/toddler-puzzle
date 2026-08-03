@@ -165,9 +165,9 @@ export interface LevelSpec {
    * own centre. Never below 1: the piece's own box - half a piece out, on
    * either axis - is the floor the whole game is forgiving at, and this only
    * ever makes an early level more forgiving still. See
-   * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md)
+   * docs/decisions/One box measures a piece, and one rule places it.md
    * and
-   * [decision 20260727T072917](../docs/decisions/20260727T072917-generous-snap-radius.md).
+   * docs/decisions/Keep snapping generous and owned.md.
    */
   readonly snapForgiveness: number;
   readonly options?: LevelOptions;
@@ -196,7 +196,7 @@ export const LEVELS: readonly LevelSpec[] = [
   // level after it is one of those - a child who cannot drag yet still wins
   // something on levels 1, 3 and 5, and finds the drag waiting whenever they
   // are ready for it. See
-  // [decision 20260729T072100](../docs/decisions/20260729T072100-the-game-opens-with-something-to-touch.md).
+  // docs/decisions/Open the game with something to touch.md.
   {
     level: 1,
     chapter: "first-touches",

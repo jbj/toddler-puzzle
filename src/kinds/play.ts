@@ -127,8 +127,8 @@ const LANDSCAPE_SKY = 700;
  * instead, and short enough that a child who is not getting anywhere is never
  * stuck watching. The pause before the way onwards after *every* level is timed
  * the same way, off a balloon rather than a bubble
- * (`WAY_OUT_MS` in `celebrate.ts`). See
- * [decision 20260801T163000](../../docs/decisions/20260801T163000-a-touch-level-lets-a-child-out.md).
+ * (`WAY_OUT_MS` in `celebrate.ts`). See docs/decisions/Ask a touch level for a
+ * handful, and let the child out anyway.md.
  */
 export const ACTIVITY_PATIENCE_MS = Math.round(LANDSCAPE_SKY / TUNING.bubbleSpeed);
 

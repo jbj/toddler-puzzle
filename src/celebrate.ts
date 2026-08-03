@@ -115,13 +115,15 @@ const BUTTON_ICON: Record<FinishButton, string> = {
  * number in both orientations, because a child who turns the tablet has not
  * asked for a longer wait. It is deliberately a *number* rather than a
  * particular balloon: the pause has to be the same whether the celebration is
- * balloons, beach balls, paper or ribbon, and it has to hold even when the
- * celebration chunk never arrived.
+ * balloons, beach balls, paper or ribbon. Where it does not apply at all is
+ * where there is no celebration to wait through - a level played by touching,
+ * or a celebration chunk that never arrived - because a pause in front of an
+ * empty board is the trap this is meant not to be.
  *
  * Nothing else is withheld. The celebration answers a finger from its first
  * frame, so this is never a wait for permission to play - only for permission
  * to leave. See
- * `docs/decisions/20260803T133000-a-celebration-between-every-level.md`.
+ * `docs/decisions/A celebration between every level.md`.
  */
 export const WAY_OUT_MS = 4500;
 
@@ -131,8 +133,10 @@ export function showFinishButton(
   kind: FinishButton,
   onPress: () => void,
   /**
-   * Hold the button back for this long, then fade it up. Zero - every ordinary
-   * level - puts it there at once, exactly as before.
+   * Hold the button back for this long, then fade it up. Zero puts it there at
+   * once, which is what a level with no celebration to wait through gets: one
+   * played by touching, a celebration chunk that never arrived, or a board laid
+   * out again after a rotation, where the pause has already been served.
    */
   arriveAfterMs = 0,
 ): () => void {

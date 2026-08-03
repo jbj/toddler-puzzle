@@ -32,7 +32,7 @@
  * `tests/audio.test.ts` checks the structure against a stand-in context, and
  * `scripts/check-audio.mjs` renders every sound through a real
  * `OfflineAudioContext` in Chromium and measures the samples. See
- * [decision 20260730T183000](../docs/decisions/20260730T183000-sounds-are-data-and-the-machine-listens.md).
+ * docs/decisions/Sounds are data, and the machine listens.md.
  */
 import type { ChapterCelebrationId, InterludeId } from "./celebration";
 import type { PuzzleKindId } from "./levels";

@@ -17,8 +17,8 @@
  * That is also what keeps the offline promise. Everything is fetched during the
  * *first* sitting, so whatever cache held the single bundle holds all of the
  * chunks, and a second sitting asks the network for no more than it used to.
- * See
- * [decision 20260729T223500](../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
+ * See docs/decisions/A chapter is warmed before it is needed, not fetched when
+ * it is.md.
  *
  * Failures are swallowed. A warm is an optimisation: if one does not arrive,
  * the thing that needs it asks again at the point of use, and both `ensureKind`

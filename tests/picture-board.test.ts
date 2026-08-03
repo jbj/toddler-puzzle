@@ -4,7 +4,7 @@
  * Both picture chapters - jigsaw and shatter - are laid out the other way round
  * from every other level: the tray is planned first and the picture takes
  * everything left over, on flat colour rather than in a landscape. See
- * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+ * docs/decisions/Let a picture take the whole board.md.
  *
  * What is checked here is the pair of promises that make it work, because both
  * of them are invisible in a green suite otherwise:
@@ -127,7 +127,7 @@ describe("the board a picture is rebuilt on", () => {
     // drawing, so part of this sand is the margin a hand needs around a piece
     // it presses - and a shard thickened to 1:2 carries more of it than the
     // drawing shows. That is what the last hundredth here bought; see
-    // [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
+    // docs/decisions/One box measures a piece, and one rule places it.md.
     for (const { level, id, layout } of BOARDS) {
       const drawn = layout.pieces.map((piece) => waitingInk(layout, piece.id));
       const biggest = Math.max(...drawn.map((ink) => Math.max(ink.width, ink.height)));

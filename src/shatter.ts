@@ -18,7 +18,7 @@
  * cut is split *in both of its owners*, around the very same point: the mesh
  * conforms, so there is no gap between a piece and the neighbour it was cut
  * away from, and none of the picture is drawn twice. See
- * [decision 20260729T114500](../docs/decisions/20260729T114500-every-cut-is-made-once.md).
+ * docs/decisions/Every cut is made once.md.
  *
  * **Cutting is clipping.** A piece is the scene's own markup inside a
  * `<g clip-path>` made from its outline; nothing intersects artwork with
@@ -34,7 +34,7 @@
  * "minimum inscribed radius" of the issue in a form that does not care how big
  * the picture is - and neither may sprawl further than `MAX_SPREAD`. A
  * candidate that fails is not cut; the search tries another angle. See
- * [decision 20260729T124500](../docs/decisions/20260729T124500-a-shard-is-a-thing-to-hold.md).
+ * docs/decisions/Cut a picture into shards that are things to hold.md.
  */
 import type { Point, Rect, Size } from "./geometry";
 import { pictureFrameId, picturePieces, type CutCell, type PicturePieces } from "./picture-pieces";

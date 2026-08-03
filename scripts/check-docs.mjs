@@ -12,12 +12,14 @@
  *   - every path ending in `.md` mentioned anywhere in the prose resolves,
  *     whether it is a link, in backticks, or bare. The bare case is the one
  *     that rots: "See AGENTS.md" is not a link, so a link checker walks past
- *     it;
- *   - every `docs/decisions/NNNN` or "decision NNNN" names a record that
- *     exists, so citing one by number survives a retitling;
+ *     it. A decision record is named as a sentence and cited by that name, so
+ *     the mention scanner has to cope with spaces;
  *   - the index lists every instructions file and no others;
  *   - every `applyTo` glob matches at least one path, so renaming a source file
- *     cannot quietly orphan the instructions that govern it.
+ *     cannot quietly orphan the instructions that govern it;
+ *   - no instructions file is over its byte ceiling. Every byte of them is
+ *     spent from a coding agent's context window before the work starts, so
+ *     they are budgeted like the bundle is.
  *
  *   npm run docs:check
  *
@@ -109,24 +111,17 @@ const anchorsOf = new Map([...sources].map(([path, text]) => [path, anchors(text
 /** Every link in a file: inline `[a](b)` and reference definitions `[a]: b`. */
 function links(text) {
   const body = withoutFences(text);
-  const inline = [...body.matchAll(/\[[^\]]*\]\(\s*<?([^)>\s]+)>?(?:\s+"[^"]*")?\s*\)/g)];
-  const references = [...body.matchAll(/^\[[^\]]+\]:\s*<?(\S+?)>?\s*$/gm)];
-  return [...inline, ...references].map((match) => match[1]);
+  // A link target is allowed to contain spaces when it is wrapped in angle
+  // brackets, which is how a decision record's sentence of a filename is cited.
+  const bracketed = [...body.matchAll(/\[[^\]]*\]\(\s*<([^>\n]+)>(?:\s+"[^"]*")?\s*\)/g)];
+  const inline = [...body.matchAll(/\[[^\]]*\]\(\s*([^)<>\s]+)(?:\s+"[^"]*")?\s*\)/g)];
+  const references = [
+    ...body.matchAll(/^\[[^\]]+\]:\s*<([^>\n]+)>\s*$|^\[[^\]]+\]:\s*(\S+)\s*$/gm),
+  ];
+  return [...bracketed, ...inline, ...references].map((match) => match[1] ?? match[2]);
 }
 
 // --- the checks -----------------------------------------------------------
-
-const decisionNumbers = new Set(
-  paths.flatMap((path) => {
-    const m = new RegExp(`^${DECISIONS_DIR}/(\\d{8}T\\d{6})(-[\\w-]+)?\\.md$`).exec(path);
-    if (!m) return [];
-    // Accept both the bare timestamp (for short citations) and the full basename
-    // (timestamp + slug), so precise citations are validated unambiguously.
-    const timestamp = m[1];
-    const slug = m[2] ?? "";
-    return slug ? [timestamp, timestamp + slug] : [timestamp];
-  }),
-);
 
 function checkLinks(file, text, problems) {
   for (const target of links(text)) {
@@ -157,9 +152,24 @@ function checkLinks(file, text, problems) {
   }
 }
 
+/**
+ * A decision record is named as a sentence, so a citation of one contains
+ * spaces, and the bare-mention scanner - which stops at the first character no
+ * path may contain - would see only its last word. So the destination of every
+ * link is taken out of the text before that scan, having already been resolved
+ * more strictly, and a bare citation of a record is matched from its directory
+ * forwards instead.
+ */
+const LINK_DESTINATION = /\]\(\s*(?:<[^>\n]+>|[^)<>\s]+)(?:\s+"[^"]*")?\s*\)/g;
+const SPACED_DECISION = new RegExp(`${DECISIONS_DIR}/[^\n)>\`"]+?\\.md`, "g");
+
 function checkMentions(file, text, problems, alreadyChecked) {
-  const mentions = withoutFences(text).matchAll(/[\w./-]*[\w-]\.md\b/g);
-  for (const [mention] of mentions) {
+  const body = withoutFences(text);
+  for (const [mention] of body.matchAll(SPACED_DECISION)) {
+    if (!exists(mention)) problems.push(`"${mention}" does not name a record that exists`);
+  }
+  const prose = body.replace(LINK_DESTINATION, "]()").replace(SPACED_DECISION, "");
+  for (const [mention] of prose.matchAll(/[\w./-]*[\w-]\.md\b/g)) {
     // Link targets have already been resolved, and more strictly.
     if (alreadyChecked.has(mention)) continue;
     if (resolvesSomehow(file, mention)) continue;
@@ -180,27 +190,12 @@ function resolvesSomehow(file, mention) {
   return !mention.includes("/") && basenames.has(mention);
 }
 
-function checkDecisionNumbers(file, text, problems) {
-  const body = withoutFences(text);
-  const DECISION_ID = `\\d{8}T\\d{6}(?:-[\\w-]+)?`;
-  const cited = [
-    ...body.matchAll(new RegExp(`${DECISIONS_DIR}/(${DECISION_ID})`, "g")),
-    ...body.matchAll(new RegExp(`\\bdecisions?\\s+(${DECISION_ID})\\b`, "gi")),
-  ];
-  for (const [, number] of cited) {
-    if (!decisionNumbers.has(number)) {
-      problems.push(`decision ${number} is cited but no such record exists`);
-    }
-  }
-}
-
 for (const file of markdown) {
   const text = sources.get(file);
   const problems = [];
   const targets = new Set(links(text).map((target) => target.split("#")[0]));
   checkLinks(file, text, problems);
   checkMentions(file, text, problems, targets);
-  checkDecisionNumbers(file, text, problems);
   check(file, [...new Set(problems)]);
 }
 
@@ -277,6 +272,54 @@ for (const file of instructionFiles) {
     }
   }
   check(`${file} applyTo`, problems);
+}
+
+// --- how much context the instructions cost --------------------------------
+
+/**
+ * Bytes stand in for tokens. Everything in an instructions file is spent from a
+ * coding agent's context window before the work starts, so the primary layer is
+ * budgeted the way the bundle is: a ceiling that may be raised deliberately and
+ * never quietly. The index is held tighter because its job is to be one screen.
+ */
+// Raised 2026-08-03, 16 -> 17 kB, for `tests.instructions.md`, which arrived at
+// 16284 bytes and then had to describe a celebration after every level rather
+// than after every fifth: a second tier of them in the unit suite, four
+// interludes and two staged conditions in the shot run. The prose was cut back
+// twice first, and the argument behind the tier lives in a decision record
+// rather than here. Deliberately, and said out loud, which is what the comment
+// above asks of anyone raising it.
+const FILE_CEILING = 17 * 1024;
+const INDEX_CEILING = 4 * 1024;
+
+{
+  const problems = [];
+  const rows = [];
+  for (const file of [INDEX, ...instructionFiles]) {
+    // A missing index is already reported above, as a sentence rather than a
+    // stack trace. Do not turn it into one here.
+    if (!sources.has(file)) continue;
+    const ceiling = file === INDEX ? INDEX_CEILING : FILE_CEILING;
+    const bytes = Buffer.byteLength(sources.get(file), "utf8");
+    const name = file.slice(file.lastIndexOf("/") + 1);
+    const share = Math.round((bytes / ceiling) * 100);
+    rows.push(
+      `${name.padEnd(34)} ${String(bytes).padStart(6)} B  ${String(share).padStart(3)}% of ${ceiling / 1024} kB`,
+    );
+    if (bytes > ceiling) {
+      problems.push(`${file} is ${bytes} bytes, over its ${ceiling}-byte ceiling`);
+    }
+  }
+  for (const row of rows) console.log(`        ${row}`);
+  check("instructions files are within their context budget", problems);
+  if (problems.length > 0) {
+    console.log(`
+        Ways under the ceiling, in order of preference: move the argument into a
+        decision record and link it; delete what the code already says; turn a
+        run of prose into a table; split the file along its applyTo. Raising the
+        ceiling is allowed when a file has genuinely grown a new responsibility,
+        and is a change to argue for rather than to slip in.`);
+  }
 }
 
 // --- result ----------------------------------------------------------------

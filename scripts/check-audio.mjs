@@ -28,7 +28,7 @@
  *
  * `npm run test` covers the other half - that the vocabulary is *structured*
  * right, and that the switch is wired to all of it. See
- * [decision 20260730T183000](../docs/decisions/20260730T183000-sounds-are-data-and-the-machine-listens.md).
+ * docs/decisions/Sounds are data, and the machine listens.md.
  */
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";

@@ -125,7 +125,7 @@ const GLANCE = 48;
  * already judged distinct: the closest pair of those ten is the frog and the
  * penguin at 68%, so 70% is the first score no accepted pair reaches. The
  * measure, why it is scoped to a theme, and how to react to a failure are in
- * [decision 20260729T004500](../docs/decisions/20260729T004500-silhouettes-checked-at-a-glance.md).
+ * docs/decisions/Check silhouettes for distinctness at a glance.md.
  */
 const SIMILARITY_LIMIT = 0.7;
 
@@ -582,7 +582,8 @@ function checkScenes() {
     // And the same promise for the kind with no grid to score. A shatter's
     // shards are dealt fresh, so what is checked is the picture rather than a
     // partition: nowhere in it is there a patch the size of the smallest shard
-    // allowed with nothing in it. See docs/decisions/20260729T124500.
+    // allowed with nothing in it. See docs/decisions/Cut a picture into shards
+    // that are things to hold.md.
     for (const count of shatters) {
       const side = shardWindow(count);
       const worst = worstWindow(raster.pixels, raster.width, raster.height, side);

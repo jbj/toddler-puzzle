@@ -361,7 +361,7 @@ export function createGame(
    * Not every board gets one. A level played by touching has no tray, no
    * targets and no wrong place - a finger anywhere lands on something that
    * answers - so there is nothing an idle hint could point at; see
-   * [decision 20260730T213000](../docs/decisions/20260730T213000-a-hint-points-at-both-ends.md).
+   * docs/decisions/A hint points at both ends.md.
    * A finished level has a celebration on it instead.
    */
   function watchForIdle(): void {
