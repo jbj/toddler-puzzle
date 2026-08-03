@@ -5,7 +5,7 @@
  * this game, not an accident: a two-year-old's iPad should reach the first
  * level immediately. Nothing was measuring that, so it drifted - the bundle was
  * 24 kB when the ramp was five levels of one kind, and 142 kB by the time six
- * chapters, five kinds, a scene library, six celebrations and a vocabulary of
+ * chapters, five kinds, a scene library, nine celebrations and a vocabulary of
  * sounds had all landed. Every one of those was a good change. Together they
  * were a regression nobody decided on.
  *
@@ -18,9 +18,9 @@
  *
  * It reads `.art/bundle.json`, written by the `bundle-report` plugin in
  * `vite.config.ts`, which is where the import graph is known. See
- * [decision 20260729T223500](../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md)
- * for why the initial figure is the one that matters and the total is still
- * worth watching.
+ * docs/decisions/A chapter is warmed before it is needed, not fetched when it
+ * is.md for why the initial figure is the one that matters and the total is
+ * still worth watching.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -69,19 +69,35 @@ const BUDGET = {
   // `rest.ts` is imported by the entry for that reason. It buys frames back
   // rather than spending them, which is the one kind of growth this file should
   // be easy about, and the raw budget still holds.
-  // raised 2026-08-03, initial only: where the tray goes is now a decision the
-  // game makes rather than a shape it defaults to, and the search that makes it
-  // - `src/fit.ts` - costs both placements, one to half the cast in columns a
+  // raised 2026-08-03: the sounds. Every level now ends in a celebration, and
+  // each of the four interludes brings an arrival of its own plus the note it
+  // answers a finger with - a boing, a rustle, a swoop - on top of a fuller
+  // fanfare and a fuller firework. Sound is written as data in `audio.ts`,
+  // which the entry needs before the first pop, so none of it can be deferred:
+  // the phrases the celebration chunk plays live in the same file as the ones
+  // the first level plays. About 1.5 kB raw for the lot, on a budget that had
+  // 1 kB left after the board learned to compose itself for the screen.
+  // raised 2026-08-03 again: where the tray goes is now a decision the game
+  // makes rather than a shape it defaults to, and the search that makes it -
+  // `src/fit.ts` - costs both placements, one to half the cast in columns a
   // side, and the board each would leave. That is about 0.7 kB raw, and it is
   // bought back on the screen: a piece drawn a third larger on a wide canvas,
-  // and a board that stops being a letterbox. Layout is needed before the first
-  // level by definition, so none of it can be deferred.
-  // measured 2026-08-03: 116.6 kB raw, 38.2 kB gzipped
+  // and a board that stops being a letterbox. Layout, like sound, is needed
+  // before the first level by definition.
+  // measured 2026-08-03: 118.2 kB raw, 38.7 kB gzipped
   initialRaw: 119 * kB,
   initialGzip: 39 * kB,
-  // measured 2026-07-31: 170.3 kB raw, 58.1 kB gzipped
-  totalRaw: 181 * kB,
-  totalGzip: 61 * kB,
+  // raised 2026-08-03: every level now ends with a celebration rather than only
+  // the six that end a chapter, so the celebration chunk carries three more
+  // acts - beach balls, confetti and streamers. It is the largest deferred thing
+  // in the build, and it is now reached at level 2 instead of level 5, which is
+  // the trade: a chunk that was warmed for a chapter ending is warmed for the
+  // first dragged level ending, and `warm.ts` already fetches it first. Only the
+  // sounds of it landed in the initial figure, for the reason written against
+  // that one above.
+  // measured 2026-08-03: 187.2 kB raw, 63.5 kB gzipped
+  totalRaw: 194 * kB,
+  totalGzip: 66 * kB,
 };
 
 /** How many of a chunk's biggest modules to name when a budget is blown. */

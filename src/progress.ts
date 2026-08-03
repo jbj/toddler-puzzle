@@ -22,7 +22,7 @@
  * `STORAGE_VERSION`, and every field is checked against the game as it is now.
  * A level number the table no longer has sends the child back to level 1 rather
  * than to a board that cannot be built - see
- * [decision 20260728T212500](../docs/decisions/20260728T212500-remember-where-the-child-stopped.md).
+ * docs/decisions/Remember where the child stopped.md.
  *
  * The storage object is injected, so all of this is exercised in Vitest without
  * a browser. `game.ts` and `main.ts` hold the only DOM-facing ends: which level
@@ -45,7 +45,7 @@ const HINT_TIMINGS: readonly HintTiming[] = ["off", "sooner", "later"];
  *
  * It is shorter than the plan first described, because rotation mode was
  * dropped rather than built - see
- * [decision 20260730T203000](../docs/decisions/20260730T203000-no-rotation-mode.md).
+ * docs/decisions/Rotation mode is not built, and the switch is gone.md.
  * A record stored while that switch existed still reads: an unknown field is
  * ignored like any other, so nobody loses their level over it.
  */

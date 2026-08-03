@@ -10,8 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# This workflow only ever reads. Screenshots leave as an artifact, which needs no
-# write access and no privileged second job: see docs/decisions/20260727T105836.
+# This workflow only ever reads. Screenshots leave as an artifact, which needs
+# no write access and no privileged second job: see docs/decisions/Let the
+# author attach the screenshots.md.
 permissions:
   contents: read
 

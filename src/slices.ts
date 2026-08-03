@@ -7,7 +7,7 @@
  * here computes an intersection of the silhouette with anything: no polygon
  * boolean library, no runtime dependency, and no chance of a rounding error
  * opening a seam down the middle of a duck. See
- * [decision 20260729T061500](../docs/decisions/20260729T061500-slices-are-clipped-not-cut.md).
+ * docs/decisions/Slices are clipped, not cut.md.
  *
  * The cells come from straight cuts arranged as a small binary tree. Each cut
  * names a cell and a line; the cell becomes the two halves that line divides it

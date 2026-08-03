@@ -1,5 +1,5 @@
 /**
- * What happens when a chapter ends, and what happens when the game does.
+ * What happens when a level ends, when a chapter ends, and when the game does.
  *
  * Thirty levels that all end with the same four-note fanfare and the same
  * sparkle flatten completely: by level twenty the reward for finishing has
@@ -7,6 +7,19 @@
  * the arrow simply looped back to level 1 as though nothing had happened. So
  * the end of each chapter is a moment of its own, and the end of the game is a
  * party that does not stop.
+ *
+ * **Every level ends with one, in two tiers.** A finished board leading
+ * straight into a fresh one asks a one-year-old to start again with no gap, and
+ * in playtesting that is where they gave up rather than where they were
+ * stretched. So the twenty-four ordinary levels end in an *interlude*
+ * (`INTERLUDES`) - balloons, beach balls, confetti, streamers - and the way
+ * onwards waits `WAY_OUT_MS` for it, which is the mandatory pause. An interlude
+ * is deliberately weather rather than an event: nothing in one has to be done,
+ * everything in one answers a finger the same way wherever it is touched, and a
+ * child who sits and watches has played it correctly. The five chapter
+ * celebrations and the finale are the other tier, and they are allowed to be
+ * events. See
+ * `docs/decisions/A celebration between every level.md`.
  *
  * **A celebration is played, not watched.** This is the whole design and every
  * decision below follows from it. A two-year-old will not sit through a
@@ -20,7 +33,7 @@
  * the chapter of animals once, and an elephant walking over an elephant is one
  * busy picture rather than one thing happening. That is why the parade is hung
  * on the chapter of coloured shapes and deals from the animals the board is not
- * holding. See [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
+ * holding. See docs/decisions/A celebration is not made of the board.md.
  *
  * **A celebration is not a level, and deliberately not a `PuzzleKind`.** A kind
  * is dealt a cast, composes a layout, cuts holes, judges drops, and above all is
@@ -30,29 +43,41 @@
  * nobody plays. What it does copy from `PuzzleKind.play` is the *shape*: it is
  * handed a layer, it answers the finger itself, it returns a teardown, and its
  * progress lives outside the board so that turning the tablet does not lose it.
- * See [decision 20260729T152400](../docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md).
+ * See docs/decisions/A celebration is played, and it ends by itself.md.
  *
  * **It cannot be a trap at either end.** Two failures are possible and both are
  * closed here:
  *
  *  - a child who pops everything in four seconds must not be left looking at an
  *    empty screen, so things keep arriving by themselves for half a minute;
- *  - a child who touches nothing must not be stuck, so the big button onwards is
- *    on screen from the first instant of the celebration rather than after it,
- *    and it is the same button they have pressed at the end of every level.
+ *  - a child who touches nothing must not be stuck, so the big button onwards
+ *    arrives `WAY_OUT_MS` in and then stays for the rest of the party, and it is
+ *    the same button they have pressed at the end of every other level.
  *
- * Nothing here ever moves the child on by itself. A clock that advanced the
- * level would take the game away mid-tap, and a celebration that had to be
- * finished would be another level. What the half-minute governs is only whether
- * *new* things arrive unasked; everything already on screen goes on answering a
- * finger for as long as the child stays.
+ * Those seconds are the one thing a celebration withholds, and they are the
+ * point of it: the pause is what a child gets *instead* of the next board
+ * arriving on top of the one they have just finished. Nothing else is held back
+ * - the celebration answers a finger from its first frame - and nothing here
+ * ever moves the child on by itself. A clock that advanced the level would take
+ * the game away mid-tap, and a celebration that had to be finished would be
+ * another level. What the half-minute governs is only whether *new* things
+ * arrive unasked; everything already on screen goes on answering a finger for
+ * as long as the child stays.
  *
  * The floating and the bursting are `pop.ts`, shared with the bubbles of the
  * first chapter, so a balloon bursts with exactly the feel of a bubble.
  * `prefers-reduced-motion` is honoured through `motion.ts` as everywhere else:
  * the moment still happens, more calmly.
  */
-import { playFirework, playPlink, playPop, unlockAudio } from "./audio";
+import {
+  playBoing,
+  playFirework,
+  playPlink,
+  playPop,
+  playRustle,
+  playSwoop,
+  unlockAudio,
+} from "./audio";
 import { sparkleBurst } from "./celebrate";
 import { shuffle, type Point } from "./geometry";
 import { spanWidth, type Layout } from "./layout";
@@ -72,7 +97,18 @@ const SVG_NS = "http://www.w3.org/2000/svg";
  */
 export const CELEBRATION_SPAN_MS = 30_000;
 
-export type CelebrationId = "balloons" | "parade" | "petals" | "rainbow" | "fireworks" | "finale";
+/**
+ * What plays after an ordinary level. Deliberately a type of its own: an
+ * interlude has to be something a child can do nothing at all in front of, and
+ * that is a stronger rule than a celebration in general has to keep.
+ */
+export type InterludeId = "balloons" | "beach-balls" | "confetti" | "streamers";
+
+/** What ends a chapter, and what ends the game. These are allowed to be events. */
+export type ChapterCelebrationId =
+  "balloons" | "parade" | "petals" | "rainbow" | "fireworks" | "finale";
+
+export type CelebrationId = InterludeId | ChapterCelebrationId;
 
 /**
  * Which chapter ends with which celebration. Keyed by chapter rather than by
@@ -90,7 +126,7 @@ export type CelebrationId = "balloons" | "parade" | "petals" | "rainbow" | "fire
  * parade is made of animals, so it ends the chapter of coloured shapes and not
  * the chapter of animals, where it used to walk an elephant over an elephant.
  */
-export const CELEBRATIONS: Record<ChapterId, CelebrationId> = {
+export const CHAPTER_CELEBRATIONS: Record<ChapterId, ChapterCelebrationId> = {
   "first-touches": "balloons",
   animals: "rainbow",
   "sliced-animals": "petals",
@@ -99,12 +135,46 @@ export const CELEBRATIONS: Record<ChapterId, CelebrationId> = {
   mastery: "finale",
 };
 
+/**
+ * What plays after an ordinary level - the twenty-four that end nothing.
+ *
+ * Every level ends with one, because going straight from a finished board into
+ * a fresh one is more than a one-year-old can carry: the celebration is the
+ * breather, and the way onwards waits `WAY_OUT_MS` for it. So these are chosen
+ * by a different rule from the chapter ones. A chapter celebration is a *moment*
+ * and may ask something of the child; an interlude is weather. Every one of
+ * these can be watched from start to finish without doing anything, answers a
+ * finger the same way wherever it is touched, and asks for nothing: a child who
+ * wants to sit still and look at it has played it correctly.
+ *
+ * They are also all made of paper and air rather than of animals, which is what
+ * lets them sit over any of the thirty boards without the rule at the top of
+ * this file having to be checked level by level.
+ *
+ * Four of them, rotated by level number, so two levels running never end the
+ * same way and the same level always ends the way it did - a re-deal, a turned
+ * tablet, or a level a grown-up picked out of the panel all show what that
+ * level shows.
+ */
+export const INTERLUDES: readonly InterludeId[] = [
+  "balloons",
+  "beach-balls",
+  "confetti",
+  "streamers",
+];
+
 /** The celebration that ends the whole game rather than a chapter. */
-export const FINALE: CelebrationId = "finale";
+export const FINALE: ChapterCelebrationId = "finale";
 
 /** What ends this chapter. */
-export function celebrationFor(chapter: ChapterId): CelebrationId {
-  return CELEBRATIONS[chapter];
+export function celebrationFor(chapter: ChapterId): ChapterCelebrationId {
+  return CHAPTER_CELEBRATIONS[chapter];
+}
+
+/** What plays after a level that ends no chapter. */
+export function interludeFor(level: number): InterludeId {
+  const index = (((level - 1) % INTERLUDES.length) + INTERLUDES.length) % INTERLUDES.length;
+  return INTERLUDES[index] as InterludeId;
 }
 
 /** What the host lends a celebration: a layer, a layout, and the cast. */
@@ -191,9 +261,50 @@ const TUNING = {
   arcs: 7,
   /** How often an arc paints itself if nobody asks for one. */
   arcEvery: 1800,
-  /** How often a firework goes off on its own. */
-  fireworkEvery: 2100,
-  fireworkRadius: 0.11,
+  /**
+   * How often a firework goes off on its own. Quick, because a sky with a gap
+   * in it is a sky a child stops looking at, and because the fireworks are the
+   * loudest thing the game has and are meant to be.
+   */
+  fireworkEvery: 1200,
+  fireworkRadius: 0.13,
+  /** How many breaks one firework makes: a burst, and smaller ones after it. */
+  fireworkBreaks: 3,
+  /** A beach ball's radius, as a fraction of the board's nominal width. */
+  ballRadius: 0.1,
+  /** How many are in the air at once. */
+  ballsAtOnce: 4,
+  /**
+   * How long one arc takes, in milliseconds. A ball is up for about as long as
+   * a balloon takes to climb, which is what makes the whole interlude one
+   * gesture rather than several.
+   */
+  ballFlightMs: 2600,
+  /**
+   * How high above the middle of the board an arc peaks, as a fraction of the
+   * height: somewhere between these two, drawn fresh for every throw. Never so
+   * high that a ball leaves the board - a ball that goes off the top is a ball
+   * that cannot be touched at its most interesting moment.
+   */
+  ballPeak: { least: 0.08, most: 0.4 },
+  /** How many keyframes an arc is sampled into. Enough to read as a curve. */
+  ballSamples: 14,
+  /** A confetti slip's width, as a fraction of the board's nominal width. */
+  confettiWidth: 0.045,
+  /** How many slips are coming down at once. Paper falls thick. */
+  confettiAtOnce: 16,
+  /** How fast one falls, in logical units per millisecond. */
+  confettiSpeed: 0.09,
+  /** How far one wanders sideways on the way down, as a fraction of width. */
+  confettiSway: 0.16,
+  /** How many slips a burst throws, for the scatter a tap puffs up. */
+  confettiPuff: 7,
+  /** How wide a streamer is, as a fraction of the board's nominal width. */
+  streamerWidth: 0.05,
+  /** How many hang at once. */
+  streamersAtOnce: 5,
+  /** How long one takes to unroll, in milliseconds. */
+  streamerUnrollMs: 2200,
 } as const;
 
 /** Blossom rather than the pop palette: petals are pale, balloons are not. */
@@ -434,6 +545,558 @@ function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsA
   });
 }
 
+// --- beach balls ------------------------------------------------------------
+// Balls thrown up from below the bottom edge, arcing over the middle of the
+// board and coming down the other side. The interlude with the biggest thing in
+// it, and the only one where a touch does not take the thing away: a tapped ball
+// squashes and is thrown again from where the finger caught it, so a child who
+// keeps hitting it keeps it up. Nothing has to be caught, and nothing is lost by
+// letting one fall - a ball that lands is simply followed by another.
+
+/**
+ * The rise a parabola needs for its highest point to be `height` above where it
+ * started, given that it ends `drop` below it. Solved rather than guessed: an
+ * arc that ends lower than it began is lopsided, and the apex of a lopsided arc
+ * is not half way along it. Without this a ball thrown from near the bottom of
+ * a portrait board sails off the top of a landscape one.
+ */
+function riseFor(height: number, drop: number): number {
+  const reach = 2 * height + 2 * Math.sqrt(Math.max(0, height * height + height * drop));
+  return (reach + drop) / 4;
+}
+
+/** Where a ball is, relative to where its arc began, `t` of the way along. */
+function arcAt(arc: { dx: number; dy: number; rise: number }, t: number): Point {
+  return { x: arc.dx * t, y: arc.dy * t - arc.rise * 4 * t * (1 - t) };
+}
+
+/**
+ * A parabola, as keyframes. Web Animations rather than a frame loop, because
+ * `rest.ts` puts the page down by pausing every animation on it, and a ball
+ * flying on `requestAnimationFrame` would go on flying in an empty room.
+ */
+function arcFrames(arc: { dx: number; dy: number; rise: number }): Keyframe[] {
+  return Array.from({ length: TUNING.ballSamples + 1 }, (_, i) => {
+    const t = i / TUNING.ballSamples;
+    const at = arcAt(arc, t);
+    return { offset: t, transform: `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px)` };
+  });
+}
+
+/** White and colour turn and turn about, which is what makes it read as a ball. */
+function beachBallPaint(radius: number, colour: string, second: string): string {
+  const wedges = 6;
+  const panels = Array.from({ length: wedges }, (_, i) => {
+    const from = (i / wedges) * Math.PI * 2 - Math.PI / 2;
+    const to = ((i + 1) / wedges) * Math.PI * 2 - Math.PI / 2;
+    const paint = i % 2 === 0 ? (i % 4 === 0 ? colour : second) : "#fffaf2";
+    return `<path d="M0 0 L${(Math.cos(from) * radius).toFixed(1)} ${(Math.sin(from) * radius).toFixed(1)} A${radius.toFixed(1)} ${radius.toFixed(1)} 0 0 1 ${(Math.cos(to) * radius).toFixed(1)} ${(Math.sin(to) * radius).toFixed(1)} Z" fill="${paint}" />`;
+  }).join("");
+  return `
+    ${panels}
+    <circle r="${(radius * 0.16).toFixed(1)}" fill="#fffaf2" />
+    <circle r="${radius.toFixed(1)}" fill="none" stroke="#00000018" stroke-width="${Math.max(2, radius * 0.05).toFixed(1)}" />
+    <ellipse cx="${(-radius * 0.34).toFixed(1)}" cy="${(-radius * 0.4).toFixed(1)}"
+             rx="${(radius * 0.2).toFixed(1)}" ry="${(radius * 0.13).toFixed(1)}"
+             fill="#ffffff" fill-opacity="0.7" transform="rotate(-24)" />
+  `;
+}
+
+function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAtOnce }): void {
+  const { layer, layout, random } = party.stage;
+  const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
+  const still = prefersReducedMotion();
+  const live = new Set<() => void>();
+  let holding = 0;
+  let thrown = 0;
+
+  /** Somewhere in the upper part of the board for an arc to top out at. */
+  const peak = (): number =>
+    height * (TUNING.ballPeak.least + random() * (TUNING.ballPeak.most - TUNING.ballPeak.least));
+
+  function release(): void {
+    const radius = span * TUNING.ballRadius * (1 + (random() - 0.5) * 0.2);
+    const colour = POP_COLOURS[thrown % POP_COLOURS.length] as string;
+    const second = POP_COLOURS[(thrown + 2) % POP_COLOURS.length] as string;
+    const opening = thrown < options.at;
+    const lane = (thrown + 0.5) / options.at;
+    // Which note this ball is on. It starts where the ball was minted, so two
+    // in the air at once rarely sound alike, and it steps on every bounce -
+    // `playBoing` takes a step precisely so that batting one ball about does
+    // not give one note over and over, which is far more of the sound of this
+    // act than meeting a new ball is.
+    let note = thrown;
+    thrown++;
+
+    const thing = touchable("ball", () => bounce());
+    thing.setAttribute("aria-label", "A beach ball");
+    const anchor = group();
+    const flier = group();
+    flier.style.transformOrigin = "0 0";
+    const squash = group();
+    squash.style.transformOrigin = "0 0";
+    const spin = group();
+    spin.style.transformOrigin = "0 0";
+    spin.innerHTML = `<circle r="${radius.toFixed(1)}" fill="transparent" />${beachBallPaint(radius, colour, second)}`;
+    squash.append(spin);
+    flier.append(squash);
+    anchor.append(flier);
+    thing.append(anchor);
+    layer.append(thing);
+
+    holding++;
+    let handedOn = false;
+    /** As for a balloon: give up the place in the air before the ball lands. */
+    function handOn(): void {
+      if (handedOn) return;
+      handedOn = true;
+      holding--;
+      topUp();
+    }
+
+    let gone = false;
+    let base: Point = { x: 0, y: 0 };
+    let arc = { dx: 0, dy: 0, rise: 0, ms: 1 };
+    let flight: Animation | null = null;
+    let spinning: Animation | null = null;
+
+    function place(at: Point): void {
+      base = at;
+      anchor.setAttribute("transform", `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})`);
+    }
+
+    /** Where the ball is now, which is where a bounce has to start from. */
+    function where(): Point {
+      if (!flight) return base;
+      const t = Math.max(0, Math.min(1, Number(flight.currentTime ?? 0) / arc.ms));
+      const offset = arcAt(arc, t);
+      return { x: base.x + offset.x, y: base.y + offset.y };
+    }
+
+    function take(): void {
+      if (gone) return;
+      gone = true;
+      flight?.cancel();
+      spinning?.cancel();
+      thing.remove();
+      live.delete(take);
+      handOn();
+    }
+
+    /** Throw it from here, over the top of the board, and down past the bottom. */
+    function fly(from: Point, ms: number, startAt = 0): void {
+      place(from);
+      const floor = height + radius * 1.6;
+      const drop = Math.max(radius, floor - from.y);
+      // Never less than a good arc's worth, so a ball caught near the top of
+      // the board still goes somewhere rather than dribbling off the edge.
+      const climb = Math.max(height * 0.22, from.y - peak());
+      const across = (random() - 0.5) * 2 * width * 0.3;
+      arc = { dx: across, dy: drop, rise: riseFor(climb, drop), ms };
+      flight?.cancel();
+      const thrown = flier.animate(arcFrames(arc), {
+        duration: ms,
+        easing: "linear",
+        fill: "forwards",
+      });
+      // Part way along already, for the handful the celebration opens with: a
+      // child looking at the first frame has to have something to hit rather
+      // than a bare board and four balls on their way up from underneath it.
+      if (startAt > 0) thrown.currentTime = startAt;
+      thrown.addEventListener("finish", take);
+      flight = thrown;
+      if (!prefersReducedMotion()) {
+        // The old one goes first. A spin never finishes by itself, so a ball
+        // batted about would otherwise be turning under a fresh unending
+        // animation for every time it had been touched.
+        spinning?.cancel();
+        spinning = spin.animate(
+          [{ transform: "rotate(0deg)" }, { transform: `rotate(${random() < 0.5 ? -1 : 1}turn)` }],
+          { duration: ms * 1.6, iterations: Infinity, easing: "linear" },
+        );
+      }
+    }
+
+    /** Touched: it squashes, sings, and goes back up from where it was caught. */
+    function bounce(): void {
+      if (gone) return;
+      unlockAudio();
+      playBoing(note++);
+      const at = where();
+      party.answer(at);
+      squash.animate(
+        [
+          { transform: "scale(1, 1)" },
+          { transform: "scale(1.24, 0.76)" },
+          { transform: "scale(0.92, 1.1)" },
+          { transform: "scale(1, 1)" },
+        ],
+        { duration: beat(360), easing: "cubic-bezier(0.2, 0.7, 0.3, 1)" },
+      );
+      if (still) return;
+      fly(at, TUNING.ballFlightMs);
+    }
+
+    live.add(take);
+
+    if (still) {
+      // Held where they can be reached and squashed, in a row across the board.
+      // A ball whose flight collapsed to a millisecond would be a ball that had
+      // already landed; see the reduced-motion decision cited in `pop.ts`.
+      //
+      // It never hands its place on, and that is the difference between this
+      // act and the others under reduced motion. A slip of paper is taken away
+      // by the finger that touches it, so it has to be replaced; a ball is not,
+      // so a ball that gave up its place would be replaced while still on the
+      // screen - and, since nothing here ever lands, replaced again a
+      // millisecond later, for as long as the celebration was arriving.
+      place({
+        x: radius + lane * Math.max(1, width - radius * 2),
+        y: height * (0.3 + (thrown % 2) * 0.22),
+      });
+      return;
+    }
+
+    // The opening handful is already in the air, spread along its own arc, so a
+    // child looking at the first frame has something to hit. Only the ones after
+    // that are thrown up from underneath.
+    const from = { x: radius + random() * Math.max(1, width - radius * 2), y: height + radius };
+    fly(from, TUNING.ballFlightMs, opening ? TUNING.ballFlightMs * lane * 0.5 : 0);
+    party.after(TUNING.ballFlightMs * TUNING.handOnAt, handOn);
+  }
+
+  function topUp(): void {
+    if (!party.arriving()) return;
+    while (holding < options.at) release();
+  }
+
+  topUp();
+  party.every(1500, topUp);
+  party.onStop(() => {
+    for (const take of [...live]) take();
+    live.clear();
+  });
+}
+
+// --- confetti ---------------------------------------------------------------
+// Paper coming down over the whole board. The quietest thing in the game to
+// look at and the busiest: there is always something falling, none of it asks
+// anything, and a finger anywhere in it puffs a handful back up. It is the
+// interlude for a child who wants to do nothing at all for a moment.
+//
+// It is also the only paper in the game, and that is a rule rather than an
+// accident. Every celebration used to open with a throw of the same slips over
+// the top of whatever it was, and those could not be touched - so the game had
+// paper that answered a finger and paper that ignored one, falling the same way
+// down the same board, and no way for a child to tell which was which. A thing
+// that behaves two ways is worse than a thing that only happens sometimes. So
+// paper falls here and nowhere else; what every celebration opens with is the
+// sparkle burst in `celebrate.ts`, which nothing has ever been able to touch.
+
+/** Paper: flat, bright and opaque, so it reads against sky, sea or night. */
+const CONFETTI_COLOURS: readonly string[] = [
+  "#ff6b6b",
+  "#ffd23f",
+  "#7ed957",
+  "#6ec6ff",
+  "#c9a7f5",
+  "#ff9ecb",
+  "#ffffff",
+];
+
+/** One slip of paper, drawn about its own middle. */
+function slip(size: number, colour: string): SVGGElement {
+  const paper = group();
+  paper.innerHTML = `<rect x="${(-size / 2).toFixed(1)}" y="${(-size * 0.3).toFixed(1)}"
+      width="${size.toFixed(1)}" height="${(size * 0.6).toFixed(1)}"
+      rx="${(size * 0.12).toFixed(1)}" fill="${colour}" />`;
+  return paper;
+}
+
+/** A handful thrown up from a point and fading: what a tap answers with. */
+function confettiPuff(party: Party, at: Point, size: number): void {
+  const { layer, random } = party.stage;
+  for (let i = 0; i < TUNING.confettiPuff; i++) {
+    const colour = CONFETTI_COLOURS[Math.floor(random() * CONFETTI_COLOURS.length)] as string;
+    const paper = slip(size * (0.6 + random() * 0.5), colour);
+    paper.style.transformOrigin = "0 0";
+    paper.style.pointerEvents = "none";
+    const anchor = group({ transform: `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)})` });
+    anchor.append(paper);
+    layer.append(anchor);
+    const dx = (random() - 0.5) * size * 7;
+    const dy = -size * (2 + random() * 3);
+    paper
+      .animate(
+        [
+          { transform: "translate(0px, 0px) rotate(0deg)", opacity: 1 },
+          {
+            transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${(random() * 540 - 270).toFixed(0)}deg)`,
+            opacity: 0,
+          },
+        ],
+        { duration: beat(760), easing: "cubic-bezier(0.15, 0.7, 0.4, 1)", fill: "forwards" },
+      )
+      .addEventListener("finish", () => anchor.remove());
+  }
+}
+
+function confetti(party: Party, options: { at: number } = { at: TUNING.confettiAtOnce }): void {
+  const { layer, layout, random } = party.stage;
+  const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
+  const still = prefersReducedMotion();
+  const live = new Set<() => void>();
+  let holding = 0;
+  let minted = 0;
+
+  function release(): void {
+    const size = span * TUNING.confettiWidth * (0.7 + random() * 0.7);
+    const colour = CONFETTI_COLOURS[minted % CONFETTI_COLOURS.length] as string;
+    const opening = minted < options.at;
+    const lane = (minted + 0.5) / options.at;
+    minted++;
+
+    const x = size + random() * Math.max(1, width - size * 2);
+    const startY = still
+      ? size + random() * Math.max(1, height - size * 2)
+      : opening
+        ? height * (0.9 - lane * 0.95)
+        : -size * (1 + random() * 2);
+    const floor = height + size * 2;
+    const fall = (floor - startY) / TUNING.confettiSpeed;
+
+    const thing = touchable("confetti", (at) => puff(at));
+    thing.setAttribute("aria-label", "Confetti");
+    const anchor = group({ transform: `translate(${x.toFixed(1)} ${startY.toFixed(1)})` });
+    const drifter = group();
+    drifter.style.transformOrigin = "0 0";
+    const tumbler = group();
+    tumbler.style.transformOrigin = "0 0";
+    // A slip is small, so what a finger has to hit is not the paper: it is a
+    // patch of sky the size of any other target in this game, with the paper
+    // drawn in the middle of it. The same reasoning as `fitGrabBox`.
+    const reach = Math.max(size * 2.6, width * 0.11);
+    tumbler.innerHTML = `<rect x="${(-reach / 2).toFixed(1)}" y="${(-reach / 2).toFixed(1)}" width="${reach.toFixed(1)}" height="${reach.toFixed(1)}" fill="transparent" />`;
+    tumbler.append(slip(size, colour));
+    drifter.append(tumbler);
+    anchor.append(drifter);
+    thing.append(anchor);
+    layer.append(thing);
+
+    holding++;
+    let handedOn = false;
+    function handOn(): void {
+      if (handedOn) return;
+      handedOn = true;
+      holding--;
+      topUp();
+    }
+
+    let gone = false;
+    function take(): void {
+      if (gone) return;
+      gone = true;
+      thing.remove();
+      live.delete(take);
+      handOn();
+    }
+
+    /** Touched: this slip is gone and a handful goes up where the finger was. */
+    function puff(at: Point): void {
+      if (gone) return;
+      const point = inLayout(layer, at, layout);
+      unlockAudio();
+      playRustle(minted);
+      confettiPuff(party, point, size);
+      party.answer(point);
+      take();
+    }
+
+    live.add(take);
+    if (still) return;
+
+    drifter
+      .animate(
+        [
+          { transform: "translate(0px, 0px)" },
+          {
+            transform: `translate(${((random() - 0.5) * 2 * width * TUNING.confettiSway).toFixed(1)}px, ${((floor - startY) / 2).toFixed(1)}px)`,
+          },
+          { transform: `translate(0px, ${(floor - startY).toFixed(1)}px)` },
+        ],
+        { duration: fall, easing: "linear", fill: "forwards" },
+      )
+      .addEventListener("finish", take);
+    // Paper turns over as it falls, which a flat rectangle can only do by
+    // getting thinner and fatter again. Cheaper than a rotation in three
+    // dimensions and reads as the same thing.
+    tumbler.animate(
+      [
+        { transform: "scaleX(1) rotate(0deg)" },
+        { transform: "scaleX(0.15) rotate(24deg)" },
+        { transform: "scaleX(1) rotate(0deg)" },
+        { transform: "scaleX(0.15) rotate(-24deg)" },
+        { transform: "scaleX(1) rotate(0deg)" },
+      ],
+      { duration: 900 + random() * 900, iterations: Infinity, easing: "ease-in-out" },
+    );
+    party.after(fall * TUNING.handOnAt, handOn);
+  }
+
+  function topUp(): void {
+    if (!party.arriving()) return;
+    while (holding < options.at) release();
+  }
+
+  topUp();
+  party.every(1500, topUp);
+  party.onStop(() => {
+    for (const take of [...live]) take();
+    live.clear();
+  });
+}
+
+// --- streamers --------------------------------------------------------------
+// Ribbons unrolling down the board from the top edge, one after another. The
+// slowest interlude, and the one nearest to simply watching something: a
+// streamer takes a couple of seconds to arrive, sways where it hangs, and curls
+// away with a note when a finger runs into it.
+
+function streamers(party: Party, options: { at: number } = { at: TUNING.streamersAtOnce }): void {
+  const { layer, layout, random } = party.stage;
+  const { width, height } = layout.canvas;
+  const span = spanWidth(layout.canvas);
+  const still = prefersReducedMotion();
+  const live = new Set<() => void>();
+  let holding = 0;
+  let hung = 0;
+
+  function release(): void {
+    const band = span * TUNING.streamerWidth;
+    const colour = CONFETTI_COLOURS[hung % CONFETTI_COLOURS.length] as string;
+    const lane = (hung + 0.5) / options.at;
+    hung++;
+
+    const x = band + ((lane + (random() - 0.5) * 0.1) % 1) * Math.max(1, width - band * 2);
+    const length = height * (0.45 + random() * 0.4);
+    const wave = band * (0.9 + random() * 0.8);
+    // A ribbon rather than a line: four half-turns down its length, which is
+    // what a paper streamer does when it is thrown.
+    const steps = 4;
+    const legs = Array.from({ length: steps }, (_, i) => {
+      const step = length / steps;
+      const side = i % 2 === 0 ? wave : -wave;
+      return `q${side.toFixed(1)} ${(step * 0.5).toFixed(1)} 0 ${step.toFixed(1)}`;
+    }).join(" ");
+    const d = `M${x.toFixed(1)} ${(-band).toFixed(1)} ${legs}`;
+
+    const thing = touchable("streamer", () => curl());
+    thing.setAttribute("aria-label", "A streamer");
+    const swayer = group();
+    swayer.style.transformOrigin = `${x.toFixed(1)}px 0px`;
+    // The paint, and a fatter invisible copy of it so the ribbon can be caught
+    // by anything near it rather than only dead on.
+    const grab = element("path", {
+      d,
+      fill: "none",
+      stroke: "transparent",
+      "stroke-width": (band * 2.4).toFixed(1),
+      "stroke-linecap": "round",
+    });
+    const ribbon = element("path", {
+      class: "streamer",
+      d,
+      fill: "none",
+      stroke: colour,
+      "stroke-width": band.toFixed(1),
+      "stroke-linecap": "round",
+    });
+    swayer.append(grab, ribbon);
+    thing.append(swayer);
+    layer.append(thing);
+
+    holding++;
+    let handedOn = false;
+    function handOn(): void {
+      if (handedOn) return;
+      handedOn = true;
+      holding--;
+      topUp();
+    }
+
+    let gone = false;
+    function take(): void {
+      if (gone) return;
+      gone = true;
+      thing.remove();
+      live.delete(take);
+      handOn();
+    }
+
+    /** Touched: it rolls itself back up the way it came, and pings. */
+    function curl(): void {
+      if (gone) return;
+      unlockAudio();
+      playSwoop(hung);
+      party.answer({ x, y: length * 0.5 });
+      if (still) {
+        take();
+        return;
+      }
+      const rolling = swayer.animate(
+        [
+          { transform: "translateY(0px) scaleY(1)", opacity: 1 },
+          { transform: `translateY(${(-length * 0.15).toFixed(1)}px) scaleY(0.05)`, opacity: 0 },
+        ],
+        { duration: beat(420), easing: "cubic-bezier(0.4, 0, 0.6, 1)", fill: "forwards" },
+      );
+      rolling.addEventListener("finish", take);
+    }
+
+    live.add(take);
+    if (still) return;
+
+    // Unrolled from the top rather than faded in: a streamer arrives by
+    // travelling, which is the whole of what there is to watch here.
+    const dash = length * 1.25;
+    for (const path of [grab, ribbon]) {
+      path.style.strokeDasharray = String(dash);
+      path.animate([{ strokeDashoffset: dash }, { strokeDashoffset: 0 }], {
+        duration: TUNING.streamerUnrollMs,
+        easing: "cubic-bezier(0.3, 0.6, 0.4, 1)",
+        fill: "forwards",
+      });
+    }
+    swayer.animate(
+      [
+        { transform: "rotate(0deg)" },
+        { transform: `rotate(${(random() * 2 + 1).toFixed(1)}deg)` },
+        { transform: "rotate(0deg)" },
+        { transform: `rotate(${(-random() * 2 - 1).toFixed(1)}deg)` },
+        { transform: "rotate(0deg)" },
+      ],
+      { duration: 3600 + random() * 1200, iterations: Infinity, easing: "ease-in-out" },
+    );
+    // A streamer nobody touches makes way for another one, so the board keeps
+    // changing without ever emptying.
+    party.after(TUNING.streamerUnrollMs * 3, take);
+  }
+
+  function topUp(): void {
+    if (!party.arriving()) return;
+    while (holding < options.at) release();
+  }
+
+  topUp();
+  party.every(1500, topUp);
+  party.onStop(() => {
+    for (const take of [...live]) take();
+    live.clear();
+  });
+}
+
 // --- petals -----------------------------------------------------------------
 // Blossom coming down over the finished picture. Deliberately the balloons'
 // sibling rather than a new mechanic: what the issue described - petals swirling
@@ -531,7 +1194,7 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
 // the deal. A parade made of the board's own pieces was the same animals twice
 // over - one set still in their holes, one set walking over them - which reads
 // as one busy picture rather than as one thing happening. See
-// [decision 20260801T160000](../docs/decisions/20260801T160000-a-celebration-is-not-made-of-the-board.md).
+// docs/decisions/A celebration is not made of the board.md.
 
 /** The animals to walk: dealt from the roster, minus whatever is on the board. */
 function paradeCast(stage: CelebrationStage): readonly PieceShape[] {
@@ -751,16 +1414,33 @@ function firework(party: Party, at: Point, note: number, byHand: boolean): void 
     .animate(
       [
         { transform: "scale(0.4)", opacity: 0.95 },
-        { transform: "scale(1.9)", opacity: 0 },
+        { transform: "scale(2.2)", opacity: 0 },
       ],
       {
-        duration: beat(520),
+        duration: beat(560),
         easing: "cubic-bezier(0.1, 0.7, 0.3, 1)",
       },
     )
     .addEventListener("finish", () => flash.remove());
   popBurst(layer, at, radius, colours[0] as string);
   popBurst(layer, at, radius * 0.62, colours[1 % colours.length] as string);
+  // Smaller breaks around the first one, a beat apart and each in its own
+  // colour: one ring reads as a bubble popping, and a firework is a thing that
+  // goes on happening after it has happened.
+  for (let i = 1; i < TUNING.fireworkBreaks; i++) {
+    const away = radius * (0.5 + random() * 0.8);
+    const angle = random() * Math.PI * 2;
+    const where = { x: at.x + Math.cos(angle) * away, y: at.y + Math.sin(angle) * away };
+    party.after(beat(140 * i), () => {
+      popBurst(
+        layer,
+        where,
+        radius * (0.7 - i * 0.12),
+        colours[(i + 1) % colours.length] as string,
+      );
+      sparkleBurst(party.stage.fxLayer, where);
+    });
+  }
   sparkleBurst(party.stage.fxLayer, at);
   playFirework(note);
   if (byHand) party.answer(at);
@@ -890,8 +1570,14 @@ function finale(party: Party): void {
     }),
   );
   rockets(party);
+  // Every interlude as well as every chapter celebration, in smaller numbers
+  // each: thirty levels earns all of it at once, and the sky has to hold them
+  // together rather than be filled by any one of them.
   balloons(party, { at: 4 });
   petals(party, { at: 4 });
+  confetti(party, { at: 8 });
+  streamers(party, { at: 2 });
+  beachBalls(party, { at: 2 });
   parade(party);
 }
 
@@ -899,6 +1585,9 @@ function finale(party: Party): void {
 
 const ACTS: Record<CelebrationId, (party: Party) => void> = {
   balloons: (party) => balloons(party),
+  "beach-balls": (party) => beachBalls(party),
+  confetti: (party) => confetti(party),
+  streamers: (party) => streamers(party),
   parade: (party) => parade(party),
   petals: (party) => petals(party),
   rainbow: (party) => rainbow(party),

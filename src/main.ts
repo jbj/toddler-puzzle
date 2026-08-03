@@ -80,7 +80,8 @@ const startLevel = deepLink ?? playableFrom(progress.read().level, progress.sett
  * nothing to wait for. A child resuming further along needs the chunk their
  * chapter is in before there is a board to draw, and gets it here - which is
  * still less to download than the single bundle this used to be. See
- * [decision 20260729T223500](../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
+ * docs/decisions/A chapter is warmed before it is needed, not fetched when it
+ * is.md.
  *
  * There is deliberately no retry around this. A browser remembers a dynamic
  * import that failed and will not go near the network for it again, so asking

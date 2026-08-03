@@ -10,7 +10,7 @@
  * One file rather than thirteen, because the cost of attaching evidence decides
  * whether it gets attached at all. Reviewing a puzzle means looking at it, and
  * nothing in CI can do that looking on the reviewer's behalf - see
- * docs/decisions/20260727T105836.
+ * docs/decisions/Let the author attach the screenshots.md.
  */
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";

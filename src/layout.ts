@@ -742,7 +742,7 @@ const COMPOSITION = {
    * as far as that trade goes: below it a piece stops reading as the thing that
    * fits the shape it is next to, which is the whole skill the game is built
    * on. See
-   * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+   * docs/decisions/Let a picture take the whole board.md.
    */
   minWaitingScale: 2 / 3,
   /**
@@ -903,11 +903,10 @@ function shelveTray(
 }
 
 /**
- * Two columns down the sides, with the picture between them. Worth having only
- * where the scene is a single target: a picture is drawn to a square slot and
- * fills about three quarters of it, so a tray band across the top pays for the
- * picture's height twice over while the canvas either side of it stays empty.
- * Standing the pieces in that empty room gives the height back to the picture.
+ * Columns down both sides, with the scene between them. Worth having where the
+ * canvas has width to spare: a tray band across the top pays for the scene's
+ * height while the canvas either side of it stays empty, and standing the
+ * pieces in that empty room gives the height back.
  */
 function gutterTray(
   columns: readonly Column[],
@@ -918,7 +917,9 @@ function gutterTray(
 ): LaidTray {
   const scaled = (share: number): number => share * slotSize;
   const width = scaled(columnWidth(columns));
-  const gap = scaled(pad.gap);
+  // Rounded exactly as `sideEdge` rounds it, so `edge - taken` below is the two
+  // margins and nothing left over.
+  const gap = Math.round(scaled(pad.gap));
   const perSide = columnsPerSide(columns);
   const edge = sideEdge(columns, slotSize, pad);
   // The columns are centred in the sand they stand on rather than pushed
@@ -1084,7 +1085,7 @@ function compose(view: View, fit: RowsFit, grips: readonly Size[]): Arrangement 
  * picture at about a tenth of the board and left it standing in a landscape
  * three quarters empty. So a piece here waits smaller than it lands, and no
  * smaller than `COMPOSITION.minWaitingScale`. See
- * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+ * docs/decisions/Let a picture take the whole board.md.
  * ------------------------------------------------------------------------ */
 
 /**

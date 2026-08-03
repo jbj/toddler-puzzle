@@ -21,7 +21,7 @@
  * something goes here; it does not say what. A pair says "this one, there", and
  * the child this exists for may not yet have worked out that pieces move at
  * all. See
- * [decision 20260730T213000](../docs/decisions/20260730T213000-a-hint-points-at-both-ends.md).
+ * docs/decisions/A hint points at both ends.md.
  *
  * **No fill, ever.** A filled target in this game is an opaque animal sitting
  * in its hole, and an empty one is a thin white rim. A warm double stroke round

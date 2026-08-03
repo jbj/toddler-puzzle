@@ -11,7 +11,7 @@
  * their edge to the last bit rather than to within a rounding error. Generating
  * each piece on its own and hoping the tabs line up is the mistake this file
  * exists to make impossible; see
- * [decision 20260729T114500](../docs/decisions/20260729T114500-every-cut-is-made-once.md).
+ * docs/decisions/Every cut is made once.md.
  *
  * **A piece is the picture through a clip path.** Nothing here intersects the
  * artwork with anything: a piece is `<g clip-path>` around the scene's own

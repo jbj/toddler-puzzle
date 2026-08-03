@@ -181,7 +181,7 @@ export const PICTURE_BACKDROP = "var(--board-blue, #6fb8d4)";
  * also lets the picture take the whole board, which is the point of it: what is
  * left over at the edges is the page's own blue rather than a landscape too
  * small to be worth drawing. See
- * [decision 20260730T230000](../docs/decisions/20260730T230000-a-picture-takes-the-board.md).
+ * docs/decisions/Let a picture take the whole board.md.
  */
 export function pictureBackdrop(layout: Layout): string {
   const { width, height } = layout.canvas;
