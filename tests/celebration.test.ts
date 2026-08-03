@@ -160,7 +160,8 @@ describe("what an ordinary level ends with", () => {
 
   it("picks the same one every time the same level is played", () => {
     for (const level of LEVELS) {
-      expect(interludeFor(level.level)).toBe(interludeFor(level.level));
+      const first = interludeFor(level.level);
+      expect(interludeFor(level.level), `level ${level.level}`).toBe(first);
     }
   });
 

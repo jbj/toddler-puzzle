@@ -438,14 +438,22 @@ export function createGame(
     let interlude: InterludeId | null = null;
     const closesChapter = endsChapter(levelNumber, kindsInPlay());
     const wants = closesChapter || !isPlayedByTouching(levelNumber);
-    const module = wants
-      ? await Promise.race([
-          loadCelebration().catch(() => null),
-          new Promise<null>((settle) => {
-            afterWhileAwake(PARTY_PATIENCE_MS, () => settle(null));
-          }),
-        ])
-      : null;
+    let module: typeof import("./celebration") | null = null;
+    if (wants) {
+      // The timer is the bound, so it is put away as soon as the race is over
+      // however it went: one the chunk won would otherwise sit in the rest
+      // registry holding this level's closures until it fired - and a tablet
+      // put down on a finished board would hold it there until somebody came
+      // back, which is the one case where the wait is not half a second.
+      let stopWaiting = (): void => {};
+      module = await Promise.race([
+        loadCelebration().catch(() => null),
+        new Promise<null>((settle) => {
+          stopWaiting = afterWhileAwake(PARTY_PATIENCE_MS, () => settle(null));
+        }),
+      ]);
+      stopWaiting();
+    }
     // A board dealt while that was in flight - the reset button, or a level
     // chosen from the panel - is not this board, and must not be finished.
     if (dealt !== deals) return;
