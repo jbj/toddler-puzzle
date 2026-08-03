@@ -69,18 +69,26 @@ const BUDGET = {
   // `rest.ts` is imported by the entry for that reason. It buys frames back
   // rather than spending them, which is the one kind of growth this file should
   // be easy about, and the raw budget still holds.
-  // measured 2026-08-01: 113.4 kB raw, 37.1 kB gzipped
-  initialRaw: 116 * kB,
-  initialGzip: 38 * kB,
+  // raised 2026-08-03: the sounds. Every level now ends in a celebration, and
+  // each of the four interludes brings an arrival of its own plus the note it
+  // answers a finger with - a boing, a rustle, a swoop - on top of a fuller
+  // fanfare and a fuller firework. Sound is written as data in `audio.ts`,
+  // which the entry needs before the first pop, so none of it can be deferred:
+  // the phrases the celebration chunk plays live in the same file as the ones
+  // the first level plays. About 1.5 kB raw for the lot, on a budget that had
+  // 1 kB left after the board learned to compose itself for the screen.
+  // measured 2026-08-03: 116.5 kB raw, 38.1 kB gzipped
+  initialRaw: 118 * kB,
+  initialGzip: 39 * kB,
   // raised 2026-08-03: every level now ends with a celebration rather than only
   // the six that end a chapter, so the celebration chunk carries three more
   // acts - beach balls, confetti and streamers - and the throw of paper that
   // opens all of them. It is the largest deferred thing in the build and it is
   // now reached at level 1 instead of level 5, which is the trade: a chunk that
   // was warmed for a chapter ending is warmed for the first level ending, and
-  // `warm.ts` already fetches it first. The initial figure is unmoved, which is
-  // the one that decides how long a child waits for the first board.
-  // measured 2026-08-03: 184.8 kB raw, 62.5 kB gzipped
+  // `warm.ts` already fetches it first. Only the sounds of it landed in the
+  // initial figure, for the reason written against that one above.
+  // measured 2026-08-03: 186.1 kB raw, 63.0 kB gzipped
   totalRaw: 194 * kB,
   totalGzip: 66 * kB,
 };

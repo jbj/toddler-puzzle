@@ -250,8 +250,8 @@ the game they should come back to. The mechanics are in
 
 **No binary assets, and a budget on the rest.** The animals are hand-authored
 SVG and the sounds are synthesised with the Web Audio API, so there is nothing
-to download and nothing to fail to load. The game is around 37 kB gzipped before
-the first level appears and around 60 kB in total; `npm run build` fails if
+to download and nothing to fail to load. The game is around 38 kB gzipped before
+the first level appears and around 63 kB in total; `npm run build` fails if
 either grows past its budget. The difference between those two numbers is the
 four later chapters, split into a chunk each and fetched in the background while
 the child plays the first one, so nothing arrives later than it used to and no
