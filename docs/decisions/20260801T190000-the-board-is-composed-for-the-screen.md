@@ -3,9 +3,11 @@
 ## Context
 
 The game had two canvases: `1000x700` for a screen wider than it is tall and
-`700x1180` for one taller than it is wide. `chooseLayout` asked which of those
-two the viewport was nearer, composed the level on it, and the SVG letterboxed
-the result into the window with `preserveAspectRatio="xMidYMid meet"`.
+`700x1180` for one taller than it is wide. `chooseLayout` asked only whether the
+viewport was taller than it was wide, composed the level on whichever of the two
+that named, and the SVG letterboxed the result into the window with
+`preserveAspectRatio="xMidYMid meet"` - so a screen's ratio chose between two
+canvases and had no say in the shape of either.
 
 Every screen whose ratio was not exactly 10:7 or 7:11.8 therefore played inside
 a border. An iPad in portrait is nearer 3:4 than 7:11.8, so it pillarboxed about

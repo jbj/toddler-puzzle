@@ -1865,8 +1865,9 @@ try {
       return (r.width * r.height) / (window.innerWidth * window.innerHeight);
     })()
   `);
-  // All of it, not most of it: the canvas is composed for the window, so the
-  // only thing left over is the half unit the long side is rounded to.
+  // All of it, not most of it: the canvas is composed for the board's container,
+  // which fills the window here, so the only thing left over is the half unit
+  // the long side is rounded to.
   check(`portrait fills the screen (${(coverage * 100).toFixed(1)}%)`, coverage > 0.99);
 
   await solveRemaining();
