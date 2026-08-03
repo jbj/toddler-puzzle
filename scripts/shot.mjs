@@ -2494,6 +2494,40 @@ try {
   );
   check(`every touch answered in portrait (${turnedPlay.missed} missed)`, turnedPlay.missed === 0);
 
+  // --- a celebration for a child who asked for less motion -------------------
+  // Every act stands still under `prefers-reduced-motion`, and every act but
+  // one replaces what a finger takes away. Beach balls do not: a tapped ball is
+  // thrown again rather than removed, so a still ball that gave up its place in
+  // the air would be replaced while it was still on the screen - and, since
+  // nothing here lands, replaced again immediately, for as long as the
+  // celebration was arriving. That is invisible to a check that only asks
+  // whether there is something to touch, so this one counts.
+  await setViewport(1280, 800);
+  await send("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+  });
+  await goToLevel(2);
+  await solveRemaining();
+  await sleep(600);
+  const stillInterlude = await celebrationName();
+  const stillAtFirst = (await celebrationThings()).length;
+  await sleep(1500);
+  const stillAfter = (await celebrationThings()).length;
+  check(
+    `a still celebration is still a celebration (${stillInterlude}, ${stillAtFirst} to touch)`,
+    stillInterlude !== "" && stillAtFirst >= 3,
+  );
+  check(
+    `and it stops making them (${stillAtFirst} then ${stillAfter})`,
+    stillAfter <= stillAtFirst + 2,
+  );
+  const stillPlayed = await playCelebration(2);
+  check(
+    `a still celebration still answers a finger (${stillPlayed.missed} missed)`,
+    stillPlayed.missed === 0,
+  );
+  await send("Emulation.setEmulatedMedia", { features: [] });
+
   // --- what happens when a chunk is not there -------------------------------
   // The game is split by chapter, and `warm.ts` fetches every chunk during the
   // first level so a seam never waits. Both halves of that are claims about
@@ -2569,6 +2603,28 @@ try {
   check(`the game comes back by itself when the network does (level ${cameBack})`, cameBack === 16);
   check("and on the kind that was missing", (await kindName()) === "polygon");
   await shot("36-chunk-arrived-after-reconnect");
+
+  // 4. The celebration chunk is the one every level waits for now, and the
+  //    early levels give it the least time of any. What a blocked chunk stages
+  //    is the branch where it never comes: the level has to end anyway, with
+  //    its fanfare and its button, rather than hold itself open over a finished
+  //    board. A chunk that is merely slow takes the same branch by a different
+  //    route - `PARTY_PATIENCE_MS` in game.ts is what turns waiting into not
+  //    coming - and that one is a race rather than a condition, so it is left
+  //    to the bound rather than staged here.
+  await send("Network.setBlockedURLs", { urls: ["*celebration*"] });
+  await reopenTheGame();
+  await sleep(1500);
+  await goToLevel(2);
+  await solveRemaining();
+  await sleep(1500);
+  check("a level with no celebration to raise still ends", (await celebrationName()) === "");
+  check(
+    "and the way onwards is not held back by a party that never came",
+    (await finishButtons()) === 1,
+  );
+  check("the board it was raised over is still whole", (await placedCount()) > 0);
+  await send("Network.setBlockedURLs", { urls: [] });
 
   // --- real screens, at their real sizes ------------------------------------
   // iPad is the target device. The board is composed for the box it is drawn

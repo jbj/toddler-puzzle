@@ -68,8 +68,23 @@ import {
 import type { PieceId, PieceShape } from "./piece";
 import { createProgressStore, type ProgressStore } from "./progress";
 import type { Puzzle, PuzzleKind } from "./puzzle";
+import { afterWhileAwake } from "./rest";
 
 const SETTLE_MS = 340;
+
+/**
+ * How long the end of a level waits for the celebration chunk before going on
+ * without it.
+ *
+ * Long enough that a chunk which is a moment away is always waited for - it was
+ * asked for when the level was dealt, so in practice it is already here and
+ * this number is never reached. Short enough that a finished board is never
+ * silent for as long as a child would take to wonder whether they had actually
+ * finished it: half a second is about twice the beat that already separates the
+ * last piece landing from the fanfare, so the worst case is a level that ends a
+ * little late rather than one that appears never to have ended at all.
+ */
+const PARTY_PATIENCE_MS = 500;
 
 interface PieceState {
   position: Point;
@@ -393,11 +408,25 @@ export function createGame(
    * any of this existed, with its fanfare, its paper and its button, and the
    * child goes on at once rather than waiting out a pause with nothing in it. A
    * missing party is a disappointment; a missing way out would be a trap.
+   *
+   * Which is why the wait is a *bounded* one. A chunk that fails outright
+   * rejects and is caught, but one that is merely still coming down a bad
+   * connection does neither, and waiting on it would leave a finished board
+   * silent and buttonless for as long as the network felt like taking - the
+   * trap the paragraph above says this must not be, arrived at by patience
+   * rather than by design. So the module has `PARTY_PATIENCE_MS` to turn up,
+   * and after that the level ends without it. This matters most at level 1,
+   * where the chunk has had the least time.
    */
   async function raiseFinish(dealt: number): Promise<void> {
     let chapterEnd: ChapterCelebrationId | null = null;
     let interlude: InterludeId | null = null;
-    const module = await loadCelebration().catch(() => null);
+    const module = await Promise.race([
+      loadCelebration().catch(() => null),
+      new Promise<null>((settle) => {
+        afterWhileAwake(PARTY_PATIENCE_MS, () => settle(null));
+      }),
+    ]);
     // A board dealt while that was in flight - the reset button, or a level
     // chosen from the panel - is not this board, and must not be finished.
     if (dealt !== deals) return;

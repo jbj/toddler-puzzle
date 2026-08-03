@@ -445,8 +445,12 @@ page, by comparing what the shadows *draw* against what the piece draws, so the
 check cannot be satisfied by a number somebody wrote down. Both the piece's own
 shadow and its twin's are then checked to be among the places offered.
 
-It is the only place the chapter celebrations can be *played*, which is the only
-way to find out whether they work. All six are reached and shot. The balloons
+It is the only place a celebration can be *played*, which is the only way to
+find out whether one works. All six chapter celebrations are reached and shot,
+and so is every interlude: the run reads which one each of levels 1 to 4 ends
+with, insists that four levels running give four different ones, and plays the
+second of them to see that an interlude answers a finger without moving the game
+on. The balloons
 are played hardest, because everything that could go wrong with a celebration
 can go wrong with them: the run checks the celebration goes up on finishing
 level 5 and not before, that every balloon is more than a tenth of the board
@@ -460,6 +464,15 @@ celebration and what has been played with. The finale then gets the same
 treatment plus the two things only it does: several kinds of thing to touch at
 once, and a tap on bare sky still answered. See
 [`navigation.instructions.md`](navigation.instructions.md).
+
+Two conditions around a celebration are staged rather than assumed, because both
+are invisible on a fast machine that wants to move. A celebration is mounted
+with `prefers-reduced-motion` emulated, and the run counts what there is to touch
+twice over a second and a half: an act that stands still must not go on minting
+what it is standing still with, which is a fault only a count can see. And the
+celebration chunk is blocked outright, because every level now waits for it -
+the level has to end anyway, with its fanfare and its button, rather than hold
+itself open over a finished board.
 
 It plays a sample rather than all thirty because thirty levels of real pointer
 drags would take minutes; the table itself is swept in `tests/levels.test.ts`.

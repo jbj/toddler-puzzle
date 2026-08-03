@@ -738,11 +738,17 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
       // Held where they can be reached and squashed, in a row across the board.
       // A ball whose flight collapsed to a millisecond would be a ball that had
       // already landed; see the reduced-motion decision cited in `pop.ts`.
+      //
+      // It never hands its place on, and that is the difference between this
+      // act and the others under reduced motion. A slip of paper is taken away
+      // by the finger that touches it, so it has to be replaced; a ball is not,
+      // so a ball that gave up its place would be replaced while still on the
+      // screen - and, since nothing here ever lands, replaced again a
+      // millisecond later, for as long as the celebration was arriving.
       place({
         x: radius + lane * Math.max(1, width - radius * 2),
         y: height * (0.3 + (thrown % 2) * 0.22),
       });
-      party.after(1, handOn);
       return;
     }
 
