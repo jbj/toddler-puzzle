@@ -289,6 +289,9 @@ const INDEX_CEILING = 4 * 1024;
   const problems = [];
   const rows = [];
   for (const file of [INDEX, ...instructionFiles]) {
+    // A missing index is already reported above, as a sentence rather than a
+    // stack trace. Do not turn it into one here.
+    if (!sources.has(file)) continue;
     const ceiling = file === INDEX ? INDEX_CEILING : FILE_CEILING;
     const bytes = Buffer.byteLength(sources.get(file), "utf8");
     const name = file.slice(file.lastIndexOf("/") + 1);

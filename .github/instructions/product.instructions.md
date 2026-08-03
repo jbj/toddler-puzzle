@@ -109,7 +109,8 @@ you know why; the reason is the clause after the rule, and the record behind it.
 
 | For | Read |
 | --- | --- |
-| Snapping, hints, celebrations, the panel, resting, drag feel | [`navigation.instructions.md`](navigation.instructions.md) |
+| Moving between levels, celebrations, resuming, the panel | [`navigation.instructions.md`](navigation.instructions.md) |
+| Sound, snapping feedback, the hint, resting, drag feel | [`feel.instructions.md`](feel.instructions.md) |
 | Kinds of puzzle, the level table, themes | [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md) |
 | Backdrops, board shape, where pieces stand | [`layout.instructions.md`](layout.instructions.md) |
 | The SVG contract and the art checks | [`art.instructions.md`](art.instructions.md) |
