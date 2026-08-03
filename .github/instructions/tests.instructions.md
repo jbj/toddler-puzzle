@@ -96,6 +96,20 @@ composing is *for*: the same cast composes twice the same, a fuller board never
 gets bigger pieces, portrait stacks more rows than landscape spreads, and a cast
 too big to compose above the grabbable size is refused rather than shrunk away.
 
+`tests/fit.test.ts` covers the arithmetic underneath all of that - `src/fit.ts`,
+which decides how the board is divided between the tray and the play area - over
+synthetic sizes rather than animals, so a failure names the rule that broke
+rather than the level that noticed. The limits are dialled in the test rather
+than imported from `COMPOSITION`, so a check can say "a side tray has to buy a
+tenth more" and go on meaning it after the game's own numbers move. It holds the
+packing (a shelf is packed by each piece's own drawing, columns are balanced and
+the same number each side), the floors (a cast too small to grab is refused, a
+picture never waits larger than it lands), and where the tray goes: the top is
+kept at a tie and at a 5% side gain, the sides are taken for a tenth more size or
+for a fifth more board at no cost in size, and more than one column a side is
+stood where one would be too deep to fill. See
+[decision 20260803T090000](../../docs/decisions/20260803T090000-the-tray-goes-where-the-play-area-is-biggest.md).
+
 `tests/levels.test.ts` sweeps the whole table: every level resolves to a
 buildable spec, and the deal is drawn fresh but always the right size. It holds
 the rule that keeps the thirty thirty different puzzles - a level is its kind,

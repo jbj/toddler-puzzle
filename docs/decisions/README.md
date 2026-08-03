@@ -60,3 +60,4 @@ and an argument nobody can see having changed is worth nothing.
 | [20260801T163000-a-touch-level-lets-a-child-out](20260801T163000-a-touch-level-lets-a-child-out.md) | Ask a touch level for a handful, and open the way onwards after ten seconds |
 | [20260801T190000-the-board-is-composed-for-the-screen](20260801T190000-the-board-is-composed-for-the-screen.md) | Compose the board for the screen it is on rather than letterbox two canvases |
 | [20260802T170000-a-drag-ends-however-the-finger-goes-away](20260802T170000-a-drag-ends-however-the-finger-goes-away.md) | End a drag however the finger goes away, and let the newest finger win |
+| [20260803T090000-the-tray-goes-where-the-play-area-is-biggest](20260803T090000-the-tray-goes-where-the-play-area-is-biggest.md) | Put the tray where the play area is biggest, on any shape of screen |

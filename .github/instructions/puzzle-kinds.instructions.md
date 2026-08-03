@@ -498,23 +498,25 @@ than inventing one.
 The composition is expressed as fractions of a slot rather than as positions
 (`COMPOSITION` in `src/layout.ts`), so the whole board scales together: a busier
 level gets smaller pieces, and its margins, gaps and tufts shrink with them
-instead of crowding the pieces out. It runs in four steps:
+instead of crowding the pieces out. It runs in five steps, the first three of
+them in `src/fit.ts`:
 
 1. split the cast into scene rows and tray shelves, every way worth trying, and
-   for each split work out the largest slot that still fits the canvas;
-2. take the biggest, preferring the split that suits the canvas's shape among
-   those within `sizeTolerance` of it, and refuse the cast outright if the best
-   is below `minSlot` rather than laying out pieces too small to grab;
-3. where the scene holds a *single* target, try the gutters as well - the pieces
-   in two columns down the sides with the target between them - and take that
-   instead if it is worth at least `gutterGain` more slot than the best shelving;
+   for each split work out the largest slot that still fits the canvas - then do
+   the same for a tray of columns down both sides, one to half the cast each
+   side;
+2. take the biggest of each placement, preferring the split that suits the
+   canvas's shape among those within `sizeTolerance` of it, and refuse the cast
+   outright if the best is below `minSlot` rather than laying out pieces too
+   small to grab;
+3. choose between the two placements by the rule below;
 4. give each scene row room for the worst reach above and below the line among
    the pieces *dealt into it* - `reach()` measures each piece from its own
    anchor - so a giraffe's row is deeper than a row of turtles;
 5. spend what height is left on sky and on the gaps between rows, then read the
    horizon, the grass band and the tray's bands off the result.
 
-Steps 3 and 4 are why layouts are built when a puzzle starts rather than up
+Steps 4 and 5 are why layouts are built when a puzzle starts rather than up
 front: a hole's height depends on the anchor of whichever piece was dealt into
 that place. Generating the layouts rather than declaring them is
 [decision 20260727T072917](../../docs/decisions/20260727T072917-generated-layouts.md); composing them
@@ -532,17 +534,36 @@ measure a waiting piece against.
 **The tray is not always a band across the top.** `layout.trayBands` is a list
 of rectangles, each with the edge it is lipped along, and there are two shapes
 it comes in. *Shelves* are the familiar one: rows across the top of the canvas,
-lipped along the bottom. *Gutters* are two columns down the sides, lipped along
-the edge that faces the scene, and are only ever tried where the scene holds one
-target and more than one piece - a picture being rebuilt. A landscape canvas
-leaves about two thirds of its width empty either side of a picture drawn one
-slot wide, and standing the pieces in that room instead of above it is what lets
-the picture itself grow; `COMPOSITION.controlRoom` keeps the bottom of a gutter
-clear of the reset button and the grown-ups button, in canvas units rather than
-as a share, because what it protects is not a share either. A gutter tray is
-only adopted where it is worth `COMPOSITION.gutterGain` more slot than the best
-shelving, so a marginal win never buys a rearranged board. See
-[decision 20260730T093000](../../docs/decisions/20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters.md).
+lipped along the bottom. *Gutters* are columns down both sides - the same number
+each side, so the scene keeps the middle - lipped along the edge that faces the
+scene. Any level may stand its tray there, not only a picture.
+
+Which of the two a board gets is one rule, `takeSides` in `src/fit.ts`, and it
+is worth knowing why it has two clauses. **The tray belongs at the top**, because
+down is the easiest direction for a small arm to drag and because a child who
+has learned where the pieces wait should not find them somewhere else for a two
+per cent gain. So the sides have to buy either
+
+- **a markedly bigger puzzle** - `COMPOSITION.gutterGain` (1.1) more slot; or
+- **markedly more board to stand it in**, when the puzzle cannot be drawn any
+  bigger - the same tenth, squared, because it is comparing an area - and never
+  at the cost of drawing it smaller.
+
+The second clause is the one a wide screen needs. Past about 10:7 both
+placements are usually pinned at the same size by `maxSlot`, so the first clause
+cannot tell them apart however lopsided they are, while a band across the top of
+a 3:1 screen is a third of the scarce dimension and two columns are a fifth of
+the plentiful one. More than one column a side matters for the same reason: a
+side tray is capped by how deep its deepest column is, so one column a side
+starves a wide short canvas.
+
+`COMPOSITION.controlRoom` keeps the bottom of a gutter clear of the reset button
+and the grown-ups button, in canvas units rather than as a share, because what
+it protects is not a share either. See
+[decision 20260730T093000](../../docs/decisions/20260730T093000-a-lone-picture-stands-its-pieces-in-the-gutters.md)
+for the gutters themselves and
+[decision 20260803T090000](../../docs/decisions/20260803T090000-the-tray-goes-where-the-play-area-is-biggest.md)
+for the rule that places them.
 
 **A picture takes the whole board, and stands on nothing.** The two kinds that
 cut one hand-drawn picture up - `jigsaw` and `shatter` - are composed by their
@@ -682,9 +703,10 @@ canvases, so nothing about either board has changed.
 (`width >= height`), and the puzzle reflows between the two rather than merely
 shrinking. Landscape puts the animals in one row with the tray beneath;
 portrait uses shallower rows and spends the saved width on a taller tray. A
-picture being rebuilt reflows further still: landscape has room to stand its
-pieces down the gutters and usually does, portrait has not and keeps its
-shelves. Rotating or resizing the device mid-puzzle rebuilds the board and keeps
+board reflows further still: a landscape canvas often has width to spare either
+side of the play area and stands its pieces down the gutters, most of all once
+it is wider than 10:7; portrait has no such width and keeps its shelves at every
+level. Rotating or resizing the device mid-puzzle rebuilds the board and keeps
 progress - except while a piece is in the air, which `game.ts` waits out rather
 than taking the animal out of a hand.
 
