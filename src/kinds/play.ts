@@ -111,8 +111,8 @@ const TUNING = {
  *
  * Ten seconds is long enough that a child getting on with it finishes by
  * touching, which is what the level is teaching, and short enough that a child
- * who is not getting anywhere is never stuck watching. See
- * [decision 20260801T163000](../../docs/decisions/20260801T163000-a-touch-level-lets-a-child-out.md).
+ * who is not getting anywhere is never stuck watching. See docs/decisions/Ask a
+ * touch level for a handful, and let the child out anyway.md.
  */
 export const ACTIVITY_PATIENCE_MS = 10_000;
 

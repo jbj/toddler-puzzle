@@ -38,7 +38,7 @@
  *
  * Do not "tidy" the nudged copies away, and do not shrink the overlap to zero:
  * both undo the seamless picture. The reasoning is
- * [decision 20260730T194500](../docs/decisions/20260730T194500-a-placed-piece-has-no-edge.md).
+ * docs/decisions/A placed piece has no edge.md.
  */
 import type { Size } from "./geometry";
 

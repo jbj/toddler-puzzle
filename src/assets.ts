@@ -103,7 +103,7 @@ export const animalAnchor = (id: AnimalId): Point => {
  * nothing was taken to fill its box, and none of them does - a pig draws a
  * little over half its box's height - so the box a whole animal was placed by
  * reached most of a pig above and below the pig. See
- * [decision 20260731T133000](../docs/decisions/20260731T133000-one-box-measures-a-piece.md).
+ * docs/decisions/One box measures a piece, and one rule places it.md.
  */
 const ANIMAL_INK: Record<AnimalId, readonly [number, number, number, number]> = {
   giraffe: [30, 12, 186, 217],

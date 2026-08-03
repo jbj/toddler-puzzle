@@ -98,7 +98,7 @@ const BUTTON_ICON: Record<FinishButton, string> = {
  * been popped - and the first thing the eye lands on is the thing to play with.
  *
  * Chosen by watching it rather than by picking a number; see
- * `docs/decisions/20260729T152400-a-celebration-is-played-not-finished.md`.
+ * `docs/decisions/A celebration is played, and it ends by itself.md`.
  */
 export const FINISH_BUTTON_BEAT_MS = 1800;
 

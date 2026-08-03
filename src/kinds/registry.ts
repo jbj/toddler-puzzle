@@ -22,8 +22,8 @@
  * The other four are `import()`ed, and every one of them is pulled in during
  * play, long before the child reaches it - `warm.ts` does that. By the time a
  * kind is needed it is in memory, and asking for it costs a resolved promise.
- * See
- * [decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
+ * See docs/decisions/A chapter is warmed before it is needed, not fetched when
+ * it is.md.
  *
  * `kindFor` stays synchronous and stays strict, so the host and the tests can
  * go on treating a kind as a plain object; `ensureKind` is the one place that
@@ -33,7 +33,7 @@
  * played as shape-match, so the whole ramp was playable while the kinds were
  * still being written. Shatter was the last of them, and the stand-in went with
  * it. See
- * [decision 20260728T205627](../../docs/decisions/20260728T205627-unbuilt-kinds-play-as-stand-ins.md).
+ * docs/decisions/Play an unbuilt kind as a stand-in.md.
  */
 import type { LevelSpec, PuzzleKindId } from "../levels";
 import type { PuzzleKind } from "../puzzle";
@@ -152,8 +152,8 @@ function mayReload(): boolean {
  * thing is capped, across reloads, at `RELOAD_LIMIT`, so a connection that
  * flaps cannot make the game blink.
  *
- * See the "a chunk that did not arrive" section of
- * [decision 20260729T223500](../../docs/decisions/20260729T223500-a-chapter-is-warmed-before-it-is-needed.md).
+ * See the "a chunk that did not arrive" section of docs/decisions/A chapter is
+ * warmed before it is needed, not fetched when it is.md.
  */
 export function recoverWhenPossible(): void {
   if (window.navigator.onLine) return;

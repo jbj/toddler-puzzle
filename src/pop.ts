@@ -22,7 +22,7 @@
  *    to be touched. Collapsing the drift to a millisecond would carry it off
  *    the top of the screen at once and leave nothing to touch, which is a
  *    setting turning a level into an empty sky. See
- *    [decision 20260729T072100](../docs/decisions/20260729T072100-reduced-motion-holds-still.md).
+ *    docs/decisions/Under reduced motion, a floater holds still.md.
  */
 import type { Point } from "./geometry";
 import { prefersReducedMotion } from "./motion";
