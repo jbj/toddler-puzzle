@@ -59,4 +59,5 @@ and an argument nobody can see having changed is worth nothing.
 | [20260801T160000-a-celebration-is-not-made-of-the-board](20260801T160000-a-celebration-is-not-made-of-the-board.md) | Never make a celebration out of what the finished board is made of |
 | [20260801T163000-a-touch-level-lets-a-child-out](20260801T163000-a-touch-level-lets-a-child-out.md) | Ask a touch level for a handful, and open the way onwards on a clock |
 | [20260801T190000-the-board-is-composed-for-the-screen](20260801T190000-the-board-is-composed-for-the-screen.md) | Compose the board for the screen it is on rather than letterbox two canvases |
+| [20260802T170000-a-drag-ends-however-the-finger-goes-away](20260802T170000-a-drag-ends-however-the-finger-goes-away.md) | End a drag however the finger goes away, and let the newest finger win |
 | [20260803T133000-a-celebration-between-every-level](20260803T133000-a-celebration-between-every-level.md) | Celebrate after every level, and pause before the way onwards |
