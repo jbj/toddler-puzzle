@@ -6,7 +6,7 @@ Almost none of that is arithmetic: a CPU profile of a whole run put over 99% of
 it inside `execFileSync`, waiting for `rsvg-convert` or ImageMagick, and no two
 animals, scenes or pairs need anything from one another.
 
-Run one after another, that was 51 s on its own and 73 s inside `npm run
+Run one after another, that was 51 s on its own and 72 s inside `npm run
 verify` - the longest task in the run, and by then the only thing the whole
 check was waiting for. So it is spread over a pool of workers.
 
@@ -52,20 +52,20 @@ with the same message and the same exit code.
 
 ## What it bought, and where it stops
 
-Measured under the machine lock at `b7b0e9d`, three runs each, on a twelve-thread
-laptop:
+Measured under the machine lock, three runs each, on a twelve-thread laptop, at
+`e2758ad` serial and `0227c7e` parallel:
 
 | | serial | parallel |
 | --- | --- | --- |
-| `art:check` alone | 51.3 s | 20.5 s |
-| `art:check` inside `verify` | 73.4 s | 37.7 s |
-| whole `verify` | 88.6 s | 81.5 s |
+| `art:check` alone | 50.9 s | 21.4 s |
+| `art:check` inside `verify` | 72.4 s | 35.4 s |
+| whole `verify` | 87.1 s | 80.8 s |
 
 The check stopped being the critical path, which is the whole of the win: the
-seven seconds it gave back are all `verify` had left to give. What the run waits
+six seconds it gave back are all `verify` had left to give. What the run waits
 for now is `test`, then `bundle`, then the 65-second browser run, and nothing
-about the art check can shorten any of those. It has 27 seconds of margin under
-the browser run and no use for more.
+about the art check can shorten any of those. It has nearly thirty seconds of
+margin under the browser run and no use for more.
 
 The scaling is also worse than the work deserves, and honestly so. Doubling the
 workers does not halve the time - six workers turn a 57-second run into 24
