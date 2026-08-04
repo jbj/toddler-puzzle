@@ -38,6 +38,12 @@ const VERBOSE_TASKS = new Set(["docs:check", "budget", "art:check"]);
 
 export function verifyTasks(cpuCapacity, browserCapacity) {
   const shotCpuSlots = Math.min(browserCapacity, Math.max(1, cpuCapacity - 2));
+  // The two long tasks overlap, so between them they are the machine. The art
+  // check measures the artwork with a worker per slot, and the number it gets
+  // is what is left once the browser run has been promised its share; giving it
+  // one slot while it spread itself over every core is the oversubscription
+  // this budget exists to prevent.
+  const artCpuSlots = Math.max(1, cpuCapacity - shotCpuSlots);
   return [
     {
       name: "typecheck",
@@ -105,7 +111,7 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
       run: script("check-art.mjs"),
       needs: [],
       inputs: [],
-      slots: { cpu: 1, browser: 0 },
+      slots: { cpu: artCpuSlots, browser: 0 },
     },
     {
       name: "shot",
@@ -160,6 +166,7 @@ export function spawnTask(task, { noCache, verbose = false }) {
       cwd: root,
       env: {
         ...process.env,
+        VERIFY_CPU_SLOTS: String(task.slots.cpu),
         VERIFY_BROWSER_SLOTS: String(task.slots.browser),
         VERIFY_NO_CACHE: noCache ? "1" : "0",
       },

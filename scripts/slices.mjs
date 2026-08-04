@@ -23,8 +23,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { format } from "prettier";
-
 import { magick } from "./tools.mjs";
 
 /**
@@ -405,8 +403,13 @@ export function recipeFor(silhouette, drawn, count) {
  * Write the table, formatted the way the repository formats everything else -
  * `npm run verify` checks the formatting of what is committed, and a generated
  * file is committed like any other.
+ *
+ * The formatter is pulled in here rather than at the top of the file: the art
+ * check imports this module into a worker per CPU slot and only ever judges,
+ * and loading Prettier in each of them costs more than the judging does.
  */
 export async function writeTable(path, table) {
+  const { format } = await import("prettier");
   const source = JSON.stringify(table, null, 2);
   writeFileSync(path, await format(source, { filepath: path }));
 }

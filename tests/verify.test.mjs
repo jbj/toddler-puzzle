@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { formatReport, runTasks, verifyFailed, verifyTasks } from "../scripts/verify.mjs";
+import {
+  formatReport,
+  runTasks,
+  spawnTask,
+  verifyFailed,
+  verifyTasks,
+} from "../scripts/verify.mjs";
 
 const capacities = { cpu: 12, browser: 1 };
 const tasks = verifyTasks(capacities.cpu, capacities.browser);
@@ -53,11 +59,42 @@ describe("the verify runner", () => {
     const fourCore = verifyTasks(4, 3);
 
     expect(fourCore.find(({ name }) => name === "test")?.slots.cpu).toBe(4);
-    expect(fourCore.find(({ name }) => name === "art:check")?.slots.cpu).toBe(1);
     expect(fourCore.find(({ name }) => name === "shot")?.slots).toEqual({
       cpu: 2,
       browser: 3,
     });
+    // The art check spreads itself over its slots, so the two long tasks
+    // between them are the machine and neither can be starved by the other.
+    for (const [cpu, browser] of [
+      [4, 3],
+      [12, 6],
+      [2, 1],
+    ]) {
+      const scheduled = verifyTasks(cpu, browser);
+      const art = scheduled.find(({ name }) => name === "art:check")?.slots.cpu;
+      const shot = scheduled.find(({ name }) => name === "shot")?.slots.cpu;
+
+      expect(art).toBeGreaterThanOrEqual(1);
+      expect(art + shot).toBe(cpu);
+    }
+  });
+
+  it("tells a task how much of the machine it was given", async () => {
+    const art = tasks.find(({ name }) => name === "art:check");
+    const result = await spawnTask(
+      {
+        ...art,
+        run: [
+          process.execPath,
+          "-e",
+          "process.stdout.write(`${process.env.VERIFY_CPU_SLOTS}/${process.env.VERIFY_BROWSER_SLOTS}`)",
+        ],
+      },
+      { noCache: false },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toBe(`${art.slots.cpu}/${art.slots.browser}`);
   });
 
   it.each(tasks.map(({ name }) => [name]))("fails when %s alone fails", async (failedName) => {

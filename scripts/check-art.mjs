@@ -26,11 +26,20 @@
  *   npm run art:check
  *
  * Needs rsvg-convert and ImageMagick, same as `npm run art`.
+ *
+ * Nearly all of that is one external rasteriser or another, and no two animals,
+ * scenes or pairs need anything from each other, so the work is spread over a
+ * pool of workers - as many as `VERIFY_CPU_SLOTS` allows, one CPU each. What
+ * each unit *says* is collected rather than printed, and replayed in the order
+ * the files are on disk, so a report never reshuffles itself between runs. See
+ * docs/decisions/Measure the artwork in parallel, and report it in order.md.
  */
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isMainThread, parentPort, Worker } from "node:worker_threads";
 
+import { cpuSlots } from "./concurrency.mjs";
 import {
   gridName,
   gridsInLevels,
@@ -66,6 +75,11 @@ import { createReport } from "./report.mjs";
 
 requireArtTools();
 
+// One thread per CPU slot, so a slot is a CPU: ImageMagick otherwise opens a
+// thread per core inside every one of them, which is exactly the machine the
+// runner was told this check would not take.
+process.env.MAGICK_THREAD_LIMIT ??= "1";
+
 const root = fileURLToPath(new URL("..", import.meta.url));
 const animalsDir = join(root, "src/assets/animals");
 const scratch = join(root, ".art/check");
@@ -78,11 +92,38 @@ const PER_UNIT = SAMPLE / ART_BOX;
 
 mkdirSync(scratch, { recursive: true });
 
-const report = createReport("art check");
+/**
+ * What a unit of work found, rather than what it printed.
+ *
+ * A worker cannot write to the report - it is in another thread, and the run
+ * would come out in whatever order the rasterisers happened to finish. So each
+ * unit records its observations in the order it made them and the main thread
+ * replays them into one report, in the fixed order of the files on disk.
+ */
+let entries = [];
 let currentFile = "scripts/check-art.mjs";
-const check = (label, ok, detail) => {
-  report.check(currentFile, label, ok ? [] : detail || label);
+const section = (label) => entries.push({ kind: "section", label });
+const detail = (line = "") => entries.push({ kind: "detail", line });
+const check = (label, ok, problem) => {
+  entries.push({ kind: "check", file: currentFile, label, problems: ok ? [] : problem || label });
 };
+
+/** Run one unit of work on its own, and hand back everything it recorded. */
+function recorded(unit) {
+  entries = [];
+  currentFile = "scripts/check-art.mjs";
+  const value = unit();
+  return { entries, value };
+}
+
+/** Say what a unit recorded, in the report a human reads. */
+function replay(report, recordings) {
+  for (const { kind, label, line, file, problems } of recordings) {
+    if (kind === "section") report.section(label);
+    else if (kind === "detail") report.detail(line);
+    else report.check(file, label, problems);
+  }
+}
 
 // --- rendering ------------------------------------------------------------
 
@@ -373,27 +414,26 @@ function checkSliceRecipes(id, silhouettePng, drawnPng) {
 
 // --- checks ---------------------------------------------------------------
 
-const files = readdirSync(animalsDir)
+/** What the rest of the tree declares, read once per thread. */
+const animalFiles = readdirSync(animalsDir)
   .filter((f) => f.endsWith(".svg"))
   .sort();
-if (files.length === 0) {
-  report.check("src/assets/animals", "contains animal SVGs", "none found");
-  report.finish();
-  process.exit(1);
-}
-
 const registered = registeredIds();
 const footLevels = declaredFootLevels();
 const inks = declaredInks();
 const themes = declaredThemes();
-/** Each animal's silhouette as a glance sees it, for the distinctness check. */
-const glances = new Map();
 
-for (const file of files) {
+/**
+ * One animal, judged whole. Returns where its glance-sized silhouette was
+ * written, or null when the file is too broken to have one - the distinctness
+ * check compares what came out of here, so an animal missing its silhouette
+ * simply is not in that comparison.
+ */
+function checkAnimal(file) {
   const id = basename(file, ".svg");
   const svg = readFileSync(join(animalsDir, file), "utf8");
   currentFile = `src/assets/animals/${file}`;
-  report.section(`\n${id}`);
+  section(`\n${id}`);
 
   const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1];
   check(
@@ -405,7 +445,7 @@ for (const file of files) {
   const silhouetteTag = svg.match(/<path\b[^>]*\bid="silhouette"[^>]*>/)?.[0];
   const hasSilhouette = Boolean(silhouetteTag && /\bd="[^"]/.test(silhouetteTag));
   check('has a <path id="silhouette"> with a d attribute', hasSilhouette);
-  if (!hasSilhouette) continue;
+  if (!hasSilhouette) return null;
 
   check("is registered in ANIMAL_IDS", registered.includes(id), "add it to src/assets.ts");
   check(
@@ -432,7 +472,7 @@ for (const file of files) {
   // Masks are plain black/white by this point, so "outside" is an ordinary
   // multiply against the inverted silhouette rather than an alpha operation.
   const silhouette = mask(svg, HIDE_DETAIL, `${id}-silhouette`);
-  glances.set(id, glance(id, silhouette));
+  const glancePng = glance(id, silhouette);
   const outside = join(scratch, `${id}-outside.png`);
   magick([silhouette, "-negate", outside]);
 
@@ -483,6 +523,8 @@ for (const file of files) {
   checkInk(id, drawn);
 
   checkSliceRecipes(id, silhouette, drawnPng);
+
+  return glancePng;
 }
 
 // --- the picture scenes ---------------------------------------------------
@@ -521,140 +563,135 @@ function whereIs(patch, width, height) {
   );
 }
 
-function checkScenes() {
-  const scenes = sceneFiles();
-  const registered = registeredPictures();
-  const grids = gridsInLevels();
-  const shatters = shatterCountsInLevels();
+function checkScene(scene) {
+  const svg = readFileSync(scene.path, "utf8");
+  currentFile = `src/assets/scenes/${basename(scene.path)}`;
+  section(`\n${scene.id} (scene)`);
 
-  if (scenes.length === 0) {
-    currentFile = "src/assets/scenes";
-    report.section("\nscenes");
-    check("there are scenes to cut up", false, `nothing in ${scenesDir}`);
-    return;
-  }
+  const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1];
+  const wanted = `0 0 ${PICTURE_WIDTH} ${PICTURE_HEIGHT}`;
+  check("uses the picture box", viewBox === wanted, `viewBox is "${viewBox}", wanted "${wanted}"`);
 
-  for (const scene of scenes) {
-    const svg = readFileSync(scene.path, "utf8");
-    currentFile = `src/assets/scenes/${basename(scene.path)}`;
-    report.section(`\n${scene.id} (scene)`);
-
-    const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1];
-    const wanted = `0 0 ${PICTURE_WIDTH} ${PICTURE_HEIGHT}`;
-    check(
-      "uses the picture box",
-      viewBox === wanted,
-      `viewBox is "${viewBox}", wanted "${wanted}"`,
-    );
-
-    check(
-      'wraps its drawing in <g id="scene">',
-      /<g\s+id="scene"\s*>/.test(svg),
-      "everything the picture draws goes inside that one group",
-    );
-
-    check(
-      "is registered in PICTURE_IDS",
-      registered.includes(scene.id),
-      "add it to src/pictures.ts",
-    );
-
-    const raster = rasterise(scene.path, scratch, `scene-${scene.id}`);
-    check(
-      "paints its whole box",
-      raster.opacity === 1,
-      "a gap in the picture becomes a piece with a hole in it - " +
-        "give the scene a background that covers the box",
-    );
-
-    for (const grid of grids) {
-      const cells = scoreGrid(raster.pixels, raster.width, raster.height, grid);
-      const empty = cells.filter((cell) => cell.feature < MIN_FEATURE);
-      const thinnest = cells.reduce((worst, cell) => (cell.feature < worst.feature ? cell : worst));
-      const named = empty
-        .slice(0, 3)
-        .map(
-          (cell) =>
-            `column ${cell.column + 1}, row ${cell.row + 1} is only ` +
-            `${sharePercent(cell.feature)} something`,
-        );
-      if (empty.length > named.length) named.push(`and ${empty.length - named.length} more`);
-      check(
-        `every piece has something in it at ${gridName(grid)}` +
-          ` (thinnest ${sharePercent(thinnest.feature)}` +
-          ` at column ${thinnest.column + 1}, row ${thinnest.row + 1})`,
-        empty.length === 0,
-        `a piece needs ${sharePercent(MIN_FEATURE)}: ${named.join("; ")}` +
-          ` - run \`npm run art -- ${scene.id}\` and look at the ${gridName(grid)} grid`,
-      );
-    }
-
-    // And the same promise for the kind with no grid to score. A shatter's
-    // shards are dealt fresh, so what is checked is the picture rather than a
-    // partition: nowhere in it is there a patch the size of the smallest shard
-    // allowed with nothing in it. See docs/decisions/Cut a picture into shards
-    // that are things to hold.md.
-    for (const count of shatters) {
-      const side = shardWindow(count);
-      const worst = worstWindow(raster.pixels, raster.width, raster.height, side);
-      check(
-        `nowhere is empty at the size of a shard of ${count}` +
-          ` (emptiest ${sharePercent(worst.feature)})`,
-        worst.feature >= MIN_FEATURE,
-        `a shard needs ${sharePercent(MIN_FEATURE)}: the emptiest patch is ` +
-          `${sharePercent(worst.feature)} something, in the ` +
-          `${whereIs(worst, raster.width, raster.height)}` +
-          ` - run \`npm run art -- ${scene.id}\` and put something there`,
-      );
-    }
-  }
-
-  report.detail("");
-  currentFile = "src/pictures.ts";
-  const ids = scenes.map((scene) => scene.id);
-  const undrawn = registered.filter((id) => !ids.includes(id));
   check(
-    "every registered scene has artwork",
-    undrawn.length === 0,
-    `missing: ${undrawn.join(", ")}`,
+    'wraps its drawing in <g id="scene">',
+    /<g\s+id="scene"\s*>/.test(svg),
+    "everything the picture draws goes inside that one group",
   );
 
-  // The level table is allowed to run ahead of the code, but not ahead of the
-  // art: a level naming a scene nobody drew is a level that cannot be played.
-  const unknown = scenesInLevels().filter((id) => !ids.includes(id));
   check(
-    "every scene the level table names has artwork",
-    unknown.length === 0,
-    `levels ask for: ${unknown.join(", ")}`,
+    "is registered in PICTURE_IDS",
+    registeredPictures().includes(scene.id),
+    "add it to src/pictures.ts",
+  );
+
+  const raster = rasterise(scene.path, scratch, `scene-${scene.id}`);
+  check(
+    "paints its whole box",
+    raster.opacity === 1,
+    "a gap in the picture becomes a piece with a hole in it - " +
+      "give the scene a background that covers the box",
+  );
+
+  for (const grid of gridsInLevels()) {
+    const cells = scoreGrid(raster.pixels, raster.width, raster.height, grid);
+    const empty = cells.filter((cell) => cell.feature < MIN_FEATURE);
+    const thinnest = cells.reduce((worst, cell) => (cell.feature < worst.feature ? cell : worst));
+    const named = empty
+      .slice(0, 3)
+      .map(
+        (cell) =>
+          `column ${cell.column + 1}, row ${cell.row + 1} is only ` +
+          `${sharePercent(cell.feature)} something`,
+      );
+    if (empty.length > named.length) named.push(`and ${empty.length - named.length} more`);
+    check(
+      `every piece has something in it at ${gridName(grid)}` +
+        ` (thinnest ${sharePercent(thinnest.feature)}` +
+        ` at column ${thinnest.column + 1}, row ${thinnest.row + 1})`,
+      empty.length === 0,
+      `a piece needs ${sharePercent(MIN_FEATURE)}: ${named.join("; ")}` +
+        ` - run \`npm run art -- ${scene.id}\` and look at the ${gridName(grid)} grid`,
+    );
+  }
+
+  // And the same promise for the kind with no grid to score. A shatter's
+  // shards are dealt fresh, so what is checked is the picture rather than a
+  // partition: nowhere in it is there a patch the size of the smallest shard
+  // allowed with nothing in it. See docs/decisions/Cut a picture into shards
+  // that are things to hold.md.
+  for (const count of shatterCountsInLevels()) {
+    const side = shardWindow(count);
+    const worst = worstWindow(raster.pixels, raster.width, raster.height, side);
+    check(
+      `nowhere is empty at the size of a shard of ${count}` +
+        ` (emptiest ${sharePercent(worst.feature)})`,
+      worst.feature >= MIN_FEATURE,
+      `a shard needs ${sharePercent(MIN_FEATURE)}: the emptiest patch is ` +
+        `${sharePercent(worst.feature)} something, in the ` +
+        `${whereIs(worst, raster.width, raster.height)}` +
+        ` - run \`npm run art -- ${scene.id}\` and put something there`,
+    );
+  }
+}
+
+/**
+ * What is true of the two catalogues rather than of any one drawing, and so is
+ * asked once the drawings themselves have been judged.
+ */
+function checkCatalogues(scenes) {
+  if (scenes.length === 0) {
+    currentFile = "src/assets/scenes";
+    section("\nscenes");
+    check("there are scenes to cut up", false, `nothing in ${scenesDir}`);
+  } else {
+    detail("");
+    currentFile = "src/pictures.ts";
+    const ids = scenes.map((scene) => scene.id);
+    const undrawn = registeredPictures().filter((id) => !ids.includes(id));
+    check(
+      "every registered scene has artwork",
+      undrawn.length === 0,
+      `missing: ${undrawn.join(", ")}`,
+    );
+
+    // The level table is allowed to run ahead of the code, but not ahead of the
+    // art: a level naming a scene nobody drew is a level that cannot be played.
+    const unknown = scenesInLevels().filter((id) => !ids.includes(id));
+    check(
+      "every scene the level table names has artwork",
+      unknown.length === 0,
+      `levels ask for: ${unknown.join(", ")}`,
+    );
+  }
+
+  const orphans = registered.filter((id) => !animalFiles.includes(`${id}.svg`));
+  detail("");
+  currentFile = "src/assets.ts";
+  check(
+    "every registered animal has artwork",
+    orphans.length === 0,
+    `missing: ${orphans.join(", ")}`,
   );
 }
 
-checkScenes();
-
-const orphans = registered.filter((id) => !files.includes(`${id}.svg`));
-report.detail("");
-currentFile = "src/assets.ts";
-check(
-  "every registered animal has artwork",
-  orphans.length === 0,
-  `missing: ${orphans.join(", ")}`,
-);
-
-// Two animals a level can deal together have to be told apart at a glance. The
-// pairs that matter are the ones inside one theme, because that is what a
-// themed level deals from; two animals in different themes never share a board.
-const themeNames = [...new Set(Object.values(themes).flat())].sort();
-for (const theme of themeNames) {
-  const cast = [...glances.keys()].filter((id) => (themes[id] ?? []).includes(theme)).sort();
+/**
+ * Two animals a level can deal together have to be told apart at a glance. The
+ * pairs that matter are the ones inside one theme, because that is what a
+ * themed level deals from; two animals in different themes never share a board.
+ *
+ * The scratch names carry the theme, so two themes holding the same pair cannot
+ * be writing the same comparison at the same moment.
+ */
+function checkTheme(theme, cast, glances) {
   const scored = [];
   for (let i = 0; i < cast.length; i++) {
     for (let j = i + 1; j < cast.length; j++) {
       const [a, b] = [cast[i], cast[j]];
-      scored.push({ a, b, score: similarity(glances.get(a), glances.get(b), `${a}-${b}`) });
+      scored.push({ a, b, score: similarity(glances[a], glances[b], `${theme}-${a}-${b}`) });
     }
   }
   scored.sort((one, other) => other.score - one.score);
-  report.section(`\n${theme} (${cast.length}: ${cast.join(", ")})`);
+  section(`\n${theme} (${cast.length}: ${cast.join(", ")})`);
   const tooAlike = scored.filter((pair) => pair.score > SIMILARITY_LIMIT);
   for (const { a, b, score } of tooAlike) {
     currentFile = `src/assets/animals/${a}.svg, src/assets/animals/${b}.svg`;
@@ -678,14 +715,15 @@ for (const theme of themeNames) {
   }
 }
 
-if (process.env.ART_SIMILARITY_REPORT) {
-  const ids = [...glances.keys()].sort();
+/** Every pair in the cast, most alike first. A tool for redrawing, not a check. */
+function similarityReport(glances) {
+  const ids = Object.keys(glances).sort();
   const all = [];
   for (let i = 0; i < ids.length; i++) {
     for (let j = i + 1; j < ids.length; j++) {
       all.push({
         pair: `${ids[i]}/${ids[j]}`,
-        score: similarity(glances.get(ids[i]), glances.get(ids[j]), `${ids[i]}-${ids[j]}`),
+        score: similarity(glances[ids[i]], glances[ids[j]], `all-${ids[i]}-${ids[j]}`),
       });
     }
   }
@@ -694,4 +732,129 @@ if (process.env.ART_SIMILARITY_REPORT) {
   for (const { pair, score } of all) console.log(`  ${percent(score).padStart(4)}  ${pair}`);
 }
 
-report.finish("\nAll art checks passed.");
+// --- doing it in parallel -------------------------------------------------
+
+/**
+ * One unit of measuring, wherever it is run.
+ *
+ * Every unit reads the tree and writes only files named after itself, so the
+ * pool never has to say which worker did what - only in which order the answers
+ * go back together.
+ */
+function performUnit(unit) {
+  if (unit.type === "animal") return recorded(() => checkAnimal(unit.file));
+  if (unit.type === "scene") return recorded(() => checkScene(unit.scene));
+  if (unit.type === "theme") return recorded(() => checkTheme(unit.theme, unit.cast, unit.glances));
+  throw new Error(`Unknown art check unit: ${unit.type}`);
+}
+
+if (!isMainThread) {
+  parentPort.on("message", (message) => {
+    const { entries: found, value } = performUnit(message.unit);
+    parentPort.postMessage({ index: message.index, entries: found, value });
+  });
+}
+
+/**
+ * A pool of workers, handed units and asked for them back in order.
+ *
+ * Held open across both rounds - the animals and scenes, then the themes that
+ * compare what the animals produced - because starting a thread costs more than
+ * some of the units do.
+ */
+function createPool(size) {
+  const idle = [];
+  const workers = [];
+  let deliver = null;
+  let fail = null;
+
+  for (let index = 0; index < size; index++) {
+    const worker = new Worker(fileURLToPath(import.meta.url));
+    worker.on("message", (message) => deliver?.(worker, message));
+    worker.on("error", (error) => fail?.(error));
+    workers.push(worker);
+    idle.push(worker);
+  }
+
+  const run = (units) =>
+    new Promise((resolve, reject) => {
+      const results = new Array(units.length);
+      let next = 0;
+      let finished = 0;
+      if (units.length === 0) {
+        resolve(results);
+        return;
+      }
+
+      const give = (worker) => {
+        if (next >= units.length) {
+          idle.push(worker);
+          return;
+        }
+        const index = next++;
+        worker.postMessage({ index, unit: units[index] });
+      };
+
+      fail = reject;
+      deliver = (worker, message) => {
+        results[message.index] = message;
+        finished++;
+        give(worker);
+        if (finished === units.length) resolve(results);
+      };
+
+      while (idle.length > 0 && next < units.length) give(idle.pop());
+    });
+
+  return { run, close: () => Promise.all(workers.map((worker) => worker.terminate())) };
+}
+
+async function main() {
+  const report = createReport("art check");
+  if (animalFiles.length === 0) {
+    report.check("src/assets/animals", "contains animal SVGs", "none found");
+    report.finish();
+    process.exit(1);
+  }
+
+  const scenes = sceneFiles();
+  const pool = createPool(Math.max(1, Math.min(cpuSlots(), animalFiles.length + scenes.length)));
+  try {
+    // Every animal and every scene at once: they are the bulk of the work and
+    // none of them needs anything from another.
+    const drawings = await pool.run([
+      ...animalFiles.map((file) => ({ type: "animal", file })),
+      ...scenes.map((scene) => ({ type: "scene", scene })),
+    ]);
+    for (const { entries: found } of drawings) replay(report, found);
+
+    replay(report, recorded(() => checkCatalogues(scenes)).entries);
+
+    // Then the comparisons, which need every animal's glance to exist first.
+    const glances = {};
+    animalFiles.forEach((file, index) => {
+      const glancePng = drawings[index].value;
+      if (glancePng) glances[basename(file, ".svg")] = glancePng;
+    });
+    const themeNames = [...new Set(Object.values(themes).flat())].sort();
+    const compared = await pool.run(
+      themeNames.map((theme) => ({
+        type: "theme",
+        theme,
+        cast: Object.keys(glances)
+          .filter((id) => (themes[id] ?? []).includes(theme))
+          .sort(),
+        glances,
+      })),
+    );
+    for (const { entries: found } of compared) replay(report, found);
+
+    if (process.env.ART_SIMILARITY_REPORT) similarityReport(glances);
+  } finally {
+    await pool.close();
+  }
+
+  report.finish("\nAll art checks passed.");
+}
+
+if (isMainThread) await main();
