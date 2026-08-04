@@ -693,26 +693,32 @@ export interface PictureDemand {
 export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
   const { canvas, span, box, grips, drawn, pad } = demand;
   const count = grips.length;
-  const smallestInk = limits.minPieceInk * span;
-  const thinnest = Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height)));
-
-  /**
-   * No fitted slot can exceed the canvas's longer side: `slotFilling` scales the
-   * picture's longer box side onto one dimension of the room, and that room is
-   * inside the canvas. A waiting slot is no larger than the fitted one. If even
-   * that generous ceiling misses either floor, enumerating hundreds of ways to
-   * pack the same impossible cast cannot find a plan - a malformed 400-piece
-   * demand used to spend seconds proving this one tray at a time.
-   */
-  const slotCeiling = Math.max(canvas.width, canvas.height);
-  if (
-    limits.minSlot * span > slotCeiling ||
-    (thinnest > 0 ? smallestInk / thinnest : Infinity) > slotCeiling
-  ) {
+  const refuse = (): never => {
     throw new Error(
       `${count} pieces of a picture do not fit a ${canvas.width}x${canvas.height} canvas ` +
         `at a size a toddler could grab.`,
     );
+  };
+
+  const smallestInk = limits.minPieceInk * span;
+  const thinnest = Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height)));
+  const slotCeiling = Math.max(canvas.width, canvas.height);
+  const minimumTraySlot = thinnest > 0 ? smallestInk / thinnest : Infinity;
+  const minimumGripArea =
+    minimumTraySlot ** 2 * grips.reduce((area, grip) => area + grip.width * grip.height, 0);
+
+  // A fitted or waiting slot cannot exceed the canvas's longer side. At the
+  // smallest grabbable waiting slot, every grip must also fit without overlap
+  // inside the canvas. Both bounds give the tray every advantage - no padding
+  // and no room reserved for the picture - so missing either proves that the
+  // exhaustive search cannot find a plan. See
+  // docs/decisions/Refuse an impossible picture before searching.md.
+  if (
+    limits.minSlot * span > slotCeiling ||
+    minimumTraySlot > slotCeiling ||
+    minimumGripArea > canvas.width * canvas.height
+  ) {
+    refuse();
   }
 
   const topTrays: TrayPlan[] = [];
@@ -748,10 +754,7 @@ export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
   const sides = sideTrays.length > 0 ? bestOf(sideTrays) : null;
   if (!top) {
     if (sides) return sides;
-    throw new Error(
-      `${count} pieces of a picture do not fit a ${canvas.width}x${canvas.height} canvas ` +
-        `at a size a toddler could grab.`,
-    );
+    return refuse();
   }
   if (sides && takeSides(top.sceneSlot, sides.sceneSlot, top.room, sides.room, limits.gutterGain)) {
     return sides;
