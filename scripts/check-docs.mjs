@@ -277,6 +277,32 @@ for (const topic of SOURCE_ROUTED_TOPICS) {
 }
 check("docs", "source directives route to indexed topics", directiveProblems);
 
+/**
+ * A citation is worth no more than the file it names, and a record is renamed
+ * whenever the decision it holds changes. Markdown links are resolved above;
+ * this is the same promise kept for the places prose cannot link from - a source
+ * comment or a workflow, which name a file by bare path. Without it a rename
+ * stays green while every citation of the old name sends the next reader
+ * nowhere.
+ */
+const CITABLE = /\.(?:[cm]?[jt]s|css|html|svg|ya?ml)$/;
+// A record is named as a sentence, so a citation carries spaces and commas. It
+// carries none of the punctuation a regular expression is built from, which is
+// what keeps this from matching the pattern that recognises a directive.
+const SOURCE_CITATION = new RegExp(`${TOPICS_DIR}/(?:decisions/)?[A-Za-z0-9 ,.'-]+?\\.md`, "g");
+{
+  const problems = [];
+  for (const file of paths.filter((path) => CITABLE.test(path))) {
+    const text = readFileSync(join(root, file), "utf8");
+    for (const [lineNumber, line] of text.split(/\r?\n/).entries()) {
+      for (const [mention] of line.matchAll(SOURCE_CITATION)) {
+        if (!exists(mention)) problems.push(`${file}:${lineNumber + 1} cites missing ${mention}`);
+      }
+    }
+  }
+  check("docs", "citations outside Markdown name files that exist", problems);
+}
+
 // --- how much context the documentation costs -------------------------------
 
 /**
