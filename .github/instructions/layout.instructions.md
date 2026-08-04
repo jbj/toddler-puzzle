@@ -1,7 +1,7 @@
 ---
 name: "Layout and the board"
 description: "How a level's layout is composed for its cast and its screen, the tray, the box a piece is measured by, and the backdrop a theme is played against."
-applyTo: "src/layout.ts,src/board.ts,src/scenery.ts,src/piece.ts,src/geometry.ts"
+applyTo: "src/layout.ts,src/fit.ts,src/board.ts,src/scenery.ts,src/piece.ts,src/geometry.ts"
 ---
 
 # Layout and the board
@@ -25,15 +25,17 @@ through `derivedFrom`.
 
 The composition is fractions of a slot rather than positions (`COMPOSITION` in
 `src/layout.ts`), so the whole board scales together - a busier level gets
-smaller pieces, and margins, gaps and tufts shrink with them. Five steps:
+smaller pieces, and margins, gaps and tufts shrink with them. Five steps, the
+first three of them in `src/fit.ts`, which is the search on its own over plain
+sizes:
 
 1. split the cast into scene rows and tray shelves, every way worth trying, and
-   for each split find the largest slot that fits the canvas;
-2. take the biggest, preferring the split that suits the canvas's shape among
-   those within `sizeTolerance`, and refuse the cast outright below `minSlot`
-   rather than laying out pieces too small to grab;
-3. where the scene holds a *single* target, try the gutters too, and take them if
-   worth at least `gutterGain` more slot than the best shelving;
+   for each split find the largest slot that fits the canvas - then the same for
+   gutters, one to half the cast in columns a side;
+2. take the biggest of each placement, preferring the split that suits the
+   canvas's shape among those within `sizeTolerance`, and refuse the cast
+   outright below `minSlot` rather than laying out pieces too small to grab;
+3. choose between the two placements by the rule under **The tray** below;
 4. give each scene row room for the worst reach above and below the line among
    the pieces *dealt into it* (`reach()` measures from each piece's own anchor),
    so a giraffe's row is deeper than a row of turtles;
@@ -57,14 +59,21 @@ what the tests measure against.
 rectangles, each with the edge it is lipped along, in two shapes:
 
 - **Shelves** - rows across the top, lipped along the bottom.
-- **Gutters** - two columns down the sides, lipped along the edge facing the
-  scene. Only tried where the scene holds one target and more than one piece.
-  `COMPOSITION.controlRoom` keeps the bottom of a gutter clear of the reset and
-  grown-ups buttons, in canvas units rather than as a share, because what it
-  protects is not a share either. A gutter is adopted only when worth
-  `COMPOSITION.gutterGain` more slot, so a marginal win never rearranges a board.
-  See
+- **Gutters** - columns down both sides, the same number each side so the scene
+  keeps the middle, lipped along the edge facing the scene. Any level may take
+  them. `COMPOSITION.controlRoom` keeps the bottom of a gutter clear of the reset
+  and grown-ups buttons, in canvas units rather than as a share, because what it
+  protects is not a share either. See
   [Stand a lone picture's pieces in the gutters](<../../docs/decisions/Stand a lone picture's pieces in the gutters.md>).
+
+**The tray belongs at the top**, because down is the easiest direction for a
+small arm to drag, so `takeSides` in `src/fit.ts` makes the gutters earn it: they
+have to buy either `COMPOSITION.gutterGain` (a linear tenth) more slot, or - when
+`maxSlot` has both placements pinned at the same size, which is most of what a
+wide screen does - that tenth squared in play *area*, and never at the cost of a
+smaller puzzle. More than one column a side matters for the same reason a wide
+screen does: a gutter is capped by its deepest column. See
+[Put the tray where the play area is biggest](<../../docs/decisions/Put the tray where the play area is biggest.md>).
 
 **A tray cell belongs to a piece, not to a position.** `layout.trayCells` maps a
 piece id to its rectangle, cut to that piece's own box rather than to the largest
@@ -133,7 +142,9 @@ it is measured by) and its `reach` (that box at this level's forgiveness).
 - `maxSlot` caps what a piece may **draw**, not the slot it is drawn inside.
   Capping the slot would cap a sliced level by the whole animal's box and hand
   the child a quarter of an animal under an acre of empty sky.
-- `spreadX` spaces each row evenly, and each piece's reach follows its own box,
+- `spreadX` spaces each row evenly across the room the scene was given - not the
+  whole canvas, which would put a row's outermost holes under a gutter - and each
+  piece's reach follows its own box,
   so a busier level gets tighter, more accurate placing rather than pieces that
   reach each other's holes.
 
@@ -173,8 +184,8 @@ a size.
 `Layout["id"]` is `"landscape"` or `"portrait"`, derived from the canvas
 (`width >= height`), and the puzzle reflows between the two rather than merely
 shrinking: landscape puts the animals in one row with the tray beneath, portrait
-uses shallower rows and a taller tray, and a picture being rebuilt usually takes
-the gutters in landscape and keeps its shelves in portrait. Rotating or resizing
+uses shallower rows and a taller tray, and a landscape board with width to spare
+often takes the gutters where portrait, having none, never does. Rotating or resizing
 mid-puzzle rebuilds the board and keeps progress - except while a piece is in the
 air, which `game.ts` waits out rather than taking the animal out of a hand.
 

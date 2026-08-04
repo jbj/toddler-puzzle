@@ -77,8 +77,15 @@ const BUDGET = {
   // the phrases the celebration chunk plays live in the same file as the ones
   // the first level plays. About 1.5 kB raw for the lot, on a budget that had
   // 1 kB left after the board learned to compose itself for the screen.
-  // measured 2026-08-03: 116.5 kB raw, 38.1 kB gzipped
-  initialRaw: 118 * kB,
+  // raised 2026-08-03 again: where the tray goes is now a decision the game
+  // makes rather than a shape it defaults to, and the search that makes it -
+  // `src/fit.ts` - costs both placements, one to half the cast in columns a
+  // side, and the board each would leave. That is about 0.7 kB raw, and it is
+  // bought back on the screen: a piece drawn a third larger on a wide canvas,
+  // and a board that stops being a letterbox. Layout, like sound, is needed
+  // before the first level by definition.
+  // measured 2026-08-03: 118.2 kB raw, 38.7 kB gzipped
+  initialRaw: 119 * kB,
   initialGzip: 39 * kB,
   // raised 2026-08-03: every level now ends with a celebration rather than only
   // the six that end a chapter, so the celebration chunk carries three more
@@ -88,7 +95,7 @@ const BUDGET = {
   // first dragged level ending, and `warm.ts` already fetches it first. Only the
   // sounds of it landed in the initial figure, for the reason written against
   // that one above.
-  // measured 2026-08-03: 186.1 kB raw, 63.0 kB gzipped
+  // measured 2026-08-03: 187.2 kB raw, 63.5 kB gzipped
   totalRaw: 194 * kB,
   totalGzip: 66 * kB,
 };

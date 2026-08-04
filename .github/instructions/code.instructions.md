@@ -113,6 +113,7 @@ something unrelated. Why they explain themselves is
 | `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - a chapter celebration bursts balloons with it |
 | `src/motion.ts` | Whether the player asked for less motion. The one place `prefers-reduced-motion` is read |
 | `src/layout.ts` | Composes a level's layout from its cast, and all tunable constants |
+| `src/fit.ts` | The sizing search under `layout.ts`: how the board is split between the tray and the play area, over plain sizes |
 | `src/scenery.ts` | Generates the background for a layout: one landscape, and a themed palette and props per theme |
 | `src/assets.ts` | Loads and validates the animal SVGs, as piece shapes |
 | `src/pictures.ts` | Loads and validates the picture scenes, as artwork safe to inline and cut up |
