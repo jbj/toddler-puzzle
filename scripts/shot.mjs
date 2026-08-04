@@ -520,6 +520,31 @@ const cutEdgesOn = (selector) =>
   return { drawn: cuts.length, worst };
 })()`);
 /**
+ * The same reading, taken once the fade it is watching has settled.
+ *
+ * A placed piece gives up its cut edge over 320ms, and `getComputedStyle`
+ * reports what that transition is showing at the instant it is asked, not where
+ * it is going. Nothing between the last piece landing and the reading waits for
+ * that fade: `solveRemaining` returns on the celebration appearing, and the
+ * check follows immediately. Ordinarily the fade wins that race - it was over
+ * in all ten runs probed here, idle and under twenty busy cores - but nothing
+ * makes it win, and a full `verify` failed this check once in ten runs on a
+ * loaded laptop with `4 edges faded`, which is `drawn` right and `worst` not
+ * zero: an edge caught still on its way out.
+ *
+ * The rule being kept is about an animal at rest, not about how fast it gets
+ * there, so the fix is to read it at rest. The check itself is unchanged, and
+ * the wait cannot turn a real fault into a pass: a board that draws no edge, or
+ * one whose edges are still showing two seconds later, reaches the deadline
+ * with the numbers that say so and fails the same check with the same message.
+ */
+const settledCutEdgesOn = (selector, drawn, within = 2000) =>
+  waitUntil(
+    () => cutEdgesOn(selector),
+    (edges) => edges.drawn === drawn && edges.worst === 0,
+    within,
+  );
+/**
  * The other half of that rule: which of its two clips each piece of a cut-up
  * drawing is wearing. A piece is clipped to the line it was cut along while
  * there is still a gap in the drawing, and to the same line spread by a hair
@@ -2192,7 +2217,7 @@ async function runSliced() {
   check("the animal can be put back together", (await placedCount()) === 4);
   // The cut edges are for a slice that is still loose. An assembled animal is
   // an animal, not an animal with a grid over it.
-  const sliceEdges = await cutEdgesOn(".piece.is-placed");
+  const sliceEdges = await settledCutEdgesOn(".piece.is-placed", 4);
   check(
     `an assembled animal has no lines across it (${sliceEdges.drawn} edges faded)`,
     sliceEdges.drawn === 4 && sliceEdges.worst === 0,
@@ -2419,7 +2444,7 @@ async function runJigsaw() {
   await solveRemaining();
   check("a jigsaw can be finished", (await placedCount()) === jigsawPieces);
   check("the guide goes once the picture is whole", !(await guideIsShowing()));
-  const jigsawEdges = await cutEdgesOn(".piece.is-placed");
+  const jigsawEdges = await settledCutEdgesOn(".piece.is-placed", jigsawPieces);
   check(
     `a finished jigsaw is a picture, not a grid (${jigsawEdges.drawn} edges faded)`,
     jigsawEdges.drawn === jigsawPieces && jigsawEdges.worst === 0,
@@ -2494,7 +2519,7 @@ async function runFinale() {
   await solveRemaining();
   check("a shatter can be finished", (await placedCount()) === shardCount);
   check("the guide goes once the picture is whole", !(await guideIsShowing()));
-  const shardEdges = await cutEdgesOn(".piece.is-placed");
+  const shardEdges = await settledCutEdgesOn(".piece.is-placed", shardCount);
   check(
     `a mended picture shows none of the breaks (${shardEdges.drawn} edges faded)`,
     shardEdges.drawn === shardCount && shardEdges.worst === 0,
