@@ -517,6 +517,32 @@ export function fitRows(demand: RowsDemand, limits: Limits): RowsFit {
   const cost = (sceneRows: number, tray: TrayPlan): Plan =>
     planFor(canvas, reaches, drawnSides, sceneRows, tray, pad, limits);
 
+  // Two floors, and for a cast that fills its boxes they are the same floor: a
+  // slot too narrow to aim at, and a piece that draws too little of its slot to
+  // pick up. A slice fails the second one long before the first. Both are sizes
+  // rather than spreads, so both are measured against the nominal width.
+  const smallest = limits.minSlot * span;
+  const smallestInk = limits.minPieceInk * span;
+  const thinnest = Math.min(...drawnSides);
+  const refuse: () => never = () => {
+    throw new Error(
+      `${count} pieces do not fit a ${canvas.width}x${canvas.height} canvas without ` +
+        `dropping below ${Math.round(smallest)} units each, which is too small for a ` +
+        `toddler to grab.`,
+    );
+  };
+
+  // A board reserves a hole and a tray cell for every piece at once - which is
+  // why a plan's height is the scene's plus the tray's - so at the smallest
+  // grabbable slot both sets together must still fit inside the canvas. The
+  // bound hands the layout the whole canvas with no sky, no padding and no gaps,
+  // so failing it proves the search below cannot find a plan. The same argument
+  // as a picture's, on the other kind of board; see
+  // docs/decisions/Refuse an impossible board before searching.md.
+  const smallestSlot = Math.max(smallest, thinnest > 0 ? smallestInk / thinnest : 0);
+  const occupied = [...grips, ...drawn].reduce((area, box) => area + box.width * box.height, 0);
+  if (smallestSlot ** 2 * occupied > canvas.width * canvas.height) refuse();
+
   const topPlans: Plan[] = [];
   const sidePlans: Plan[] = [];
   for (let sceneRows = 1; sceneRows <= reaches.length; sceneRows++) {
@@ -532,12 +558,6 @@ export function fitRows(demand: RowsDemand, limits: Limits): RowsFit {
     }
   }
 
-  // Two floors, and for a cast that fills its boxes they are the same floor: a
-  // slot too narrow to aim at, and a piece that draws too little of its slot to
-  // pick up. A slice fails the second one long before the first. Both are sizes
-  // rather than spreads, so both are measured against the nominal width.
-  const smallest = limits.minSlot * span;
-  const smallestInk = limits.minPieceInk * span;
   const grabbable = (plan: Plan): boolean =>
     plan.slotSize >= smallest && plan.slotSize * plan.smallest >= smallestInk;
 
@@ -577,11 +597,7 @@ export function fitRows(demand: RowsDemand, limits: Limits): RowsFit {
   const sides = bestOf(sidePlans);
   if (!top) {
     if (sides) return asFit(sides);
-    throw new Error(
-      `${count} pieces do not fit a ${canvas.width}x${canvas.height} canvas without ` +
-        `dropping below ${Math.round(smallest)} units each, which is too small for a ` +
-        `toddler to grab.`,
-    );
+    refuse();
   }
   if (sides && takeSides(top.slotSize, sides.slotSize, top.room, sides.room, limits.gutterGain)) {
     return asFit(sides);
@@ -714,7 +730,7 @@ export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
   // inside the canvas. Both bounds give the tray every advantage - no padding
   // and no room reserved for the picture - so missing either proves that the
   // exhaustive search cannot find a plan. See
-  // docs/decisions/Refuse an impossible picture before searching.md.
+  // docs/decisions/Refuse an impossible board before searching.md.
   if (
     limits.minSlot * span > slotCeiling ||
     minimumTraySlot > slotCeiling ||
