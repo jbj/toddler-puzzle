@@ -74,3 +74,28 @@ efficient ones has one power budget between them, and a rasteriser is not short
 of memory bandwidth to run out of either. The pool is sized by CPUs because that
 is the resource the runner can account for; the machine decides what a CPU is
 worth on the day.
+
+## A full machine found a race that was always there
+
+Spreading the art check over six CPUs means the machine is genuinely busy while
+the browser run is on it, where before it was half idle beside a check using one
+core. That did not create a fault; it exposed one. The browser run read the cut
+edges of a finished picture the instant the last piece landed, and those edges
+fade over about a third of a second rather than vanishing, so the read could
+catch the fade part-way down. It showed up as roughly one run in ten to fifteen
+failing `an assembled animal has no lines across it (4 edges faded)` - the count
+right, the brightest edge not zero.
+
+It is worth knowing how badly that reproduces on its own. Running the level-14
+act by itself, ten times, idle and then against twenty busy cores, the fade had
+always finished before the read. What makes it fail is not load in general but
+the particular contention of a whole `verify`, which is exactly the shape this
+change created. A flake that only appears in the full run is the kind that gets
+blamed on the last thing merged, so it is written down here rather than left to
+be rediscovered.
+
+The fix, in `#113`, moves when the reading is taken rather than what it demands:
+it waits for the count the check already asks for and an edge of zero, and gives
+up on a two-second deadline, six times the fade. The three checks - the
+assembled animal, the finished jigsaw, the mended picture - are unchanged, so a
+board that never draws an edge, or never loses one, fails exactly as before.
