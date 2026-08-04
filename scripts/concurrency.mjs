@@ -1,11 +1,13 @@
 import { availableParallelism, totalmem } from "node:os";
 
-// Measured 2026-08-04 with no other browser check running, sampling `ps` every
-// 100ms through a complete `npm run shot` and summing RSS for one Chromium
-// instance: its parent and every descendant by PPID. The peak was 1,419,936 KiB
-// (1,387 MiB) across 11 processes. 2 GiB rounds that up with room for a heavier
-// page or Chrome release; redo the same one-instance process-tree measurement
-// before changing it.
+// Measured 2026-08-04 under the machine's exclusive browser lock with no other
+// check running, sampling `ps` every 100ms through a complete `npm run shot`.
+// Start at the exact Chromium parent the harness launched and sum every
+// descendant by PPID; never select by process name, because the developer's
+// desktop Chromium is another, much larger tree. Of 2,293 samples, 2,214 held a
+// live tree: median 1,219 MiB, p90 1,307 MiB, p99 1,373 MiB, maximum 1,387 MiB
+// across 11 processes. 2 GiB rounds that distribution up; redo the same
+// one-instance process-tree measurement before changing it.
 const PER_CHROME = 2 * 1024 * 1024 * 1024;
 
 /** Bind a Node HTTP server to an OS-assigned loopback port. */

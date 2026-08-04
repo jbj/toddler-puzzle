@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { openChrome } from "./chrome.mjs";
-import { browserSlots } from "./concurrency.mjs";
+import { browserSlots, freeDebugPort, listenOnFreePort } from "./concurrency.mjs";
 import { buildSheet } from "./shot-sheet.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -229,16 +229,12 @@ let workerProfileDir;
 
 async function openWorker(name) {
   server = createServer(serve);
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const address = server.address();
-  if (!address || typeof address === "string")
-    throw new Error("The screenshot server has no port.");
-  PORT = address.port;
+  PORT = await listenOnFreePort(server);
 
   try {
     workerProfileDir = join(root, `.art/chrome-profile-${name}-${process.pid}`);
     browser = await openChrome({
-      debugPort: 0,
+      debugPort: freeDebugPort(),
       profileDir: workerProfileDir,
     });
   } catch (error) {

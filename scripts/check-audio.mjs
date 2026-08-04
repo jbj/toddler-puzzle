@@ -39,6 +39,7 @@ import { build } from "vite";
 
 import { openChrome } from "./chrome.mjs";
 import { freeDebugPort, listenOnFreePort } from "./concurrency.mjs";
+import { createReport, verbose } from "./report.mjs";
 import { haveRsvg, rsvg } from "./tools.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -46,6 +47,7 @@ const outDir = join(root, ".art/audio");
 const profileDir = join(root, ".art/chrome-audio-profile");
 
 const drawSheet = process.argv.includes("--sheet");
+const report = createReport("audio check", { verbose: drawSheet || verbose });
 
 // --- the bounds -----------------------------------------------------------
 
@@ -141,12 +143,8 @@ try {
 
 // --- check it -------------------------------------------------------------
 
-let failures = 0;
-
 function check(name, ok, detail) {
-  if (ok) return;
-  failures += 1;
-  console.error(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`);
+  report.check("src/audio.ts", name, ok ? [] : detail || name);
 }
 
 const round = (value, places = 3) => Number(value.toFixed(places));
@@ -205,11 +203,11 @@ for (const sound of measured) {
 // --- say what was measured ------------------------------------------------
 
 const column = (text, width) => String(text).padEnd(width);
-console.log(
+report.detail(
   `\n${column("sound", 22)}${column("peak", 8)}${column("centroid", 10)}${column("length", 9)}step`,
 );
 for (const sound of measured) {
-  console.log(
+  report.detail(
     column(sound.name, 22) +
       column(round(sound.peak), 8) +
       column(`${Math.round(sound.centroid)} Hz`, 10) +
@@ -353,8 +351,4 @@ if (drawSheet) {
   console.log(`Waveforms: ${png}`);
 }
 
-if (failures > 0) {
-  console.error(`\n${failures} audio check(s) failed.`);
-  process.exit(1);
-}
-console.log("\nEvery sound is inside its bounds.");
+report.finish("\nEvery sound is inside its bounds.");
