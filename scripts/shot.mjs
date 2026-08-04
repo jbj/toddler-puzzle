@@ -215,18 +215,6 @@ const serve = (req, res) => {
   }
 };
 
-async function freePort() {
-  const reservation = createServer();
-  await new Promise((resolve) => reservation.listen(0, "127.0.0.1", resolve));
-  const reserved = reservation.address();
-  if (!reserved || typeof reserved === "string")
-    throw new Error("Could not reserve a Chrome port.");
-  await new Promise((resolve, reject) =>
-    reservation.close((error) => (error ? reject(error) : resolve())),
-  );
-  return reserved.port;
-}
-
 // --- browser --------------------------------------------------------------
 
 // Each segment owns its server, profile and Chrome. Keeping these bindings at
@@ -250,7 +238,7 @@ async function openWorker(name) {
   try {
     workerProfileDir = join(root, `.art/chrome-profile-${name}-${process.pid}`);
     browser = await openChrome({
-      debugPort: await freePort(),
+      debugPort: 0,
       profileDir: workerProfileDir,
     });
   } catch (error) {
