@@ -31,20 +31,17 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { createReport } from "./report.mjs";
+
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/[/\\]$/, "");
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", ".art"]);
 
 const INDEX = ".github/copilot-instructions.md";
 const INSTRUCTIONS_DIR = ".github/instructions";
 const DECISIONS_DIR = "docs/decisions";
+const report = createReport("documentation check");
 
-let failures = 0;
-const check = (label, problems) => {
-  const ok = problems.length === 0;
-  console.log(`${ok ? "PASS" : "FAIL"}  ${label}`);
-  for (const problem of problems) console.log(`        ${problem}`);
-  if (!ok) failures += problems.length;
-};
+const check = (file, label, problems) => report.check(file, label, problems);
 
 // --- the files we know about ----------------------------------------------
 
@@ -196,7 +193,7 @@ for (const file of markdown) {
   const targets = new Set(links(text).map((target) => target.split("#")[0]));
   checkLinks(file, text, problems);
   checkMentions(file, text, problems, targets);
-  check(file, [...new Set(problems)]);
+  check(file, file, [...new Set(problems)]);
 }
 
 // --- the index and the instructions it indexes -----------------------------
@@ -219,7 +216,7 @@ const instructionFiles = paths
       }
     }
   }
-  check(`${INDEX} lists every instructions file`, problems);
+  check(INDEX, `${INDEX} lists every instructions file`, problems);
 }
 
 // --- applyTo globs ---------------------------------------------------------
@@ -261,7 +258,7 @@ for (const file of instructionFiles) {
   if (applyTo === undefined) {
     // Deliberate for an index-only file: no applyTo means never attached
     // automatically, only pulled in on purpose.
-    check(`${file} (no applyTo; index-only)`, problems);
+    check(file, `${file} (no applyTo; index-only)`, problems);
     continue;
   }
   for (const glob of applyTo.split(",").map((part) => part.trim())) {
@@ -271,7 +268,7 @@ for (const file of instructionFiles) {
       problems.push(`applyTo glob "${glob}" matches nothing in the repository`);
     }
   }
-  check(`${file} applyTo`, problems);
+  check(file, `${file} applyTo`, problems);
 }
 
 // --- how much context the instructions cost --------------------------------
@@ -310,10 +307,10 @@ const INDEX_CEILING = 4 * 1024;
       problems.push(`${file} is ${bytes} bytes, over its ${ceiling}-byte ceiling`);
     }
   }
-  for (const row of rows) console.log(`        ${row}`);
-  check("instructions files are within their context budget", problems);
+  for (const row of rows) report.detail(`        ${row}`);
+  check(".github/instructions", "instructions files are within their context budget", problems);
   if (problems.length > 0) {
-    console.log(`
+    report.detail(`
         Ways under the ceiling, in order of preference: move the argument into a
         decision record and link it; delete what the code already says; turn a
         run of prose into a table; split the file along its applyTo. Raising the
@@ -324,8 +321,4 @@ const INDEX_CEILING = 4 * 1024;
 
 // --- result ----------------------------------------------------------------
 
-if (failures > 0) {
-  console.error(`\n${failures} broken reference${failures === 1 ? "" : "s"}.`);
-  process.exit(1);
-}
-console.log(`\nAll references resolve across ${markdown.length} Markdown files.`);
+report.finish(`\nAll references resolve across ${markdown.length} Markdown files.`);

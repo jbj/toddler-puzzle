@@ -23,9 +23,9 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
   or wrapping. Markdown is in `.prettierignore` - hand-wrap it at about 80
   columns yourself.
 - The build enforces a **bundle budget**: four numbers in
-  `scripts/check-bundle.mjs`, printed pass or fail. Raising one is allowed;
-  raising one quietly is not. Never ship less art than the game needs to stay
-  under it. See
+  `scripts/check-bundle.mjs`; `npm run budget -- --verbose` prints them. Raising
+  one is allowed; raising one quietly is not. Never ship less art than the game
+  needs to stay under it. See
   [A chapter is warmed before it is needed, not fetched when it is](<../../docs/decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
 
 ## Scripts
@@ -33,11 +33,12 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
 | Script | What it does |
 | --- | --- |
 | `npm run dev` | Vite dev server |
+| `npm run probe -- --level <n> --seed <s>` | Prints one real, deterministic deal and its composed geometry as JSON |
 | `npm run verify` | The single pre-PR check: lint, format check, docs check, build, tests, audio check, art check, screenshot run |
 | `npm run lint` | ESLint |
 | `npm run format` | Formats with Prettier |
 | `npm run build` | Type-check, production build into `dist/`, then the bundle budget |
-| `npm run budget` | Prints what the last build weighs, raw and gzipped, and fails over budget |
+| `npm run budget` | Checks the last build's raw and gzipped weight; add `-- --verbose` to print it |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run docs:check` | Checks Markdown cross-references, and holds each instructions file to its size budget |
 | `npm run art` | Renders the animal art to `.art/contact-sheet.png`; `-- rabbit` renders one animal large, `-- scenes` the picture scenes, `-- farmyard` one scene under its cut grids |
@@ -51,6 +52,11 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
 ## Running locally
 
 - `npm install`, then `npm run dev`.
+- **Use `npm run probe` instead of writing a disposable test to inspect a
+  deal.** `--level <n> --seed <s>` prints the cast, measured piece boxes, holes,
+  tray cells and canvas; `--eval "<expression>"` has the geometry, layout,
+  level, piece and cutter exports already in scope and lists them after a bad
+  expression.
 - `npm run art` and `npm run art:check` need `rsvg-convert` and ImageMagick,
   which are not npm packages: `sudo apt-get install librsvg2-bin imagemagick`.
 - `npm run shot` and `npm run audio:check` need a headless Chrome binary and
@@ -136,7 +142,7 @@ something unrelated. Why they explain themselves is
 | `scripts/slices.mjs` | Judges a cut from pixels: whole, fair, grabbable. Shared by the two above |
 | `scripts/slice-recipes.mjs` | Searches for where to cut every animal, and writes the table |
 | `scripts/check-docs.mjs` | Enforces that Markdown cross-references resolve, and the instructions size budget |
-| `scripts/check-bundle.mjs` | Holds the build to the bundle budget, and prints what everything weighs |
+| `scripts/check-bundle.mjs` | Holds the build to the bundle budget; `--verbose` prints what everything weighs |
 | `scripts/check-audio.mjs` | Renders every sound offline in Chromium, measures the samples, and optionally draws the waveform sheet |
 | `scripts/audio-probe.mjs` | The half of that which runs in the browser: renders, an FFT and the measurements |
 | `scripts/chrome.mjs` | Starts headless Chromium and speaks the debugging protocol to it |
