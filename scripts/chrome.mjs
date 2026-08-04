@@ -14,8 +14,9 @@
  * caller say, so CI does not need a different script.
  */
 import { spawn } from "node:child_process";
-import { rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { createConnection } from "node:net";
+import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const CHROME = process.env.CHROME_BIN || "chromium";
@@ -70,7 +71,7 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
   // reporting that a new player does not start on level 1, because it is
   // looking at a browser parked on level 12. Half an hour goes into the wrong
   // question. So say what is actually wrong, once, and stop.
-  if (await somethingAnswersOn(debugPort)) {
+  if (debugPort !== 0 && (await somethingAnswersOn(debugPort))) {
     const browser = await whoIsThere(debugPort);
     console.error(
       `Something is already listening on 127.0.0.1:${debugPort}, which is the ` +
@@ -86,6 +87,7 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
   }
 
   rmSync(profileDir, { recursive: true, force: true });
+  const activePortFile = join(profileDir, "DevToolsActivePort");
 
   const chrome = spawn(
     CHROME,
@@ -120,10 +122,33 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
     process.exit(1);
   });
 
-  async function findTarget() {
+  async function findDebugPort() {
+    if (debugPort !== 0) return debugPort;
+
+    // With port zero there is no address to probe before launch. Ownership
+    // comes from the profile instead: it was cleared immediately before this
+    // process started, and only that process can write its DevToolsActivePort.
+    // Reading that file cannot attach us to a browser from another worktree or
+    // an interrupted run, which is the mistake the explicit-port guard above
+    // exists to prevent.
+    for (let attempt = 0; attempt < 60; attempt++) {
+      if (existsSync(activePortFile)) {
+        const [line] = readFileSync(activePortFile, "utf8").split(/\r?\n/);
+        const assigned = Number(line);
+        if (Number.isInteger(assigned) && assigned > 0) return assigned;
+      }
+      if (chrome.exitCode !== null) {
+        throw new Error(`${CHROME} exited before exposing its DevTools port.`);
+      }
+      await sleep(250);
+    }
+    throw new Error(`${CHROME} did not expose a DevTools port.`);
+  }
+
+  async function findTarget(port) {
     for (let attempt = 0; attempt < 60; attempt++) {
       try {
-        const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
+        const response = await fetch(`http://127.0.0.1:${port}/json/list`);
         const targets = await response.json();
         const page = targets.find((t) => t.type === "page" && t.webSocketDebuggerUrl);
         if (page) return page;
@@ -137,7 +162,8 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
 
   let socket;
   try {
-    const target = await findTarget();
+    const assignedDebugPort = await findDebugPort();
+    const target = await findTarget(assignedDebugPort);
     socket = new WebSocket(target.webSocketDebuggerUrl);
     await new Promise((resolve, reject) => {
       socket.addEventListener("open", resolve, { once: true });

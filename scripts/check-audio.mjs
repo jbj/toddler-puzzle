@@ -38,12 +38,11 @@ import { fileURLToPath } from "node:url";
 import { build } from "vite";
 
 import { openChrome } from "./chrome.mjs";
+import { freeDebugPort, listenOnFreePort } from "./concurrency.mjs";
 import { haveRsvg, rsvg } from "./tools.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outDir = join(root, ".art/audio");
-const PORT = 4321;
-const DEBUG_PORT = 9335;
 const profileDir = join(root, ".art/chrome-audio-profile");
 
 const drawSheet = process.argv.includes("--sheet");
@@ -109,13 +108,13 @@ const server = createServer((req, res) => {
   res.writeHead(200, { "content-type": file.type });
   res.end(file.body);
 });
-await new Promise((resolve) => server.listen(PORT, resolve));
+const port = await listenOnFreePort(server);
 
 // --- render it ------------------------------------------------------------
 
 let browser;
 try {
-  browser = await openChrome({ debugPort: DEBUG_PORT, profileDir });
+  browser = await openChrome({ debugPort: freeDebugPort(), profileDir });
 } catch (error) {
   server.close();
   throw error;
@@ -124,7 +123,7 @@ try {
 let measured;
 try {
   await browser.send("Page.enable");
-  await browser.send("Page.navigate", { url: `http://127.0.0.1:${PORT}/` });
+  await browser.send("Page.navigate", { url: `http://127.0.0.1:${port}/` });
   for (let attempt = 0; attempt < 80; attempt++) {
     if (await browser.evaluate("window.audioProbeReady === true")) break;
     await new Promise((resolve) => setTimeout(resolve, 100));

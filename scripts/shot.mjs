@@ -25,13 +25,12 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { openChrome } from "./chrome.mjs";
+import { freeDebugPort, listenOnFreePort } from "./concurrency.mjs";
 import { buildSheet } from "./shot-sheet.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const dist = join(root, "dist");
 const shotsDir = join(root, ".art/shots");
-const PORT = 4319;
-const DEBUG_PORT = 9333;
 // The game deals its animals at random; `?seed=` pins them down so the
 // screenshots from two runs show the same puzzle.
 const SEED = 20260726;
@@ -196,7 +195,7 @@ const server = createServer((req, res) => {
     res.writeHead(404).end("not found");
   }
 });
-await new Promise((resolve) => server.listen(PORT, resolve));
+const port = await listenOnFreePort(server);
 
 // --- browser --------------------------------------------------------------
 
@@ -204,7 +203,7 @@ await new Promise((resolve) => server.listen(PORT, resolve));
 // with the audio check so there is one version of it rather than two.
 let browser;
 try {
-  browser = await openChrome({ debugPort: DEBUG_PORT, profileDir });
+  browser = await openChrome({ debugPort: freeDebugPort(), profileDir });
 } catch (error) {
   server.close();
   throw error;
@@ -970,14 +969,14 @@ async function holdGrownUps({ pauseAtHalfway } = {}) {
 async function goToLevel(level, { restAfter } = {}) {
   const rest = restAfter === undefined ? "" : `&rest=${restAfter}`;
   await send("Page.navigate", {
-    url: `http://127.0.0.1:${PORT}/?level=${level}&seed=${SEED}${rest}`,
+    url: `http://127.0.0.1:${port}/?level=${level}&seed=${SEED}${rest}`,
   });
   await sleep(900);
 }
 
 /** Reload the way a child's grown-up would open it: no level in the URL. */
 async function reopenTheGame() {
-  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?seed=${SEED}` });
+  await send("Page.navigate", { url: `http://127.0.0.1:${port}/?seed=${SEED}` });
   await sleep(900);
 }
 
@@ -2481,7 +2480,7 @@ try {
   await shot("31a-level1-waited-out");
 
   const castForSeed = async (seed) => {
-    await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?level=10&seed=${seed}` });
+    await send("Page.navigate", { url: `http://127.0.0.1:${port}/?level=10&seed=${seed}` });
     await sleep(800);
     return (await animalsOnBoard()).join();
   };
