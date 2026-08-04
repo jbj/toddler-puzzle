@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * The picture scenes: hand-authored SVG artwork for the chapters that cut a
  * picture up rather than dealing an animal.
  *
@@ -29,7 +31,7 @@
  * The rest of the contract is about whether the picture *cuts* well, which is
  * a question about pixels rather than markup: every piece has to have something
  * in it at every grid the level table asks for. `npm run art:check` measures
- * that; `.github/instructions/art.instructions.md` says what to do when it
+ * that; `docs/art.md` says what to do when it
  * fails.
  *
  * Parsed by hand rather than with `DOMParser`, unlike `assets.ts`: the wrapper

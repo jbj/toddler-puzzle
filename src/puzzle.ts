@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * What a kind of puzzle is.
  *
  * `game.ts` is a host, not a rulebook: it owns dragging, settling, sound,

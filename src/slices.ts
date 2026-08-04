@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * Cutting an animal into slices - by clipping, never by cutting.
  *
  * A slice is not a new shape. It is the animal's own artwork, drawn through a

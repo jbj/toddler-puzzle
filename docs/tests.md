@@ -1,9 +1,3 @@
----
-name: "Tests"
-description: "How to write tests against a random deal, and what each suite already covers."
-applyTo: "tests/**"
----
-
 # Tests
 
 ## Writing them
@@ -55,7 +49,7 @@ So, when a check iterates a set it discovered rather than one it was given:
 - Where one number can be cross-checked against another found a different way,
   do that. The shot run's coverage guard compares the levels it parsed against
   the levels the running game shows. See
-  [Guard the sample against the table, rather than shoot all thirty](<../../docs/decisions/Guard the sample against the table, rather than shoot all thirty.md>).
+  [Guard the sample against the table, rather than shoot all thirty](<decisions/Guard the sample against the table, rather than shoot all thirty.md>).
 - Then make it fail on purpose once: break the thing it catches, run it, read
   the message, put it back.
 
@@ -74,13 +68,13 @@ One row per suite; read the test itself for the assertions.
 | --- | --- |
 | `tests/puzzle.test.ts` | Coordinate mapping (letterbox both ways), the drop rule, clamping, box geometry (thickened so neither side is under half the other), the random deal, the shape-match kind, and the `COMPOSED` layouts held to `PROMISES` - on canvas, clear of the tray, on a ground line, never reaching another's place, tray slots never colliding, grabbable, filling any viewport 1:3 to 3:1 within 7% of the fixed canvases. Plus: same cast identical, a fuller board never bigger pieces, portrait more rows, a too-big cast refused not shrunk. |
 | `tests/fit.test.ts` | The sizing search on its own, over plain sizes: packing and the floors, and where the tray goes - the top kept at a tie and at a small side win, the sides taken for a big one or for markedly more room at the same size, never for a smaller puzzle. Plus columns a side, determinism, and a bigger canvas never a smaller play area. |
-| `tests/levels.test.ts` | Every level a buildable spec, dealt fresh at the right size. Uniqueness: level = kind + subject + size, no two rows all three ([A level names what it is made of](<../../docs/decisions/A level names what it is made of.md>)). Narrowing: `PUZZLE_KINDS` names every kind, switched-off levels stepped over by `nextLevel`, resume forward, chapter still ends, finale to the last live level, every kind off still a game. A themed level draws only its theme and tops up a short one not throwing. Warm (`src/warm.ts`) names every kind in level order, wrapping. |
+| `tests/levels.test.ts` | Every level a buildable spec, dealt fresh at the right size. Uniqueness: level = kind + subject + size, no two rows all three ([A level names what it is made of](<decisions/A level names what it is made of.md>)). Narrowing: `PUZZLE_KINDS` names every kind, switched-off levels stepped over by `nextLevel`, resume forward, chapter still ends, finale to the last live level, every kind off still a game. A themed level draws only its theme and tops up a short one not throwing. Warm (`src/warm.ts`) names every kind in level order, wrapping. |
 | `tests/slices.test.ts` | Cells tile the art box; every slice keeps its animal's box, anchor and outline, aims at its one hole, is accepted only on its own animal, and the hole (divided by the clip paths) shows until the last slice. |
 | `tests/polygon.test.ts` | Catalogue geometry (parts inside, non-overlapping, grabbable, congruents identical, spares included) and the swap: a piece is accepted by any free shadow of its shape and no other, a filled shadow refuses dead centre, congruents sit far enough apart, a picture finishes however twins share out (incl. reversed), at most one level has no two parts alike. `openTargets` offers one accepted point per congruent place, dropping filled ones. |
 | `tests/play.test.ts` | Cause-and-effect: no drop accepted anywhere, nothing dealt into `placed`; the goal is at most the things on screen (fewer except peekaboo), never more than a handful, complete only at the goal; ten seconds after the deal every activity is complete untouched (clock reads `Date.now()`; fake timers). Every `play` level names one activity, the first chapter opens on one. |
 | `tests/celebration.test.ts` | Every chapter names a celebration, no two the same, the finale in the last chapter only, `endsChapter` matches the numbering (5, 10, 15, 20, 25, 30), a missing level ends nothing not throws. Interludes: one per puzzle level, none on a touch level that ends no chapter, no two levels running alike, a level always alike, all four used, `WAY_OUT_MS` inside the celebration. |
 | `tests/audio.test.ts` | Vocabulary against a fake `AudioContext` via `useAudioContext`. Hard rule: every exported `play` function is silent when the toggle is off. Plus: each kind and celebration resolves to a distinct phrase, no immediate pitch repeat, no voice over the gain ceiling, only sine or triangle, every pitch on the ladder, 200 pops in a tick within the voice budget and disconnected. One case works the `window` seam so a tab hidden before a resume holds the speakers down. |
-| `tests/progress.test.ts` | Mostly unhappy paths (corrupt record, unknown version, missing level, a browser that throws or refuses writes - resuming via `persists`); a panel-map choice remembered without raising `furthest`; a dropped `rotation` field tolerated ([Rotation mode is not built, and the switch is gone](<../../docs/decisions/Rotation mode is not built, and the switch is gone.md>)); no `kinds` reads as the whole ramp, all-off as all-on. All end playable; none throw. Storage is injected. |
+| `tests/progress.test.ts` | Mostly unhappy paths (corrupt record, unknown version, missing level, a browser that throws or refuses writes - resuming via `persists`); a panel-map choice remembered without raising `furthest`; a dropped `rotation` field tolerated ([Rotation mode is not built, and the switch is gone](<decisions/Rotation mode is not built, and the switch is gone.md>)); no `kinds` reads as the whole ramp, all-off as all-on. All end playable; none throw. Storage is injected. |
 | `tests/scenery.test.ts` | Every level and theme resolves to a backdrop (no quiet meadow fallback); each themed level's markup carries its own colours and none other's; `tray: false` drops the shelf, `sky: false` drops air and distance keeping wash and ground; `src/scenery.ts` (comments stripped) fails if an animal's name appears. |
 | `tests/pictures.test.ts` | Every scene loads and is safe to inline more than once, every table-named scene resolves, an unknown id throws saying which, and the box divides evenly by every grid the table cuts at. |
 | `tests/jigsaw.test.ts` | Two neighbours hold the same curve point for point, one reversed, at every grid (not "within a tolerance"); tiling measured by summing flattened outlines; one tab per axis per piece (never none), shrinking with the cell, borders straight. |
@@ -108,8 +102,8 @@ sample, not all thirty. Screenshots land in `.art/shots/`, with a
 | Idle hint | Driven to "Sooner": a glow arrives with two marks none filled, naming a waiting piece, bright end on the hole and quiet end under the piece within a few per cent, printing measured pixels; a tap removes it, going quiet brings it back, placing removes it for good; a touch level and a celebration never glow; hints go back off after. |
 | Polygon choice | Only the browser proves the host asks `openTargets` not `target`: a tapped shape's hint glows every free shadow that would take it, the count worked from the page (shadows vs piece drawn), both its own and its twin's shadow offered. |
 | Celebrations | All six shot, and all four interludes: two dragged levels differing, a touch level raising none, one answering a finger without moving the game on, the fourth needing level 7. Staged: reduced motion, and the chunk blocked while a level finishes. Balloons hardest: up on level 5 not before, each over a tenth of the board, the screen to itself the first beat while answering a finger, the way onwards arriving and staying, balloons bursting and counted, the sky refilling, the level unchanged, a rotation keeping both. The finale adds several at once and answers a tap on bare sky. |
-| Coverage guard | Reads every kind and chapter from `src/levels.ts` and every celebration from `src/celebration.ts`, records what the game showed, and fails - naming the first covering level - when the table names one no shot reached; it proves the parse saw the whole table first. See [Guard the sample against the table, rather than shoot all thirty](<../../docs/decisions/Guard the sample against the table, rather than shoot all thirty.md>). |
-| Cut edges | On level 21 every tray piece draws its cut line; on finished slices, jigsaw and shatter every placed edge has faded. The clip (a CSS switch on a custom property) is read: a half-built jigsaw cut where it was, each finished board on the wider closing clip, a settle keeping its clip, reduced motion home already (move a class, do not race the animation). Pieces are counted too. See [A placed piece has no edge](<../../docs/decisions/A placed piece has no edge.md>). |
+| Coverage guard | Reads every kind and chapter from `src/levels.ts` and every celebration from `src/celebration.ts`, records what the game showed, and fails - naming the first covering level - when the table names one no shot reached; it proves the parse saw the whole table first. See [Guard the sample against the table, rather than shoot all thirty](<decisions/Guard the sample against the table, rather than shoot all thirty.md>). |
+| Cut edges | On level 21 every tray piece draws its cut line; on finished slices, jigsaw and shatter every placed edge has faded. The clip (a CSS switch on a custom property) is read: a half-built jigsaw cut where it was, each finished board on the wider closing clip, a settle keeping its clip, reduced motion home already (move a class, do not race the animation). Pieces are counted too. See [A placed piece has no edge](<decisions/A placed piece has no edge.md>). |
 | Grab boxes | Measured from rendered artwork: every piece has one covering the drawing without ballooning past it, and a piece grabbed where its artwork is not still comes along and snaps in. |
 
 ## What `npm run audio:check` covers
@@ -136,7 +130,7 @@ human review of a sound change, so put it in the pull request.
 A green run is not evidence of these:
 
 - **The artwork.** `npm run art:check` covers it; see
-  [`art.instructions.md`](art.instructions.md).
+  [`art.md`](art.md).
 - **Whether a sound is the right sound.** The checks prove soft, brief and
   distinct; only a person with a speaker can say more.
 - **Any claim about behaviour under conditions nobody created.** Such a claim

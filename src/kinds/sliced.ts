@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * Sliced animals: one animal arrives in two to four pieces, and the child puts
  * it back together in its own animal-shaped hole.
  *

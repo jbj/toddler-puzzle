@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/navigation.md.
+ *
  * The host the puzzle kinds plug into.
  *
  * This file owns everything that is the same whatever sort of level is being

@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * Themed casts: the vocabulary a level and a piece both speak.
  *
  * A level names a theme (`levels.ts`) and a piece belongs to some (`piece.ts`),

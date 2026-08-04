@@ -95,7 +95,7 @@ thinning the cross-check exists to make loud. The row was restored and the run w
 green again. A guard nobody has watched fail is a guard nobody knows works.
 
 The rule lives in
-[`tests.instructions.md`](../../.github/instructions/tests.instructions.md),
+[`tests.md`](../tests.md),
 with the rest of what the shot run covers. If the game ever does grow past thirty
 levels, or grows a kind, this is the check that will insist the sample grow with
 it instead of quietly leaving the new thing untested.

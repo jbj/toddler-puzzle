@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/layout.md.
+ *
  * Layouts, and every tunable constant behind them.
  *
  * The game is thirty levels long and the board fills up as it goes, so a layout

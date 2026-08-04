@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * Which kind plays a level, and when its code arrives.
  *
  * The level table (`levels.ts`) says what each of the thirty levels is by

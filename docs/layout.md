@@ -1,13 +1,7 @@
----
-name: "Layout and the board"
-description: "How a level's layout is composed for its cast and its screen, the tray, the box a piece is measured by, and the backdrop a theme is played against."
-applyTo: "src/layout.ts,src/fit.ts,src/board.ts,src/scenery.ts,src/piece.ts,src/geometry.ts"
----
-
 # Layout and the board
 
 What the kinds of puzzle are is
-[`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
+[`puzzle-kinds.md`](puzzle-kinds.md).
 
 ## Composing a layout
 
@@ -44,9 +38,9 @@ sizes:
 
 Steps 3 and 4 are why layouts are built when a puzzle starts rather than up
 front. See
-[Generate layouts at stage start](<../../docs/decisions/Generate layouts at stage start.md>)
+[Generate layouts at stage start](<decisions/Generate layouts at stage start.md>)
 and
-[Compose layouts for any cast, rather than tabulating them](<../../docs/decisions/Compose layouts for any cast, rather than tabulating them.md>).
+[Compose layouts for any cast, rather than tabulating them](<decisions/Compose layouts for any cast, rather than tabulating them.md>).
 
 Because room is left for each invariant *before* a size is picked, the
 invariants hold by construction rather than by tuning. `layout.groundLines` says
@@ -64,7 +58,7 @@ rectangles, each with the edge it is lipped along, in two shapes:
   them. `COMPOSITION.controlRoom` keeps the bottom of a gutter clear of the reset
   and grown-ups buttons, in canvas units rather than as a share, because what it
   protects is not a share either. See
-  [Stand a lone picture's pieces in the gutters](<../../docs/decisions/Stand a lone picture's pieces in the gutters.md>).
+  [Stand a lone picture's pieces in the gutters](<decisions/Stand a lone picture's pieces in the gutters.md>).
 
 **The tray belongs at the top**, because down is the easiest direction for a
 small arm to drag, so `takeSides` in `src/fit.ts` makes the gutters earn it: they
@@ -73,7 +67,7 @@ have to buy either `COMPOSITION.gutterGain` (a linear tenth) more slot, or - whe
 wide screen does - that tenth squared in play *area*, and never at the cost of a
 smaller puzzle. More than one column a side matters for the same reason a wide
 screen does: a gutter is capped by its deepest column. See
-[Put the tray where the play area is biggest](<../../docs/decisions/Put the tray where the play area is biggest.md>).
+[Put the tray where the play area is biggest](<decisions/Put the tray where the play area is biggest.md>).
 
 **A tray cell belongs to a piece, not to a position.** `layout.trayCells` maps a
 piece id to its rectangle, cut to that piece's own box rather than to the largest
@@ -115,7 +109,7 @@ large as its aspect ratio allows.
 A board that stops filling the room it was given without sitting on the 2/3
 floor is a regression, as is a tray spending more sand on itself than the pieces
 in it are worth. `tests/picture-board.test.ts` catches both. See
-[Let a picture take the whole board](<../../docs/decisions/Let a picture take the whole board.md>).
+[Let a picture take the whole board](<decisions/Let a picture take the whole board.md>).
 
 ## The box a piece is measured by
 
@@ -153,9 +147,9 @@ home)` asks whether the piece's box, put where the finger let go, covers the
 middle of the place the kind named. A kind says *where* a piece belongs and
 nothing about geometry, so no kind can be more or less forgiving than another.
 See
-[One box measures a piece, and one rule places it](<../../docs/decisions/One box measures a piece, and one rule places it.md>)
+[One box measures a piece, and one rule places it](<decisions/One box measures a piece, and one rule places it.md>)
 and
-[Keep snapping generous and owned](<../../docs/decisions/Keep snapping generous and owned.md>).
+[Keep snapping generous and owned](<decisions/Keep snapping generous and owned.md>).
 A level's `snapForgiveness` grows that box about its centre, between
 `MIN_SNAP_FORGIVENESS` and `MAX_SNAP_FORGIVENESS` - a multiplier rather than a
 size of its own, so no level can be less forgiving than the piece's own box.
@@ -170,7 +164,7 @@ the device, scenery run out to the corners. The scale to device pixels is
 however the screen is shaped. `REFERENCE_VIEWS` keeps the two canvases the game
 used to have (`1000x700`, `700x1180`) because the tests and the measured floor
 tables are written against them, and the rule reproduces both exactly. See
-[The board is composed for the screen it is on](<../../docs/decisions/The board is composed for the screen it is on.md>).
+[The board is composed for the screen it is on](<decisions/The board is composed for the screen it is on.md>).
 
 **A size measured across the board is measured against `spanWidth`, not
 `canvas.width`.** `spanWidth(canvas)` is the width but never more than a
@@ -223,7 +217,7 @@ Adding a theme means adding its `Backdrop`; a theme without one fails
 `tests/scenery.test.ts` rather than falling back silently. A `jigsaw` or
 `shatter` level has no backdrop of any kind. Backgrounds are art, so review a
 change by rendering it in both orientations and looking at it. See
-[A background belongs to the theme](<../../docs/decisions/A background belongs to the theme.md>).
+[A background belongs to the theme](<decisions/A background belongs to the theme.md>).
 
 ## Rules for changing layout
 
@@ -236,7 +230,7 @@ change by rendering it in both orientations and looking at it. See
 - **All layout tunables belong in `src/layout.ts`.**
 - A piece stands on its shape's `anchor`, which for an animal comes from
   `FOOT_LEVEL` in `src/assets.ts`, which comes from `npm run art:check` output -
-  never from the eye. See [`art.instructions.md`](art.instructions.md).
+  never from the eye. See [`art.md`](art.md).
 
 The layout tests are properties, not expected coordinates. Every promise in
 `PROMISES` (`tests/puzzle.test.ts`) is checked against every piece count a level

@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * Polygon scenes: a house, a boat, a rocket, built out of plain coloured
  * shapes dropped into the shadows of a finished picture.
  *

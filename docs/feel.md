@@ -1,23 +1,17 @@
----
-name: "Feel"
-description: "Sound, feedback, the idle hint, resting when nobody plays, drag feel, toddler-proofing, and repeatable runs."
-applyTo: "src/drag.ts,src/audio.ts,src/hint.ts,src/rest.ts,src/pop.ts,src/style.css,index.html"
----
-
 # Feel
 
 Everything around a level that keeps a two-year-old in the game: how it sounds,
 what a landing looks like, the glow that helps a stuck child, going quiet when
 nobody plays, and the drag itself. Moving between levels is in
-[`navigation.instructions.md`](navigation.instructions.md); a level's own rules
-are in [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
+[`navigation.md`](navigation.md); a level's own rules
+are in [`puzzle-kinds.md`](puzzle-kinds.md).
 
 ## Sound
 
 Every sound is synthesised in `src/audio.ts`. No audio files (see the
 no-binary-assets invariant in
-[`product.instructions.md`](product.instructions.md)). See
-[Sounds are data, and the machine listens](<../../docs/decisions/Sounds are data, and the machine listens.md>).
+[`product.md`](product.md)). See
+[Sounds are data, and the machine listens](<decisions/Sounds are data, and the machine listens.md>).
 
 - **One ladder.** `note(degree)` reads a pitch off a C major pentatonic ladder,
   and every pitch in the game comes off it. Do not hard-code a frequency; if a
@@ -73,7 +67,7 @@ no-binary-assets invariant in
   collapse to 1ms (same code path, element ends in place) and the finish button's
   pulse does not start. A floating thing in `src/pop.ts` is the exception - it
   holds still, because collapsing its drift would carry it off screen at once; see
-  [Under reduced motion, a floater holds still](<../../docs/decisions/Under reduced motion, a floater holds still.md>).
+  [Under reduced motion, a floater holds still](<decisions/Under reduced motion, a floater holds still.md>).
   A celebration follows the same rule: the parade stands in a row, a rainbow
   appears without wiping on, a firework bursts without climbing.
 
@@ -82,7 +76,7 @@ no-binary-assets invariant in
 `src/hint.ts` owns the delays, the rule for which piece, and the glow. After a
 stretch with no progress the board glows quietly where the next piece goes -
 silent, never punitive. See
-[A hint points at both ends](<../../docs/decisions/A hint points at both ends.md>).
+[A hint points at both ends](<decisions/A hint points at both ends.md>).
 
 - **It points at both ends.** The target the piece belongs in, brightly, and the
   piece still in the tray, faintly - a lone glow on a hole would not say *which*
@@ -120,7 +114,7 @@ silent, never punitive. See
 is hidden - freezes the whole page: every running animation paused, every
 repeating timer stopped, the speakers put down. A touch, key, wheel, mouse
 crossing the board, or the tab being looked at again undoes all of it. See
-[The game sleeps when nobody is playing](<../../docs/decisions/The game sleeps when nobody is playing.md>).
+[The game sleeps when nobody is playing](<decisions/The game sleeps when nobody is playing.md>).
 
 - **It is a freeze, never a state change.** No level moves, no celebration ends,
   nothing is put away, and every animation resumes from where it stood - which is
@@ -158,7 +152,7 @@ means. Neither is started for a touch level.
   in `src/board.ts`), measured from the artwork at mount and clamped to the
   piece's authored box (slots never overlap), so one piece's grab area cannot
   reach into the next. Do not delete the rectangle. See
-  [Grab a piece anywhere in the box around its artwork](<../../docs/decisions/Grab a piece anywhere in the box around its artwork.md>).
+  [Grab a piece anywhere in the box around its artwork](<decisions/Grab a piece anywhere in the box around its artwork.md>).
 - Pieces are clamped to the canvas by their own bounds (`boxOf(layout, piece)`),
   so one can never be dragged out of reach.
 - A piece settles back with a short animation (`SETTLE_MS`) whether accepted or
@@ -174,7 +168,7 @@ means. Neither is started for a touch level.
   restore a press that returns early because something is notionally still down.
   The rule half (`createDragging`) is pure and covered by `tests/drag.test.ts`.
   See
-  [A drag ends however the finger goes away](<../../docs/decisions/A drag ends however the finger goes away.md>).
+  [A drag ends however the finger goes away](<decisions/A drag ends however the finger goes away.md>).
 - `enableDragging` returns its teardown, which `game.ts` calls when a board is
   replaced; its listeners are on the window.
 - **A re-layout waits for an empty hand.** The board is composed for the box it is
@@ -185,7 +179,7 @@ means. Neither is started for a touch level.
   itself, since the newest finger wins and a drop may be the first half of a
   press. The rebuild is queued a tick later; a hand that filled again defers it
   once more. See
-  [The board is composed for the screen it is on](<../../docs/decisions/The board is composed for the screen it is on.md>).
+  [The board is composed for the screen it is on](<decisions/The board is composed for the screen it is on.md>).
 
 ## Toddler-proofing
 
@@ -205,4 +199,4 @@ Each of these is load-bearing:
 `src/main.ts` reads `?seed=123` and hands `createGame` a seeded random source
 instead of `Math.random`. Without it, every puzzle deals fresh animals. The
 screenshot run uses a seed to compare like with like; see
-[`tests.instructions.md`](tests.instructions.md).
+[`tests.md`](tests.md).

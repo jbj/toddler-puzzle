@@ -6,41 +6,57 @@ levels long and grows as it goes - bubbles to pop and one animal to begin with,
 so the first win comes quickly, then more pieces and more kinds of puzzle - and
 every puzzle is dealt fresh.
 
-Three things are true of every change:
+## Always true
 
 - `npm run verify` is the pre-PR definition of done. Run it; never weaken a check
   to make it pass.
-- The invariants are deliberate and must not be weakened silently. Several look
-  like oversights until you know why they are there.
-- The audience is a two-year-old who cannot read. When a question is open, choose
-  the more forgiving option.
+- The player is a two-year-old who cannot read. When a question is open, choose
+  the more forgiving option that needs less understanding.
+- Product invariants are deliberate and must not be weakened silently. Several
+  look like oversights until you know why they are there.
+- Nothing in `docs/` is loaded automatically. Use your judgement to read the
+  files your task needs; source comments sometimes point at a specific one.
 
-## Which file to read
+## Product guardrails
 
-The detail lives in `.github/instructions/`. A task usually needs one or two of
-these. The ones with an `applyTo` also attach themselves when you touch a file
-they cover, so you may find one already in front of you.
+Read [`docs/product.md`](../docs/product.md) before changing behaviour a player
+would notice. These highest-risk rules belong in every session:
+
+- Draw each piece and its hole from one silhouette. A piece snaps only into its
+  own hole; a wrong drop returns gently. Every kind uses the same generous
+  box-and-middle placement rule, and every target stays large.
+- The child's game moves only forward: no menu, difficulty picker, settings,
+  failure state or score on the play surface. Keep the opening chapter playable
+  by touching, without requiring a drag.
+- Work earns a playable celebration; an ordinary touch interlude does not.
+  Grown-up controls stay behind the two-second hold.
+- Paint no animal into a background. Add no binary assets, runtime dependencies
+  or network requests.
+
+## Which detail to read
+
+Every code change needs [`docs/code.md`](../docs/code.md). Every Markdown change
+needs [`docs/documentation.md`](../docs/documentation.md). Read
+[`docs/tests.md`](../docs/tests.md) when writing or interpreting tests, and
+[`docs/art.md`](../docs/art.md) for animals, scenes or art tooling. For the rest,
+choose the rows that fit the task; a task commonly needs one or two.
 
 | Read | When you are |
 | --- | --- |
-| [`product.instructions.md`](instructions/product.instructions.md) | Changing what the game does: what it is for, the invariants in full, and the tie-breaker for an open question |
-| [`code.instructions.md`](instructions/code.instructions.md) | Working anywhere in the code: definition of done, the scripts, the source map, what a pull request carries |
-| [`docs.instructions.md`](instructions/docs.instructions.md) | Writing any Markdown: which layer a thing belongs in, how a decision record is named, house style |
-| [`art.instructions.md`](instructions/art.instructions.md) | Drawing or reviewing an animal or a scene: the SVG contract, the overhang budget, foot levels, why you have to look at the render |
-| [`puzzle-kinds.instructions.md`](instructions/puzzle-kinds.instructions.md) | Changing a kind of puzzle: the `PuzzleKind` contract, the level table, the kind registry |
-| [`cutting.instructions.md`](instructions/cutting.instructions.md) | Changing how a drawing is cut into pieces: sliced animals, jigsaws, shattered pictures |
-| [`layout.instructions.md`](instructions/layout.instructions.md) | Changing how a board is composed: the tray, the box a piece is measured by, the shape of the canvas, the backdrop |
-| [`navigation.instructions.md`](instructions/navigation.instructions.md) | Changing how the game progresses: levels, chapters, celebrations, resuming, the grown-ups panel |
-| [`feel.instructions.md`](instructions/feel.instructions.md) | Changing how a touch feels: sound, the idle hint, resting, drag feel, toddler-proofing |
-| [`tests.instructions.md`](instructions/tests.instructions.md) | Writing or reading tests: how to test against a random deal, and what each suite already covers |
+| [`docs/product.md`](../docs/product.md) | Changing player-visible behaviour or questioning an invariant |
+| [`docs/code.md`](../docs/code.md) | Working anywhere in code: definition of done, scripts, source map, PR expectations |
+| [`docs/documentation.md`](../docs/documentation.md) | Writing Markdown: layers, decision records, house style |
+| [`docs/art.md`](../docs/art.md) | Drawing or reviewing an animal or scene |
+| [`docs/puzzle-kinds.md`](../docs/puzzle-kinds.md) | Changing a kind, level table or kind registry |
+| [`docs/cutting.md`](../docs/cutting.md) | Cutting drawings into slices, jigsaws or shards |
+| [`docs/layout.md`](../docs/layout.md) | Composing the board, tray, piece box or backdrop |
+| [`docs/navigation.md`](../docs/navigation.md) | Changing levels, celebrations, resuming or the grown-ups panel |
+| [`docs/feel.md`](../docs/feel.md) | Changing sound, hints, rest, dragging or toddler-proofing |
+| [`docs/tests.md`](../docs/tests.md) | Writing or reading tests against fresh deals |
 
-Keep each rule in exactly one of those files. If two of them would both be a
-reasonable home, put it in the more specific one and link from the other.
+Keep each rule in exactly one topic file. If two would both be reasonable, put
+it in the more specific one and link from the other.
 
-## Secondary documentation
-
-[`docs/decisions/`](../docs/decisions/README.md) holds short records of choices
-that are easy to mistake for oversights and "fix". The files above say what the
-rule is; a decision record says why, at more length than a rule can carry. Read
-one when you are about to argue with a rule, or when you are writing a rule that
-needs an argument behind it.
+[`docs/decisions/`](../docs/decisions/README.md) explains why choices that look
+like oversights are deliberate. Read a record when you are about to argue with a
+rule, or when a new rule needs more argument than the topic file can carry.

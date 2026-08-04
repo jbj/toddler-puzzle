@@ -52,7 +52,7 @@ The artifact keeps a check available. A reviewer who doubts an image can open
 the run and compare against screenshots CI produced from the branch itself. Rare
 enough that it should not be automated, available when it matters.
 
-[`.github/instructions/code.instructions.md`](../../.github/instructions/code.instructions.md)
+[`docs/code.md`](../code.md)
 states the obligation plainly for agents, including the two ways of
 getting it wrong that an agent would not otherwise think of: attaching images
 from before the last commit, and committing the images to the repository to

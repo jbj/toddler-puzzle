@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/layout.md.
+ *
  * How the board is divided between the tray and the play area, and how big
  * everything is drawn.
  *
