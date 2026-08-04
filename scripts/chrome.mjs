@@ -14,8 +14,9 @@
  * caller say, so CI does not need a different script.
  */
 import { spawn } from "node:child_process";
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { createConnection } from "node:net";
+import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const CHROME = process.env.CHROME_BIN || "chromium";
@@ -70,7 +71,7 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
   // reporting that a new player does not start on level 1, because it is
   // looking at a browser parked on level 12. Half an hour goes into the wrong
   // question. So say what is actually wrong, once, and stop.
-  if (await somethingAnswersOn(debugPort)) {
+  if (debugPort !== 0 && (await somethingAnswersOn(debugPort))) {
     const browser = await whoIsThere(debugPort);
     console.error(
       `Something is already listening on 127.0.0.1:${debugPort}, which is the ` +
@@ -123,7 +124,14 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
   async function findTarget() {
     for (let attempt = 0; attempt < 60; attempt++) {
       try {
-        const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
+        // Port zero asks Chrome and the operating system to choose together,
+        // without the release-then-bind gap of reserving a free port ourselves.
+        // Chrome writes the answer before exposing the target.
+        const activePort =
+          debugPort === 0
+            ? Number(readFileSync(join(profileDir, "DevToolsActivePort"), "utf8").split("\n")[0])
+            : debugPort;
+        const response = await fetch(`http://127.0.0.1:${activePort}/json/list`);
         const targets = await response.json();
         const page = targets.find((t) => t.type === "page" && t.webSocketDebuggerUrl);
         if (page) return page;
