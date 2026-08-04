@@ -50,16 +50,27 @@ disk. Output is byte-identical to the serial version, passing (88 bytes) and
 failing, plain and `--verbose`. An exception inside a worker still stops the run
 with the same message and the same exit code.
 
+## A full machine found a race in the browser run
+
+Spreading the art check over six CPUs means the machine is genuinely busy while
+the browser run is on it, where before it was half idle. That exposed a race
+that was always there: the browser run read the cut edges of a finished picture
+the instant the last piece landed, and those edges fade over about a third of a
+second rather than vanishing. In one run in fifteen the read caught the fade
+part-way down. The read now waits for the value the check already demanded, and
+still fails on the deadline - the check is the same one, without the stopwatch
+in it. It is fixed alongside, because this change is what made it visible.
+
 ## What it bought, and where it stops
 
 Measured under the machine lock, three runs each, on a twelve-thread laptop, at
-`e2758ad` serial and `0227c7e` parallel:
+`2b29ba6` serial and the same tree with this change on it:
 
 | | serial | parallel |
 | --- | --- | --- |
-| `art:check` alone | 50.9 s | 21.4 s |
-| `art:check` inside `verify` | 72.4 s | 35.4 s |
-| whole `verify` | 87.1 s | 80.8 s |
+| `art:check` alone | 50.3 s | 21.2 s |
+| `art:check` inside `verify` | 70.2 s | 35.8 s |
+| whole `verify` | 86.1 s | 80.7 s |
 
 The check stopped being the critical path, which is the whole of the win: the
 six seconds it gave back are all `verify` had left to give. What the run waits

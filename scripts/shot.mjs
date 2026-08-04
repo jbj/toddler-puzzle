@@ -520,6 +520,21 @@ const cutEdgesOn = (selector) =>
   return { drawn: cuts.length, worst };
 })()`);
 /**
+ * The same reading, once the fade has had its moment. A cut edge on a placed
+ * piece does not vanish, it fades over about a third of a second, so reading it
+ * the instant the last piece lands reads the transition rather than the rule -
+ * and on a machine with the rest of `verify` still to get through, the browser
+ * can be part-way down it. Waits for the value the check already asks for, and
+ * gives up on the deadline, so an edge that never goes still fails and still
+ * says what it was showing.
+ */
+const fadedEdgesOn = (selector, within = 2000) =>
+  waitUntil(
+    () => cutEdgesOn(selector),
+    (edges) => edges.worst === 0,
+    within,
+  );
+/**
  * The other half of that rule: which of its two clips each piece of a cut-up
  * drawing is wearing. A piece is clipped to the line it was cut along while
  * there is still a gap in the drawing, and to the same line spread by a hair
@@ -2192,7 +2207,7 @@ async function runSliced() {
   check("the animal can be put back together", (await placedCount()) === 4);
   // The cut edges are for a slice that is still loose. An assembled animal is
   // an animal, not an animal with a grid over it.
-  const sliceEdges = await cutEdgesOn(".piece.is-placed");
+  const sliceEdges = await fadedEdgesOn(".piece.is-placed");
   check(
     `an assembled animal has no lines across it (${sliceEdges.drawn} edges faded)`,
     sliceEdges.drawn === 4 && sliceEdges.worst === 0,
@@ -2419,7 +2434,7 @@ async function runJigsaw() {
   await solveRemaining();
   check("a jigsaw can be finished", (await placedCount()) === jigsawPieces);
   check("the guide goes once the picture is whole", !(await guideIsShowing()));
-  const jigsawEdges = await cutEdgesOn(".piece.is-placed");
+  const jigsawEdges = await fadedEdgesOn(".piece.is-placed");
   check(
     `a finished jigsaw is a picture, not a grid (${jigsawEdges.drawn} edges faded)`,
     jigsawEdges.drawn === jigsawPieces && jigsawEdges.worst === 0,
@@ -2494,7 +2509,7 @@ async function runFinale() {
   await solveRemaining();
   check("a shatter can be finished", (await placedCount()) === shardCount);
   check("the guide goes once the picture is whole", !(await guideIsShowing()));
-  const shardEdges = await cutEdgesOn(".piece.is-placed");
+  const shardEdges = await fadedEdgesOn(".piece.is-placed");
   check(
     `a mended picture shows none of the breaks (${shardEdges.drawn} edges faded)`,
     shardEdges.drawn === shardCount && shardEdges.worst === 0,
