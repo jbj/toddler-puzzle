@@ -36,7 +36,7 @@ describe("browser concurrency", () => {
       1,
       Math.min(
         availableParallelism() - 1,
-        Math.floor(totalmem() / 2 / (2 * 1024 * 1024 * 1024)),
+        Math.floor(totalmem() / 2 / (1536 * 1024 * 1024)),
         6,
       ),
     );
