@@ -74,9 +74,10 @@ Each of these stops the run with its own message rather than failing later as
 something unrelated. Why they explain themselves is
 [A check explains its own environment, rather than failing as something else](<../../docs/decisions/A check explains its own environment, rather than failing as something else.md>).
 
-- **A browser is already on the port**, usually one left by an interrupted run.
-  The check refuses to attach to a browser it did not start and prints how to
-  stop the old one. Stop it and run again; there is nothing wrong with the code.
+- **Browser ports are never hardcoded.** Each check asks the OS for unused
+  loopback ports, and Chrome reports its own DevTools port through the run's
+  profile. Simultaneous worktrees therefore neither wait for nor attach to one
+  another's browser.
 - **There is no build, or the build is older than the code.** The run serves
   `dist/`. A stale build most often means `npm run build` failed its type-check,
   which type-checks `tests/` too.
