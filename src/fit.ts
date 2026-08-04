@@ -693,6 +693,28 @@ export interface PictureDemand {
 export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
   const { canvas, span, box, grips, drawn, pad } = demand;
   const count = grips.length;
+  const smallestInk = limits.minPieceInk * span;
+  const thinnest = Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height)));
+
+  /**
+   * No fitted slot can exceed the canvas's longer side: `slotFilling` scales the
+   * picture's longer box side onto one dimension of the room, and that room is
+   * inside the canvas. A waiting slot is no larger than the fitted one. If even
+   * that generous ceiling misses either floor, enumerating hundreds of ways to
+   * pack the same impossible cast cannot find a plan - a malformed 400-piece
+   * demand used to spend seconds proving this one tray at a time.
+   */
+  const slotCeiling = Math.max(canvas.width, canvas.height);
+  if (
+    limits.minSlot * span > slotCeiling ||
+    (thinnest > 0 ? smallestInk / thinnest : Infinity) > slotCeiling
+  ) {
+    throw new Error(
+      `${count} pieces of a picture do not fit a ${canvas.width}x${canvas.height} canvas ` +
+        `at a size a toddler could grab.`,
+    );
+  }
+
   const topTrays: TrayPlan[] = [];
   for (let trayRows = 1; trayRows <= count; trayRows++) {
     for (const shelves of shelvings(grips, trayRows, pad)) {
@@ -700,8 +722,6 @@ export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
     }
   }
 
-  const smallestInk = limits.minPieceInk * span;
-  const thinnest = Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height)));
   // Measured on what the child sees of the piece as it waits, drawn small.
   const grabbable = (plan: PicturePlan): boolean =>
     plan.sceneSlot >= limits.minSlot * span && plan.traySlot * thinnest >= smallestInk;

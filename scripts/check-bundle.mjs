@@ -9,9 +9,9 @@
  * sounds had all landed. Every one of those was a good change. Together they
  * were a regression nobody decided on.
  *
- * So this holds the build to four numbers, and prints the table whether it
- * passes or fails, because the point is to make the size visible rather than to
- * catch somebody out:
+ * So this holds the build to four numbers. An ordinary build is silent when the
+ * numbers fit; `--verbose` prints the table when somebody is working on bundle
+ * size, and a failure says which budget moved:
  *
  *   npm run budget          # against the last build
  *   npm run build           # runs it, and fails on it
@@ -25,7 +25,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { createReport } from "./report.mjs";
+
 const REPORT = fileURLToPath(new URL("../.art/bundle.json", import.meta.url));
+const REPORT_NAME = ".art/bundle.json";
+const result = createReport("bundle budget");
 
 /** A kilobyte, counted the way `vite build` counts it, so the two agree. */
 const kB = 1000;
@@ -108,7 +112,8 @@ function readReport() {
     return JSON.parse(readFileSync(REPORT, "utf8"));
   } catch (error) {
     if (error.code === "ENOENT") {
-      console.error(`No bundle report at ${REPORT}.\nRun \`npm run build\` first.`);
+      result.check(REPORT_NAME, "bundle report exists", "missing; run `npm run build` first");
+      result.finish();
       process.exit(1);
     }
     throw error;
@@ -120,7 +125,8 @@ const byFile = new Map(report.files.map((file) => [file.file, file]));
 
 const entry = report.files.find((file) => file.isEntry);
 if (!entry) {
-  console.error("The build produced no entry chunk, which cannot be right.");
+  result.check(REPORT_NAME, "contains an entry chunk", "the build produced none");
+  result.finish();
   process.exit(1);
 }
 
@@ -158,30 +164,32 @@ const pad = (text, width) => text.padStart(width);
 
 function table(title, files) {
   if (files.length === 0) return;
-  console.log(`\n${title}`);
+  result.detail(`\n${title}`);
   for (const file of [...files].sort((a, b) => b.bytes - a.bytes)) {
-    console.log(`  ${file.file.padEnd(34)}${pad(size(file.bytes), 10)}${pad(size(file.gzip), 10)}`);
+    result.detail(
+      `  ${file.file.padEnd(34)}${pad(size(file.bytes), 10)}${pad(size(file.gzip), 10)}`,
+    );
   }
 }
 
 const initialSet = report.files.filter(isInitial);
 const deferred = report.files.filter((file) => !isInitial(file));
 
-console.log("what a child downloads before the first level appears");
+result.detail("what a child downloads before the first level appears");
 table("  loaded first", initialSet);
-console.log(
+result.detail(
   `\n  ${"initial".padEnd(34)}${pad(size(sum(initialSet, "bytes")), 10)}${pad(size(sum(initialSet, "gzip")), 10)}`,
 );
 
 if (deferred.length > 0) {
-  console.log("\nwhat arrives later, warmed while the child is playing");
+  result.detail("\nwhat arrives later, warmed while the child is playing");
   table("  deferred", deferred);
-  console.log(
+  result.detail(
     `\n  ${"deferred".padEnd(34)}${pad(size(sum(deferred, "bytes")), 10)}${pad(size(sum(deferred, "gzip")), 10)}`,
   );
 }
 
-console.log(
+result.detail(
   `\n  ${"total".padEnd(34)}${pad(size(sum(report.files, "bytes")), 10)}${pad(size(sum(report.files, "gzip")), 10)}`,
 );
 
@@ -194,41 +202,41 @@ const measurements = [
   { label: "total, gzipped", used: sum(report.files, "gzip"), budget: BUDGET.totalGzip },
 ];
 
-console.log("");
+result.detail("");
 const over = [];
 for (const { label, used, budget } of measurements) {
   const ok = used <= budget;
   if (!ok) over.push({ label, used, budget });
   const share = Math.round((used / budget) * 100);
-  console.log(
-    `${ok ? "PASS" : "FAIL"}  ${label.padEnd(20)}${pad(size(used), 10)} of ${size(budget)} (${share}%)`,
+  const measurement = `${label.padEnd(20)}${pad(size(used), 10)} of ${size(budget)} (${share}%)`;
+  result.check(
+    REPORT_NAME,
+    measurement,
+    ok ? [] : `${label} is ${size(used - budget)} over ${size(budget)}`,
   );
 }
 
 if (over.length === 0) {
-  console.log("\nWithin budget.");
-  process.exit(0);
+  result.finish("\nWithin budget.");
+} else {
+  // --- what grew -------------------------------------------------------------
+
+  result.detail("\nThe biggest things in the bundle, largest first:");
+  const culprits = over.some(({ label }) => label.startsWith("initial"))
+    ? initialSet
+    : report.files;
+  const modules = culprits
+    .flatMap((file) => file.modules.map((module) => ({ ...module, file: file.file })))
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, CULPRITS);
+  for (const module of modules) {
+    result.detail(`  ${module.id.padEnd(40)}${pad(size(module.bytes), 10)}  in ${module.file}`);
+  }
+  result.detail("  (measured before minification, so good for comparing, not for adding up)");
+
+  result.detail(
+    "\nEither make it smaller, or raise the budget in scripts/check-bundle.mjs and say" +
+      "\nin the pull request what grew and why it earned the space.",
+  );
+  result.finish();
 }
-
-// --- what grew -------------------------------------------------------------
-
-console.log("\nThe biggest things in the bundle, largest first:");
-const culprits = over.some(({ label }) => label.startsWith("initial")) ? initialSet : report.files;
-const modules = culprits
-  .flatMap((file) => file.modules.map((module) => ({ ...module, file: file.file })))
-  .sort((a, b) => b.bytes - a.bytes)
-  .slice(0, CULPRITS);
-for (const module of modules) {
-  console.log(`  ${module.id.padEnd(40)}${pad(size(module.bytes), 10)}  in ${module.file}`);
-}
-console.log("  (measured before minification, so good for comparing, not for adding up)");
-
-console.log(
-  `\n${over.length} budget${over.length === 1 ? "" : "s"} exceeded:\n` +
-    over
-      .map(({ label, used, budget }) => `  ${label} is ${size(used - budget)} over ${size(budget)}`)
-      .join("\n") +
-    "\n\nEither make it smaller, or raise the budget in scripts/check-bundle.mjs and say" +
-    "\nin the pull request what grew and why it earned the space.",
-);
-process.exit(1);
