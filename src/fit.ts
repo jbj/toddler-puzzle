@@ -693,6 +693,34 @@ export interface PictureDemand {
 export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
   const { canvas, span, box, grips, drawn, pad } = demand;
   const count = grips.length;
+  const refuse = (): never => {
+    throw new Error(
+      `${count} pieces of a picture do not fit a ${canvas.width}x${canvas.height} canvas ` +
+        `at a size a toddler could grab.`,
+    );
+  };
+
+  const smallestInk = limits.minPieceInk * span;
+  const thinnest = Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height)));
+  const slotCeiling = Math.max(canvas.width, canvas.height);
+  const minimumTraySlot = thinnest > 0 ? smallestInk / thinnest : Infinity;
+  const minimumGripArea =
+    minimumTraySlot ** 2 * grips.reduce((area, grip) => area + grip.width * grip.height, 0);
+
+  // A fitted or waiting slot cannot exceed the canvas's longer side. At the
+  // smallest grabbable waiting slot, every grip must also fit without overlap
+  // inside the canvas. Both bounds give the tray every advantage - no padding
+  // and no room reserved for the picture - so missing either proves that the
+  // exhaustive search cannot find a plan. See
+  // docs/decisions/Refuse an impossible picture before searching.md.
+  if (
+    limits.minSlot * span > slotCeiling ||
+    minimumTraySlot > slotCeiling ||
+    minimumGripArea > canvas.width * canvas.height
+  ) {
+    refuse();
+  }
+
   const topTrays: TrayPlan[] = [];
   for (let trayRows = 1; trayRows <= count; trayRows++) {
     for (const shelves of shelvings(grips, trayRows, pad)) {
@@ -700,8 +728,6 @@ export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
     }
   }
 
-  const smallestInk = limits.minPieceInk * span;
-  const thinnest = Math.min(...drawn.map((ink) => Math.max(ink.width, ink.height)));
   // Measured on what the child sees of the piece as it waits, drawn small.
   const grabbable = (plan: PicturePlan): boolean =>
     plan.sceneSlot >= limits.minSlot * span && plan.traySlot * thinnest >= smallestInk;
@@ -728,10 +754,7 @@ export function fitPicture(demand: PictureDemand, limits: Limits): PicturePlan {
   const sides = sideTrays.length > 0 ? bestOf(sideTrays) : null;
   if (!top) {
     if (sides) return sides;
-    throw new Error(
-      `${count} pieces of a picture do not fit a ${canvas.width}x${canvas.height} canvas ` +
-        `at a size a toddler could grab.`,
-    );
+    return refuse();
   }
   if (sides && takeSides(top.sceneSlot, sides.sceneSlot, top.room, sides.room, limits.gutterGain)) {
     return sides;

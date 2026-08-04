@@ -62,6 +62,7 @@ import {
   recipeFor,
 } from "./slices.mjs";
 import { magick, requireArtTools, rsvg } from "./tools.mjs";
+import { createReport } from "./report.mjs";
 
 requireArtTools();
 
@@ -77,10 +78,10 @@ const PER_UNIT = SAMPLE / ART_BOX;
 
 mkdirSync(scratch, { recursive: true });
 
-let failures = 0;
+const report = createReport("art check");
+let currentFile = "scripts/check-art.mjs";
 const check = (label, ok, detail) => {
-  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${ok || !detail ? "" : ` - ${detail}`}`);
-  if (!ok) failures++;
+  report.check(currentFile, label, ok ? [] : detail || label);
 };
 
 // --- rendering ------------------------------------------------------------
@@ -360,8 +361,13 @@ function checkSliceRecipes(id, silhouettePng, drawnPng) {
         faults.push(`slice ${index} draws somewhere else than its declared ink`);
       }
     }
-    check(label, faults.length === 0, faults.length === 0 ? "" : `${faults.join("; ")}`);
-    if (faults.length > 0) console.log(`      ${suggestedRecipe(silhouette, drawn, count)}`);
+    check(
+      label,
+      faults.length === 0,
+      faults.length === 0
+        ? ""
+        : `${faults.join("; ")}; ${suggestedRecipe(silhouette, drawn, count)}`,
+    );
   }
 }
 
@@ -371,7 +377,8 @@ const files = readdirSync(animalsDir)
   .filter((f) => f.endsWith(".svg"))
   .sort();
 if (files.length === 0) {
-  console.error("No animal SVGs found in", animalsDir);
+  report.check("src/assets/animals", "contains animal SVGs", "none found");
+  report.finish();
   process.exit(1);
 }
 
@@ -385,7 +392,8 @@ const glances = new Map();
 for (const file of files) {
   const id = basename(file, ".svg");
   const svg = readFileSync(join(animalsDir, file), "utf8");
-  console.log(`\n${id}`);
+  currentFile = `src/assets/animals/${file}`;
+  report.section(`\n${id}`);
 
   const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1];
   check(
@@ -520,14 +528,16 @@ function checkScenes() {
   const shatters = shatterCountsInLevels();
 
   if (scenes.length === 0) {
-    console.log("\nscenes");
+    currentFile = "src/assets/scenes";
+    report.section("\nscenes");
     check("there are scenes to cut up", false, `nothing in ${scenesDir}`);
     return;
   }
 
   for (const scene of scenes) {
     const svg = readFileSync(scene.path, "utf8");
-    console.log(`\n${scene.id} (scene)`);
+    currentFile = `src/assets/scenes/${basename(scene.path)}`;
+    report.section(`\n${scene.id} (scene)`);
 
     const viewBox = svg.match(/viewBox="([^"]*)"/)?.[1];
     const wanted = `0 0 ${PICTURE_WIDTH} ${PICTURE_HEIGHT}`;
@@ -599,7 +609,8 @@ function checkScenes() {
     }
   }
 
-  console.log("");
+  report.detail("");
+  currentFile = "src/pictures.ts";
   const ids = scenes.map((scene) => scene.id);
   const undrawn = registered.filter((id) => !ids.includes(id));
   check(
@@ -621,7 +632,8 @@ function checkScenes() {
 checkScenes();
 
 const orphans = registered.filter((id) => !files.includes(`${id}.svg`));
-console.log("");
+report.detail("");
+currentFile = "src/assets.ts";
 check(
   "every registered animal has artwork",
   orphans.length === 0,
@@ -642,9 +654,10 @@ for (const theme of themeNames) {
     }
   }
   scored.sort((one, other) => other.score - one.score);
-  console.log(`\n${theme} (${cast.length}: ${cast.join(", ")})`);
+  report.section(`\n${theme} (${cast.length}: ${cast.join(", ")})`);
   const tooAlike = scored.filter((pair) => pair.score > SIMILARITY_LIMIT);
   for (const { a, b, score } of tooAlike) {
+    currentFile = `src/assets/animals/${a}.svg, src/assets/animals/${b}.svg`;
     check(
       `${a} and ${b} read differently`,
       false,
@@ -654,6 +667,7 @@ for (const theme of themeNames) {
   }
   const closest = scored[0];
   if (tooAlike.length === 0) {
+    currentFile = "src/assets.ts";
     check(
       closest
         ? `every pair reads differently (closest: ${closest.a}/${closest.b} at ` +
@@ -680,8 +694,4 @@ if (process.env.ART_SIMILARITY_REPORT) {
   for (const { pair, score } of all) console.log(`  ${percent(score).padStart(4)}  ${pair}`);
 }
 
-if (failures > 0) {
-  console.error(`\n${failures} check(s) failed.`);
-  process.exit(1);
-}
-console.log("\nAll art checks passed.");
+report.finish("\nAll art checks passed.");
