@@ -24,7 +24,7 @@
     "docs:check": "node scripts/check-docs.mjs",
     "shot": "node scripts/shot.mjs",
     "shot:sheet": "node scripts/shot-sheet.mjs",
-    "verify": "npm run lint && npm run format:check && npm run docs:check && npm run build && npm run test && npm run audio:check && npm run art:check && npm run shot"
+    "verify": "node scripts/verify.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
