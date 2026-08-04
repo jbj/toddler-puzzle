@@ -766,18 +766,34 @@ function createPool(size) {
   const idle = [];
   const workers = [];
   let deliver = null;
-  let fail = null;
+  let reportFailure = null;
+  let failure = null;
+
+  // Held rather than only raised: a worker that dies while the pool is between
+  // rounds has nobody to tell, and a round that then waits for its answer waits
+  // for ever. The next round refuses to start instead.
+  const failed = (error) => {
+    failure ??= error;
+    reportFailure?.(failure);
+  };
 
   for (let index = 0; index < size; index++) {
     const worker = new Worker(fileURLToPath(import.meta.url));
     worker.on("message", (message) => deliver?.(worker, message));
-    worker.on("error", (error) => fail?.(error));
+    worker.on("error", failed);
+    worker.on("exit", (code) => {
+      if (code !== 0) failed(new Error(`An art check worker stopped with code ${code}.`));
+    });
     workers.push(worker);
     idle.push(worker);
   }
 
   const run = (units) =>
     new Promise((resolve, reject) => {
+      if (failure) {
+        reject(failure);
+        return;
+      }
       const results = new Array(units.length);
       let next = 0;
       let finished = 0;
@@ -795,18 +811,28 @@ function createPool(size) {
         worker.postMessage({ index, unit: units[index] });
       };
 
-      fail = reject;
+      reportFailure = reject;
       deliver = (worker, message) => {
         results[message.index] = message;
         finished++;
         give(worker);
-        if (finished === units.length) resolve(results);
+        if (finished === units.length) {
+          deliver = null;
+          reportFailure = null;
+          resolve(results);
+        }
       };
 
       while (idle.length > 0 && next < units.length) give(idle.pop());
     });
 
-  return { run, close: () => Promise.all(workers.map((worker) => worker.terminate())) };
+  return {
+    run,
+    close: async () => {
+      reportFailure = null;
+      await Promise.all(workers.map((worker) => worker.terminate()));
+    },
+  };
 }
 
 async function main() {
