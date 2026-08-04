@@ -9,12 +9,9 @@
 - Never claim a change works without running the check that proves it.
 - Never weaken, skip or delete a check to make it pass. If a check is wrong,
   change it separately and say why.
-- `verify` schedules its tasks against a CPU and a browser budget
-  (`scripts/concurrency.mjs`) and tells each one its share in `VERIFY_CPU_SLOTS`
-  and `VERIFY_BROWSER_SLOTS`. **A check that spreads itself over workers asks
-  there**, rather than counting the machine's cores itself; charged one slot and
-  taking six, it starves whatever was promised the rest. See
-  [Measure the artwork in parallel, and report it in order](<../../docs/decisions/Measure the artwork in parallel, and report it in order.md>).
+- **A check that spreads itself over workers takes its slot count from
+  `VERIFY_CPU_SLOTS`**, never from the machine's own core count. See
+  [Measure the artwork in parallel, and report it in order](<decisions/Measure the artwork in parallel, and report it in order.md>).
 - Then wait for `gh pr checks`. **A green run locally is not the same evidence
   as a green run in CI**: CI is slower, and that difference has exposed real
   faults - a gap in a celebration, a button catching taps meant for what was
