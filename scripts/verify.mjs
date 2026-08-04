@@ -75,11 +75,19 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
     },
     {
       name: "test",
-      // Vitest's worker pool owns the CPUs while it runs. Both bounded and
-      // unbounded overlap reproduced the five-second guard in the separate
-      // sixty-animal layout test, on machines where an exclusive run passed.
-      // Paying its short cost before art and Chrome is slower than overlap and
-      // keeps a real check deterministic.
+      // Vitest brings its own worker pool, so it does not use the CPUs it is
+      // given so much as take the ones that are there. It is charged the whole
+      // machine to keep it out of everything else's way: overlapping it was
+      // measured on twelve cores and on four, and the arrangements that failed
+      // all failed the same real check for want of CPU. That costs the run
+      // seven to ten seconds and is worth paying.
+      //
+      // Read the record before revisiting this. The measurement behind it
+      // predates both the sixty-animal test getting faster and the art check
+      // growing from one core to most of them, so overlap may now be safe - but
+      // the rows that showed it was not are expired rather than wrong, and
+      // rerunning them proves nothing.
+      // See docs/decisions/The checks share the machine, and the tests get it to themselves.md.
       run: packageTool("vitest", "vitest.mjs", "run"),
       needs: [],
       inputs: [],
@@ -118,10 +126,11 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
       run: script("shot.mjs"),
       needs: ["bundle"],
       inputs: [],
-      // The browser pool is a memory ceiling, while Chrome also needs most of
-      // the CPUs left after one Vitest worker and the serial art check. Keeping
-      // the two budgets separate lets three browser workers share two CPUs on
-      // CI without pretending they cost no CPU at all.
+      // The browser pool is a memory ceiling, while Chrome also needs CPU. The
+      // two budgets are kept separate so that three browser workers can share
+      // two CPUs on CI without pretending they cost no CPU at all. What is left
+      // goes to the art check, so that between them the two long tasks are the
+      // machine and neither has to guess what the other took.
       slots: { cpu: shotCpuSlots, browser: browserCapacity },
     },
   ];
