@@ -50,7 +50,8 @@
   deal.** `--level <n> --seed <s>` prints the cast, measured piece boxes, holes,
   tray cells and canvas; `--eval "<expression>"` has the geometry, layout,
   level, piece and cutter exports already in scope and lists them after a bad
-  expression.
+  expression. `--help` names the rest, including the shapes of screen you can
+  ask a deal for.
 - `npm run art` and `npm run art:check` need `rsvg-convert` and ImageMagick,
   which are not npm packages: `sudo apt-get install librsvg2-bin imagemagick`.
 - `npm run shot` and `npm run audio:check` need a headless Chrome binary and
