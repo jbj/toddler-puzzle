@@ -40,7 +40,7 @@
 | `npm run art:slices` | Re-measures where every animal is cut and rewrites `src/slice-recipes.json`. Run after redrawing an animal |
 | `npm run audio` | Renders every sound offline and draws `.art/audio/sheet.png` |
 | `npm run audio:check` | Renders every sound through a real `OfflineAudioContext` in Chromium and measures the samples |
-| `npm run shot` | Drives real drags in headless Chromium and screenshots the result (build first) |
+| `npm run shot` | Drives real drags in headless Chromium and screenshots the result (build first); `-- --only=<pattern>` runs just the checks whose names match, for iterating on one without paying for the whole minute. It skips the coverage assertion, so a partial run that passes is a working tool and not proof |
 | `npm run shot:sheet` | Rebuilds `.art/shots/contact-sheet.png` from the last run's screenshots |
 
 ## Running locally
