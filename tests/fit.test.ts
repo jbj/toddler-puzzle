@@ -419,6 +419,45 @@ describe("a picture board", () => {
     expect(fitPicture(demand, LIMITS)).toEqual(fitPicture(demand, LIMITS));
   });
 
+  it("keeps the same plan at the last square cut this board can hold", () => {
+    const plan = fitPicture(
+      pictureDemand({ width: 700, height: 700 }, 36, { width: 1, height: 1 }),
+      LIMITS,
+    );
+    // This pins the last fitting cut so an early refusal cannot quietly move
+    // the boundary; a changed plan means that boundary must be justified again.
+    expect(plan).toEqual({
+      tray: {
+        place: "top",
+        shelves: [
+          { pieces: [0, 4, 8, 12, 16, 20, 24, 28, 32], span: 1.81, height: 1 / 6 },
+          { pieces: [1, 5, 9, 13, 17, 21, 25, 29, 33], span: 1.81, height: 1 / 6 },
+          { pieces: [2, 6, 10, 14, 18, 22, 26, 30, 34], span: 1.81, height: 1 / 6 },
+          { pieces: [3, 7, 11, 15, 19, 23, 27, 31, 35], span: 1.81, height: 1 / 6 },
+        ],
+      },
+      sceneSlot: 441,
+      traySlot: 294,
+      room: 295251.04000000004,
+    });
+  });
+
+  it("refuses the first square cut past that boundary", () => {
+    expect(() =>
+      fitPicture(pictureDemand({ width: 700, height: 700 }, 37, { width: 1, height: 1 }), LIMITS),
+    ).toThrow(/a size a toddler could grab/);
+  });
+
+  it("refuses when the grips alone cannot share the canvas", () => {
+    const count = 474;
+    const demand = pictureDemand({ width: 700, height: 700 }, count, { width: 1, height: 1 });
+    const drawn = Array.from({ length: count }, () => ({ width: 0.1, height: 0.01 }));
+    const grips = Array.from({ length: count }, () => ({ width: 0.1, height: 0.05 }));
+    expect(() => fitPicture({ ...demand, drawn, grips }, LIMITS)).toThrow(
+      /a size a toddler could grab/,
+    );
+  });
+
   it("refuses a picture cut into more pieces than the board can hold", () => {
     expect(() =>
       fitPicture(pictureDemand({ width: 700, height: 700 }, 400, { width: 1, height: 1 }), LIMITS),
