@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/feel.md.
+ *
  * Pointer-based drag engine, in two halves: the rule, and the wiring.
  *
  * `createDragging` is the rule, and it is pure - pieces, points and boxes, no

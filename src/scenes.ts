@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * The polygon scenes: a house, a boat, a rocket, drawn out of plain shapes.
  *
  * Every shape here is *generated* from a form and a size rather than drawn by

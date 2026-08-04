@@ -1,9 +1,3 @@
----
-name: "Artwork"
-description: "The animal SVG contract, the scene contract for pictures that get cut up, the overhang budget, foot levels, reviewing the render, and how to add either."
-applyTo: "src/assets/animals/*.svg,src/assets/scenes/*.svg,src/assets.ts,src/pictures.ts,src/slice-recipes.json,scripts/check-art.mjs,scripts/pictures.mjs,scripts/slices.mjs,scripts/slice-recipes.mjs,scripts/preview.mjs"
----
-
 # Artwork
 
 Two kinds of art live here: **animals** (one hand-authored SVG each) and
@@ -74,7 +68,7 @@ enforced by `art:check`:
 - An **untagged** mark outside the outline fails.
 - A **tagged** one is allowed, up to **3% of the animal's area** (both tails sit
   near 1.5%). The check reports the share. See
-  [Budget overhang instead of banning it](<../../docs/decisions/Budget overhang instead of banning it.md>).
+  [Budget overhang instead of banning it](<decisions/Budget overhang instead of banning it.md>).
 
 ### Foot level
 
@@ -89,7 +83,7 @@ the drawing sits inside the 240x240 box - left, top, width, height in art units,
 stroke and tagged overhang included. That box is the one the game measures a
 piece by: grab, hold on canvas, tray cell, and drop closeness ([One box measures
 a piece, and one rule places
-it](<../../docs/decisions/One box measures a piece, and one rule places it.md>)).
+it](<decisions/One box measures a piece, and one rule places it.md>)).
 Take it from `npm run art:check`, never by eye; the check insists the declared
 box contains all of the drawing and refuses a box more than two art units larger
 than the drawing on any side.
@@ -99,7 +93,7 @@ than the drawing on any side.
 Levels 11-15 and 27 hand a child one animal in two to four slices. A slice is
 the animal's artwork seen through a `clipPath`, never a shape cut out of it
 ([Slices are clipped, not
-cut](<../../docs/decisions/Slices are clipped, not cut.md>)), so the SVG
+cut](<decisions/Slices are clipped, not cut.md>)), so the SVG
 contract is unchanged - but every animal has to survive being cut three ways.
 
 `npm run art:slices` rasterises each silhouette, searches straight cuts arranged
@@ -123,7 +117,7 @@ the artwork. Never hand-edit a recipe to pass a check.
 
 A slice keeps the whole animal's box, so the table also records what each slice
 draws, and the tray and grab box read that instead
-([`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md)). That recorded
+([`puzzle-kinds.md`](puzzle-kinds.md)). That recorded
 box is a few units bigger than the pixels, and the check asks whether it
 *covers* the drawing rather than matches it: two rasterisers (CI's librsvg,
 ImageMagick) disagree by a couple of units, and the box is the child's grab box,
@@ -148,7 +142,7 @@ distinct in both. When it fails, fix the silhouette, not the number:
 - **Or move it to another theme,** if it belongs there anyway.
 
 See [Check silhouettes for distinctness at a
-glance](<../../docs/decisions/Check silhouettes for distinctness at a glance.md>).
+glance](<decisions/Check silhouettes for distinctness at a glance.md>).
 `ART_SIMILARITY_REPORT=1 npm run art:check` prints every pair, most alike first.
 
 ### The grab box
@@ -156,7 +150,7 @@ glance](<../../docs/decisions/Check silhouettes for distinctness at a glance.md>
 Each piece gets an invisible rectangle around its drawing so a toddler can grab
 the gap between a giraffe's legs. It is measured at runtime - nothing to declare
 - so a deliberate overhang enlarges the grab area a little, harmless within
-budget. See [`navigation.instructions.md`](navigation.instructions.md).
+budget. See [`navigation.md`](navigation.md).
 
 ## Adding an animal
 
@@ -183,7 +177,7 @@ budget. See [`navigation.instructions.md`](navigation.instructions.md).
    the floor, not the finish line.
 8. Every animal in `ANIMAL_IDS` is in the draw, so the new one turns up on its
    own. To change what a level holds, see
-   [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md).
+   [`puzzle-kinds.md`](puzzle-kinds.md).
 
 ## Picture scenes
 
@@ -223,7 +217,7 @@ judges every scene, and `tests/pictures.test.ts` calls `loadPictures()` and
 asserts the whole catalogue parses and is safe to inline. Both run in `npm run
 verify`. Do not add an eager parse back. See [A chapter is warmed before it is
 needed, not fetched when it
-is](<../../docs/decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
+is](<decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
 
 ### Every piece has to have something in it
 
@@ -239,7 +233,7 @@ bird, a bush, a stone. Do not lower the floor, do not add a gradient (it passes
 nothing here), do not add fine detail. A big empty sky, sea or field is the
 enemy; spread the interest to the corners. See [Insist that every piece of a
 picture has something in
-it](<../../docs/decisions/Insist that every piece of a picture has something in it.md>).
+it](<decisions/Insist that every piece of a picture has something in it.md>).
 
 ### Adding a scene
 

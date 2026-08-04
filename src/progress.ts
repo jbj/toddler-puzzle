@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/navigation.md.
+ *
  * Where the child got to, and what a grown-up has set.
  *
  * Thirty levels is more than one sitting, so the game remembers the level it

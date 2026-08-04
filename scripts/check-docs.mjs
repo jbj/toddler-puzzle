@@ -1,11 +1,10 @@
 /**
  * Documentation cross-reference check.
  *
- * The prose in this repository is deliberately split: a short index in
- * `.github/copilot-instructions.md` over topic files in `.github/instructions`,
- * with `docs/decisions` behind them. That only works while the references
- * between them resolve, and a stale one is invisible - nothing goes red when a
- * file is renamed out from under a link. So this checks them mechanically:
+ * The prose in this repository is deliberately split: an always-loaded brief
+ * in `.github/copilot-instructions.md`, deliberately selected topic files in
+ * `docs`, and decision records behind them. That only works while the references
+ * and routing comments resolve, so this checks them mechanically:
  *
  *   - every relative Markdown link points at a file or directory that exists;
  *   - every `#anchor` matches a heading in the file it points at;
@@ -14,12 +13,11 @@
  *     that rots: "See AGENTS.md" is not a link, so a link checker walks past
  *     it. A decision record is named as a sentence and cited by that name, so
  *     the mention scanner has to cope with spaces;
- *   - the index lists every instructions file and no others;
- *   - every `applyTo` glob matches at least one path, so renaming a source file
- *     cannot quietly orphan the instructions that govern it;
- *   - no instructions file is over its byte ceiling. Every byte of them is
- *     spent from a coding agent's context window before the work starts, so
- *     they are budgeted like the bundle is.
+ *   - the brief lists every topic file;
+ *   - every source directive has the canonical form and names an indexed topic,
+ *     and every locally routed topic is used by at least one source file;
+ *   - no topic file is over its byte ceiling. A selected topic still has to
+ *     leave room in a coding agent's context for the work itself.
  *
  *   npm run docs:check
  *
@@ -37,7 +35,7 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replace(/[/\\]$/, "")
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", ".art"]);
 
 const INDEX = ".github/copilot-instructions.md";
-const INSTRUCTIONS_DIR = ".github/instructions";
+const TOPICS_DIR = "docs";
 const DECISIONS_DIR = "docs/decisions";
 const report = createReport("documentation check");
 
@@ -196,90 +194,97 @@ for (const file of markdown) {
   check(file, file, [...new Set(problems)]);
 }
 
-// --- the index and the instructions it indexes -----------------------------
+// --- the brief and the topic files it indexes -------------------------------
 
-const instructionFiles = paths
-  .filter((path) => path.startsWith(`${INSTRUCTIONS_DIR}/`) && path.endsWith(".instructions.md"))
+const topicFiles = paths
+  .filter(
+    (path) =>
+      path.startsWith(`${TOPICS_DIR}/`) &&
+      !path.slice(TOPICS_DIR.length + 1).includes("/") &&
+      path.endsWith(".md"),
+  )
   .sort();
 
 {
   const problems = [];
   if (!exists(INDEX)) {
     problems.push(`${INDEX} is missing`);
-  } else if (instructionFiles.length === 0) {
-    problems.push(`${INSTRUCTIONS_DIR} holds no instructions files`);
+  } else if (topicFiles.length === 0) {
+    problems.push(`${TOPICS_DIR} holds no topic files`);
   } else {
     const index = sources.get(INDEX);
-    for (const file of instructionFiles) {
-      if (!index.includes(file.slice(INSTRUCTIONS_DIR.length + 1))) {
-        problems.push(`${file} exists but the index does not mention it`);
-      }
+    for (const file of topicFiles) {
+      if (!index.includes(file)) problems.push(`${file} exists but the brief does not mention it`);
     }
   }
-  check(INDEX, `${INDEX} lists every instructions file`, problems);
+  check(INDEX, `${INDEX} lists every topic file`, problems);
 }
 
-// --- applyTo globs ---------------------------------------------------------
+// --- source comments that route to specific topics --------------------------
 
-/** Only the glob syntax `applyTo` uses: `**`, `*`, and `?`. */
-function globToRegExp(glob) {
-  let pattern = "";
-  for (let i = 0; i < glob.length; i++) {
-    const char = glob[i];
-    if (char === "*") {
-      if (glob[i + 1] === "*") {
-        pattern += ".*";
-        i++;
-      } else {
-        pattern += "[^/]*";
-      }
-    } else if (char === "?") {
-      pattern += "[^/]";
-    } else {
-      pattern += char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+const SOURCE_ROUTED_TOPICS = new Set([
+  "docs/cutting.md",
+  "docs/feel.md",
+  "docs/layout.md",
+  "docs/navigation.md",
+  "docs/puzzle-kinds.md",
+]);
+const COMMENTABLE = /\.(?:[cm]?[jt]s|css|html|svg)$/;
+const DIRECTIVE_TARGET = String.raw`(docs/[a-z0-9-]+\.md)`;
+const CODE_DIRECTIVE = new RegExp(
+  String.raw`^\s*(?://|/\*+|\*)\s*Before changing this file, read ${DIRECTIVE_TARGET}\.\s*(?:\*/)?\s*$`,
+);
+const MARKUP_DIRECTIVE = new RegExp(
+  String.raw`^\s*<!--\s*Before changing this file, read ${DIRECTIVE_TARGET}\.\s*-->\s*$`,
+);
+const usedRoutes = new Set();
+const directiveProblems = [];
+const index = sources.get(INDEX) ?? "";
+
+for (const file of paths.filter((path) => COMMENTABLE.test(path))) {
+  const text = readFileSync(join(root, file), "utf8");
+  const markup = /\.(?:html|svg)$/.test(file);
+  const commentStart = markup ? /^\s*<!--/ : /^\s*(?:(?:\/\/|\/\*+|\*)\s*)/;
+  const matcher = markup ? MARKUP_DIRECTIVE : CODE_DIRECTIVE;
+  for (const [lineNumber, line] of text.split(/\r?\n/).entries()) {
+    if (!commentStart.test(line) || !line.includes("Before changing this file")) continue;
+    const match = matcher.exec(line);
+    if (!match) {
+      directiveProblems.push(`${file}:${lineNumber + 1} is not a canonical source directive`);
+      continue;
     }
-  }
-  return new RegExp(`^${pattern}$`);
-}
-
-function frontMatter(text) {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(text);
-  if (!match) return {};
-  const fields = {};
-  for (const [, key, value] of match[1].matchAll(/^([A-Za-z]+):\s*(.*)$/gm)) {
-    fields[key] = value.trim().replace(/^["'](.*)["']$/, "$1");
-  }
-  return fields;
-}
-
-for (const file of instructionFiles) {
-  const problems = [];
-  const { applyTo } = frontMatter(sources.get(file));
-  if (applyTo === undefined) {
-    // Deliberate for an index-only file: no applyTo means never attached
-    // automatically, only pulled in on purpose.
-    check(file, `${file} (no applyTo; index-only)`, problems);
-    continue;
-  }
-  for (const glob of applyTo.split(",").map((part) => part.trim())) {
-    if (glob === "") continue;
-    const matcher = globToRegExp(glob);
-    if (!paths.some((path) => matcher.test(path))) {
-      problems.push(`applyTo glob "${glob}" matches nothing in the repository`);
+    const target = match[1];
+    if (!SOURCE_ROUTED_TOPICS.has(target)) {
+      directiveProblems.push(
+        `${file}:${lineNumber + 1} names ${target}, which is routed from the brief`,
+      );
+      continue;
     }
+    if (!topicFiles.includes(target)) {
+      directiveProblems.push(`${file}:${lineNumber + 1} names missing topic ${target}`);
+      continue;
+    }
+    if (!index.includes(target)) {
+      directiveProblems.push(`${file}:${lineNumber + 1} names unindexed topic ${target}`);
+      continue;
+    }
+    usedRoutes.add(target);
   }
-  check(file, `${file} applyTo`, problems);
 }
 
-// --- how much context the instructions cost --------------------------------
+for (const topic of SOURCE_ROUTED_TOPICS) {
+  if (!usedRoutes.has(topic)) directiveProblems.push(`${topic} has no source directive`);
+}
+check("docs", "source directives route to indexed topics", directiveProblems);
+
+// --- how much context the documentation costs -------------------------------
 
 /**
- * Bytes stand in for tokens. Everything in an instructions file is spent from a
- * coding agent's context window before the work starts, so the primary layer is
- * budgeted the way the bundle is: a ceiling that may be raised deliberately and
- * never quietly. The index is held tighter because its job is to be one screen.
+ * Bytes stand in for tokens. The brief is spent on every call, and a topic file
+ * should stay focused enough to read deliberately without crowding the work out.
+ * Both have ceilings that may be raised deliberately and never quietly.
  */
-// Raised 2026-08-03, 16 -> 17 kB, for `tests.instructions.md`, which arrived at
+// Raised 2026-08-03, 16 -> 17 kB, for `docs/tests.md`, which arrived at
 // 16284 bytes and then had to describe a celebration after every level rather
 // than after every fifth: a second tier of them in the unit suite, four
 // interludes and two staged conditions in the shot run. The prose was cut back
@@ -292,7 +297,7 @@ const INDEX_CEILING = 4 * 1024;
 {
   const problems = [];
   const rows = [];
-  for (const file of [INDEX, ...instructionFiles]) {
+  for (const file of [INDEX, ...topicFiles]) {
     // A missing index is already reported above, as a sentence rather than a
     // stack trace. Do not turn it into one here.
     if (!sources.has(file)) continue;
@@ -308,14 +313,14 @@ const INDEX_CEILING = 4 * 1024;
     }
   }
   for (const row of rows) report.detail(`        ${row}`);
-  check(".github/instructions", "instructions files are within their context budget", problems);
+  check("docs", "documentation files are within their context budget", problems);
   if (problems.length > 0) {
     report.detail(`
         Ways under the ceiling, in order of preference: move the argument into a
         decision record and link it; delete what the code already says; turn a
-        run of prose into a table; split the file along its applyTo. Raising the
-        ceiling is allowed when a file has genuinely grown a new responsibility,
-        and is a change to argue for rather than to slip in.`);
+        run of prose into a table; split a topic with independent responsibilities.
+        Raising the ceiling is allowed when a file has genuinely grown a new
+        responsibility, and is a change to argue for rather than to slip in.`);
   }
 }
 

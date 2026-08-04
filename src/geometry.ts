@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/layout.md.
+ *
  * Pure geometry helpers.
  *
  * Everything the game reasons about happens in a "logical" coordinate space

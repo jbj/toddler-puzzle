@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * Cutting a picture into interlocking jigsaw pieces.
  *
  * Two rules run through the whole file, and both are the same rule the animals

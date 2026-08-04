@@ -1,4 +1,7 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ * Before changing this file, read docs/feel.md.
+ *
  * The pop engine: a big soft thing that floats, and bursts the instant it is
  * touched.
  *

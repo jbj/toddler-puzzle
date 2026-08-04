@@ -1,17 +1,11 @@
----
-name: "Navigation"
-description: "How the game moves between levels, how a chapter and the game end, coming back to it, and the grown-up panel."
-applyTo: "src/game.ts,src/celebrate.ts,src/celebration.ts,src/grownups.ts,src/progress.ts,src/main.ts"
----
-
 # Navigation
 
 The shell around the puzzle: getting from one level to the next, how a chapter
 and the game end, resuming, and the one panel a grown-up can open. What a level
 holds is elsewhere - see
-[`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md). The feel of a
+[`puzzle-kinds.md`](puzzle-kinds.md). The feel of a
 level - sound, sparkles, the hint, drag, rest - is in
-[`feel.instructions.md`](feel.instructions.md).
+[`feel.md`](feel.md).
 
 ## Forward only
 
@@ -26,7 +20,7 @@ level - sound, sparkles, the hint, drag, rest - is in
   `src/levels.ts` wraps).
 - No menu, difficulty picker, settings, failure state or score on the play
   surface - putting one there weakens an invariant. See
-  [Keep the game moving forward](<../../docs/decisions/Keep the game moving forward.md>).
+  [Keep the game moving forward](<decisions/Keep the game moving forward.md>).
 - A grown-up shortens the ramp only by switching a kind off (panel below); the
   table is never edited and nothing is added to the play surface. Levels of an
   off kind are stepped over. `nextLevel`, `endsChapter`, `playableFrom` and
@@ -34,7 +28,7 @@ level - sound, sparkles, the hint, drag, rest - is in
   and answer about the game actually in play. `src/game.ts` reads the setting
   when it needs it rather than copying it, so a switch moved mid-level is
   answered by the button at that level's end. See
-  [A grown-up can take a kind of puzzle out](<../../docs/decisions/A grown-up can take a kind of puzzle out.md>).
+  [A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
 - The six dots by the reset button (`buildChapterDots` in `src/board.ts`) are one
   per chapter, filled up to the chapter in play. They are an indicator, not a
   control: they carry `pointer-events: none`. Do not make them tappable.
@@ -79,9 +73,9 @@ Level 5 is touched too and keeps its chapter moment, because that one marks the
 end of five levels rather than covering a seam.
 
 See
-[A celebration is played, and it ends by itself](<../../docs/decisions/A celebration is played, and it ends by itself.md>)
+[A celebration is played, and it ends by itself](<decisions/A celebration is played, and it ends by itself.md>)
 and
-[A celebration between every level](<../../docs/decisions/A celebration between every level.md>).
+[A celebration between every level](<decisions/A celebration between every level.md>).
 
 - **Never made of what the finished board is made of.** The puzzle stays on
   screen to be admired, so anything the celebration shares with it arrives as a
@@ -89,7 +83,7 @@ and
   animals, and deals its walkers from the animals the board is *not* holding
   (`paradeCast`). Check what a chapter's fifth level leaves on screen before
   hanging a celebration on it. See
-  [A celebration is not made of the board](<../../docs/decisions/A celebration is not made of the board.md>).
+  [A celebration is not made of the board](<decisions/A celebration is not made of the board.md>).
 - **Played, not watched.** Everything answers a finger in the tick it lands.
 - **Not a level and not a `PuzzleKind`.** No pieces, targets, difficulty or table
   row. It copies the shape of `PuzzleKind.play`: handed a layer, answers the
@@ -134,7 +128,7 @@ The level in play is remembered in `localStorage` and the next visit resumes
 there. `src/progress.ts` owns the record - current level, furthest reached, and
 the grown-up settings - and `startPuzzle` in `src/game.ts` is the one place that
 tells it which level is in play. Re-dealing the same level writes nothing. See
-[Remember where the child stopped](<../../docs/decisions/Remember where the child stopped.md>).
+[Remember where the child stopped](<decisions/Remember where the child stopped.md>).
 
 - **Storage failing is not an error.** iPad Safari in private browsing throws on
   the mere mention of `localStorage`. Every failure - throwing, disabled, full,
@@ -157,7 +151,7 @@ tells it which level is in play. Re-dealing the same level writes nothing. See
   since been switched off.
 - **No `rotation` setting**: the feature was dropped, so the field and switch went
   with it. See
-  [Rotation mode is not built, and the switch is gone](<../../docs/decisions/Rotation mode is not built, and the switch is gone.md>).
+  [Rotation mode is not built, and the switch is gone](<decisions/Rotation mode is not built, and the switch is gone.md>).
 - **`STORAGE_VERSION` is not bumped for a field coming or going.** Each field is
   read on its own and an unknown one is passed over, so a record written before
   `kinds` reads as the whole ramp and one written while `rotation` existed still
@@ -167,7 +161,7 @@ tells it which level is in play. Re-dealing the same level writes nothing. See
 
 The one part of the game not for the child (`src/grownups.ts`): a map of the
 thirty levels, the switches, and the only reset in the game. See
-[Put the settings behind a two-second hold](<../../docs/decisions/Put the settings behind a two-second hold.md>).
+[Put the settings behind a two-second hold](<decisions/Put the settings behind a two-second hold.md>).
 
 - **The button is visible and says "Grown-ups".** Not a secret gesture, and must
   not become one.
@@ -194,7 +188,7 @@ thirty levels, the switches, and the only reset in the game. See
   held on. Switching off the kind under the child moves them to the next level in
   play. The map keeps all thirty squares, fades the skipped ones, and they stay
   pressable. See
-  [A grown-up can take a kind of puzzle out](<../../docs/decisions/A grown-up can take a kind of puzzle out.md>).
+  [A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
 - **Reset asks twice**, and is the only place progress can be cleared.
 - **Every option does something.** A switch for sound, a choice of idle-hint
   timing, and a switch per kind. `npm run shot` reads the option labels and checks

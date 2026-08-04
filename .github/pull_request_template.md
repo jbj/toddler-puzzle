@@ -26,6 +26,6 @@ as your word. Say so if you could not produce them.
 
 Working through the API and unable to attach a file? Say that here and link the
 puzzle-screenshots artifact from this branch's CI run instead. See
-.github/instructions/code.instructions.md.
+docs/code.md.
 -->
 

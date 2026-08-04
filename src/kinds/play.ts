@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * Cause and effect: touch a thing, a thing happens.
  *
  * The first chapter's other levels ask for a drag, and dragging is genuinely

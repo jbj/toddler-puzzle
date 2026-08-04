@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * Shatter: a hand-drawn picture broken into irregular shards, and put back
  * together in the frame it came out of.
  *

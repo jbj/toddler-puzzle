@@ -26,7 +26,7 @@ failure is a pixel wide.
 This game already has an answer to exactly this question. An animal and the hole
 it fills are drawn from **one** `#silhouette` path, used twice, which is why a
 piece cannot drift out of alignment with its hole
-([`product.instructions.md`](../../.github/instructions/product.instructions.md)).
+([`product.md`](../product.md)).
 A slice of an animal is the animal's own artwork through a clip path, so two
 slices mesh along their shared edge because it *is* one edge
 ([Slices are clipped, not cut](<Slices are clipped, not cut.md>)).

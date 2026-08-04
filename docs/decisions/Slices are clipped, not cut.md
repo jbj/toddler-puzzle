@@ -23,7 +23,7 @@ seam.
 
 The third is the invariant this whole game is built on: the piece and its hole
 are drawn from one path
-([`product.instructions.md`](../../.github/instructions/product.instructions.md)),
+([`product.md`](../product.md)),
 so a piece cannot drift out of alignment with the hole it fills. A cut slice has
 no hole of its own to be aligned with. It has a quarter of one.
 

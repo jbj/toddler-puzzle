@@ -5,11 +5,12 @@ A record here explains a choice that is easy to mistake for an oversight and
 and with no ceremony.
 
 These are the **secondary** layer of this project's documentation. The primary
-layer is the instruction files indexed by
-[`.github/copilot-instructions.md`](../../.github/copilot-instructions.md):
-those say what the rule is, in the place you will be working. A record says why,
-at more length than a rule can carry. Read one when you are about to argue with
-a rule, or when you are writing a rule that needs an argument behind it.
+layer is the topic files mapped by
+[`.github/copilot-instructions.md`](../../.github/copilot-instructions.md).
+Those say what the rule is; an agent chooses the ones its task needs. A record
+says why, at more length than a rule can carry. Read one when you are about to
+argue with a rule, or when you are writing a rule that needs an argument behind
+it.
 
 ## Naming
 
@@ -20,7 +21,7 @@ the same words as the record's `#` heading - "A hint points at both ends",
 Link one from Markdown with the destination in angle brackets, because the name
 has spaces in it:
 
-    [A hint points at both ends](<../../docs/decisions/A hint points at both ends.md>)
+    [A hint points at both ends](<A hint points at both ends.md>)
 
 From a source comment or a workflow, write the path as plain text:
 `See docs/decisions/A hint points at both ends.md.`

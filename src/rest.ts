@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/feel.md.
+ *
  * Rest: what the game does when nobody is playing it.
  *
  * A board left alone used to go on costing frames forever. The idle hint's glow

@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * Shape-match: drop each piece onto the matching hole in the landscape.
  *
  * The original game, and the first implementation of `PuzzleKind`. Everything

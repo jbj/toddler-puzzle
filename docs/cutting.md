@@ -1,14 +1,8 @@
----
-name: "Cutting a drawing up"
-description: "The kinds made by cutting one drawing into pieces: sliced animals, jigsaws and shattered pictures, and the edge they share."
-applyTo: "src/kinds/sliced.ts,src/kinds/jigsaw.ts,src/kinds/shatter.ts,src/slices.ts,src/jigsaw.ts,src/shatter.ts,src/picture-pieces.ts,src/cut.ts,src/pictures.ts"
----
-
 # Cutting a drawing up
 
 Three of the six kinds are one drawing in several pieces. The contract they
-implement is [`puzzle-kinds.instructions.md`](puzzle-kinds.instructions.md); the
-drawings themselves are [`art.instructions.md`](art.instructions.md).
+implement is [`puzzle-kinds.md`](puzzle-kinds.md); the
+drawings themselves are [`art.md`](art.md).
 
 **Cutting is always clipping.** A piece is the original markup inside a
 `<g clip-path>`, never a redrawn shape, so one drawing serves every cut and two
@@ -21,7 +15,7 @@ boolean library - there are no runtime dependencies and nothing here needs one.
 arriving in two to four pieces, each assembled in its own animal-shaped hole.
 
 - `src/slices.ts` clips the 240x240 art box with a few half-planes. See
-  [Slices are clipped, not cut](<../../docs/decisions/Slices are clipped, not cut.md>).
+  [Slices are clipped, not cut](<decisions/Slices are clipped, not cut.md>).
 - **Every slice keeps the animal's box, anchor and outline**, so one scale and
   one origin assemble them by construction.
 - The hole is cut once from the animal's own silhouette and stays visible under a
@@ -30,7 +24,7 @@ arriving in two to four pieces, each assembled in its own animal-shaped hole.
   being built.
 - **Where the cuts go is measured, not chosen**: `npm run art:slices` searches
   offline and writes `src/slice-recipes.json`, `npm run art:check` re-judges what
-  is committed. The contract is [`art.instructions.md`](art.instructions.md).
+  is committed. The contract is [`art.md`](art.md).
 
 ### A cut edge belongs to a piece that is still loose
 
@@ -44,7 +38,7 @@ pale hairline. The wider clip waits for the last piece to *land* - `.cut-art` in
 still wearing `is-settling`. `SLICE_OVERLAP` and `PICTURE_OVERLAP` differ because
 a scene is flat and opaque while an animal's art is translucent. None of it is a
 fudge to tidy away. See
-[A placed piece has no edge](<../../docs/decisions/A placed piece has no edge.md>).
+[A placed piece has no edge](<decisions/A placed piece has no edge.md>).
 
 ## Jigsaws
 
@@ -58,7 +52,7 @@ to the twelve pieces of 4x3, rebuilt in the frame it came out of. The cutter is
   Reversing an edge reorders its points and recomputes none of them. Generating
   each piece on its own and hoping the tabs line up is the mistake the file exists
   to make impossible:
-  [Every cut is made once](<../../docs/decisions/Every cut is made once.md>).
+  [Every cut is made once](<decisions/Every cut is made once.md>).
 - **A scene must be safe to inline many times over** - no ids, no outward
   references - which `npm run art:check` enforces.
 - **The picture stays under the empty frame**, dimmed, with every cut drawn over
@@ -83,7 +77,7 @@ to the twelve pieces of 4x3, rebuilt in the frame it came out of. The cutter is
 the two picture kinds, and that is the point: **every shard is a different
 shape, so a child can match by outline** rather than by what is drawn on it. A
 partition whose shards all look alike has lost the kind. See
-[Cut a picture into shards that are things to hold](<../../docs/decisions/Cut a picture into shards that are things to hold.md>).
+[Cut a picture into shards that are things to hold](<decisions/Cut a picture into shards that are things to hold.md>).
 
 `src/shatter.ts` **splits by half-planes, recursively** - never Voronoi, whose
 near neighbours give slivers and whose even ones give blobs. A convex polygon

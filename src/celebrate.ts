@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/navigation.md.
+ *
  * Reward feedback: the sparkles, and the big button in the now-empty tray that
  * leads on to the next puzzle - which arrives `WAY_OUT_MS` after the level ends
  * rather than at once, so there is a moment between one puzzle and the next.
