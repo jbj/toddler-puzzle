@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build && npm run budget",
     "budget": "node scripts/check-bundle.mjs",
     "preview": "vite preview",
+    "probe": "node scripts/probe.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
