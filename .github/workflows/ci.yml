@@ -55,7 +55,7 @@ jobs:
         run: npm ci
 
       - name: Verify
-        run: npm run verify
+        run: npm run verify -- --no-cache
 
       # Kept as an artifact rather than posted into the PR: producing it needs no
       # more than the read-only token this job already holds. The screenshots a
