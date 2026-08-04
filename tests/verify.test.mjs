@@ -49,6 +49,17 @@ describe("the verify runner", () => {
     expect(mostActive).toBe(3);
   });
 
+  it("charges worker pools to the CPU budget", () => {
+    const fourCore = verifyTasks(4, 3);
+
+    expect(fourCore.find(({ name }) => name === "test")?.slots.cpu).toBe(1);
+    expect(fourCore.find(({ name }) => name === "art:check")?.slots.cpu).toBe(1);
+    expect(fourCore.find(({ name }) => name === "shot")?.slots).toEqual({
+      cpu: 2,
+      browser: 3,
+    });
+  });
+
   it.each(tasks.map(({ name }) => [name]))("fails when %s alone fails", async (failedName) => {
     const results = await runTasks(tasks, {
       cpuSlots: capacities.cpu,

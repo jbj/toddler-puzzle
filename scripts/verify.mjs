@@ -37,11 +37,7 @@ const CHEAP_TASKS = new Set(["typecheck", "lint", "format:check", "docs:check"])
 const VERBOSE_TASKS = new Set(["docs:check", "budget", "art:check"]);
 
 export function verifyTasks(cpuCapacity, browserCapacity) {
-  // Art is a long stream of rasteriser subprocesses. Giving it a larger weight
-  // on a large machine leaves the first few seconds to the cheap diagnostics,
-  // so a formatting failure can stop the run before art begins; on CI it still
-  // leaves room for the browser and other work.
-  const artSlots = Math.min(cpuCapacity, Math.max(2, cpuCapacity - 4));
+  const shotCpuSlots = Math.min(browserCapacity, Math.max(1, cpuCapacity - 2));
   return [
     {
       name: "typecheck",
@@ -73,14 +69,14 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
     },
     {
       name: "test",
-      // Vitest owns the CPU pool while its worker pool runs. The impossible-fit
-      // cases now refuse before searching, so its workers are useful again; the
-      // full weight is what stops the runner from double-counting them beside
-      // rasterisers or Chrome.
-      run: packageTool("vitest", "vitest.mjs", "run"),
+      // The impossible-fit cases now refuse before searching, so Vitest no
+      // longer needs isolation from the other checks. One worker keeps its CPU
+      // cost explicit and small enough to overlap the new parallel shot run;
+      // the suite remains well short of the browser critical path.
+      run: packageTool("vitest", "vitest.mjs", "run", "--maxWorkers=1"),
       needs: [],
       inputs: [],
-      slots: { cpu: cpuCapacity, browser: 0 },
+      slots: { cpu: 1, browser: 0 },
     },
     {
       name: "bundle",
@@ -108,14 +104,18 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
       run: script("check-art.mjs"),
       needs: [],
       inputs: [],
-      slots: { cpu: artSlots, browser: 0 },
+      slots: { cpu: 1, browser: 0 },
     },
     {
       name: "shot",
       run: script("shot.mjs"),
       needs: ["bundle"],
       inputs: [],
-      slots: { cpu: 1, browser: browserCapacity },
+      // The browser pool is a memory ceiling, while Chrome also needs most of
+      // the CPUs left after one Vitest worker and the serial art check. Keeping
+      // the two budgets separate lets three browser workers share two CPUs on
+      // CI without pretending they cost no CPU at all.
+      slots: { cpu: shotCpuSlots, browser: browserCapacity },
     },
   ];
 }
@@ -290,7 +290,7 @@ export function formatReport(results, capacities, { verbose = false } = {}) {
     if (failed.length === 0) return "Verify passed.\n";
     const lines = [];
     for (const result of failed) {
-      lines.push(`FAIL  ${result.name}`);
+      lines.push(`FAIL  ${result.name} (${duration(result.durationMs)})`);
       const output = result.output.trimEnd();
       if (output) lines.push(output);
       const fix = FIX_COMMANDS.get(result.name);
