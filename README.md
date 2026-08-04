@@ -30,11 +30,11 @@ headless Chrome run that plays the game through and screenshots it.
 ## Documentation
 
 Everything else - the invariants, the art contract, the source map, how to add
-an animal, what each check covers - is in
-[`.github/copilot-instructions.md`](.github/copilot-instructions.md), which is
-an index over the short topic files in
-[`.github/instructions/`](.github/instructions). It is written for coding agents,
-but a human contributor wants the same things, so start there.
+an animal, what each check covers - starts in
+[`.github/copilot-instructions.md`](.github/copilot-instructions.md). It is a
+small working brief and a map to the topic files in [`docs/`](docs/). Choose the
+detail the task needs; none of it is loaded automatically. It is written for
+coding agents, but a human contributor wants the same things, so start there.
 
 [`docs/decisions/`](docs/decisions/README.md) is the secondary layer: short
 records of choices that are easy to mistake for oversights, kept for when you

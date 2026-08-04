@@ -1,9 +1,11 @@
 /**
+ * Before changing this file, read docs/feel.md.
+ *
  * Every sound the game makes.
  *
  * All of it is synthesised with the Web Audio API - there are no audio files to
  * load and nothing that can fail to download; see the no-binary-assets
- * invariant in `product.instructions.md`.
+ * invariant in `docs/product.md`.
  *
  * Thirty levels, six puzzle kinds and nine celebrations need more than four
  * tones, and a game a child plays every day is worse for a sound it hears too

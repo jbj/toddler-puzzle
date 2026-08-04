@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/layout.md.
+ *
  * What a puzzle piece is, independent of where it came from.
  *
  * The engine - layout, board, drag, game - knows only this: a piece has an

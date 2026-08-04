@@ -7,7 +7,7 @@ launch the game fullscreen, with no address bar or tab strip for a two-year-old
 to poke. That part is unambiguous and worth having. The icon that goes with it
 is not.
 
-`product.instructions.md` states an invariant: the project has no binary assets.
+`docs/product.md` states an invariant: the project has no binary assets.
 The art is hand-authored SVG and the sound is synthesised, so there is nothing
 to download and nothing to fail to load. A committed PNG would be the first
 binary in the tree, and the invariant is deliberate.

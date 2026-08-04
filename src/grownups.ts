@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/navigation.md.
+ *
  * The one part of this game that is not for the child.
  *
  * Thirty levels and a difficulty option need somebody to be able to steer, and

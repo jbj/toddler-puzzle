@@ -70,7 +70,7 @@ poke them.
 
 ## Consequences
 
-- The rule is written into `.github/instructions/navigation.instructions.md`
+- The rule is written into `docs/navigation.md`
   under "The end of a level", where it is the first thing to check before
   hanging a new celebration on a chapter - and the reason every interlude is
   made of paper and air rather than of animals.

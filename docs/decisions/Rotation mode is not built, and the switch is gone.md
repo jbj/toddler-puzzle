@@ -53,7 +53,7 @@ animals were the only pieces it clearly worked for, which is a narrow return for
 a change to the engine everything else depends on.
 
 Set against that, the tie-breaker in
-[`product.instructions.md`](../../.github/instructions/product.instructions.md):
+[`product.md`](../product.md):
 when a question is open, choose whatever is more forgiving. A press that
 sometimes turns a piece the child was trying to move is not the forgiving
 option, and the harder game rotation offers was never the point of this one.

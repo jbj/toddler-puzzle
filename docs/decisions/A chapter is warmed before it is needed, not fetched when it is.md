@@ -128,7 +128,7 @@ max-age=600`; so a reload ten minutes after the last one needs the network, and
 without a service worker there is nothing to be done about that. Splitting did
 not weaken this. It did not improve it either.
 
-So the invariant in `product.instructions.md` should be read as what it says -
+So the invariant in `docs/product.md` should be read as what it says -
 no binary assets, no runtime dependencies, nothing fetched from anywhere else -
 and **not** as a promise that the game runs offline. It does not. Claiming
 otherwise in a decision record is how a hope becomes a fact somebody later

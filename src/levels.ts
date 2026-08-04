@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * The thirty levels, and the deal.
  *
  * This is the one file that tunes the difficulty curve. A level is a record

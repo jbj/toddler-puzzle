@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/layout.md.
+ *
  * The background landscape, generated from a Layout.
  *
  * This is drawn in code rather than shipped as a fixed-size SVG so that both
@@ -21,7 +23,7 @@
  * behind it.
  *
  * Three rules hold across all of them, and
- * `.github/instructions/puzzle-kinds.instructions.md` states them:
+ * `docs/puzzle-kinds.md` states them:
  *
  *  - **no animal is ever painted into a background.** Every animal in the game
  *    is a piece a child may be asked to place, and one already standing in the

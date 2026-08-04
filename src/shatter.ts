@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * Shattering a picture: cutting it into irregular convex shards.
  *
  * The other way of cutting a scene up. A jigsaw cuts rows and columns, so every

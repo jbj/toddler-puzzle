@@ -1,14 +1,8 @@
----
-name: "Puzzle kinds"
-description: "The PuzzleKind contract the host plugs into, the thirty-level table, the kinds that are not cut from a drawing, and the registry."
-applyTo: "src/kinds/registry.ts,src/kinds/play.ts,src/kinds/shape-match.ts,src/kinds/polygon.ts,src/puzzle.ts,src/levels.ts,src/scenes.ts,src/themes.ts,src/warm.ts,src/pop.ts"
----
-
 # Puzzle kinds
 
-How a level is laid out is [`layout.instructions.md`](layout.instructions.md).
+How a level is laid out is [`layout.md`](layout.md).
 How a drawing is cut into pieces - sliced animals, jigsaws, shattered pictures -
-is [`cutting.instructions.md`](cutting.instructions.md).
+is [`cutting.md`](cutting.md).
 
 ## The host and the kind
 
@@ -34,10 +28,10 @@ the optional `openTargets`, `settle` and `play`.
   implement the other**: every equally-right place, one point each, never empty
   for an unplaced piece, so the idle hint can glow all of them rather than naming
   one of several right answers. See
-  [A hint points at both ends](<../../docs/decisions/A hint points at both ends.md>).
+  [A hint points at both ends](<decisions/A hint points at both ends.md>).
 - A kind cannot opt out of forgiveness: a refused drop drifts gently back to the
   tray with a soft tone, never off screen. See
-  [`product.instructions.md`](product.instructions.md).
+  [`product.md`](product.md).
 
 ## The level table
 
@@ -48,7 +42,7 @@ them (the same number except where one thing is cut up), the `snapForgiveness`,
 and optionally a `theme` and `options`.
 
 - Tuning the game is editing that one file. Treat it as the interface it is:
-  [Put the whole difficulty ramp in one table](<../../docs/decisions/Put the whole difficulty ramp in one table.md>).
+  [Put the whole difficulty ramp in one table](<decisions/Put the whole difficulty ramp in one table.md>).
 - The table says *what* a level is, never *which* pieces: the cast is dealt at
   random when the puzzle starts (`dealPieces`), which is what lets `?seed=` replay
   a level exactly while two plays are otherwise different.
@@ -57,14 +51,14 @@ and optionally a `theme` and `options`.
   of the cast and reshuffled rather than throwing - a level that will not start is
   worse than a level with a stray penguin in it. Two animals in one theme must
   read differently at a glance, which `npm run art:check` enforces; see
-  [`art.instructions.md`](art.instructions.md).
+  [`art.md`](art.md).
 - **A level is its kind, its subject and its size, and no two levels are all
   three.** The subject is what the row names - `activity`, `theme`,
   `options.scene`, `options.shapePicture` - so a reader can check the thirty are
   thirty different puzzles by looking down the file, and
   `tests/levels.test.ts` fails on a duplicate. The same picture at a different
   size is a different puzzle; at the same size it is a level nobody chose. See
-  [A level names what it is made of](<../../docs/decisions/A level names what it is made of.md>).
+  [A level names what it is made of](<decisions/A level names what it is made of.md>).
 - `options.scene` and `options.shapePicture` are two keys because they name two
   catalogues - a hand-drawn `.svg` in `src/pictures.ts` that gets cut up, versus
   parts built in `src/scenes.ts`. The art check reads the table for `scene` to
@@ -75,7 +69,7 @@ and optionally a `theme` and `options`.
   it) and `EnabledKinds` is what was left on; every function that walks the table
   takes an optional `EnabledKinds` and treats an absent one - or an all-off record
   - as all of them. See
-  [A grown-up can take a kind of puzzle out](<../../docs/decisions/A grown-up can take a kind of puzzle out.md>).
+  [A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
 
 ## Pictures out of shapes
 
@@ -99,7 +93,7 @@ names come along without anybody making a lesson of them.
   a bijection. Congruence is geometry alone (`signatureOf`); mirrored forms
   deliberately do not match; a scene must paint congruent parts identically or a
   swap would change the picture. Read this before touching the kind:
-  [Two shapes the same are the same piece](<../../docs/decisions/Two shapes the same are the same piece.md>).
+  [Two shapes the same are the same piece](<decisions/Two shapes the same are the same piece.md>).
 - The same rule reaches the idle hint through `openTargets`: a piece with four
   congruent petals free glows at all four, and the set shrinks as its twins fill
   up.
@@ -147,7 +141,7 @@ Four rules, and they are the level rather than polish:
   with no point, so the host looks again without sparkling at a finger that was
   not there. It ends nothing else. The deadline is stamped on the *puzzle* when it
   is dealt, so turning the tablet hands out no second clock. See
-  [Ask a touch level for a handful, and let the child out anyway](<../../docs/decisions/Ask a touch level for a handful, and let the child out anyway.md>).
+  [Ask a touch level for a handful, and let the child out anyway](<decisions/Ask a touch level for a handful, and let the child out anyway.md>).
 - **The answer is immediate.** `pointerdown`, not click, and nothing waits for an
   animation. An animation may run *after* the answer.
 
@@ -162,13 +156,13 @@ Also:
   floater's drift, hit target and removal; `popBurst` is the burst alone. Under
   `prefers-reduced-motion` a floater does not drift at all rather than collapsing
   to a millisecond, which would leave an empty sky:
-  [Under reduced motion, a floater holds still](<../../docs/decisions/Under reduced motion, a floater holds still.md>).
+  [Under reduced motion, a floater holds still](<decisions/Under reduced motion, a floater holds still.md>).
 - An activity level is still dealt a cast and given a layout - bubbles never
   draws its animals - because the layout is composed around a cast. Its backdrop
   is the ordinary landscape with `tray: false`; `alive` also passes `sky: false`
   so the scenery leaves the sun and clouds to the kind.
 - Chapter 1 alternates touch and drag on purpose:
-  [Open the game with something to touch](<../../docs/decisions/Open the game with something to touch.md>).
+  [Open the game with something to touch](<decisions/Open the game with something to touch.md>).
 
 ## The kind registry
 
@@ -176,7 +170,7 @@ Also:
 are built, so it either returns the kind or throws: no fallback, and an id that
 is not in `PuzzleKindId` does not compile. The stand-in scaffold came down when
 the last kind landed
-([Play an unbuilt kind as a stand-in](<../../docs/decisions/Play an unbuilt kind as a stand-in.md>)).
+([Play an unbuilt kind as a stand-in](<decisions/Play an unbuilt kind as a stand-in.md>)).
 
 - **Adding a kind** is one entry in `LOADERS` and one in `PUZZLE_KINDS`
   (`src/levels.ts`), and the levels that named it start playing it - with a
@@ -190,7 +184,7 @@ the last kind landed
   waits. Nothing loads on demand: `src/warm.ts` fetches every kind during play,
   so a level seam is a resolved promise. A new kind needs a `LOADERS` entry and
   nothing else. See
-  [A chapter is warmed before it is needed, not fetched when it is](<../../docs/decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
+  [A chapter is warmed before it is needed, not fetched when it is](<decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
 - **Never put a retry loop around a chunk that failed to load.** A browser
   remembers a failed dynamic import and answers every later ask with the same
   rejection without going near the network. The only ways back are a different URL

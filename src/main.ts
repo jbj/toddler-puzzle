@@ -1,3 +1,5 @@
+// Before changing this file, read docs/navigation.md.
+
 import "./style.css";
 import { loadAnimalShapes } from "./assets";
 import { createGame } from "./game";

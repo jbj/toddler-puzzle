@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/puzzle-kinds.md.
+ *
  * Pulling the rest of the game in while the child plays the part they have.
  *
  * The bundle is split by kind (`kinds/registry.ts`), and the celebration that

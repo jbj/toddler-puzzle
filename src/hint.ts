@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/feel.md.
+ *
  * The idle hint: after a stretch with nothing happening, a gentle glow where
  * the piece the child last touched wants to go.
  *
@@ -15,7 +17,7 @@
  * per-kind knowledge in here at all: an animal's hole, the whole animal a slice
  * belongs to, the shadow a polygon piece is aimed at *now*, a jigsaw piece's
  * place in the picture. The same path drawn at the piece's tray position is the
- * other end of the hint. See the invariant in `product.instructions.md`.
+ * other end of the hint. See the invariant in `docs/product.md`.
  *
  * **Two ends, because one end is ambiguous.** A glow across the board says
  * something goes here; it does not say what. A pair says "this one, there", and

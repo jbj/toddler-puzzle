@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * A cut-up picture as pieces: the frame, and one clipped piece per cell.
  *
  * The half the two picture chapters share. A jigsaw cuts rows and columns

@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * How a piece cut out of a bigger drawing is drawn: the clips that cut it out,
  * and the white edge along the cut.
  *

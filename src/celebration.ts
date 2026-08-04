@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/navigation.md.
+ *
  * What happens when a level ends, when a chapter ends, and when the game does.
  *
  * Thirty levels that all end with the same four-note fanfare and the same

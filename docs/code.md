@@ -1,9 +1,3 @@
----
-name: "Code maintenance"
-description: "Definition of done, the npm scripts, where each source file lives, and what a pull request has to carry."
-applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js,vite.config.ts"
----
-
 # Code maintenance
 
 ## Definition of done
@@ -32,7 +26,7 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
   `scripts/check-bundle.mjs`; `npm run budget -- --verbose` prints them. Raising
   one is allowed; raising one quietly is not. Never ship less art than the game
   needs to stay under it. See
-  [A chapter is warmed before it is needed, not fetched when it is](<../../docs/decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
+  [A chapter is warmed before it is needed, not fetched when it is](<decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
 
 ## Scripts
 
@@ -40,19 +34,19 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
 | --- | --- |
 | `npm run dev` | Vite dev server |
 | `npm run probe -- --level <n> --seed <s>` | Prints one real, deterministic deal and its composed geometry as JSON |
-| `npm run verify` | The single pre-PR check: lint, format check, docs check, build, tests, audio check, art check, screenshot run |
+| `npm run verify` | The single pre-PR check: lint, format check, docs check, build, tests, audio check, art check, screenshot run. Runs them in parallel within the machine's budget; `-- --verbose` prints per-task timings |
 | `npm run lint` | ESLint |
 | `npm run format` | Formats with Prettier |
 | `npm run build` | Type-check, production build into `dist/`, then the bundle budget |
 | `npm run budget` | Checks the last build's raw and gzipped weight; add `-- --verbose` to print it |
 | `npm run test` | Unit tests (Vitest) |
-| `npm run docs:check` | Checks Markdown cross-references, and holds each instructions file to its size budget |
+| `npm run docs:check` | Checks Markdown references and source directives, and holds the brief and topic files to their size budgets |
 | `npm run art` | Renders the animal art to `.art/contact-sheet.png`; `-- rabbit` renders one animal large, `-- scenes` the picture scenes, `-- farmyard` one scene under its cut grids |
 | `npm run art:check` | Every animal against the asset contract (structure, containment, foot level), no two in one theme alike, committed slice recipes still cutting well; every scene against the scene contract, including no featureless piece at any grid the levels cut at |
 | `npm run art:slices` | Re-measures where every animal is cut and rewrites `src/slice-recipes.json`. Run after redrawing an animal |
 | `npm run audio` | Renders every sound offline and draws `.art/audio/sheet.png` |
 | `npm run audio:check` | Renders every sound through a real `OfflineAudioContext` in Chromium and measures the samples |
-| `npm run shot` | Drives real drags in headless Chromium and screenshots the result (build first) |
+| `npm run shot` | Drives real drags in headless Chromium and screenshots the result (build first); `-- --only=<pattern>` runs just the checks whose names match, for iterating on one without paying for the whole minute. It skips the coverage assertion, so a partial run that passes is a working tool and not proof |
 | `npm run shot:sheet` | Rebuilds `.art/shots/contact-sheet.png` from the last run's screenshots |
 
 ## Running locally
@@ -62,7 +56,8 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
   deal.** `--level <n> --seed <s>` prints the cast, measured piece boxes, holes,
   tray cells and canvas; `--eval "<expression>"` has the geometry, layout,
   level, piece and cutter exports already in scope and lists them after a bad
-  expression.
+  expression. `--help` names the rest, including the shapes of screen you can
+  ask a deal for.
 - `npm run art` and `npm run art:check` need `rsvg-convert` and ImageMagick,
   which are not npm packages: `sudo apt-get install librsvg2-bin imagemagick`.
 - `npm run shot` and `npm run audio:check` need a headless Chrome binary and
@@ -74,11 +69,51 @@ applyTo: "src/**,tests/**,scripts/**,package.json,tsconfig.json,eslint.config.js
   so a background run does not sing out of the speakers. It mutes the output
   device only, so `npm run audio:check` still measures every sound.
 
+### What the checks cost, and what to speed up
+
+Measured on a 12-core machine holding the machine lock; CI has 4 cores. `verify`
+runs these in parallel, so the wall time is the critical path, not the sum.
+
+| Task | Alone | Inside `verify` |
+| --- | --- | --- |
+| `art:check` | 47 s | 72 s |
+| `shot` | 61 s | 65 s |
+| `test` | 12 s | 8 s |
+| everything else | under 5 s each | |
+
+Two things surprise people. `art:check` costs *more* under `verify` than alone,
+because it is charged one CPU slot while `shot` holds several and so waits;
+that gap is starvation, not work. `test` costs *less*, because it is given the
+machine to itself - it is the one task whose timings are load-bearing, and
+sharing made it flake. Before optimising a check, measure it inside `verify` as
+well as alone, or you will tune the wrong one.
+
+### Telling whether your work landed
+
+Several agent-hours have been lost to confident, wrong beliefs about repository
+state. Derived state is not evidence; a fetch is. These all bite:
+
+- **A squash merge rewrites your commit**, so your SHA is not an ancestor of
+  `main` even when the work is fully merged.
+  `git merge-base --is-ancestor <sha> origin/main` says *false* for merged work.
+- **`git diff main mybranch` on a branch that has not been rebased** shows every
+  file `main` gained as a deletion, which is indistinguishable from a revert.
+  Use `gh pr diff`, which compares against the merge base.
+- **`mergeable` is recomputed asynchronously** and is stale for minutes.
+- **A push can appear to succeed to a branch that was deleted on merge**, leaving
+  you waiting for a check that will never run.
+- **Evidence gathered before a rebase may describe a different repository.** If
+  `package.json` changed under you, your timings may be of the old command.
+
+What to trust: `git fetch` then `git log --oneline -1 origin/main`,
+`git ls-remote --heads origin`, `gh pr view <n> --json state,mergeCommit`,
+`gh run list`. When a claim and a command disagree, believe the command.
+
 ### When a browser check goes wrong
 
 Each of these stops the run with its own message rather than failing later as
 something unrelated. Why they explain themselves is
-[A check explains its own environment, rather than failing as something else](<../../docs/decisions/A check explains its own environment, rather than failing as something else.md>).
+[A check explains its own environment, rather than failing as something else](<decisions/A check explains its own environment, rather than failing as something else.md>).
 
 - **Browser ports are never hardcoded.** Each check asks the OS for unused
   loopback ports, and Chrome reports its own DevTools port through the run's
@@ -147,6 +182,10 @@ something unrelated. Why they explain themselves is
 | `scripts/pictures.mjs` | Judges a scene from pixels: the grids the levels cut at, and whether every piece has something in it |
 | `scripts/slices.mjs` | Judges a cut from pixels: whole, fair, grabbable. Shared by the two above |
 | `scripts/slice-recipes.mjs` | Searches for where to cut every animal, and writes the table |
+| `scripts/verify.mjs` | Runs every check above against a slot budget, as many at once as the machine allows. `--verbose` prints what each task cost; a task that needs the machine to itself says so here |
+| `scripts/concurrency.mjs` | What the machine can afford: CPU slots, and how many headless Chromes fit in memory at once. Every parallel runner asks here rather than guessing |
+| `scripts/report.mjs` | The shared reporter every check prints through, so a passing run stays quiet and a failing one explains itself |
+| `scripts/probe.mjs` | Prints one real deal as JSON, so a question about geometry needs no throwaway test |
 | `scripts/check-docs.mjs` | Enforces that Markdown cross-references resolve, and the instructions size budget |
 | `scripts/check-bundle.mjs` | Holds the build to the bundle budget; `--verbose` prints what everything weighs |
 | `scripts/check-audio.mjs` | Renders every sound offline in Chromium, measures the samples, and optionally draws the waveform sheet |
@@ -164,14 +203,14 @@ something unrelated. Why they explain themselves is
 - Leave checks intact; explain any check change in its own right.
 - Attaching the screenshots is your job - CI will not show anyone what the
   change looks like. See
-  [Let the author attach the screenshots](<../../docs/decisions/Let the author attach the screenshots.md>).
+  [Let the author attach the screenshots](<decisions/Let the author attach the screenshots.md>).
 - Routine version bumps of actions are Dependabot's job.
 - A pull request needs no approving review to merge. See
-  [Require no approving review on main](<../../docs/decisions/Require no approving review on main.md>).
+  [Require no approving review on main](<decisions/Require no approving review on main.md>).
 - Once a change is on `main` and CI is green, a second workflow publishes that
   commit to [the live site](https://jbj.github.io/toddler-puzzle/), so breaking
   `main` leaves the previous site up rather than replacing it. See
-  [Deploy to GitHub Pages from a verified commit](<../../docs/decisions/Deploy to GitHub Pages from a verified commit.md>).
+  [Deploy to GitHub Pages from a verified commit](<decisions/Deploy to GitHub Pages from a verified commit.md>).
 
 ### When one pull request is based on another
 

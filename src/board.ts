@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/layout.md.
+ *
  * Builds the SVG scene graph: the backdrop the kind draws, the draggable
  * pieces, and the chrome around them. Rendering only - all decisions live in
  * game.ts and in the puzzle kind. Only the current level's pieces are built.

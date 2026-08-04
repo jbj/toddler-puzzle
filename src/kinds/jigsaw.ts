@@ -1,4 +1,6 @@
 /**
+ * Before changing this file, read docs/cutting.md.
+ *
  * Jigsaws: a hand-drawn picture cut into interlocking pieces, and put back
  * together in the frame it came out of.
  *
