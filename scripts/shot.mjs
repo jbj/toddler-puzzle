@@ -9,6 +9,7 @@
  *
  * Output lands in .art/shots/.
  */
+import { fork } from "node:child_process";
 import { createServer } from "node:http";
 import {
   existsSync,
@@ -25,17 +26,32 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { openChrome } from "./chrome.mjs";
+import { browserSlots } from "./concurrency.mjs";
 import { buildSheet } from "./shot-sheet.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const dist = join(root, "dist");
 const shotsDir = join(root, ".art/shots");
-const PORT = 4319;
-const DEBUG_PORT = 9333;
 // The game deals its animals at random; `?seed=` pins them down so the
 // screenshots from two runs show the same puzzle.
 const SEED = 20260726;
-const profileDir = join(root, ".art/chrome-profile");
+const workerArg = process.argv.find((arg) => arg.startsWith("--worker="));
+const workerName = workerArg?.slice("--worker=".length) ?? null;
+const verbose = process.argv.includes("--verbose");
+const onlyArg = process.argv.find((arg) => arg.startsWith("--only="));
+const onlySource = onlyArg?.slice("--only=".length) ?? null;
+if (onlySource === "") {
+  console.error("--only needs a non-empty regular-expression pattern.");
+  process.exit(1);
+}
+let only;
+try {
+  only = onlySource === null ? null : new RegExp(onlySource, "i");
+} catch (error) {
+  console.error(`Invalid --only pattern "${onlySource}": ${error.message}`);
+  process.exit(1);
+}
+const captureEveryShot = process.argv.includes("--all-shots");
 
 // --- preflight ------------------------------------------------------------
 //
@@ -108,8 +124,10 @@ const MIME = {
   ".webmanifest": "application/manifest+json",
 };
 
-rmSync(shotsDir, { recursive: true, force: true });
-mkdirSync(shotsDir, { recursive: true });
+if (!workerName) {
+  rmSync(shotsDir, { recursive: true, force: true });
+  mkdirSync(shotsDir, { recursive: true });
+}
 
 // --- coverage of the sample -----------------------------------------------
 // The run samples the thirty levels rather than playing them in order, which is
@@ -182,7 +200,7 @@ function requiredCoverage() {
 
 // --- static server --------------------------------------------------------
 
-const server = createServer((req, res) => {
+const serve = (req, res) => {
   const requested = decodeURIComponent((req.url ?? "/").split("?")[0]);
   const relative = normalize(requested === "/" ? "/index.html" : requested).replace(
     /^(\.\.[/\\])+/,
@@ -195,21 +213,74 @@ const server = createServer((req, res) => {
   } catch {
     res.writeHead(404).end("not found");
   }
-});
-await new Promise((resolve) => server.listen(PORT, resolve));
+};
+
+async function freePort() {
+  const reservation = createServer();
+  await new Promise((resolve) => reservation.listen(0, "127.0.0.1", resolve));
+  const reserved = reservation.address();
+  if (!reserved || typeof reserved === "string")
+    throw new Error("Could not reserve a Chrome port.");
+  await new Promise((resolve, reject) =>
+    reservation.close((error) => (error ? reject(error) : resolve())),
+  );
+  return reserved.port;
+}
 
 // --- browser --------------------------------------------------------------
 
-// Launching Chrome and speaking the DevTools Protocol is `chrome.mjs`, shared
-// with the audio check so there is one version of it rather than two.
+// Each segment owns its server, profile and Chrome. Keeping these bindings at
+// module scope lets the long-established driving helpers below stay exactly as
+// they were while the worker lifecycle remains in one small place.
+let server;
 let browser;
-try {
-  browser = await openChrome({ debugPort: DEBUG_PORT, profileDir });
-} catch (error) {
-  server.close();
-  throw error;
+let send;
+let evaluate;
+let PORT;
+let workerProfileDir;
+
+async function openWorker(name) {
+  server = createServer(serve);
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string")
+    throw new Error("The screenshot server has no port.");
+  PORT = address.port;
+
+  try {
+    workerProfileDir = join(root, `.art/chrome-profile-${name}-${process.pid}`);
+    browser = await openChrome({
+      debugPort: await freePort(),
+      profileDir: workerProfileDir,
+    });
+  } catch (error) {
+    server.close();
+    throw error;
+  }
+  ({ send, evaluate } = browser);
 }
-const { send, evaluate } = browser;
+
+async function closeWorker() {
+  browser?.close();
+  if (server) {
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+  if (!workerProfileDir) return;
+  const deadline = Date.now() + 5000;
+  for (;;) {
+    try {
+      rmSync(workerProfileDir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (!["EBUSY", "ENOTEMPTY", "EPERM"].includes(error.code) || Date.now() >= deadline) {
+        throw error;
+      }
+      await sleep(100);
+    }
+  }
+}
 
 async function setViewport(width, height) {
   await send("Emulation.setDeviceMetricsOverride", {
@@ -221,10 +292,10 @@ async function setViewport(width, height) {
 }
 
 async function shot(name) {
+  if (only && !captureEveryShot && !only.test(name)) return null;
   const { data } = await send("Page.captureScreenshot", { format: "png" });
   const file = join(shotsDir, `${name}.png`);
   writeFileSync(file, Buffer.from(data, "base64"));
-  console.log("wrote", file);
   return file;
 }
 
@@ -555,11 +626,13 @@ async function waitForFinishButton(within = 9000) {
 
 /** Press the big button that ends a level, then wait for the next board. */
 async function pressFinishButton() {
-  await waitForFinishButton();
+  if (!(await waitForFinishButton())) throw new Error("The way onwards did not arrive.");
+  const before = await levelNumber();
   await evaluate(`document.querySelector('#stage .fx [role="button"]').dispatchEvent(
     new PointerEvent('pointerdown', { bubbles: true })
   )`);
-  await sleep(500);
+  const after = await waitForDifferentLevel(before, 5000);
+  if (after === before) throw new Error(`The way onwards left the game on level ${before}.`);
 }
 
 // --- levels played by touching --------------------------------------------
@@ -784,9 +857,18 @@ async function tapAt(x, y) {
  * measurable at all: the celebration is then raised at a moment this run knows.
  */
 async function dealAgain() {
-  await evaluate(`document.querySelector('#stage [aria-label="Start a fresh puzzle"]')
-    .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
-  await sleep(600);
+  await evaluate(`(() => {
+    window.__shotPreviousStage = document.querySelector('#stage');
+    document.querySelector('#stage [aria-label="Start a fresh puzzle"]')
+      .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    return true;
+  })()`);
+  const rebuilt = await waitUntil(
+    () => evaluate(`document.querySelector('#stage') !== window.__shotPreviousStage`),
+    Boolean,
+    5000,
+  );
+  if (!rebuilt) throw new Error("Starting a fresh puzzle did not rebuild the board.");
 }
 
 /**
@@ -815,7 +897,11 @@ async function playActivity({ shotAt } = {}) {
     if (after.touched === before.touched) missed++;
     if (shotAt && taps === shotAt.after) await shot(shotAt.name);
   }
-  await sleep(500);
+  await waitUntil(
+    async () => ({ celebration: await celebrationName(), buttons: await finishButtons() }),
+    ({ celebration, buttons }) => celebration !== "" || buttons > 0,
+    5000,
+  );
   return { taps, missed };
 }
 
@@ -890,12 +976,12 @@ async function pressInPanel(selector) {
   await evaluate(
     `document.querySelector(${JSON.stringify(selector)}).scrollIntoView({ block: 'center' })`,
   );
-  await sleep(150);
+  await nextFrame();
   const at = await centreOf(selector);
   if (!at) throw new Error(`Nothing to press at "${selector}".`);
   await mouse("mousePressed", at.x, at.y);
   await mouse("mouseReleased", at.x, at.y);
-  await sleep(300);
+  await nextFrame();
 }
 
 /**
@@ -942,7 +1028,7 @@ async function tapGrownUps() {
   await mouse("mousePressed", at.x, at.y);
   await sleep(70);
   await mouse("mouseReleased", at.x, at.y);
-  await sleep(70);
+  await nextFrame();
 }
 
 /** Hold it down the way a grown-up who has read "Hold to open" would. */
@@ -954,7 +1040,7 @@ async function holdGrownUps({ pauseAtHalfway } = {}) {
   if (pauseAtHalfway) await pauseAtHalfway();
   await sleep(1200);
   await mouse("mouseReleased", at.x, at.y);
-  await sleep(300);
+  await nextFrame();
 }
 
 /**
@@ -967,18 +1053,47 @@ async function holdGrownUps({ pauseAtHalfway } = {}) {
  * page freezes itself, instead of the two minutes a child gets. Without it this
  * run could not watch the game go to sleep at all.
  */
+let navigation = 0;
+
+async function waitForNavigation(token, wanted, within = 5000) {
+  const arrived = await waitUntil(
+    () =>
+      evaluate(`(() => {
+        const stage = document.querySelector('#stage');
+        return {
+          token: new URLSearchParams(location.search).get('shot'),
+          level: stage ? Number(stage.dataset.level) : 0,
+          ready: document.readyState === 'complete'
+        };
+      })()`),
+    (state) => state.ready && state.token === String(token) && (!wanted || state.level === wanted),
+    within,
+  );
+  if (!arrived.ready || arrived.token !== String(token) || (wanted && arrived.level !== wanted)) {
+    throw new Error(
+      wanted
+        ? `Navigation did not build level ${wanted} (level ${arrived.level}).`
+        : "Navigation did not build a board.",
+    );
+  }
+}
+
 async function goToLevel(level, { restAfter } = {}) {
   const rest = restAfter === undefined ? "" : `&rest=${restAfter}`;
+  const token = ++navigation;
   await send("Page.navigate", {
-    url: `http://127.0.0.1:${PORT}/?level=${level}&seed=${SEED}${rest}`,
+    url: `http://127.0.0.1:${PORT}/?level=${level}&seed=${SEED}${rest}&shot=${token}`,
   });
-  await sleep(900);
+  await waitForNavigation(token, level);
 }
 
 /** Reload the way a child's grown-up would open it: no level in the URL. */
 async function reopenTheGame() {
-  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?seed=${SEED}` });
-  await sleep(900);
+  const token = ++navigation;
+  await send("Page.navigate", {
+    url: `http://127.0.0.1:${PORT}/?seed=${SEED}&shot=${token}`,
+  });
+  await waitForNavigation(token);
 }
 
 // --- the network, taken away ----------------------------------------------
@@ -1016,19 +1131,55 @@ const spinnerCount = () =>
 
 /** Wait for the board to become a given level, or give up and say what it is. */
 async function waitForLevel(wanted, within) {
-  const until = Date.now() + within;
-  while (Date.now() < until) {
-    if ((await levelNumber()) === wanted) return wanted;
-    await sleep(250);
-  }
-  return levelNumber();
+  return waitUntil(levelNumber, (level) => level === wanted, within, 100);
 }
 
+async function waitForDifferentLevel(previous, within) {
+  return waitUntil(levelNumber, (level) => level !== previous, within, 50);
+}
+
+async function waitUntil(read, accepts, within, every = 50) {
+  const until = Date.now() + within;
+  let value = await read();
+  while (!accepts(value) && Date.now() < until) {
+    await sleep(every);
+    value = await read();
+  }
+  return value;
+}
+
+const nextFrame = () =>
+  evaluate(`new Promise((resolve) => requestAnimationFrame(() => resolve(true)))`);
+
 /** Go to a level the way a grown-up does, without reloading the page. */
-async function jumpToLevelFromPanel(level) {
+async function jumpToLevelFromPanel(level, { waitForArrival = true } = {}) {
   await holdGrownUps();
   await pressInPanel(`.grownups-level[data-level="${level}"]`);
-  await sleep(1200);
+  if (!waitForArrival) return;
+  const arrived = await waitForLevel(level, 5000);
+  if (arrived !== level) throw new Error(`The grown-up panel did not reach level ${level}.`);
+}
+
+async function waitForLayout(wanted, within = 3000) {
+  const arrived = await waitUntil(layoutName, (layout) => layout === wanted, within);
+  if (arrived !== wanted) throw new Error(`The board did not switch to the ${wanted} layout.`);
+}
+
+async function waitForResourcesToSettle(within = 5000, quietFor = 750) {
+  const deadline = Date.now() + within;
+  let previous = await resourceCount();
+  let quietSince = Date.now();
+  while (Date.now() < deadline) {
+    await sleep(100);
+    const current = await resourceCount();
+    if (current !== previous) {
+      previous = current;
+      quietSince = Date.now();
+    } else if (Date.now() - quietSince >= quietFor) {
+      return current;
+    }
+  }
+  throw new Error("The production chunks did not finish warming.");
 }
 
 /** A tap on a part of the board with nothing on it: the smallest interaction. */
@@ -1214,7 +1365,11 @@ const refuseResume = (refuse) => evaluate(`(window.__refuse = ${refuse ? "true" 
 /** Drag every animal still in the tray into its hole. */
 async function solveRemaining() {
   for (const animal of await unplacedAnimals()) await dragAnimal(animal);
-  await sleep(700);
+  await waitUntil(
+    async () => ({ celebration: await celebrationName(), buttons: await finishButtons() }),
+    ({ celebration, buttons }) => celebration !== "" || buttons > 0,
+    5000,
+  );
 }
 
 /**
@@ -1296,16 +1451,12 @@ async function checkGrabBoxes(expected) {
 
 // --- run ------------------------------------------------------------------
 
-let failures = 0;
+const checks = [];
 const check = (label, ok) => {
-  console.log(`${ok ? "PASS" : "FAIL"}  ${label}`);
-  if (!ok) failures++;
+  checks.push({ label, ok });
 };
 
-try {
-  await send("Page.enable");
-  await send("Runtime.enable");
-  await setViewport(1280, 800);
+async function runOpening() {
   // The cast is dealt at random; a seed keeps the screenshots comparable
   // between runs. Randomness itself is checked at the end. The Chrome profile
   // is thrown away each run, so this is a child who has never played.
@@ -1380,7 +1531,7 @@ try {
   check("every piece has a hole", (await holeCount()) === firstCount);
   await dragAnimal((await animalsOnBoard())[0], { pauseAtHalfway: () => shot("03-level2-drag") });
   check("dragged piece snapped into its hole", (await placedCount()) === 1);
-  await sleep(700);
+  await waitUntil(celebrationName, (name) => name !== "", 5000);
   check("level 2 can be completed", (await placedCount()) === firstCount);
   // The interlude a level ends into is rotated by level number, and this is the
   // first level of the game to raise one at all.
@@ -1569,12 +1720,12 @@ try {
   // counted outside the board that gets rebuilt.
   const playedBeforeTurn = await celebrationPlayed();
   await setViewport(900, 1300);
-  await sleep(700);
+  await waitForLayout("portrait");
   check("the celebration survives a rotation", (await celebrationName()) === "balloons");
   check("a rotation keeps what was played with", (await celebrationPlayed()) === playedBeforeTurn);
   check("a rotation keeps the way onwards", (await finishButtons()) === 1);
   await setViewport(1280, 800);
-  await sleep(700);
+  await waitForLayout("landscape");
 
   // --- coming back to it tomorrow ------------------------------------------
   // Thirty levels is more than one sitting, so the level being played is
@@ -1710,7 +1861,10 @@ try {
   // Back where the rest of this run expects the child to be.
   await pressInPanel('.grownups-level[data-level="6"]');
   check("a grown-up can put the child back", (await levelNumber()) === 6);
+}
 
+async function runHintAndRest() {
+  await goToLevel(6);
   // --- the idle hint --------------------------------------------------------
   // The anti-frustration valve, and the one part of the game that happens when
   // nothing happens - so it cannot be checked any other way than by leaving a
@@ -1803,12 +1957,28 @@ try {
   // Turning a tablet that is already asleep rebuilds the board for the new
   // shape, and the rebuilt board must arrive as still as the one it replaced.
   await setViewport(480, 900);
-  await sleep(900);
+  await waitUntil(
+    async () => ({
+      layout: await layoutName(),
+      asleep: await isAsleep(),
+      running: await runningAnimations(),
+    }),
+    (state) => state.layout === "portrait" && state.asleep && state.running === 0,
+    3000,
+  );
   check("turning a sleeping tablet leaves it asleep", (await isAsleep()) === true);
   const turnedAsleep = await runningAnimations();
   check(`a board rebuilt while asleep stays still (${turnedAsleep} running)`, turnedAsleep === 0);
   await setViewport(1280, 800);
-  await sleep(900);
+  await waitUntil(
+    async () => ({
+      layout: await layoutName(),
+      asleep: await isAsleep(),
+      running: await runningAnimations(),
+    }),
+    (state) => state.layout === "landscape" && state.asleep && state.running === 0,
+    3000,
+  );
   check("nothing has woken the board up", (await isAsleep()) === true);
   const turnedBack = await runningAnimations();
   check(`and turning it back leaves it still too (${turnedBack} running)`, turnedBack === 0);
@@ -1877,9 +2047,11 @@ try {
   );
   await refuseResume(false);
   await tapEmptySpot();
-  await sleep(200);
+  await waitUntil(speakerState, (state) => state === "running", 2000);
   check("and the next touch asks them again", (await speakerState()) === "running");
+}
 
+async function runAnimals() {
   // --- level 7: the interlude the first chapter never reaches ---------------
   // Four interludes are rotated by level number, and the first chapter can only
   // show two of them: three of its five levels are played by touching, and
@@ -1919,7 +2091,7 @@ try {
 
   // Rotating mid-puzzle must reflow and keep progress.
   await setViewport(480, 900);
-  await sleep(600);
+  await waitForLayout("portrait");
   check("switches to the portrait layout", (await layoutName()) === "portrait");
   check("rotation preserves placed pieces", (await placedCount()) === 2);
   check("rotation stays on the same level", (await levelNumber()) === 10);
@@ -1985,6 +2157,17 @@ try {
   await holdGrownUps();
   await pressInPanel('.grownups-choice[data-value="off"]');
   await pressInPanel(".grownups-done");
+}
+
+async function runSliced() {
+  // The opening segment has already exercised the real write and reload path.
+  // This worker needs the same precondition in its fresh profile so the check
+  // below can still ask whether a `?level=` visit leaves an existing place alone.
+  await goToLevel(1);
+  await evaluate(`localStorage.setItem('animal-puzzle', JSON.stringify({
+    version: 1, level: 6, furthest: 6,
+    settings: { sound: true, hints: 'later' }
+  }))`);
 
   // --- level 30: the last one, and the loop back ---------------------------
   await setViewport(1280, 800);
@@ -2026,7 +2209,9 @@ try {
     sliceClips.drawn === 4 && sliceClips.spread === 4,
   );
   await shot("16-level14-assembled");
+}
 
+async function runPolygon() {
   // --- levels 16-20: a picture built out of plain shapes -------------------
   // The chapter where several pieces make one thing and each piece is still a
   // whole shape a child can name. Level 16 is three shapes; level 20 is six,
@@ -2058,12 +2243,12 @@ try {
   // the tray is what holds it down: the orientation that stacks the tray is
   // where a scene would be squeezed if any of it were composed wrongly.
   await setViewport(480, 900);
-  await sleep(600);
+  await waitForLayout("portrait");
   check("a picture composes in portrait too", (await layoutName()) === "portrait");
   check("portrait keeps all six shadows", (await holeCount()) === 6);
   await shot("20-level20-portrait");
   await setViewport(1280, 800);
-  await sleep(600);
+  await waitForLayout("landscape");
 
   // Two shapes the same, and the child aims one of them at the other's shadow.
   // Being told "no" for a placement that is visibly right is the one thing this
@@ -2163,7 +2348,7 @@ try {
   // ninety degrees: the celebration is built again from the new layout, and what
   // has been played with is counted outside the board and survives.
   await setViewport(480, 900);
-  await sleep(600);
+  await waitForLayout("portrait");
   check("the parade is turned with the board", (await layoutName()) === "portrait");
   check("rotation stays on the same level", (await levelNumber()) === 20);
   check("the parade is rebuilt rather than lost", (await celebrationName()) === "parade");
@@ -2177,8 +2362,10 @@ try {
   check("the way onwards does not make the child wait twice", (await finishButtons()) > 0);
   await shot("22c-chapter4-parade-portrait");
   await setViewport(1280, 800);
-  await sleep(600);
+  await waitForLayout("landscape");
+}
 
+async function runJigsaw() {
   // --- level 21: a picture cut up -------------------------------------------
   // The jigsaw chapter. One picture is one hole however many pieces it is in,
   // and the picture stays under the empty frame so the child can see what they
@@ -2282,7 +2469,9 @@ try {
     return true;
   })()`);
   await shot("25-level21-built");
+}
 
+async function runFinale() {
   // --- level 26: a picture broken into shards -------------------------------
   // The other way of cutting a picture up. A jigsaw's pieces are all the same
   // rectangle, so the game is to read the picture; a shatter's are all
@@ -2342,6 +2531,7 @@ try {
   await goToLevel(25);
   await solveRemaining();
   check("finishing chapter 5 raises the fireworks", (await celebrationName()) === "fireworks");
+  await waitUntil(nightHasFallen, Boolean, 3000);
   check("the night sky falls over the finished picture", (await nightHasFallen()) === true);
   // A tap anywhere sets one off there, in the tick the finger landed. Three
   // spread across the sky, and the shot taken while they are still open.
@@ -2436,7 +2626,10 @@ try {
   check("looping back forgets what was touched", (await activityProgress()).touched === 0);
   check("looping back takes the finale away", (await celebrationName()) === "");
   await shot("31-looped-back");
+}
 
+async function runFreshDeals() {
+  await goToLevel(1);
   // --- a fresh deal every time ---------------------------------------------
   // Reset on a touch level has to take the old bubbles away with it, or the
   // level would go on filling up with the last board's.
@@ -2481,11 +2674,15 @@ try {
   await shot("31a-level1-waited-out");
 
   const castForSeed = async (seed) => {
-    await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/?level=10&seed=${seed}` });
-    await sleep(800);
+    const token = ++navigation;
+    await send("Page.navigate", {
+      url: `http://127.0.0.1:${PORT}/?level=10&seed=${seed}&shot=${token}`,
+    });
+    await waitForNavigation(token, 10);
     return (await animalsOnBoard()).join();
   };
-  check("the same seed deals the same puzzle", (await castForSeed(SEED)) === busyCast.join());
+  const firstSeedCast = await castForSeed(SEED);
+  check("the same seed deals the same puzzle", (await castForSeed(SEED)) === firstSeedCast);
   const deals = new Set();
   for (const seed of [11, 22, 33, 44, 55, 66]) deals.add(await castForSeed(seed));
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
@@ -2533,7 +2730,6 @@ try {
   });
   await goToLevel(2);
   await solveRemaining();
-  await sleep(600);
   const stillInterlude = await celebrationName();
   const stillAtFirst = (await celebrationThings()).length;
   await sleep(1500);
@@ -2552,7 +2748,9 @@ try {
     stillPlayed.missed === 0,
   );
   await send("Emulation.setEmulatedMedia", { features: [] });
+}
 
+async function runNetwork() {
   // --- what happens when a chunk is not there -------------------------------
   // The game is split by chapter, and `warm.ts` fetches every chunk during the
   // first level so a seam never waits. Both halves of that are claims about
@@ -2566,7 +2764,7 @@ try {
   //    all. This is the property the split has to have; without it a child on a
   //    train would stall at a chapter boundary.
   await reopenTheGame();
-  await sleep(2500);
+  await waitForResourcesToSettle();
   const beforeCut = await resourceCount();
   await setOffline(true);
   const offlineChapters = [];
@@ -2608,7 +2806,7 @@ try {
   // Offline, so the game waits for the connection rather than reloading into
   // the same failure. This is the state a child would actually be looking at.
   await setOffline(true);
-  await jumpToLevelFromPanel(16);
+  await jumpToLevelFromPanel(16, { waitForArrival: false });
   await sleep(1200);
   const heldLevel = await levelNumber();
   const heldPieces = await pieceCount();
@@ -2650,7 +2848,9 @@ try {
   );
   check("the board it was raised over is still whole", (await placedCount()) > 0);
   await send("Network.setBlockedURLs", { urls: [] });
+}
 
+async function runScreens() {
   // --- real screens, at their real sizes ------------------------------------
   // iPad is the target device. The board is composed for the box it is drawn
   // in - short side always 700 logical units, long side whatever the screen
@@ -2754,19 +2954,23 @@ try {
       return true;
     })()
   `);
-  await sleep(150);
-  const afterInset = await evaluate(`
-    (() => {
-      const key = document.querySelector('.grownups-key').getBoundingClientRect();
-      const app = getComputedStyle(document.querySelector('#app'));
-      const panel = getComputedStyle(document.querySelector('.grownups-panel'));
-      return {
-        keyBottom: key.bottom,
-        appPadBottom: parseFloat(app.paddingBottom),
-        panelPadBottom: parseFloat(panel.paddingBottom),
-      };
-    })()
-  `);
+  const afterInset = await waitUntil(
+    () =>
+      evaluate(`
+      (() => {
+        const key = document.querySelector('.grownups-key').getBoundingClientRect();
+        const app = getComputedStyle(document.querySelector('#app'));
+        const panel = getComputedStyle(document.querySelector('.grownups-panel'));
+        return {
+          keyBottom: key.bottom,
+          appPadBottom: parseFloat(app.paddingBottom),
+          panelPadBottom: parseFloat(panel.paddingBottom),
+        };
+      })()
+    `),
+    (inset) => inset.appPadBottom >= beforeInset.appPadBottom + HOME_INDICATOR,
+    2000,
+  );
   // The grown-ups button reads `calc(12px + var(--inset-bottom))`, so its bottom
   // edge lifts by the whole inset.
   check(
@@ -2852,28 +3056,38 @@ try {
     !iconCheck.error && iconCheck.ok === true && /svg/.test(iconCheck.type),
   );
 
-  // --- the sample still covers the game -------------------------------------
-  // Everything above samples the thirty levels rather than playing them in
-  // order, which is what keeps this run to a few minutes. But the sample is a
-  // hand-written list of level numbers, and a hand-written sample rots quietly:
-  // nothing above fails when a seventh kind is added, when a chapter's kind is
-  // retuned out of the shots, or when a celebration is never reached. The run
-  // would go on passing while exercising less and less of the game. So the
-  // sample is held against the table it is meant to sample - what must be
-  // covered read from the source of truth, what was covered taken from what the
-  // live app reported putting on screen as the run played. See
-  // docs/decisions/Guard the sample against the table, rather than shoot all
-  // thirty.md.
-  const required = requiredCoverage();
-
-  // Anti-vacuity first. A coverage check that requires nothing passes while
-  // inspecting nothing, so this earns the right to be trusted: the requirement
-  // is non-empty, the parse saw the whole table (its row count matches the live
-  // level map), and the app never reported a kind or chapter the parse did not
-  // know about - none of which an empty or garbled parse could survive.
   await holdGrownUps();
   const liveLevelCount = await evaluate(`document.querySelectorAll('.grownups-level').length`);
   await pressInPanel(".grownups-done");
+  return { liveLevelCount };
+}
+
+const segments = [
+  { name: "opening", run: runOpening },
+  { name: "hint-and-rest", run: runHintAndRest },
+  { name: "level7-level10-animals", run: runAnimals },
+  { name: "level14-sliced", run: runSliced },
+  { name: "level16-level20-polygon", run: runPolygon },
+  { name: "level21-jigsaw", run: runJigsaw },
+  { name: "level26-finale", run: runFinale },
+  { name: "fresh-deals", run: runFreshDeals },
+  { name: "network", run: runNetwork },
+  { name: "screens", run: runScreens },
+];
+
+/**
+ * Coverage belongs to the complete sample, not to any one segment. Workers
+ * report what their live board showed; the parent merges those reports and
+ * makes the same six assertions, once, after every narrative check before it.
+ */
+function assertCoverage(results) {
+  const required = requiredCoverage();
+  const seenKinds = new Set(results.flatMap((result) => result.coverage.kinds));
+  const seenChapters = new Set(results.flatMap((result) => result.coverage.chapters));
+  const seenCelebrations = new Set(results.flatMap((result) => result.coverage.celebrations));
+  const liveLevelCount =
+    results.find((result) => result.meta?.liveLevelCount)?.meta.liveLevelCount ?? 0;
+
   check(
     `coverage: the table parses to a real requirement (${required.kinds.size} kinds, ${required.chapters.size} chapters, ${required.celebrations.size} celebrations)`,
     required.kinds.size >= 2 && required.chapters.size >= 2 && required.celebrations.size >= 2,
@@ -2883,9 +3097,9 @@ try {
     liveLevelCount > 0 && required.rows.length === liveLevelCount,
   );
   const strays = [
-    ...[...coveredKinds].filter((k) => !required.kinds.has(k)),
-    ...[...coveredChapters].filter((c) => !required.chapters.has(c)),
-    ...[...coveredCelebrations].filter((c) => !required.celebrations.has(c)),
+    ...[...seenKinds].filter((k) => !required.kinds.has(k)),
+    ...[...seenChapters].filter((c) => !required.chapters.has(c)),
+    ...[...seenCelebrations].filter((c) => !required.celebrations.has(c)),
   ];
   check(
     `coverage: everything the run saw is named by the table (${strays.join(", ") || "no strays"})`,
@@ -2895,44 +3109,181 @@ try {
   // The guard itself: every kind, chapter and celebration the table names was
   // put on screen by the sample. A miss names the thing and the level that would
   // cover it, so closing the gap is a line rather than a hunt.
-  const missingKinds = [...required.kinds].filter(([kind]) => !coveredKinds.has(kind));
+  const missingKinds = [...required.kinds].filter(([kind]) => !seenKinds.has(kind));
   check(
     `coverage: every puzzle kind is exercised (${missingKinds.map(([k, l]) => `${k} @ level ${l}`).join(", ") || `all ${required.kinds.size}`})`,
     missingKinds.length === 0,
   );
-  const missingChapters = [...required.chapters].filter(
-    ([chapter]) => !coveredChapters.has(chapter),
-  );
+  const missingChapters = [...required.chapters].filter(([chapter]) => !seenChapters.has(chapter));
   check(
     `coverage: every chapter is exercised (${missingChapters.map(([c, l]) => `${c} @ level ${l}`).join(", ") || `all ${required.chapters.size}`})`,
     missingChapters.length === 0,
   );
-  const missingCelebrations = [...required.celebrations].filter((c) => !coveredCelebrations.has(c));
+  const missingCelebrations = [...required.celebrations].filter((c) => !seenCelebrations.has(c));
   check(
     `coverage: every celebration is played (${missingCelebrations.join(", ") || `all ${required.celebrations.size}`})`,
     missingCelebrations.length === 0,
   );
-} finally {
-  browser.close();
-  server.close();
 }
 
-// Built even when checks fail: a failed run is exactly when someone wants to
-// look at the pictures. A sheet is a convenience, so losing it must not turn a
-// reporting problem into a failed verification.
-try {
-  const sheet = buildSheet();
-  if (sheet) console.log(`\nContact sheet: ${sheet}`);
-  else console.log(`\nNo contact sheet (ImageMagick not installed). Screenshots: ${shotsDir}`);
-} catch (error) {
-  console.warn(
-    `\nCould not build the contact sheet (${error.message}).\n` +
-      `Attach the individual screenshots from ${shotsDir} instead.`,
-  );
+async function runWorker() {
+  const segment = segments.find(({ name }) => name === workerName);
+  if (!segment) throw new Error(`Unknown screenshot segment "${workerName}".`);
+
+  let error = null;
+  let meta = {};
+  try {
+    await openWorker(segment.name);
+    await send("Page.enable");
+    await send("Runtime.enable");
+    await setViewport(1280, 800);
+    meta = (await segment.run()) ?? {};
+  } catch (caught) {
+    error = caught instanceof Error ? (caught.stack ?? caught.message) : String(caught);
+  } finally {
+    try {
+      await closeWorker();
+    } catch (caught) {
+      error ??= caught instanceof Error ? (caught.stack ?? caught.message) : String(caught);
+    }
+  }
+
+  const result = {
+    name: segment.name,
+    checks,
+    coverage: {
+      kinds: [...coveredKinds],
+      chapters: [...coveredChapters],
+      celebrations: [...coveredCelebrations],
+    },
+    meta,
+    error,
+  };
+  if (process.send) {
+    process.send(result, () => process.disconnect());
+  }
+  if (error) process.exitCode = 1;
 }
 
-if (failures > 0) {
-  console.error(`\n${failures} check(s) failed.`);
-  process.exit(1);
+function runInChild(segment, allShots) {
+  return new Promise((resolve) => {
+    const args = [`--worker=${segment.name}`];
+    if (onlySource !== null) args.push(`--only=${onlySource}`);
+    if (allShots) args.push("--all-shots");
+    const child = fork(fileURLToPath(import.meta.url), args, { silent: true });
+    let result = null;
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("message", (message) => {
+      result = message;
+    });
+    child.on("exit", (code, signal) => {
+      resolve(
+        result
+          ? { ...result, diagnostics: stdout.trim() }
+          : {
+              name: segment.name,
+              checks: [],
+              coverage: { kinds: [], chapters: [], celebrations: [] },
+              meta: {},
+              diagnostics: stdout.trim(),
+              error:
+                stderr.trim() ||
+                `Screenshot worker exited before reporting (${signal ? `signal ${signal}` : `status ${code}`}).`,
+            },
+      );
+    });
+  });
 }
-console.log("\nAll checks passed.");
+
+async function runParent() {
+  const selected = segments
+    .map((segment) => {
+      const nameMatches = only ? only.test(segment.name) : true;
+      const bodyMatches = only ? only.test(segment.run.toString()) : true;
+      return { ...segment, selected: nameMatches || bodyMatches, allShots: !only || nameMatches };
+    })
+    .filter((segment) => segment.selected);
+
+  if (selected.length === 0) {
+    console.error(
+      `No screenshot segment or shot matched --only=${onlySource}.\n` +
+        `Segments: ${segments.map(({ name }) => name).join(", ")}`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const results = new Array(selected.length);
+  let next = 0;
+  const takeWork = async () => {
+    for (;;) {
+      const index = next++;
+      if (index >= selected.length) return;
+      results[index] = await runInChild(selected[index], selected[index].allShots);
+    }
+  };
+  const slots = Math.min(browserSlots(), selected.length);
+  await Promise.all(Array.from({ length: slots }, takeWork));
+
+  const workerErrors = results.filter((result) => result.error);
+  const orderedChecks = results.flatMap((result) => result.checks);
+  if (!only && workerErrors.length === 0) {
+    assertCoverage(results);
+    orderedChecks.push(...checks);
+  }
+
+  // Built even when checks fail: a failed run is exactly when someone wants to
+  // look at the pictures. A sheet is a convenience, so losing it must not turn
+  // a reporting problem into a failed verification.
+  let sheetError = null;
+  try {
+    buildSheet();
+  } catch (error) {
+    sheetError = error.message;
+  }
+
+  if (verbose) {
+    for (const result of orderedChecks) {
+      console.log(`${result.ok ? "PASS" : "FAIL"}  ${result.label}`);
+    }
+    for (const result of results) {
+      if (result.diagnostics) console.log(`${result.name}\n${result.diagnostics}`);
+    }
+  }
+
+  const failed = orderedChecks.filter((result) => !result.ok);
+  if (workerErrors.length > 0 || failed.length > 0) {
+    for (const result of workerErrors) {
+      console.error(
+        `ERROR ${result.name}\n${result.error}` +
+          (result.diagnostics ? `\n${result.diagnostics}` : ""),
+      );
+    }
+    for (const result of failed) console.error(`FAIL  ${result.label}`);
+    if (sheetError) console.error(`Could not build the contact sheet: ${sheetError}`);
+    console.error(
+      `${failed.length} check(s) failed; ${workerErrors.length} worker(s) did not complete.`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  if (only) {
+    console.log(
+      `Partial screenshot run (${selected.map(({ name }) => name).join(", ")}): ` +
+        "coverage was not asserted.",
+    );
+  }
+}
+
+if (workerName) await runWorker();
+else await runParent();
