@@ -1,11 +1,14 @@
 import { availableParallelism, totalmem } from "node:os";
 
-// Measured 2026-08-04 with no other browser check running, sampling `ps` every
-// 100ms through a complete `npm run shot` and summing RSS for one Chromium
-// instance: its parent and every descendant by PPID. The peak was 1,419,936 KiB
-// (1,387 MiB) across 11 processes. 2 GiB rounds that up with room for a heavier
-// page or Chrome release; redo the same one-instance process-tree measurement
-// before changing it.
+// Measured 2026-08-04 by sampling `ps` every 100ms and summing one Chromium
+// instance's parent and every descendant by PPID. A serial run peaked at 463 MiB;
+// with six screenshot workers running together, one complete tree peaked at
+// 1,353 MiB. The latter is the figure this limit follows, because the limit is
+// only consulted when several browsers may run; using the serial figure would
+// let roughly twice as many start under conditions it never measured. 2 GiB
+// rounds the parallel peak up for a heavier page or Chrome release. Before
+// changing it, repeat the parallel whole-tree measurement rather than measuring
+// one browser on an otherwise empty machine.
 const PER_CHROME = 2 * 1024 * 1024 * 1024;
 
 /** Bind a Node HTTP server to an OS-assigned loopback port. */
