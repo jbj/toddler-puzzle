@@ -43,6 +43,29 @@ export function freeDebugPort() {
   return 0;
 }
 
+/**
+ * How many CPUs a check may keep busy at once.
+ *
+ * The companion to `browserSlots`, and read the same way: a runner that has
+ * already divided the machine between concurrent jobs says so in
+ * `VERIFY_CPU_SLOTS`, and a check that spreads itself over workers asks here
+ * rather than counting the machine's cores itself. Without it a task that
+ * `scripts/verify.mjs` charges one CPU can quietly spawn a worker per core
+ * beside another task that was promised the rest of them.
+ */
+export function cpuSlots() {
+  const machineLimit = Math.max(1, availableParallelism());
+  const configured = process.env.VERIFY_CPU_SLOTS;
+  if (configured === undefined) return machineLimit;
+
+  if (!/^[1-9]\d*$/.test(configured) || !Number.isSafeInteger(Number(configured))) {
+    throw new Error("VERIFY_CPU_SLOTS must be a positive integer.");
+  }
+  // Same bargain as the browser pool: a caller may divide the machine's
+  // capacity among its jobs, but may not claim more of it than there is.
+  return Math.min(machineLimit, Number(configured));
+}
+
 /** How many complete Chrome process trees this machine may carry at once. */
 export function browserSlots() {
   const machineLimit = Math.max(

@@ -3,13 +3,21 @@ import { availableParallelism, totalmem } from "node:os";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { browserSlots, freeDebugPort, listenOnFreePort } from "../scripts/concurrency.mjs";
+import {
+  browserSlots,
+  cpuSlots,
+  freeDebugPort,
+  listenOnFreePort,
+} from "../scripts/concurrency.mjs";
 
 const originalOverride = process.env.VERIFY_BROWSER_SLOTS;
+const originalCpuOverride = process.env.VERIFY_CPU_SLOTS;
 
 afterEach(() => {
   if (originalOverride === undefined) delete process.env.VERIFY_BROWSER_SLOTS;
   else process.env.VERIFY_BROWSER_SLOTS = originalOverride;
+  if (originalCpuOverride === undefined) delete process.env.VERIFY_CPU_SLOTS;
+  else process.env.VERIFY_CPU_SLOTS = originalCpuOverride;
 });
 
 describe("browser concurrency", () => {
@@ -55,5 +63,26 @@ describe("browser concurrency", () => {
   it.each(["0", "-1", "1.5", "many"])("refuses an invalid slot override (%s)", (configured) => {
     process.env.VERIFY_BROWSER_SLOTS = configured;
     expect(() => browserSlots()).toThrow("VERIFY_BROWSER_SLOTS must be a positive integer.");
+  });
+});
+
+describe("CPU concurrency", () => {
+  it("offers the whole machine to a check nobody has divided it for", () => {
+    delete process.env.VERIFY_CPU_SLOTS;
+    expect(cpuSlots()).toBe(Math.max(1, availableParallelism()));
+  });
+
+  it("uses the configured slot count only as a tighter ceiling", () => {
+    delete process.env.VERIFY_CPU_SLOTS;
+    const machineLimit = cpuSlots();
+    process.env.VERIFY_CPU_SLOTS = "1";
+    expect(cpuSlots()).toBe(1);
+    process.env.VERIFY_CPU_SLOTS = String(machineLimit + 1);
+    expect(cpuSlots()).toBe(machineLimit);
+  });
+
+  it.each(["0", "-1", "1.5", "many"])("refuses an invalid slot override (%s)", (configured) => {
+    process.env.VERIFY_CPU_SLOTS = configured;
+    expect(() => cpuSlots()).toThrow("VERIFY_CPU_SLOTS must be a positive integer.");
   });
 });
