@@ -1,11 +1,12 @@
 import { availableParallelism, totalmem } from "node:os";
 
-// Measured 2026-08-04 by sampling `ps` every 100ms through a complete
-// `npm run shot`, summing RSS for one Chromium instance: its parent and every
-// descendant by PPID. The peak was 473,708 KiB (463 MiB) across six processes.
-// 768 MiB rounds that up with room for a heavier page or Chrome release; redo
-// the same one-instance process-tree measurement before changing it.
-const PER_CHROME = 768 * 1024 * 1024;
+// Measured 2026-08-04 with no other browser check running, sampling `ps` every
+// 100ms through a complete `npm run shot` and summing RSS for one Chromium
+// instance: its parent and every descendant by PPID. The peak was 1,419,936 KiB
+// (1,387 MiB) across 11 processes. 2 GiB rounds that up with room for a heavier
+// page or Chrome release; redo the same one-instance process-tree measurement
+// before changing it.
+const PER_CHROME = 2 * 1024 * 1024 * 1024;
 
 /** Bind a Node HTTP server to an OS-assigned loopback port. */
 export function listenOnFreePort(server) {

@@ -34,7 +34,11 @@ describe("browser concurrency", () => {
     delete process.env.VERIFY_BROWSER_SLOTS;
     const expected = Math.max(
       1,
-      Math.min(availableParallelism() - 1, Math.floor(totalmem() / 2 / (768 * 1024 * 1024)), 6),
+      Math.min(
+        availableParallelism() - 1,
+        Math.floor(totalmem() / 2 / (2 * 1024 * 1024 * 1024)),
+        6,
+      ),
     );
     expect(browserSlots()).toBe(expected);
   });
