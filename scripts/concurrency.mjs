@@ -6,9 +6,9 @@ import { availableParallelism, totalmem } from "node:os";
 // descendant by PPID; never select by process name, because the developer's
 // desktop Chromium is another, much larger tree. Of 2,293 samples, 2,214 held a
 // live tree: median 1,219 MiB, p90 1,307 MiB, p99 1,373 MiB, maximum 1,387 MiB
-// across 11 processes. 1,536 MiB rounds that distribution up; redo the same
+// across 11 processes. 2 GiB rounds that distribution up; redo the same
 // one-instance process-tree measurement before changing it.
-const PER_CHROME = 1536 * 1024 * 1024;
+const PER_CHROME = 2 * 1024 * 1024 * 1024;
 
 /** Bind a Node HTTP server to an OS-assigned loopback port. */
 export function listenOnFreePort(server) {
