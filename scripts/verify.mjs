@@ -8,9 +8,9 @@
  * only real build edges visible: the budget reads Vite's report, and the shot
  * run serves Vite's `dist/`.
  *
- * Output is held per task and printed in one fixed order. A fast failure is
- * therefore the first useful thing in the summary rather than a line buried
- * hundreds of browser assertions earlier.
+ * Output is held per task. A passing run says one line unless asked for
+ * `--verbose`; a failure prints only the failed tasks in fixed order, so the
+ * useful line is never buried under hundreds of browser assertions.
  */
 import { spawn } from "node:child_process";
 import { availableParallelism } from "node:os";
@@ -34,6 +34,7 @@ const FIX_COMMANDS = new Map([
   ["format:check", "npm run format"],
 ]);
 const CHEAP_TASKS = new Set(["typecheck", "lint", "format:check", "docs:check"]);
+const VERBOSE_TASKS = new Set(["docs:check", "budget", "art:check"]);
 
 export function verifyTasks(cpuCapacity, browserCapacity) {
   // Art is a long stream of rasteriser subprocesses. Giving it a larger weight
@@ -72,12 +73,11 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
     },
     {
       name: "test",
-      // Two Vitest workers make the fit search contend long enough to cross its
-      // five-second guard on a four-CPU runner. One worker ran the same 664
-      // assertions reliably only while the rasterisers and browser were held
-      // back. The weight makes that isolation explicit; it does not claim that
-      // one worker uses every CPU.
-      run: packageTool("vitest", "vitest.mjs", "run", "--maxWorkers=1"),
+      // Vitest owns the CPU pool while its worker pool runs. The impossible-fit
+      // cases now refuse before searching, so its workers are useful again; the
+      // full weight is what stops the runner from double-counting them beside
+      // rasterisers or Chrome.
+      run: packageTool("vitest", "vitest.mjs", "run"),
       needs: [],
       inputs: [],
       slots: { cpu: cpuCapacity, browser: 0 },
@@ -148,9 +148,10 @@ function validateTasks(tasks, capacities) {
   }
 }
 
-export function spawnTask(task, { noCache }) {
+export function spawnTask(task, { noCache, verbose = false }) {
   const started = performance.now();
-  const [command, ...args] = task.run;
+  const [command, ...baseArgs] = task.run;
+  const args = verbose && VERBOSE_TASKS.has(task.name) ? [...baseArgs, "--verbose"] : baseArgs;
   const output = [];
 
   return new Promise((resolve) => {
@@ -188,7 +189,7 @@ export function spawnTask(task, { noCache }) {
  */
 export async function runTasks(
   tasks,
-  { cpuSlots, browserSlots, noCache = false, executeTask = spawnTask },
+  { cpuSlots, browserSlots, noCache = false, verbose = false, executeTask = spawnTask },
 ) {
   const capacities = { cpu: cpuSlots, browser: browserSlots };
   validateTasks(tasks, capacities);
@@ -246,6 +247,7 @@ export async function runTasks(
           used.browser += task.slots.browser;
           const promise = executeTask(task, {
             noCache,
+            verbose,
             browserSlots: task.slots.browser,
             inputs: task.inputs,
           });
@@ -282,7 +284,25 @@ export async function runTasks(
 
 const duration = (milliseconds) => `${(milliseconds / 1000).toFixed(1)}s`;
 
-export function formatReport(results, capacities) {
+export function formatReport(results, capacities, { verbose = false } = {}) {
+  const failed = results.filter(({ status }) => status === "failed");
+  if (!verbose) {
+    if (failed.length === 0) return "Verify passed.\n";
+    const lines = [];
+    for (const result of failed) {
+      lines.push(`FAIL  ${result.name}`);
+      const output = result.output.trimEnd();
+      if (output) lines.push(output);
+      const fix = FIX_COMMANDS.get(result.name);
+      if (fix) lines.push(`fix with: ${fix}`);
+    }
+    for (const result of results.filter(({ status }) => status === "skipped")) {
+      lines.push(`SKIP  ${result.name} - ${result.reason}`);
+    }
+    lines.push(`Verify failed: ${failed.map(({ name }) => name).join(", ")}.`);
+    return `${lines.join("\n")}\n`;
+  }
+
   const lines = [
     "",
     `Verify summary (${capacities.cpu} CPU, ${capacities.browser} browser ${
@@ -301,15 +321,15 @@ export function formatReport(results, capacities) {
     );
   }
 
-  lines.push("", "Task output (fixed order)");
-  for (const result of results) {
-    if (result.status === "skipped") continue;
+  const withOutput = results.filter(
+    (result) => result.status !== "skipped" && result.output.trim().length > 0,
+  );
+  if (withOutput.length > 0) lines.push("", "Task output (fixed order)");
+  for (const result of withOutput) {
     lines.push("", `--- ${result.name} (${duration(result.durationMs)}) ---`);
-    const output = result.output.trimEnd();
-    lines.push(output || "(no output)");
+    lines.push(result.output.trimEnd());
   }
 
-  const failed = results.filter(({ status }) => status === "failed");
   if (failed.length === 0) {
     lines.push("", "Every verify task passed.");
   } else {
@@ -320,10 +340,15 @@ export function formatReport(results, capacities) {
 
 export const verifyFailed = (results) => results.some(({ status }) => status === "failed");
 
-function parseNoCache(argv, env) {
-  const unknown = argv.filter((argument) => argument !== "--no-cache");
+function parseOptions(argv, env) {
+  const known = new Set(["--no-cache", "--verbose"]);
+  const unknown = argv.filter((argument) => !known.has(argument));
   if (unknown.length > 0) throw new Error(`Unknown verify argument: ${unknown.join(" ")}`);
-  return argv.includes("--no-cache") || ["1", "true"].includes(env.VERIFY_NO_CACHE?.toLowerCase());
+  return {
+    noCache:
+      argv.includes("--no-cache") || ["1", "true"].includes(env.VERIFY_NO_CACHE?.toLowerCase()),
+    verbose: argv.includes("--verbose"),
+  };
 }
 
 async function main() {
@@ -332,12 +357,13 @@ async function main() {
     browser: availableBrowserSlots(),
   };
   const tasks = verifyTasks(capacities.cpu, capacities.browser);
+  const options = parseOptions(process.argv.slice(2), process.env);
   const results = await runTasks(tasks, {
     cpuSlots: capacities.cpu,
     browserSlots: capacities.browser,
-    noCache: parseNoCache(process.argv.slice(2), process.env),
+    ...options,
   });
-  process.stdout.write(formatReport(results, capacities));
+  process.stdout.write(formatReport(results, capacities, options));
   if (verifyFailed(results)) process.exitCode = 1;
 }
 

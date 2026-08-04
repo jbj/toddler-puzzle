@@ -76,7 +76,7 @@ describe("the verify runner", () => {
         return { exitCode: 0, output: `${name} output`, durationMs: 10 };
       },
     });
-    const report = formatReport(results, { cpu: 4, browser: 1 });
+    const report = formatReport(results, { cpu: 4, browser: 1 }, { verbose: true });
 
     expect(completed[0]).not.toBe("typecheck");
     expect(report.indexOf("typecheck output")).toBeLessThan(report.indexOf("lint output"));
@@ -114,5 +114,38 @@ describe("the verify runner", () => {
     );
 
     expect(report).toContain("fix with: npm run format");
+  });
+
+  it("prints one line when every task passes unless verbose output was requested", () => {
+    const results = tasks.map(({ name }) => ({
+      name,
+      status: "passed",
+      output: "",
+      durationMs: 10,
+    }));
+    const output = formatReport(results, capacities);
+
+    expect(output).toBe("Verify passed.\n");
+    expect(Buffer.byteLength(output)).toBeLessThan(32);
+    expect(output.trim().split("\n")).toHaveLength(1);
+    expect(formatReport(results, capacities, { verbose: true })).toContain("0.0s");
+  });
+
+  it("does not wrap empty output in a verbose task section", () => {
+    const report = formatReport(
+      [
+        {
+          name: "typecheck",
+          status: "passed",
+          output: "",
+          durationMs: 10,
+        },
+      ],
+      capacities,
+      { verbose: true },
+    );
+
+    expect(report).not.toContain("Task output");
+    expect(report).not.toContain("(no output)");
   });
 });
