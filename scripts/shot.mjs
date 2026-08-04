@@ -1047,13 +1047,23 @@ async function waitForNavigation(token, wanted, within = 5000) {
         return {
           token: new URLSearchParams(location.search).get('shot'),
           level: stage ? Number(stage.dataset.level) : 0,
+          controls: !!document.querySelector('.grownups-key'),
           ready: document.readyState === 'complete'
         };
       })()`),
-    (state) => state.ready && state.token === String(token) && (!wanted || state.level === wanted),
+    (state) =>
+      state.ready &&
+      state.controls &&
+      state.token === String(token) &&
+      (!wanted || state.level === wanted),
     within,
   );
-  if (!arrived.ready || arrived.token !== String(token) || (wanted && arrived.level !== wanted)) {
+  if (
+    !arrived.ready ||
+    !arrived.controls ||
+    arrived.token !== String(token) ||
+    (wanted && arrived.level !== wanted)
+  ) {
     throw new Error(
       wanted
         ? `Navigation did not build level ${wanted} (level ${arrived.level}).`
