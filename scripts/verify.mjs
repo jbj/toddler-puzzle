@@ -69,14 +69,15 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
     },
     {
       name: "test",
-      // The impossible-fit cases now refuse before searching, so Vitest no
-      // longer needs isolation from the other checks. One worker keeps its CPU
-      // cost explicit and small enough to overlap the new parallel shot run;
-      // the suite remains well short of the browser critical path.
-      run: packageTool("vitest", "vitest.mjs", "run", "--maxWorkers=1"),
+      // Vitest's worker pool owns the CPUs while it runs. Both bounded and
+      // unbounded overlap reproduced the five-second guard in the separate
+      // sixty-animal layout test, on machines where an exclusive run passed.
+      // Paying its short cost before art and Chrome is slower than overlap and
+      // keeps a real check deterministic.
+      run: packageTool("vitest", "vitest.mjs", "run"),
       needs: [],
       inputs: [],
-      slots: { cpu: 1, browser: 0 },
+      slots: { cpu: cpuCapacity, browser: 0 },
     },
     {
       name: "bundle",

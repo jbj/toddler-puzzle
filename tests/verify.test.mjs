@@ -52,7 +52,7 @@ describe("the verify runner", () => {
   it("charges worker pools to the CPU budget", () => {
     const fourCore = verifyTasks(4, 3);
 
-    expect(fourCore.find(({ name }) => name === "test")?.slots.cpu).toBe(1);
+    expect(fourCore.find(({ name }) => name === "test")?.slots.cpu).toBe(4);
     expect(fourCore.find(({ name }) => name === "art:check")?.slots.cpu).toBe(1);
     expect(fourCore.find(({ name }) => name === "shot")?.slots).toEqual({
       cpu: 2,
