@@ -31,7 +31,7 @@
  * that is already done.
  *
  * The rule half of this file - when a hint is due - is a state machine with its
- * timers passed in, in the spirit of `createHoldGate` in `grownups.ts`, so the
+ * timers passed in, in the spirit of `createHoldGate` in `hold.ts`, so the
  * races that only a slow machine finds can be played out in Vitest in a
  * millisecond.
  */

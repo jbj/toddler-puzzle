@@ -14,9 +14,9 @@
  * secret gesture is only discoverable by being told. What keeps a toddler out
  * is not secrecy but patience: pressing the button does not open anything, it
  * says "Hold to open" and starts filling a ring, and only a press held for
- * {@link HOLD_MS} gets in. However many times the button is tapped, and however
- * fast, nothing opens - see `createHoldGate`, which is the whole of that rule
- * and is a plain state machine so it can be tested without a browser.
+ * `HOLD_MS` gets in. However many times the button is tapped, and however fast,
+ * nothing opens - the rule and the wiring are `hold.ts`, shared with the button
+ * in the corner of the board, which is held for the same two seconds.
  *
  * **It is deliberately not toddler-styled.** Small text, ordinary controls,
  * grown-up spacing. The rest of the game is enormous and brightly coloured; a
@@ -32,6 +32,7 @@
 import { setSoundEnabled, unlockAudio } from "./audio";
 import type { GameHandle } from "./game";
 import { setHintTiming } from "./hint";
+import { createHoldGate, watchHold, type HoldState } from "./hold";
 import {
   CHAPTERS,
   LEVELS,
@@ -45,84 +46,6 @@ import {
   type PuzzleKindId,
 } from "./levels";
 import type { HintTiming, Progress, ProgressStore, Settings } from "./progress";
-
-/**
- * How long the button has to be held before the panel opens. Two seconds is
- * long enough that no tap, and no drumming of fingers, ever adds up to it, and
- * short enough that an adult holding it while reading "Hold to open" is already
- * most of the way there.
- */
-export const HOLD_MS = 2000;
-
-/**
- * How long "Hold to open" stays up after the button is let go. A grown-up's
- * first press is nearly always a tap, and that tap is the moment they need to
- * be told what to do instead; the answer has to still be on screen when they
- * look.
- */
-export const PROMPT_MS = 6000;
-
-/** What the button looks like at a given moment. */
-export interface HoldState {
-  /** Whether "Hold to open" is showing. */
-  readonly prompt: boolean;
-  /** How full the ring is, 0 to 1. */
-  readonly fill: number;
-  /** Whether the hold has lasted long enough to open the panel. */
-  readonly open: boolean;
-}
-
-/**
- * The rule that keeps a toddler out, with no timers and no DOM in it: press,
- * let go, and ask what it looks like now. Time is passed in rather than read,
- * so a test can hold the button for two seconds without waiting two seconds.
- */
-export interface HoldGate {
-  /** The button went down. Starts the hold, from zero, every time. */
-  press(now: number): void;
-  /** The button came up, or the finger slid off it. The hold is abandoned. */
-  cancel(now: number): void;
-  state(now: number): HoldState;
-  /** Called once the panel is open, so the next press starts from empty. */
-  reset(): void;
-}
-
-export interface HoldGateOptions {
-  readonly holdMs?: number;
-  readonly promptMs?: number;
-}
-
-export function createHoldGate(options: HoldGateOptions = {}): HoldGate {
-  const holdMs = options.holdMs ?? HOLD_MS;
-  const promptMs = options.promptMs ?? PROMPT_MS;
-
-  let pressedAt: number | null = null;
-  let promptUntil = 0;
-
-  return {
-    press(now) {
-      pressedAt = now;
-    },
-    cancel(now) {
-      // Only a press that actually happened leaves the prompt behind, so a
-      // stray pointer-up cannot put the hint up on its own.
-      if (pressedAt !== null) promptUntil = now + promptMs;
-      pressedAt = null;
-    },
-    state(now) {
-      const fill = pressedAt === null ? 0 : Math.min(1, (now - pressedAt) / holdMs);
-      return {
-        prompt: pressedAt !== null || now < promptUntil,
-        fill,
-        open: fill >= 1,
-      };
-    },
-    reset() {
-      pressedAt = null;
-      promptUntil = 0;
-    },
-  };
-}
 
 /** One square of the level map. */
 export interface LevelMapEntry {
@@ -555,9 +478,9 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
   // --- opening and closing -------------------------------------------------
 
   function open(): void {
+    // Empty the ring and drop the prompt: the next press starts from nothing.
     gate.reset();
-    forgetPrompt();
-    paint();
+    paint(gate.state(now()));
     stopConfirming();
     refresh();
     panel.hidden = false;
@@ -587,96 +510,14 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
 
   // --- the hold ------------------------------------------------------------
 
-  let frame = 0;
-  let openTimer = 0;
-  let promptTimer = 0;
-
-  /** Show the gate's current state: the ring, and the "Hold to open" line. */
-  function paint(): void {
-    const state = gate.state(now());
+  // The rule and the wiring are `hold.ts`, shared with the button in the corner
+  // of the board, so "held" means the same two seconds on both.
+  const paint = (state: HoldState): void => {
     key.style.setProperty("--fill", String(state.fill));
     key.classList.toggle("is-prompting", state.prompt);
-  }
-
-  /** Drop any pending "the prompt has expired" repaint. */
-  function forgetPrompt(): void {
-    window.clearTimeout(promptTimer);
-    promptTimer = 0;
-  }
-
-  function stopWatching(): void {
-    window.cancelAnimationFrame(frame);
-    window.clearTimeout(openTimer);
-    frame = 0;
-    openTimer = 0;
-  }
-
-  /** Open if the hold has lasted, and stop watching either way. */
-  function openIfHeld(): boolean {
-    if (!gate.state(now()).open) return false;
-    stopWatching();
-    open();
-    return true;
-  }
-
-  function watch(): void {
-    stopWatching();
-    const step = (): void => {
-      if (openIfHeld()) return;
-      paint();
-      frame = window.requestAnimationFrame(step);
-    };
-    frame = window.requestAnimationFrame(step);
-    // The frames are for the ring; the rule is the clock. A tab that is not
-    // being painted still has to open on a long press, so the opening is armed
-    // on a timer as well and does not depend on a frame arriving.
-    openTimer = window.setTimeout(openIfHeld, HOLD_MS + 20);
-  }
-
-  key.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    // Capture, so the release that follows a successful hold lands on the
-    // button rather than on the panel that has just opened underneath it.
-    try {
-      key.setPointerCapture(event.pointerId);
-    } catch {
-      // A browser that will not capture still holds and still opens; it just
-      // has to rely on the drift check below to notice a finger leaving.
-    }
-    gate.press(now());
-    paint();
-    watch();
-  });
-
-  const letGo = (): void => {
-    gate.cancel(now());
-    stopWatching();
-    paint();
-    // The prompt outlives the press, so it has to be taken down on a timer
-    // rather than by the next pointer event. A toddler will tap this button
-    // over and over, so each release replaces the pending timer instead of
-    // adding to it: one press, one timer, however fast the tapping.
-    forgetPrompt();
-    promptTimer = window.setTimeout(() => {
-      promptTimer = 0;
-      paint();
-    }, PROMPT_MS + 50);
   };
 
-  key.addEventListener("pointerup", letGo);
-  key.addEventListener("pointercancel", letGo);
-  key.addEventListener("pointermove", (event) => {
-    // A finger that slides off the button gives up the hold. With the pointer
-    // captured, `pointerleave` never fires, so the drift is measured instead.
-    const box = key.getBoundingClientRect();
-    const outside =
-      event.clientX < box.left ||
-      event.clientX > box.right ||
-      event.clientY < box.top ||
-      event.clientY > box.bottom;
-    if (outside && gate.state(now()).fill > 0) letGo();
-  });
+  watchHold(key, { gate, now, held: open, paint });
 
-  paint();
   refresh();
 }

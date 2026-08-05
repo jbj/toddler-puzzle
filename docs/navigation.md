@@ -38,7 +38,17 @@ level - sound, sparkles, the hint, drag, rest - is in
   level, and the loop back to level 1 after it, leave the child's own place
   untouched.
 - The reset button re-deals the current level through the same path as moving
-  between levels (`startPuzzle` in `src/game.ts`).
+  between levels (`startPuzzle` in `src/game.ts`). **It is held for two seconds,
+  never tapped**, by the same rule and the same wiring as the "Grown-ups" button
+  (`src/hold.ts`): it throws away a puzzle the child may be one piece from
+  finishing, and it sits in the corner a thumb rests on. Two things differ from
+  the panel's button, both deliberate. It shows no wording, because the child
+  cannot read and the ring says everything a grown-up needs, so the gate's
+  `prompt` is ignored here; and its watcher is taken down in `mount`, because the
+  board under it is rebuilt on every level, every re-deal and every rotation. The
+  press is not stopped, so it stirs the idle hint and unlocks audio like any
+  other touch. See
+  [Hold the button that throws the puzzle away](<decisions/Hold the button that throws the puzzle away.md>).
 
 ## The end of a level
 
@@ -167,9 +177,11 @@ thirty levels, the switches, and the only reset in the game. See
   not become one.
 - **Tapping never opens it.** A press starts a two-second hold (`HOLD_MS`) and
   shows "Hold to open"; a release restarts the hold from zero, so taps never add
-  up. The rule is `createHoldGate`, a pure state machine with the clock passed in
-  and no DOM, so hundreds of taps are testable in Vitest. The ring is painted from
-  the same gate on an animation frame, but the opening is armed on the clock.
+  up. The rule and the wiring are `src/hold.ts`: `createHoldGate`, a pure state
+  machine with the clock passed in and no DOM, so hundreds of taps are testable
+  in Vitest, and `watchHold` round it, shared with the reset button so that
+  "held" means the same two seconds on both. The ring is painted from the same
+  gate on an animation frame, but the opening is armed on the clock.
 - **The prompt outlives the press.** "Hold to open" stays up for `PROMPT_MS`
   after a tap.
 - **The panel is not toddler-styled.** Small text, ordinary switches and spacing.

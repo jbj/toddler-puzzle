@@ -866,12 +866,8 @@ async function tapAt(x, y) {
  * measurable at all: the celebration is then raised at a moment this run knows.
  */
 async function dealAgain() {
-  await evaluate(`(() => {
-    window.__shotPreviousStage = document.querySelector('#stage');
-    document.querySelector('#stage [aria-label="Start a fresh puzzle"]')
-      .dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-    return true;
-  })()`);
+  await evaluate(`(window.__shotPreviousStage = document.querySelector('#stage')) !== null`);
+  await holdResetButton();
   const rebuilt = await waitUntil(
     () => evaluate(`document.querySelector('#stage') !== window.__shotPreviousStage`),
     Boolean,
@@ -879,6 +875,47 @@ async function dealAgain() {
   );
   if (!rebuilt) throw new Error("Starting a fresh puzzle did not rebuild the board.");
 }
+
+/** The button in the corner, which is held rather than tapped. */
+const RESET_BUTTON = ".reset-button";
+
+/** Press and release it the way a small hand would: nothing should happen. */
+async function tapResetButton() {
+  const at = await centreOf(RESET_BUTTON);
+  if (!at) throw new Error("No reset button on screen.");
+  await mouse("mousePressed", at.x, at.y);
+  await sleep(70);
+  await mouse("mouseReleased", at.x, at.y);
+  await sleep(180);
+}
+
+/** Hold it the way a grown-up watching the ring fill would. */
+async function holdResetButton({ pauseAtHalfway } = {}) {
+  const at = await centreOf(RESET_BUTTON);
+  if (!at) throw new Error("No reset button on screen.");
+  await mouse("mousePressed", at.x, at.y);
+  await sleep(1100);
+  if (pauseAtHalfway) await pauseAtHalfway();
+  await sleep(1300);
+  await mouse("mouseReleased", at.x, at.y);
+  await sleep(200);
+}
+
+/** How full the ring round the reset button is, 0 to 1. */
+const resetRingFill = () =>
+  evaluate(
+    `Number((document.querySelector('.reset-ring')?.getAttribute('stroke-dasharray') ?? '0 1').split(' ')[0])`,
+  );
+
+/**
+ * A stamp on the board that a re-deal wipes off, since `buildBoard` replaces
+ * everything inside `#app`. Cheaper and more direct than comparing line-ups:
+ * the question is only whether this board is the board that was there before.
+ */
+const markTheBoard = () =>
+  evaluate(`(document.querySelector('#stage').dataset.mark = 'same') === 'same'`);
+const boardIsTheSameOne = () =>
+  evaluate(`document.querySelector('#stage')?.dataset.mark === 'same'`);
 
 /**
  * Touch things until the level says it is done, one at a time, checking as it
@@ -917,7 +954,7 @@ async function playActivity({ shotAt } = {}) {
 // --- the grown-up panel ---------------------------------------------------
 // The one part of the game that is not for the child, and the only place
 // progress can be cleared. It is opened by holding a labelled button for two
-// seconds; tapping it, however often, must never get in. See src/grownups.ts.
+// seconds; tapping it, however often, must never get in. See src/hold.ts.
 
 const panelIsOpen = () => evaluate(`!!document.querySelector('.grownups-panel:not([hidden])')`);
 const grownUpsLabel = () =>
@@ -1000,7 +1037,7 @@ async function pressInPanel(selector) {
  * whether the tenth tap leaves ten timers pending or one each. Only long timers
  * are counted, which leaves the two-second one that arms the opening out of it.
  *
- * Two things arm one: "Hold to open" (`PROMPT_MS` in src/grownups.ts) and the
+ * Two things arm one: "Hold to open" (`PROMPT_MS` in src/hold.ts) and the
  * wait before the page puts itself to sleep (`REST_DELAY_MS` in src/rest.ts),
  * which every tap re-arms. Reporting the delays rather than a bare count is
  * what makes a third one show up as itself rather than as an off-by-one.
@@ -1592,6 +1629,25 @@ async function runOpening() {
   // --- level 4: two animals, and a drop that must not stick -----------------
   await pressFinishButton();
   check("moves on to level 4", (await levelNumber()) === 4);
+
+  // The button in the corner throws away the puzzle the child is part way
+  // through, so it is held rather than tapped, exactly like the "Grown-ups"
+  // button (src/hold.ts). A hand resting on the corner of the screen must not
+  // be able to take the animals away, and the ring is the only thing that says
+  // a press is being counted - there is no wording for a child who cannot read.
+  await markTheBoard();
+  for (let tap = 0; tap < 6; tap++) await tapResetButton();
+  check("tapping the reset button, over and over, deals nothing", await boardIsTheSameOne());
+  check("the ring is empty once the button is let go", (await resetRingFill()) === 0);
+  let ringHalfway = 0;
+  await holdResetButton({ pauseAtHalfway: async () => (ringHalfway = await resetRingFill()) });
+  check(
+    `the ring fills as the button is held (${(ringHalfway * 100).toFixed(0)}% halfway through)`,
+    ringHalfway > 0.3 && ringHalfway < 1,
+  );
+  check("holding the reset button deals the level again", (await boardIsTheSameOne()) === false);
+  check("a re-deal stays on the same level", (await levelNumber()) === 4);
+
   const secondCast = await animalsOnBoard();
   check("level 4 deals two different animals", new Set(secondCast).size === 2);
   check("level 4 starts empty", (await placedCount()) === 0);
