@@ -87,7 +87,7 @@ twenty runs across both machine sizes, and failing on neither.
 
 ## A soak counts only the runs that reached what is being tested
 
-Two ways a run says nothing, both of which happened while measuring this:
+Three ways a run says nothing, all of which happened while measuring this:
 
 - **It failed before `test` ran.** Eight runs once failed in a tenth of a second
   on a stale citation in a code comment, skipping every task after it. Counted
@@ -99,6 +99,15 @@ Two ways a run says nothing, both of which happened while measuring this:
   wedged: no progress, no CPU consumed, and a wall time inflated by however long
   the lid was shut. Discard it. If timings look impossible, compare `date`
   against the wall clock before believing any of them.
+- **The machine lost its footing rather than the run failing.** Two sessions
+  independently saw a scratch worktree under `/tmp` disappear and unregister
+  itself while in use, `date` advance by half a minute across several minutes of
+  work, and a `typecheck` exit non-zero with no output at all and then pass,
+  unchanged, on the next invocation. A failure carrying no message is not a
+  result; re-run it before believing it, and keep anything a soak depends on
+  inside a real worktree rather than in `/tmp`. The hazard is not the lost time.
+  It is that a phantom failure invites someone to go and "fix" a check that was
+  never broken.
 
 Neither is a fussy distinction. The whole value of a soak is that it counts, and
 a count that includes runs which never reached the contention being measured is
