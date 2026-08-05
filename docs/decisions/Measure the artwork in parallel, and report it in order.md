@@ -116,3 +116,37 @@ moves can be read safely as soon as something else has settled - so wait for the
 thing that stops it moving, then read. What went wrong with the cut edges was
 not that a value moved but that nothing in the check had established it had
 stopped.
+
+## Counting it, because reading it cannot settle it
+
+Reading every assertion says a value is not moving when it is read. It cannot
+say that a race nobody has thought of does not fire, and the only race found
+here fired about once in a dozen runs and only under a whole `verify`. So the
+answer to "is the browser run safe on a full machine" has to be counted as well
+as argued.
+
+Twelve consecutive runs of `npm run verify` on `63300ba`, under `taskset -c
+0-3`, one lock held across the series: all twelve passed, 102 to 104 seconds
+each. Four pinned cores are the runner's shape and not merely its core count -
+`availableParallelism()` honours affinity, so `browserSlots()` yields three
+browsers charged two CPUs, which is what CI gets. `VERIFY_CPU_SLOTS=4` looks
+like the same thing and is not: five runs of it came back at 70 to 71 seconds,
+the same as the full budget, because dividing the charge leaves every worker on
+a real core of its own.
+
+Two things make a count mean anything, both learnt by losing runs to them.
+Preflight `docs:check`, `lint`, `format:check` and `typecheck` once before
+taking the lock, because those fail in a tenth of a second and skip everything
+after them - eight runs once "failed" on a stale citation without reaching a
+single test, and counting them would have shown the opposite of the truth. And
+log the wall clock at both ends of every run, because a laptop that suspends
+mid-series inflates one run's time and can leave the browser run wedged with no
+CPU burn at all; in the series above each run's end is the next run's start to
+the second, so none of them slept.
+
+What twelve runs support is that the browser run passed twelve times at the
+runner's shape with the machine full. They do not support "there are no flakes
+left". Two failures in twenty-nine is roughly one in fourteen, and a hazard at
+that rate survives twelve clean runs about two times in five. The number is a
+floor under confidence, not a proof, and the next person to see a lone
+unexplained failure here should re-run it before believing it.
