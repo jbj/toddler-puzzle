@@ -99,3 +99,20 @@ it waits for the count the check already asks for and an edge of zero, and gives
 up on a two-second deadline, six times the fade. The three checks - the
 assembled animal, the finished jigsaw, the mended picture - are unchanged, so a
 board that never draws an edge, or never loses one, fails exactly as before.
+
+The obvious next question is whether the browser run has more of them, and the
+answer is no - which is worth writing down, because it is not obvious and
+finding it out again means reading every assertion in `shot.mjs` a second time.
+Every computed style the run reads was checked against what drives it. The cut
+edges were the only one read while moving. The hole's opacity does not
+transition; a clip path, a panel's `display` and a backdrop's fill are discrete;
+the night sky over a finished picture rises to its value under `fill:
+"forwards"` and is waited for before it is read; and the sleeping hint's pulse
+is only read after the run has already established that the board is asleep and
+that nothing is animating on it.
+
+That last one is the pattern to copy rather than the exception. A value that
+moves can be read safely as soon as something else has settled - so wait for the
+thing that stops it moving, then read. What went wrong with the cut edges was
+not that a value moved but that nothing in the check had established it had
+stopped.
