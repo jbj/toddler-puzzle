@@ -12,6 +12,13 @@ before it searches for a board rather than after, and the test that used to take
 slowest test in the whole suite is 1.6 s against the five-second guard - better
 headroom under contention than the suite had with the machine to itself before.
 
+That test is `refuses a cast too big to compose rather than shrinking it away`,
+in `tests/puzzle.test.ts`, and it is worth naming because it is the slowest test
+under every arrangement anyone has measured - so it is the one to re-measure
+before changing this budget again. Its neighbour in `tests/fit.test.ts` is named
+almost identically and is not the same test; the one that matters asks for a
+cast of sixty.
+
 That the guard was real, and that the fit fix is what moved it, can be shown
 rather than asserted. The same bounded overlap was measured on a tree from
 before that fix and failed on twelve cores, the sixty-animal case landing at
