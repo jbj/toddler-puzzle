@@ -68,22 +68,23 @@
 
 ### What the checks cost, and what to speed up
 
-Measured on a 12-core machine holding the machine lock; CI has 4 cores. `verify`
-runs these in parallel, so the wall time is the critical path, not the sum.
+Measured on a 12-core machine holding the machine lock; CI has 4 cores, which
+`taskset -c 0-3` emulates faithfully enough to measure. `verify` runs these in
+parallel, so the wall time is the critical path, not the sum.
 
 | Task | Alone | Inside `verify` |
 | --- | --- | --- |
-| `art:check` | 47 s | 72 s |
-| `shot` | 61 s | 65 s |
-| `test` | 12 s | 8 s |
+| `art:check` | 21 s | 31 s |
+| `shot` | 61 s | 63 s |
+| `test` | 9 s | 17 s |
 | everything else | under 5 s each | |
 
-Two things surprise people. `art:check` costs *more* under `verify` than alone,
-because it is charged one CPU slot while `shot` holds several and so waits;
-that gap is starvation, not work. `test` costs *less*, because it is given the
-machine to itself - it is the one task whose timings are load-bearing, and
-sharing made it flake. Before optimising a check, measure it inside `verify` as
-well as alone, or you will tune the wrong one.
+What surprises people is that a task costs *more* inside `verify` than alone.
+That gap is contention, not work: the three tasks with worker pools are sized
+to fill the machine between them, so each of them runs slower than it would
+with the machine to itself, and the run as a whole finishes sooner. Before
+optimising a check, measure it inside `verify` as well as alone, or you will
+tune the wrong one.
 
 ### Telling whether your work landed
 
@@ -179,7 +180,7 @@ something unrelated. Why they explain themselves is
 | `scripts/pictures.mjs` | Judges a scene from pixels: the grids the levels cut at, and whether every piece has something in it |
 | `scripts/slices.mjs` | Judges a cut from pixels: whole, fair, grabbable. Shared by the two above |
 | `scripts/slice-recipes.mjs` | Searches for where to cut every animal, and writes the table |
-| `scripts/verify.mjs` | Runs every check above against a slot budget, as many at once as the machine allows. `--verbose` prints what each task cost; a task that needs the machine to itself says so here |
+| `scripts/verify.mjs` | Runs every check above against a slot budget, as many at once as the machine allows. `--verbose` prints what each task cost; the list is the order it tries them in as well as the order it prints them |
 | `scripts/concurrency.mjs` | What the machine can afford: CPU slots, and how many headless Chromes fit in memory at once. Every parallel runner asks here rather than guessing |
 | `scripts/report.mjs` | The shared reporter every check prints through, so a passing run stays quiet and a failing one explains itself |
 | `scripts/probe.mjs` | Prints one real deal as JSON, so a question about geometry needs no throwaway test |
