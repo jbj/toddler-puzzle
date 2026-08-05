@@ -134,6 +134,25 @@ like the same thing and is not: five runs of it came back at 70 to 71 seconds,
 the same as the full budget, because dividing the charge leaves every worker on
 a real core of its own.
 
+That difference can be seen without running anything, which is worth knowing
+because it takes seconds and the timings take an hour:
+
+```
+node -e 'import("./scripts/concurrency.mjs").then(m =>
+  console.log(m.cpuSlots(), m.browserSlots()))'
+```
+
+| | `cpuSlots()` | `browserSlots()` |
+| --- | --- | --- |
+| unpinned, twelve threads | 12 | 6 |
+| `taskset -c 0-3` | 4 | 3 |
+| `VERIFY_CPU_SLOTS=4` | 4 | **6** |
+
+The last row is the whole of it: the variable divides the CPU charge and leaves
+the browser count alone, so six Chromes still spread over twelve real cores and
+nothing is emulated. Pinning takes the cores away, which is what the runner
+does to us.
+
 Two things make a count mean anything, both learnt by losing runs to them.
 Preflight `docs:check`, `lint`, `format:check` and `typecheck` once before
 taking the lock, because those fail in a tenth of a second and skip everything
