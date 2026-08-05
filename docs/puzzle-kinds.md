@@ -10,7 +10,7 @@ is [`cutting.md`](cutting.md).
 finger, settling it down, sounds, sparkles, the level lifecycle. Everything that
 could differ between one sort of level and another is a `PuzzleKind`
 (`src/puzzle.ts`): `deal`, `backdrop`, `target`, `accepts`, `isComplete`, and
-the optional `openTargets`, `settle` and `play`.
+the optional `openTargets` and `settle`.
 
 - `Puzzle` carries `targets` beside `pieces`: what the layout stands in the
   scene, one hole each. For shape-match the two lists are the same; for sliced
@@ -18,9 +18,6 @@ the optional `openTargets`, `settle` and `play`.
 - `isComplete` is in the contract because not every kind ends with an empty tray.
 - `backdrop` is redrawn whenever the puzzle moves on, which is how a filled hole
   hides itself under the piece covering it.
-- `play` makes a kind **played by touching rather than dragging**: the host builds
-  no tray pieces, starts no drag engine, and hands the kind a layer of its own
-  plus a `touched(at)` callback.
 - `settle` is the only place a kind can write down a choice about a drop, since
   `accepts` is the one moment it is told where the finger let go and `target` is
   asked again on every re-render. Only the polygon kind implements it.
@@ -35,8 +32,8 @@ the optional `openTargets`, `settle` and `play`.
 
 ## The level table
 
-`LEVELS` in `src/levels.ts` is the whole difficulty ramp - thirty records, six
-chapters of five - and the only place that decides how hard anything is. A
+`LEVELS` in `src/levels.ts` is the whole difficulty ramp - thirty records, five
+chapters of six - and the only place that decides how hard anything is. A
 record names the `kind`, how many `targets` there are and how many `pieces` fill
 them (the same number except where one thing is cut up), the `snapForgiveness`,
 and optionally a `theme` and `options`.
@@ -53,8 +50,8 @@ and optionally a `theme` and `options`.
   read differently at a glance, which `npm run art:check` enforces; see
   [`art.md`](art.md).
 - **A level is its kind, its subject and its size, and no two levels are all
-  three.** The subject is what the row names - `activity`, `theme`,
-  `options.scene`, `options.shapePicture` - so a reader can check the thirty are
+  three.** The subject is what the row names - `theme`, `options.scene`,
+  `options.shapePicture` - so a reader can check the thirty are
   thirty different puzzles by looking down the file, and
   `tests/levels.test.ts` fails on a duplicate. The same picture at a different
   size is a different puzzle; at the same size it is a level nobody chose. See
@@ -73,7 +70,7 @@ and optionally a `theme` and `options`.
 
 ## Pictures out of shapes
 
-`src/kinds/polygon.ts` plays levels 16-20: one picture built out of three to six
+`src/kinds/polygon.ts` plays levels 13-18: one picture built out of three to six
 plain, strongly coloured geometric shapes dropped into shadows inside the
 finished arrangement. Each piece is a whole thing a child can name, so the shape
 names come along without anybody making a lesson of them.
@@ -85,7 +82,7 @@ names come along without anybody making a lesson of them.
   than making the best of it when a row names nothing, names a picture the
   catalogue does not hold, or names one whose part count disagrees with `pieces`.
   What stays dealt fresh is the order the pieces wait in. Spare pictures nobody
-  names are held to every rule the five in play are.
+  names are held to every rule the six in play are.
 - **A scene is one target with several pieces**: every part carries the whole
   scene box and the scene's single anchor, so `targets: 1` however many pieces.
 - **Two congruent parts are interchangeable.** A piece is accepted by any *free*
@@ -109,64 +106,9 @@ to, all about the child:
   filled twin does not cover its own place's middle, or a piece appears to jump.
   `tests/polygon.test.ts` measures every scene for it.
 
-## Levels played by touching
-
-`src/kinds/play.ts` plays levels 1, 3 and 5. **Touch a thing, a thing happens.**
-Which activity a level runs is `options.activity`, and every `play` level names
-one - `tests/play.test.ts` insists, because a level that fell back to a default
-is a level nobody chose.
-
-- **bubbles** rise from the bottom and burst under a finger;
-- **peekaboo** hides each dealt animal behind a bush, and a touch uncovers it;
-- **alive** is a scene where everything answers - the sun spins, a cloud drifts,
-  an animal waggles.
-
-Four rules, and they are the level rather than polish:
-
-- **There is no way to be wrong.** Nothing is picked up, so nothing can be
-  dropped anywhere; `accepts` returns false for everything. A touch that lands on
-  nothing does nothing - never a buzz, never a wobble.
-- **There is no way to get stuck.** `goalFor` is measured against `thingsFor`, so
-  no level asks for more touches than it gave things to touch - strictly fewer for
-  everything but peekaboo. A bubble that drifts away untouched is replaced at
-  once.
-- **There is always a way out.** The goal is what the level asks for;
-  `ACTIVITY_PATIENCE_MS` is what it settles for - one bubble's climb of the sky
-  after the level was dealt, about eight seconds, and the way onwards is up
-  whatever has been touched. It is a length rather than a round number because
-  that is the one interval on screen a child can watch go by; the pause after
-  every *other* level is timed the same way, off a balloon rather than a bubble
-  (`WAY_OUT_MS` in `src/celebrate.ts`). `isComplete` reads that
-  deadline as well as the count, and `play` arms a timer calling `host.touched()`
-  with no point, so the host looks again without sparkling at a finger that was
-  not there. It ends nothing else. The deadline is stamped on the *puzzle* when it
-  is dealt, so turning the tablet hands out no second clock. See
-  [Ask a touch level for a handful, and let the child out anyway](<decisions/Ask a touch level for a handful, and let the child out anyway.md>).
-- **The answer is immediate.** `pointerdown`, not click, and nothing waits for an
-  animation. An animation may run *after* the answer.
-
-Also:
-
-- Progress lives in a `touched` set on the puzzle rather than in `placed`,
-  because `isComplete` is handed only the puzzle and the same puzzle object is
-  passed to `play` again after a re-layout. `play` returns a teardown, called
-  before the next board is mounted.
-- **The burst is `src/pop.ts`, not part of the bubbles**, because a chapter
-  celebration bursts balloons the same way. `releasePoppable` looks after one
-  floater's drift, hit target and removal; `popBurst` is the burst alone. Under
-  `prefers-reduced-motion` a floater does not drift at all rather than collapsing
-  to a millisecond, which would leave an empty sky:
-  [Under reduced motion, a floater holds still](<decisions/Under reduced motion, a floater holds still.md>).
-- An activity level is still dealt a cast and given a layout - bubbles never
-  draws its animals - because the layout is composed around a cast. Its backdrop
-  is the ordinary landscape with `tray: false`; `alive` also passes `sky: false`
-  so the scenery leaves the sun and clouds to the kind.
-- Chapter 1 alternates touch and drag on purpose:
-  [Open the game with something to touch](<decisions/Open the game with something to touch.md>).
-
 ## The kind registry
 
-`kindFor(level)` in `src/kinds/registry.ts` looks a level's kind id up. All six
+`kindFor(level)` in `src/kinds/registry.ts` looks a level's kind id up. All five
 are built, so it either returns the kind or throws: no fallback, and an id that
 is not in `PuzzleKindId` does not compile. The stand-in scaffold came down when
 the last kind landed
@@ -176,9 +118,9 @@ the last kind landed
   (`src/levels.ts`), and the levels that named it start playing it - with a
   switch of its own in the grown-up panel, which walks that list. Do not edit
   `LEVELS` to switch a kind on.
-- **A kind is also where the bundle is cut.** `play` and `shapeMatch` are static
-  imports because they are the whole of chapters 1 and 2 and the opening must
-  never wait; the other four are `import()`ed, a chunk each. `kindFor` stays
+- **A kind is also where the bundle is cut.** `shapeMatch` is a static import
+  because it is the whole of chapter 1 and the opening must never wait; the other
+  four are `import()`ed, a chunk each. `kindFor` stays
   synchronous and strict - a kind that has not arrived throws, and says so
   differently from one nobody wrote - and `ensureKind` is the one place that
   waits. Nothing loads on demand: `src/warm.ts` fetches every kind during play,

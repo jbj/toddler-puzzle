@@ -154,8 +154,7 @@ something unrelated. Why they explain themselves is
 | `src/shatter.ts` | The shatterer: recursive half-plane splits, searched until every shard clears the floors |
 | `src/picture-pieces.ts` | Mints a frame, the clipped pieces and the dimmed guide. Shared by both cut-up-picture kinds |
 | `src/cut.ts` | How a piece of a bigger drawing is cut out and edged: the two clips, and the white line that fades once the piece is home. Shared by the slicer and both cut-up-picture kinds |
-| `src/kinds/play.ts` | Cause and effect: the bubbles, the peekaboo bushes and the scene that answers |
-| `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - a chapter celebration bursts balloons with it |
+| `src/pop.ts` | The pop engine: a thing that floats and bursts. Shared - the balloons interlude and the finale burst with it |
 | `src/motion.ts` | Whether the player asked for less motion. The one place `prefers-reduced-motion` is read |
 | `src/layout.ts` | Composes a level's layout from its cast, and all tunable constants |
 | `src/fit.ts` | The sizing search under `layout.ts`: how the board is split between the tray and the play area, over plain sizes |
@@ -172,7 +171,7 @@ something unrelated. Why they explain themselves is
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `src/hint.ts` | The idle hint: how long a board is left alone, which piece it is about, and the glow at both ends |
 | `src/rest.ts` | What the game does when nobody is playing: the two-minute wait, the freeze, and the touch that undoes it |
-| `src/celebration.ts` | Six chapter celebrations and the finale, all played rather than watched. A chunk of its own |
+| `src/celebration.ts` | Four chapter celebrations, four interludes and the finale, all played rather than watched. A chunk of its own |
 | `src/warm.ts` | Pulls every deferred chunk in during play, in the order the levels will want it |
 | `scripts/preview.mjs` | Renders the art for review: a contact sheet, one animal large, or a scene under its cut grids |
 | `scripts/check-art.mjs` | Enforces the asset contract on every animal SVG and every scene |
@@ -188,7 +187,7 @@ something unrelated. Why they explain themselves is
 | `scripts/check-audio.mjs` | Renders every sound offline in Chromium, measures the samples, and optionally draws the waveform sheet |
 | `scripts/audio-probe.mjs` | The half of that which runs in the browser: renders, an FFT and the measurements |
 | `scripts/chrome.mjs` | Starts headless Chromium and speaks the debugging protocol to it |
-| `scripts/shot.mjs` | End-to-end drag and touch test in headless Chromium. Also the only place the network is taken away, so what a child sees when a chapter's chunk is missing is checked here |
+| `scripts/shot.mjs` | End-to-end play-through in headless Chromium. Also the only place the network is taken away, so what a child sees when a chapter's chunk is missing is checked here |
 | `scripts/shot-sheet.mjs` | Packs the run's screenshots into one image to attach to a pull request |
 | `scripts/tools.mjs` | Resolves the external art tools, with one clear message when they are missing |
 | `vite.config.ts` | Build configuration. `base` is relative, so one bundle works at a server root and under the Pages path. Also writes `.art/bundle.json`, which the budget check reads |

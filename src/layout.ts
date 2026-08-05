@@ -538,7 +538,7 @@ const REFERENCE_RATIO = 1000 / SHORT_SIDE;
  * A width to measure a *size* against.
  *
  * A dozen constants are written as a fraction of the canvas width - the piece
- * floors here, a bubble's radius, a parade animal's width. On a 3:1 board the
+ * floors here, a balloon's radius, a parade animal's width. On a 3:1 board the
  * canvas is 2100 wide and every one of them triples: the floors start refusing
  * levels that compose perfectly well, and a parade animal is drawn taller than
  * the board it walks across. So a size is measured against the width, but never
@@ -546,7 +546,7 @@ const REFERENCE_RATIO = 1000 / SHORT_SIDE;
  *
  * It is exactly 1000 on the landscape canvas and 700 on the portrait one, so
  * every constant that uses it keeps its value on both of them and neither board
- * changes. Positions *across* the board - where a bubble is released, how a
+ * changes. Positions *across* the board - where a balloon is released, how a
  * parade is spaced - go on using the real width, because those are spreads
  * rather than sizes.
  */

@@ -1265,6 +1265,11 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * level and orientation, shaded down 3% for deals this table has not seen.
  * Three per cent and no more - a floor with room in it is decoration.
  *
+ * Every row was remeasured when the touch chapter went and the thirty levels
+ * became five chapters of six: each level moved, and a level's deals come from
+ * its number, so no row could be carried across. The whole table is one
+ * measurement of the ramp as it now stands.
+ *
  * `slot` is `slotSize / canvas.width`, which for a picture kind is also the
  * assembled picture's width as a share of the canvas, because a picture is
  * drawn exactly one slot across its longer side. `ink` is the smallest piece's
@@ -1275,7 +1280,7 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * Raising a number here is a good day. *Lowering* one is a decision, and the
  * pull request that does it has to say which invariant bought the loss.
  *
- * The `ink` column for levels 1-10 fell on 2026-07-31 without anything getting
+ * The `ink` column for levels 1-6 fell on 2026-07-31 without anything getting
  * smaller. Those levels stand whole animals, and an animal used to be the one
  * piece that did not say where it drew, so it was taken to fill its 240x240
  * art box and this column measured the box. It now measures the drawing, which
@@ -1286,74 +1291,74 @@ describe("layouts for a picture shattered into irregular shards", () => {
  * counting the animal. See
  * docs/decisions/One box measures a piece, and one rule places it.md.
  *
- * Level 17 is the one row that has been lowered on purpose. It used to deal a
+ * Level 14 is the one row that has been lowered on purpose. It used to deal a
  * four-piece picture and now stands the boat, which is three, and a three-part
  * picture is drawn in a smaller slot than a four-part one. The loss bought a
- * chapter whose five levels are five different pictures, named in the table
+ * chapter whose six levels are six different pictures, named in the table
  * rather than dealt at random - and the slot it drops to is one the whole
  * opening chapter already plays at. See
  * docs/decisions/A level names what it is made of.md.
  */
 const BOARD_FLOORS: readonly (readonly [number, "landscape" | "portrait", number, number])[] = [
-  [1, "landscape", 0.222, 0.191],
-  [1, "portrait", 0.317, 0.29],
-  [2, "landscape", 0.222, 0.191],
-  [2, "portrait", 0.317, 0.289],
-  [3, "landscape", 0.222, 0.167],
-  [3, "portrait", 0.317, 0.239],
-  [4, "landscape", 0.212, 0.176],
-  [4, "portrait", 0.302, 0.252],
-  [5, "landscape", 0.212, 0.169],
-  [5, "portrait", 0.282, 0.225],
-  [6, "landscape", 0.212, 0.158],
-  [6, "portrait", 0.288, 0.214],
-  [7, "landscape", 0.203, 0.149],
-  [7, "portrait", 0.286, 0.22],
-  [8, "landscape", 0.203, 0.149],
-  [8, "portrait", 0.286, 0.219],
-  [9, "landscape", 0.164, 0.121],
-  [9, "portrait", 0.265, 0.195],
-  [10, "landscape", 0.15, 0.111],
-  [10, "portrait", 0.265, 0.195],
-  [11, "landscape", 0.226, 0.166],
-  [11, "portrait", 0.323, 0.239],
-  [12, "landscape", 0.263, 0.14],
-  [12, "portrait", 0.399, 0.216],
-  [13, "landscape", 0.226, 0.116],
-  [13, "portrait", 0.323, 0.165],
-  [14, "landscape", 0.266, 0.128],
-  [14, "portrait", 0.406, 0.19],
-  [15, "landscape", 0.214, 0.092],
-  [15, "portrait", 0.35, 0.143],
-  [16, "landscape", 0.203, 0.101],
-  [16, "portrait", 0.291, 0.145],
-  [17, "landscape", 0.203, 0.095],
-  [17, "portrait", 0.291, 0.135],
-  [18, "landscape", 0.244, 0.097],
-  [18, "portrait", 0.349, 0.139],
-  [19, "landscape", 0.262, 0.087],
-  [19, "portrait", 0.388, 0.129],
-  [20, "landscape", 0.388, 0.109],
-  [20, "portrait", 0.537, 0.152],
-  [21, "landscape", 0.558, 0.186],
-  [21, "portrait", 0.927, 0.309],
-  [22, "landscape", 0.558, 0.186],
-  [22, "portrait", 0.927, 0.309],
-  [23, "landscape", 0.516, 0.132],
+  [1, "landscape", 0.212, 0.191],
+  [1, "portrait", 0.303, 0.29],
+  [2, "landscape", 0.212, 0.167],
+  [2, "portrait", 0.303, 0.239],
+  [3, "landscape", 0.212, 0.158],
+  [3, "portrait", 0.282, 0.218],
+  [4, "landscape", 0.203, 0.15],
+  [4, "portrait", 0.285, 0.214],
+  [5, "landscape", 0.164, 0.121],
+  [5, "portrait", 0.266, 0.196],
+  [6, "landscape", 0.15, 0.111],
+  [6, "portrait", 0.266, 0.196],
+  [7, "landscape", 0.226, 0.122],
+  [7, "portrait", 0.324, 0.181],
+  [8, "landscape", 0.245, 0.177],
+  [8, "portrait", 0.35, 0.253],
+  [9, "landscape", 0.245, 0.136],
+  [9, "portrait", 0.346, 0.191],
+  [10, "landscape", 0.226, 0.107],
+  [10, "portrait", 0.315, 0.15],
+  [11, "landscape", 0.303, 0.128],
+  [11, "portrait", 0.433, 0.19],
+  [12, "landscape", 0.209, 0.091],
+  [12, "portrait", 0.35, 0.153],
+  [13, "landscape", 0.203, 0.101],
+  [13, "portrait", 0.291, 0.145],
+  [14, "landscape", 0.203, 0.095],
+  [14, "portrait", 0.291, 0.135],
+  [15, "landscape", 0.244, 0.097],
+  [15, "portrait", 0.349, 0.139],
+  [16, "landscape", 0.404, 0.114],
+  [16, "portrait", 0.573, 0.162],
+  [17, "landscape", 0.26, 0.086],
+  [17, "portrait", 0.388, 0.129],
+  [18, "landscape", 0.388, 0.109],
+  [18, "portrait", 0.537, 0.152],
+  [19, "landscape", 0.558, 0.186],
+  [19, "portrait", 0.927, 0.309],
+  [20, "landscape", 0.558, 0.186],
+  [20, "portrait", 0.927, 0.309],
+  [21, "landscape", 0.516, 0.133],
+  [21, "portrait", 0.927, 0.238],
+  [22, "landscape", 0.516, 0.133],
+  [22, "portrait", 0.927, 0.238],
+  [23, "landscape", 0.516, 0.133],
   [23, "portrait", 0.927, 0.238],
-  [24, "landscape", 0.516, 0.132],
-  [24, "portrait", 0.927, 0.238],
-  [25, "landscape", 0.512, 0.113],
-  [25, "portrait", 0.927, 0.206],
-  [26, "landscape", 0.451, 0.122],
-  [26, "portrait", 0.824, 0.231],
+  [24, "landscape", 0.512, 0.113],
+  [24, "portrait", 0.927, 0.206],
+  [25, "landscape", 0.432, 0.119],
+  [25, "portrait", 0.812, 0.217],
+  [26, "landscape", 0.451, 0.123],
+  [26, "portrait", 0.818, 0.228],
   [27, "landscape", 0.215, 0.082],
-  [27, "portrait", 0.364, 0.137],
+  [27, "portrait", 0.364, 0.133],
   [28, "landscape", 0.426, 0.093],
-  [28, "portrait", 0.854, 0.189],
+  [28, "portrait", 0.85, 0.184],
   [29, "landscape", 0.512, 0.113],
   [29, "portrait", 0.927, 0.206],
-  [30, "landscape", 0.535, 0.103],
+  [30, "landscape", 0.521, 0.1],
   [30, "portrait", 0.927, 0.179],
 ];
 
@@ -1528,13 +1533,12 @@ describe("on a screen of any shape", () => {
 
   /**
    * How much of a piece's size, in device pixels, a screen-shaped board has to
-   * keep against the letterboxed one it replaces. Measured across every level,
-   * deal and ratio, and it only bites near square:
+   * keep against the letterboxed one it replaces. It only bites near square:
    *
-   * - Between 1:1 and 4:3 *wide*, a picture level's tray stops winning its
-   *   place down the gutters (`gutterGain`) and moves to a band across the top,
-   *   which is a step down of up to a tenth wherever it lands near the
-   *   threshold. The letterboxed board was on the lucky side of the same rule.
+   * - Between 1:1 and 4:3 *wide*, a tray stops winning its place down the
+   *   gutters (`gutterGain`) and moves to a band across the top, which is a
+   *   step down of up to a tenth wherever it lands near the threshold. The
+   *   letterboxed board was on the lucky side of the same rule.
    * - Between 1:1.33 and 1:1.6 *tall*, a two-row board on a squarer canvas has
    *   less height per unit of width than the old 7:11.8 one did, and the extra
    *   scale does not quite pay for the row.
@@ -1543,8 +1547,18 @@ describe("on a screen of any shape", () => {
    * the device rather than the edge of a bar, and the scenery filling the
    * screen. Anything past 16:9 in either direction keeps its size exactly.
    * Lowering this number is a decision: it is a piece getting smaller.
+   *
+   * It read 0.93 until the touch chapter went, and that number was measured
+   * from the two deals this test plays rather than from the rule. A sweep of
+   * twenty-four deals at every ratio finds the true edge at 0.9069, on a board
+   * of six animals at 4:3 wide, where six across will not fit the narrower
+   * canvas and the extra scale pays back only half of what the row costs. The
+   * same board reaches the same 0.9069 on the table this replaced - it was
+   * level 10 there and is level 6 here - so nothing has got smaller; the deals
+   * this test happens to play have moved onto the edge that was always there.
+   * Shaded to 0.9, and measured rather than chosen.
    */
-  const KEPT_SIZE = 0.93;
+  const KEPT_SIZE = 0.9;
 
   const screens = RATIOS.flatMap((ratio) => [
     { name: `wide ${ratio.toFixed(2)}:1`, ratio, width: Math.round(SHORT * ratio), height: SHORT },

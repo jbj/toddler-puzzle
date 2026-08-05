@@ -9,13 +9,12 @@ level - sound, sparkles, the hint, drag, rest - is in
 
 ## Forward only
 
-- Thirty levels, six chapters of five, starting on level 1. The level table is
+- Thirty levels, five chapters of six, starting on level 1. The level table is
   `src/levels.ts`, not here.
 - Finishing a level clears the tray and puts one big button in it, leading to the
-  next level. A touch level has no tray to clear; the same button appears in the
-  same place. Every level with a puzzle in it puts that button on top of a
-  celebration, and holds it back `WAY_OUT_MS` (4.5 s) rather than putting it up
-  in the same tick - a fraction of the celebration, which runs on long after.
+  next level. Every level puts that button on top of a celebration, and holds it
+  back `WAY_OUT_MS` (4.5 s) rather than putting it up in the same tick - a
+  fraction of the celebration, which runs on long after.
 - The button after the last level starts the game over (`nextLevel` in
   `src/levels.ts` wraps).
 - No menu, difficulty picker, settings, failure state or score on the play
@@ -29,7 +28,7 @@ level - sound, sparkles, the hint, drag, rest - is in
   when it needs it rather than copying it, so a switch moved mid-level is
   answered by the button at that level's end. See
   [A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
-- The six dots by the reset button (`buildChapterDots` in `src/board.ts`) are one
+- The five dots by the reset button (`buildChapterDots` in `src/board.ts`) are one
   per chapter, filled up to the chapter in play. They are an indicator, not a
   control: they carry `pointer-events: none`. Do not make them tappable.
 - `?level=` in the URL (`src/main.ts`) starts partway along the ramp - a tool for
@@ -42,13 +41,13 @@ level - sound, sparkles, the hint, drag, rest - is in
 
 ## The end of a level
 
-Every level with a puzzle in it ends with a celebration, in two tiers, both owned
-by `src/celebration.ts`:
+Every level ends with a celebration, in two tiers, both owned by
+`src/celebration.ts`:
 
-- the six that end a chapter get the big ones - balloons, a rainbow, blossom, a
-  parade, fireworks, and after level 30 the finale. `CHAPTER_CELEBRATIONS` says
-  which; `endsChapter` in `src/levels.ts` says when one is due, read off the
-  level table.
+- the five that end a chapter get the big ones - a rainbow, blossom, a parade,
+  fireworks, and after level 30 the finale. `CHAPTER_CELEBRATIONS` says which;
+  `endsChapter` in `src/levels.ts` says when one is due, read off the level
+  table.
 - the rest get an **interlude**: balloons, beach balls, confetti, streamers.
   `INTERLUDES` is the rotation and `interludeFor(level)` picks by level number,
   so two levels running never end alike and the same level always ends the way
@@ -57,20 +56,14 @@ by `src/celebration.ts`:
 An interlude is deliberately the smaller thing: weather rather than an event.
 Nothing in one has to be watched, it answers a finger the same way wherever it
 is touched, and a child who sits still and looks at it has played it correctly.
-An interlude with something to achieve in it would be a seventh puzzle kind
+An interlude with something to achieve in it would be a sixth puzzle kind
 nobody asked for. The sound follows the same line - a level's fanfare with the
 interlude's own arrival behind it, always shorter than the shortest chapter
 fanfare.
 
-The exception is a level played by touching that does not also end a chapter -
-levels 1 and 3 as the table stands. `isPlayedByTouching` in `src/levels.ts` says
-which, and `raiseFinish` in `src/game.ts` raises nothing for them: no
-celebration, and so no pause either, with the button up as soon as the level is
-done. Such a level *is* an interlude already - something large and slow that
-answers a finger and asks nothing - so an interlude after one celebrates a
-celebration, and all the pause would do is keep a child from the next thing.
-Level 5 is touched too and keeps its chapter moment, because that one marks the
-end of five levels rather than covering a seam.
+Balloons are in both tiers and end no chapter. They are first in the interlude
+rotation, so they are the first celebration a child ever sees, and they burst
+again in the finale.
 
 See
 [A celebration is played, and it ends by itself](<decisions/A celebration is played, and it ends by itself.md>)
@@ -81,14 +74,13 @@ and
   screen to be admired, so anything the celebration shares with it arrives as a
   second copy. The parade ends the chapter of coloured shapes, not the chapter of
   animals, and deals its walkers from the animals the board is *not* holding
-  (`paradeCast`). Check what a chapter's fifth level leaves on screen before
+  (`paradeCast`). Check what a chapter's last level leaves on screen before
   hanging a celebration on it. See
   [A celebration is not made of the board](<decisions/A celebration is not made of the board.md>).
 - **Played, not watched.** Everything answers a finger in the tick it lands.
 - **Not a level and not a `PuzzleKind`.** No pieces, targets, difficulty or table
-  row. It copies the shape of `PuzzleKind.play`: handed a layer, answers the
-  finger itself, returns a teardown, keeps progress outside the board so a
-  rotation does not lose it.
+  row. It is handed a layer, answers the finger itself, returns a teardown, and
+  keeps progress outside the board so a rotation does not lose it.
 - **Not a trap at either end.** The button onwards goes up while the celebration
   is still running; new things keep arriving unasked for `CELEBRATION_SPAN_MS`;
   when the span runs out only the *arriving* stops, and whatever is on screen
@@ -121,6 +113,12 @@ and
 - **Drawn below the effects layer.** `board.celebrationLayer` sits between the
   pieces and `fx`, so a balloon or a full-board tap catcher can never cover the
   button onwards. Do not move it above.
+- **A floater and its burst are `src/pop.ts`.** `releasePoppable` looks after one
+  floater's drift, hit target and removal; `popBurst` is the burst alone, so the
+  balloons interlude and the finale pop the same way. Under
+  `prefers-reduced-motion` a floater does not drift at all rather than collapsing
+  to a millisecond, which would leave an empty sky:
+  [Under reduced motion, a floater holds still](<decisions/Under reduced motion, a floater holds still.md>).
 
 ## Coming back to it
 
@@ -181,8 +179,8 @@ thirty levels, the switches, and the only reset in the game. See
   and a chosen level goes through `jumpToLevel`, not `reachLevel`, so reading the
   map never fills it in. `createGame` returns the handle the panel drives
   (`chooseLevel`, `currentLevel`).
-- **A kind can be switched out, but never the last one.** Six switches, one per
-  `PuzzleKindId`, walked off `PUZZLE_KINDS` in `src/levels.ts` so a seventh kind
+- **A kind can be switched out, but never the last one.** Five switches, one per
+  `PuzzleKindId`, walked off `PUZZLE_KINDS` in `src/levels.ts` so a sixth kind
   cannot arrive without one. `toggleKind` is the rule and is pure: it refuses the
   press that would leave nothing to play, and `refresh` draws the lone survivor as
   held on. Switching off the kind under the child moves them to the next level in

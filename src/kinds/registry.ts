@@ -12,18 +12,18 @@
  *
  * ## Why a kind is where the bundle is cut
  *
- * A chapter is five levels and, near enough, one kind: chapter 3 is `sliced`,
- * chapter 4 is `polygon`, chapter 5 is `jigsaw`. So splitting the bundle by
- * kind *is* splitting it by chapter, and it degrades gracefully for chapter 6,
+ * A chapter is six levels and, near enough, one kind: chapter 2 is `sliced`,
+ * chapter 3 is `polygon`, chapter 4 is `jigsaw`. So splitting the bundle by
+ * kind *is* splitting it by chapter, and it degrades gracefully for chapter 5,
  * which mixes three. Each kind brings its own artwork and machinery with it -
  * the slice recipes, the shape catalogue, the scenes, the cutter, the shatterer
  * - which is most of what the game weighs.
  *
- * `play` and `shapeMatch` are imported *statically*, because they are the whole
- * of chapters 1 and 2: the opening of the game must never wait for anything.
- * The other four are `import()`ed, and every one of them is pulled in during
- * play, long before the child reaches it - `warm.ts` does that. By the time a
- * kind is needed it is in memory, and asking for it costs a resolved promise.
+ * `shapeMatch` is imported *statically*, because it is the whole of chapter 1:
+ * the opening of the game must never wait for anything. The other four are
+ * `import()`ed, and every one of them is pulled in during play, long before the
+ * child reaches it - `warm.ts` does that. By the time a kind is needed it is in
+ * memory, and asking for it costs a resolved promise.
  * See docs/decisions/A chapter is warmed before it is needed, not fetched when
  * it is.md.
  *
@@ -39,15 +39,13 @@
  */
 import type { LevelSpec, PuzzleKindId } from "../levels";
 import type { PuzzleKind } from "../puzzle";
-import { play } from "./play";
 import { shapeMatch } from "./shape-match";
 
 /**
- * How to get hold of each kind. The two the first two chapters need resolve
+ * How to get hold of each kind. The one the first chapter needs resolves
  * without a fetch; the rest are a chunk each.
  */
 const LOADERS: Record<PuzzleKindId, () => Promise<PuzzleKind>> = {
-  play: () => Promise.resolve(play),
   "shape-match": () => Promise.resolve(shapeMatch),
   sliced: async () => (await import("./sliced")).sliced,
   polygon: async () => (await import("./polygon")).polygon,
@@ -66,7 +64,6 @@ export function registerKind(kind: PuzzleKind): void {
   registry.set(kind.id, kind);
 }
 
-registerKind(play);
 registerKind(shapeMatch);
 
 /** Is there a kind under this id at all? Says nothing about it having loaded. */

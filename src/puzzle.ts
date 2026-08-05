@@ -11,14 +11,11 @@
  * Which kind plays a given level comes from the level table (`levels.ts`) by
  * way of the registry (`kinds/registry.ts`). Shape-match
  * (`kinds/shape-match.ts`) was the first implementation; sliced animals,
- * polygon scenes, cause-and-effect play, jigsaws and shattered pictures are the
- * others, and none of them taught the host anything about itself.
+ * polygon scenes, jigsaws and shattered pictures are the others, and none of
+ * them taught the host anything about itself.
  *
- * There are two ways to be a kind. Most of them are *dragged*: pieces wait in
- * the tray and the host's drag engine offers each drop to `accepts`. A kind
- * that implements `play` is *touched* instead - it draws its own things and
- * answers a finger directly, and the host builds no tray pieces for it and
- * never drags anything. Both end the same way, through `isComplete`.
+ * Every kind is *dragged*: pieces wait in the tray and the host's drag engine
+ * offers each drop to `accepts`, and the level ends through `isComplete`.
  */
 import type { Point } from "./geometry";
 import type { Layout } from "./layout";
@@ -114,48 +111,8 @@ export interface PuzzleKind {
   settle?(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): void;
 
   /**
-   * Is the level finished? Not every kind is "all pieces placed": a
-   * cause-and-effect level ends when enough things have been touched.
+   * Is the level finished? Not every kind is "all pieces placed": a sliced
+   * animal is whole when every slice of it is home.
    */
   isComplete(puzzle: Puzzle): boolean;
-
-  /**
-   * Take over the board and play the level by touch rather than by drag.
-   *
-   * A kind that implements this is telling the host three things: build no
-   * pieces for the tray, start no drag engine, and hand over a layer of its
-   * own. Everything a child can touch is then the kind's - it draws it, it
-   * answers it, and it says what it sounded like. The host's part is what it
-   * always was: the sparkle, the level ending, and the big button afterwards.
-   *
-   * Called once per mounted board, so again after the tablet is turned; the
-   * puzzle it is given is the same one, so how far the child got survives.
-   * Whatever is returned is called before the next board goes up, which is
-   * where a timer or an interval has to be let go of.
-   */
-  play?(puzzle: Puzzle, layout: Layout, host: ActivityHost): () => void;
-}
-
-/**
- * What the host lends a kind that plays by touch. Deliberately thin: the kind
- * owns the drawing and the rules, and this is the two things it cannot do for
- * itself - draw somewhere that is cleared up for it, and tell the host that the
- * puzzle moved on.
- */
-export interface ActivityHost {
-  /**
-   * The layer to draw the touchable things into: empty when handed over, and
-   * torn down with the board. It sits above the backdrop and below the effects,
-   * so a burst drawn by the host still lands on top.
-   */
-  readonly layer: SVGGElement;
-  /**
-   * Something moved the puzzle on, and the host should look again at
-   * `isComplete`. With a point - a finger landed there - the host sparkles on
-   * the spot; without one the puzzle moved on by itself, which for an activity
-   * means its ten seconds ran out, and nothing sparkles because nothing was
-   * touched. Sound is the kind's own, because only the kind knows whether that
-   * was a pop or a quack.
-   */
-  touched(at?: Point): void;
 }

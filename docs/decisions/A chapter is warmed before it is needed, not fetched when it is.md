@@ -7,11 +7,11 @@ property of this game
 ([Keep assets and runtime simple](<Keep assets and runtime simple.md>)),
 and the point of it is that a mid-range iPad reaches the first level
 immediately. Nothing was measuring that, so it drifted. The bundle was 24 kB
-when the ramp was five levels of one kind. By the time six chapters, five puzzle
-kinds, four themed casts, a scene library, six celebrations and a vocabulary of
-synthesised sounds had all landed, it was **148 kB raw and 47 kB gzipped** -
-every byte of it fetched, parsed and evaluated before a one-year-old could touch
-the first bubble. Every one of those changes was a good change. Together they
+when the ramp was five levels of one kind. By the time five chapters, four
+puzzle kinds, four themed casts, a scene library, nine celebrations and a
+vocabulary of synthesised sounds had all landed, it was **148 kB raw and 47 kB
+gzipped** - every byte of it fetched, parsed and evaluated before a one-year-old
+could touch the first animal. Every one of those changes was a good change. Together they
 were a regression nobody decided on.
 
 Issue #20 asked for two things: a budget the build enforces, and code-splitting
@@ -95,7 +95,7 @@ entry imports statically.
 
 A child downloads and parses **37% less** before the game starts. The total grew
 by about 4 kB gzipped, which is the price of splitting one compressed stream
-into seven, and it is paid in the background while somebody is popping bubbles.
+into seven, and it is paid in the background while somebody is playing.
 That trade is the whole decision in one line: the number that matters got much
 smaller, and the number that does not got slightly bigger.
 

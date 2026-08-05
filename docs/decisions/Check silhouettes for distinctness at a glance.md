@@ -64,9 +64,9 @@ the next animal into the sea will have to be shaped deliberately.
 The check is scoped to a theme, not to the whole cast, because a theme is what a
 level deals from. Two exceptions are worth knowing:
 
-- **Levels 1, 3 and 5 name no theme** and deal from everything. They are the
-  first-touches levels: one to three pieces, the largest in the game and the
-  most forgiving. Two similar outlines cost least there, and demanding
+- **Levels 1 and 2 name no theme** and deal from everything. They are the
+  opening levels: one or two pieces, the largest in the game and the most
+  forgiving. Two similar outlines cost least there, and demanding
   distinctness across every pair in the cast would tighten the constraint from
   a handful of pairs to hundreds and stop the cast growing at all.
 - **A themed level short of animals tops up from the rest of the cast**

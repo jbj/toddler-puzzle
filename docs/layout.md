@@ -170,10 +170,10 @@ tables are written against them, and the rule reproduces both exactly. See
 `canvas.width`.** `spanWidth(canvas)` is the width but never more than a
 landscape-shaped board of this height would have had (`min(width, height*10/7)`).
 A constant written as a fraction of the width - `minSlot`, `minPieceInk`, a
-bubble's radius, a balloon's, a parade animal's - would otherwise treble on a 3:1
-screen. Positions *across* the board - where a bubble is released, how a parade
-is spaced, the cloud lanes - go on using the real width, because a spread is not
-a size.
+balloon's radius, a parade animal's - would otherwise treble on a 3:1 screen.
+Positions *across* the board - where a balloon is released, how a parade is
+spaced, the cloud lanes - go on using the real width, because a spread is not a
+size.
 
 `Layout["id"]` is `"landscape"` or `"portrait"`, derived from the canvas
 (`width >= height`), and the puzzle reflows between the two rather than merely

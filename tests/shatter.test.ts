@@ -318,7 +318,7 @@ const dealt = (level: LevelSpec, seed = 1): Puzzle =>
 
 describe("the shatter kind", () => {
   it("plays the levels the table gives it", () => {
-    expect(SHATTER_LEVELS.map((level) => level.level)).toEqual([26, 28]);
+    expect(SHATTER_LEVELS.map((level) => level.level)).toEqual([25, 26, 28]);
   });
 
   it("deals one picture and one piece per shard", () => {

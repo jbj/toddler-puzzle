@@ -248,7 +248,7 @@ export function unlockAudio(): void {
  *
  * The second of those is the whole reason this pair is not just two one-liners.
  * `resume()` settles a tick or two after it is asked, and the tap that asks is
- * the same tap that pops a bubble - so without `waking` the guard in `play`
+ * the same tap that pops a balloon - so without `waking` the guard in `play`
  * below would swallow the first sound after every sleep, which is precisely the
  * sound a child comes back for. A suspended context's clock is frozen rather
  * than stuck at zero, so a note scheduled a hair after `currentTime` while the
@@ -518,16 +518,6 @@ const SNAP: Record<PuzzleKindId, Sounding> = {
       voice(note(-2), { at: 0.02, duration: 0.34, gain: 0.07 }),
     ],
   },
-  // The one landing on a level played by touching: a bush opening on an animal.
-  // Three notes rising, softer than a snap - "there you are" rather than "in".
-  play: {
-    when: "a bush opens on the animal hiding behind it",
-    phrase: [
-      voice(note(5), { duration: 0.2, gain: 0.1 }),
-      voice(note(9), { at: 0.1, duration: 0.26, gain: 0.09 }),
-      voice(note(12), { at: 0.2, duration: 0.3, gain: 0.06 }),
-    ],
-  },
 };
 
 /** A refused drop. Warm, low and falling away: a nudge, never a buzzer. */
@@ -536,7 +526,7 @@ const RETURN: Phrase = [
 ];
 
 /**
- * A firework: a rise into bright specks, rather than a bubble bursting. `step`
+ * A firework: a rise into bright specks, rather than a balloon bursting. `step`
  * is which firework this is, and moves the specks along the ladder so that a
  * sky full of them is not one sound repeated.
  *
@@ -645,7 +635,7 @@ function plinkPhrase(degree: number): Phrase {
  * Fuller than it was, and deliberately: it is now the door into a celebration
  * rather than a full stop, so there is a low pair held under the run and a note
  * left over the top of it. It stays shorter than any chapter's, which is what
- * keeps five levels finishing bigger than one.
+ * keeps six levels finishing bigger than one.
  */
 function fanfarePhrase(level: number): Phrase {
   const root = 5 + ((((level - 1) % 5) + 5) % 5);
@@ -661,34 +651,26 @@ function fanfarePhrase(level: number): Phrase {
 
 /**
  * The end of a chapter, and the end of the game. Longer and fuller than a
- * level's fanfare on purpose: five levels finishing has to sound like more than
+ * level's fanfare on purpose: six levels finishing has to sound like more than
  * one level finishing, or the celebration it opens is only a bigger picture of
  * the same moment.
  *
- * One per celebration rather than one for all six, because the celebrations are
- * not one moment repeated - balloons and blossom and a rainbow are different
- * things to arrive in, and a child who has heard the same fanfare five times
- * has stopped hearing it. Keyed by every `CelebrationId`, so a celebration
- * added later cannot go without one.
+ * One per celebration rather than one for all five, because the celebrations
+ * are not one moment repeated - blossom and a rainbow and fireworks are
+ * different things to arrive in, and a child who has heard the same fanfare
+ * four times has stopped hearing it. Keyed by every `ChapterCelebrationId`, so
+ * a celebration added later cannot go without one.
  *
- * **This is the table to edit.** Five of these six were written by somebody who
- * could not hear them, and the only way to find out whether a parade sounds
+ * **This is the table to edit.** Four of these five were written by somebody
+ * who could not hear them, and the only way to find out whether a parade sounds
  * like a parade is to play it. Each is a gesture and a list of degrees: the
  * comment says the sound intended, so a correction is a change to the degrees
  * under the sentence it failed to live up to, not a hunt through the scheduler.
  */
 const CHAPTER: Record<ChapterCelebrationId, Sounding> = {
-  // Buoyant and quick, and it ends up in the air rather than coming to rest.
-  balloons: {
-    when: "chapter 1 is done and the balloons go up",
-    phrase: together(
-      run([5, 7, 8, 10, 12], { spacing: 0.09, duration: 0.34, gain: 0.13 }),
-      delayed(0.46, [voice(note(13), { duration: 0.9, gain: 0.1 })]),
-    ),
-  },
   // A tread underneath, because a parade is walked rather than announced.
   parade: {
-    when: "chapter 4 is done and the animals parade",
+    when: "chapter 3 is done and the animals parade",
     phrase: together(
       run([5, 8, 10, 8, 12], { spacing: 0.17, duration: 0.36, gain: 0.13 }),
       run([-5, -2, -5, -2], { spacing: 0.34, duration: 0.3, gain: 0.08, type: "triangle" }),
@@ -696,7 +678,7 @@ const CHAPTER: Record<ChapterCelebrationId, Sounding> = {
   },
   // Falling, unhurried, and held: blossom coming down rather than going up.
   petals: {
-    when: "chapter 3 is done and the blossom falls",
+    when: "chapter 2 is done and the blossom falls",
     phrase: together(
       run([15, 13, 12, 10, 9, 7, 5], { spacing: 0.13, duration: 0.44, gain: 0.11 }),
       delayed(0.3, chord([0, 4], { duration: 1.5, gain: 0.06 })),
@@ -705,7 +687,7 @@ const CHAPTER: Record<ChapterCelebrationId, Sounding> = {
   // An arch: over the top and down the other side, which is the shape the child
   // is painting a tap at a time.
   rainbow: {
-    when: "chapter 2 is done and a rainbow is painted",
+    when: "chapter 1 is done and a rainbow is painted",
     phrase: together(
       run([5, 7, 9, 10, 12, 10, 9, 7], { spacing: 0.14, duration: 0.42, gain: 0.12 }),
       chord([0, 3], { duration: 1.8, gain: 0.06 }),
@@ -713,7 +695,7 @@ const CHAPTER: Record<ChapterCelebrationId, Sounding> = {
   },
   // Up, and then specks over the top of it.
   fireworks: {
-    when: "chapter 5 is done and the fireworks start",
+    when: "chapter 4 is done and the fireworks start",
     phrase: together(
       run([5, 8, 10, 12], { spacing: 0.11, duration: 0.36, gain: 0.13 }),
       delayed(0.5, run([13, 15, 14], { spacing: 0.09, duration: 0.5, gain: 0.08 })),
@@ -739,7 +721,7 @@ const CHAPTER: Record<ChapterCelebrationId, Sounding> = {
  * Each one is the sound of the thing itself rather than another well done, so
  * a child hears the difference between paper and ribbon before they see it.
  *
- * Deliberately smaller than any chapter's. An interlude happens twenty-four
+ * Deliberately smaller than any chapter's. An interlude happens twenty-five
  * times and a chapter celebration five, and the moment the two sound alike the
  * end of a chapter has stopped being a bigger thing.
  */
@@ -802,12 +784,12 @@ export function playReturn(): void {
 }
 
 /**
- * A bubble or a balloon bursting under a finger. Short, soft and high: the
+ * A balloon or a petal bursting under a finger. Short, soft and high: the
  * sound has to arrive with the burst rather than after it, so there is barely
  * an attack and nothing to wait for.
  *
- * `pitch` is the multiplier the caller wants - a small bubble pops higher than
- * a big one - and it is rounded onto the ladder, so a screenful of them bursts
+ * `pitch` is the multiplier the caller wants - a small floater pops higher
+ * than a big one - and it is rounded onto the ladder, so a screenful bursts
  * in tune. Two in a row never land on the same degree.
  */
 export function playPop(pitch = 1): void {
@@ -828,7 +810,7 @@ export function playPlink(step = 0): void {
 
 /**
  * A firework going up and breaking. Its own sound rather than a pop and a
- * plink together, because a firework that sounds like a bubble is the sort of
+ * plink together, because a firework that sounds like a balloon is the sort of
  * repetition this vocabulary exists to remove.
  */
 export function playFirework(step = 0): void {
@@ -907,8 +889,8 @@ export const VOCABULARY: readonly Sound[] = [
   sound("pick-up", "a piece is picked up", PICK_UP),
   ...Object.entries(SNAP).map(([kind, one]) => sound(`snap-${kind}`, one.when, one.phrase)),
   sound("return", "a piece is dropped somewhere it cannot go", RETURN),
-  sound("pop", "a bubble bursts", popPhrase(POP_ROOT)),
-  sound("pop-highest", "the smallest bubble bursts", popPhrase(POP_ROOT + 5)),
+  sound("pop", "a balloon bursts", popPhrase(POP_ROOT)),
+  sound("pop-highest", "the smallest balloon bursts", popPhrase(POP_ROOT + 5)),
   sound("plink", "a thing answers a finger", plinkPhrase(PLINK_ROOT)),
   sound("plink-highest", "the fifth thing in a row answers", plinkPhrase(PLINK_ROOT + 4)),
   sound("firework", "a firework goes up and breaks", fireworkPhrase(0)),

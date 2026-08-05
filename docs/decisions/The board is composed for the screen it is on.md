@@ -47,7 +47,7 @@ rather than a 10:7 one in the middle of a lot of bar.
 
 **A size measured across the board is measured against a nominal width.** A
 dozen constants were written as a fraction of `canvas.width` - `minSlot`,
-`minPieceInk`, a bubble's radius, a balloon's, a parade animal's. On a 3:1 board
+`minPieceInk`, a balloon's radius, a parade animal's. On a 3:1 board
 `canvas.width` is 2100 and every one of them would treble: the piece floors
 would start refusing levels that compose perfectly well - and a refusal is a
 child looking at a level that will not open - while a parade animal would be
@@ -58,7 +58,7 @@ taller than the board it walks across. So those constants are measured against
 the width, but never more than a landscape-shaped board of this height would
 have had. It is `1000` on the landscape canvas and `700` on the portrait one, so
 every one of those constants keeps its exact value on both of the old boards.
-Positions *across* the board - where a bubble is released, how a parade is
+Positions *across* the board - where a balloon is released, how a parade is
 spaced, the cloud lanes - go on using the real width, because a spread is not a
 size.
 

@@ -79,7 +79,7 @@ responsibility. Raising it quietly, to avoid the four steps above, is not.
   Spaces are fine and a long name is fine. No dates, no numbers, no `:` or `/`.
 
   ```text
-  docs/decisions/Ask a touch level for a handful, and let the child out anyway.md
+  docs/decisions/A chapter is warmed before it is needed, not fetched when it is.md
   ```
 
 - The `#` heading repeats that sentence.

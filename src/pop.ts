@@ -5,21 +5,20 @@
  * The pop engine: a big soft thing that floats, and bursts the instant it is
  * touched.
  *
- * It is one module rather than part of the bubbles because two parts of the game
- * want the same mechanic. The bubbles of the first chapter
- * (`kinds/play.ts`) are the first, and the balloons and petals of a chapter
- * celebration (`celebration.ts`) are the second; either can reach this without
- * knowing about the other. Anything specific to what is floating - how many
- * there are, where they come from, when the level is over - belongs to the
- * caller. What lives here is the *feel*:
+ * It is one module rather than part of one celebration because several parts of
+ * the game want the same mechanic. The balloons and petals of a chapter
+ * celebration (`celebration.ts`) reach it, and so does the finale. Anything
+ * specific to what is floating - how many there are, where they come from, how
+ * long they go on arriving - belongs to the caller. What lives here is the
+ * *feel*:
  *
  *  - **the burst is immediate.** `pointerdown`, not click, and the thing is off
- *    the screen in the same tick it was touched. Latency is the whole point of a
- *    cause-and-effect level, so nothing here waits for an animation before
- *    answering.
+ *    the screen in the same tick it was touched. A thing that answered late
+ *    would not be answering the finger that touched it, so nothing here waits
+ *    for an animation before answering.
  *  - **the whole thing is the target.** A transparent disc fills the radius
- *    behind the paint, so a bubble is caught anywhere inside its outline rather
- *    than only on the highlight.
+ *    behind the paint, so a balloon is caught anywhere inside its outline
+ *    rather than only on the highlight.
  *  - **less motion means still, not gone.** Under `prefers-reduced-motion` a
  *    floater does not drift at all - it simply stays where it was put and waits
  *    to be touched. Collapsing the drift to a millisecond would carry it off
@@ -43,21 +42,15 @@ export const POP_COLOURS: readonly string[] = [
 ];
 
 /**
- * What a floater is drawn as. A bubble for a cause-and-effect level; a balloon
- * or a petal for a chapter celebration (`celebration.ts`). They differ only in
- * paint - the drift, the hit target and the burst are the same for all three,
- * which is the whole reason they live together.
+ * What a floater is drawn as: a balloon or a petal for a chapter celebration
+ * (`celebration.ts`). They differ only in paint - the drift, the hit target and
+ * the burst are the same for both, which is the whole reason they live
+ * together.
  */
-export type PopShape = "bubble" | "balloon" | "petal";
+export type PopShape = "balloon" | "petal";
 
 /** How each is painted, in units of the floater's own radius. */
 const PAINT: Record<PopShape, (radius: number, colour: string) => string> = {
-  bubble: (r, colour) => `
-    <circle r="${r}" fill="${colour}" fill-opacity="0.34" />
-    <circle r="${r}" fill="none" stroke="${colour}" stroke-width="${(r * 0.13).toFixed(1)}" />
-    <circle cx="${(-r * 0.34).toFixed(1)}" cy="${(-r * 0.36).toFixed(1)}"
-            r="${(r * 0.22).toFixed(1)}" fill="#ffffff" fill-opacity="0.85" />
-  `,
   balloon: (r, colour) => `
     <path d="M0 ${(r * 1.05).toFixed(1)} q${(r * 0.3).toFixed(1)} ${(r * 0.5).toFixed(1)} 0 ${(r * 1.1).toFixed(1)}"
           fill="none" stroke="#7a5200" stroke-width="${Math.max(2, r * 0.06).toFixed(1)}" />
@@ -123,7 +116,7 @@ export interface Poppable {
  * replaced; either way it looks after taking itself off the layer.
  */
 export function releasePoppable(layer: SVGGElement, options: PopOptions): Poppable {
-  const { at, radius, colour, shape = "bubble", drift, touch = shape } = options;
+  const { at, radius, colour, shape = "balloon", drift, touch = shape } = options;
   const still = prefersReducedMotion() || !drift;
 
   const anchor = document.createElementNS(SVG_NS, "g");

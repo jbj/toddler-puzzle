@@ -18,12 +18,9 @@ matter more than the sentence does.
 A glow on a hole says *something goes here*. It does not say *which* thing, and
 it does not say that anything can be moved at all.
 
-The child this feature exists for is the one at the young end of a game that
-opens without requiring a drag, on purpose, because a one-year-old cannot yet
-pinch, carry and let go (see [Open the game with something to
-touch](<Open the game with something to touch.md>)). The first time they meet a
-tray, "there is a rabbit-shaped space in the grass" is not actionable. "*That*
-rabbit goes in *that* space" is.
+The child this feature exists for is the one at the young end of the game: the
+first time they meet a tray, "there is a rabbit-shaped space in the grass" is not
+actionable. "*That* rabbit goes in *that* space" is.
 
 So the hint draws the piece's outline twice: brightly at
 `kind.target(puzzle, layout, piece)`, and faintly at the piece's own place in the
@@ -127,22 +124,6 @@ So there is one rule, `hintPiece`:
 One rule covers both gaps without a special case, and covers a third for free: a
 `lastTouched` left over from a board that has since been replaced is simply not
 among the pieces, so it falls through.
-
-### A level played by touching is never hinted at
-
-`PuzzleKind.play` levels - the bubbles, the bushes, the answering scene - have no
-tray, no drag engine, no targets and no wrong place. A finger anywhere lands on
-something that answers.
-
-The frustration this feature relieves is "I do not know where this goes", and on
-those levels it cannot arise: there is nowhere for anything to go. A hint there
-would have to invent a thing to point at, and the only candidates are things the
-kind owns and animates - a drifting bubble, a bush mid-wobble - so the host would
-be pointing at somewhere they no longer are.
-
-The coherent answer is that a level with nothing to aim at gets nothing aimed.
-`npm run shot` leaves a touch level idle for the full window and checks that
-nothing glows.
 
 ### Reduced motion keeps the glow and drops the pulse
 

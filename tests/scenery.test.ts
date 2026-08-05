@@ -59,18 +59,6 @@ const SIGNATURE: Record<ThemeId | "meadow", string> = {
 };
 
 /**
- * One colour each backdrop uses only in the sky or the distance, so a check can
- * tell whether the air was furnished: the meadow's sun, the farm's barn, the
- * sea's surface ripples, the jungle's canopy.
- */
-const IN_THE_AIR: Record<"meadow" | "farm" | "sea" | "jungle", string> = {
-  meadow: "#ffd23f",
-  farm: "#d95a4e",
-  sea: "#8fd0f2",
-  jungle: "#2f6b3a",
-};
-
-/**
  * The same board under another theme. `exactOptionalPropertyTypes` means an
  * unthemed level has no `theme` key at all rather than an undefined one, so it
  * is dropped rather than overwritten.
@@ -175,29 +163,15 @@ describe("what every backdrop owes the board", () => {
     }
   });
 
-  it("leaves the tray out when asked, in every theme", () => {
+  it("draws a tray to stand the pieces on, in every theme", () => {
+    // The tray's sand and its lip: every level has a shelf, because every level
+    // is dragged from one.
     for (const { theme, layout } of THEMED_BOARDS) {
       const board = reThemed(layout, theme === "meadow" ? undefined : theme);
-      const markup = renderScenery(board, { tray: false });
-      // The tray's sand and its lip: an activity level has no shelf to draw.
-      expect(markup, `${theme} ${layout.id}`).not.toContain("#f6ead0");
-      expect(markup, `${theme} ${layout.id}`).not.toContain("#d9c398");
+      const markup = renderScenery(board);
+      expect(markup, `${theme} ${layout.id}`).toContain("#f6ead0");
+      expect(markup, `${theme} ${layout.id}`).toContain("#d9c398");
       expect(markup).toContain(SIGNATURE[theme]);
-    }
-  });
-
-  it("leaves the air and the distance out when asked, in every theme", () => {
-    // `kinds/play.ts` draws its own sky while an activity is alive. A backdrop
-    // that ignored the option would put a barn behind the bubbles.
-    for (const { theme, layout } of THEMED_BOARDS) {
-      const board = reThemed(layout, theme === "meadow" ? undefined : theme);
-      const quiet = renderScenery(board, { sky: false });
-      expect(renderScenery(board), `${theme} ${layout.id}`).toContain(IN_THE_AIR[theme]);
-      expect(quiet, `${theme} ${layout.id}`).not.toContain(IN_THE_AIR[theme]);
-      expect(quiet.length, `${theme} ${layout.id}`).toBeLessThan(renderScenery(board).length);
-      // The ground and the wash stay: what goes is only what furnishes the sky.
-      expect(quiet, `${theme} ${layout.id}`).toContain('fill="url(#sky)"');
-      expect(quiet, `${theme} ${layout.id}`).toContain('fill="url(#ground)"');
     }
   });
 });

@@ -3,17 +3,17 @@
 ## Context
 
 [A celebration is played, and it ends by itself](<A celebration is played, and it ends by itself.md>)
-gave the game a celebration at the end of every chapter: five moments and a
+gave the game a celebration at the end of every chapter: four moments and a
 finale, each one played rather than watched, each one holding the way onwards
 back for a beat so that the party is the first thing seen. Everything in that
 record still holds. This one changes where it applies and how long the beat is,
 and it is worth writing down because the change makes the game *slower* on
 purpose, which reads as a regression from outside.
 
-Playtesting with a one-year-old found the problem in the other twenty-four
+Playtesting with a one-year-old found the problem in the other twenty-five
 levels. A level ends, the sparkle takes 700 ms, and the next board is one press
 away and already being pressed. What that asks of a child is to start again
-immediately, twenty-four times, with nothing in between - and what actually
+immediately, twenty-five times, with nothing in between - and what actually
 happened was not that they were stretched but that they stopped. The strain is
 not in any one puzzle. It is in the seam between two of them.
 
@@ -26,23 +26,15 @@ and weather is what a tired one-year-old can look at.
 
 ## Decision
 
-**Every level a child had to work at ends with a celebration.** The six that end
-a chapter keep the ones they had. The rest end with an **interlude**: balloons,
-beach balls, confetti, streamers - four of them, rotated by level number, so two
-levels running never end the same way and the same level always ends the way it
-did.
+**Every level ends with a celebration.** The five that end a chapter keep the
+ones they had. The rest end with an **interlude**: balloons, beach balls,
+confetti, streamers - four of them, rotated by level number, so two levels
+running never end the same way and the same level always ends the way it did.
 
-**Except a level that was already one.** Levels 1 and 3 are played by touching:
-bubbles that burst under a finger, bushes that give up an animal. There is no
-puzzle in them to be tired by and no seam to soften - what they *are* is
-something large and slow that answers a finger and asks nothing, which is the
-description of an interlude. Following one with an interlude is following a
-celebration with a celebration, and the effect is not twice as much rest but a
-child kept for four and a half seconds from the first thing in the game they can
-do. So a touch level raises nothing and pauses not at all; the button is there
-as soon as the level is done. Level 5 is played by touching too and still gets
-its chapter moment, because that one marks something - the end of the first five
-- rather than covering a seam.
+There is no exception, and there used to be one. The game opened on a chapter of
+touch levels that raised nothing, on the grounds that a level made of bubbles
+already *was* an interlude. That chapter is gone, so every one of the thirty
+levels now ends with either an interlude or a chapter moment.
 
 An interlude is deliberately less than a chapter celebration. It has no event in
 it, nothing arrives that has to be watched, it answers a finger the same way
@@ -70,11 +62,6 @@ ribbon, because it must not change when the tablet is turned into portrait
 wait), and because it has to hold when the celebration chunk never arrived at
 all. It replaces the old chapter-only beat of 1.8 seconds, which was chosen to
 be barely long enough to notice; this one is chosen to be a rest.
-
-The cause-and-effect levels are timed the same way and off the same reasoning:
-their clock is now one *bubble's* climb of the sky rather than a flat ten
-seconds. Both numbers are lengths a child can watch go by, which is the nearest
-thing a one-year-old has to a clock.
 
 **A pause is not a trap, and the four things that keep it from being one:**
 

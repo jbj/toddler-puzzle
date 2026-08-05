@@ -170,7 +170,7 @@ describe("the scene catalogue", () => {
 
   it("has something interchangeable at all but one polygon level", () => {
     // Not every picture - a boat has one hull and two different sails - but a
-    // chapter built on the swap cannot be five pictures that never show it.
+    // chapter built on the swap cannot be six pictures that never show it.
     // One level may stand a picture without a twin in it, which is how the
     // chapter is allowed to open on something very plain; no more than one.
     const plain = POLYGON_LEVELS.filter((level) => {

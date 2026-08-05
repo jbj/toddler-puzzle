@@ -149,12 +149,12 @@ describe("the level map", () => {
     expect(entries.filter((entry) => entry.reached)).toHaveLength(4);
   });
 
-  it("groups the thirty into the six chapters, five at a time", () => {
+  it("groups the thirty into the five chapters, six at a time", () => {
     const entries = levelMap(record(), 1);
     for (const [index, chapter] of CHAPTERS.entries()) {
       const levels = entries.filter((entry) => entry.chapter === chapter).map((e) => e.level);
-      expect(levels).toHaveLength(5);
-      expect(levels[0]).toBe(index * 5 + 1);
+      expect(levels).toHaveLength(6);
+      expect(levels[0]).toBe(index * 6 + 1);
     }
   });
 });

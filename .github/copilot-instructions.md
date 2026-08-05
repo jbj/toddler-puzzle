@@ -2,9 +2,9 @@
 
 Animal Puzzle is a drag-and-drop animal shape puzzle for toddlers: a two-year-old
 matches large animal pieces to matching animal-shaped holes. A game is thirty
-levels long and grows as it goes - bubbles to pop and one animal to begin with,
-so the first win comes quickly, then more pieces and more kinds of puzzle - and
-every puzzle is dealt fresh.
+levels long and grows as it goes - one animal to begin with, so the first win
+comes quickly, then more pieces and more kinds of puzzle - and every puzzle is
+dealt fresh.
 
 ## Always true
 
@@ -26,10 +26,10 @@ would notice. These highest-risk rules belong in every session:
   own hole; a wrong drop returns gently. Every kind uses the same generous
   box-and-middle placement rule, and every target stays large.
 - The child's game moves only forward: no menu, difficulty picker, settings,
-  failure state or score on the play surface. Keep the opening chapter playable
-  by touching, without requiring a drag.
-- Work earns a playable celebration; an ordinary touch interlude does not.
-  Grown-up controls stay behind the two-second hold.
+  failure state or score on the play surface. Open on the easiest drag the game
+  can ask for.
+- Every level earns a playable celebration, and the end of a chapter a bigger
+  one. Grown-up controls stay behind the two-second hold.
 - Paint no animal into a background. Add no binary assets, runtime dependencies
   or network requests.
 

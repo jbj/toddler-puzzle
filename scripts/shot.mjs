@@ -644,39 +644,20 @@ async function pressFinishButton() {
   if (after === before) throw new Error(`The way onwards left the game on level ${before}.`);
 }
 
-// --- levels played by touching --------------------------------------------
-// The first chapter alternates: bubbles, one animal to drag, peekaboo, two
-// animals, and a scene where everything answers. The touch levels have no
-// tray and no drag, and the three things this run is really checking are that
-// a touch registers at once, that the level can be finished by touching alone,
-// and that there is no way to be stuck or wrong. See src/kinds/play.ts.
-
-/** Which activity is on screen, or "" if this level is not one. */
-const activityName = () =>
-  evaluate(`document.querySelector('#stage .activity')?.dataset.activity ?? ''`);
-
-/** How many things the level wants touched, and how many have been. */
-const activityProgress = () =>
-  evaluate(`
-  (() => {
-    const layer = document.querySelector('#stage .activity');
-    if (!layer?.dataset.activity) return null;
-    return { goal: Number(layer.dataset.goal), touched: Number(layer.dataset.touched) };
-  })()
-`);
+// --- celebrations, and what a finger can land on ---------------------------
 
 /**
  * Everything a finger could actually land on, and where to land on it. A thing
- * is only counted while most of it is inside the board - a bubble on its way in
- * from below the bottom edge is not something a child can touch yet, so
+ * is only counted while most of it is inside the board - a balloon on its way
+ * in from below the bottom edge is not something a child can touch yet, so
  * counting it would let a nearly empty sky pass for a full one - and the point
  * returned is the middle of the part that *is* on the board.
  *
- * The scope is a parameter because the same question is asked of two layers:
- * the activity of a touch level, and the celebration a chapter ends with. Both
- * are the same promise - something is there and it answers.
+ * The scope is a parameter because the same question is asked of every kind of
+ * celebration, and of the finale's bare sky. All of them are the same promise -
+ * something is there and it answers.
  */
-const thingsToTouch = (scope = "#stage .activity") =>
+const thingsToTouch = (scope = "#stage .celebration") =>
   evaluate(`
   (() => {
     const stage = document.querySelector('#stage').getBoundingClientRect();
@@ -711,9 +692,9 @@ const thingsToTouch = (scope = "#stage .activity") =>
 `);
 
 // --- celebrations -----------------------------------------------------------
-// Every level ends with one. Twenty-four of them end with an interlude - paper,
-// balloons, beach balls, ribbon - and the six that end a chapter end with
-// something bigger, because five levels finishing is a bigger moment than one.
+// Every level ends with one. Twenty-five of them end with an interlude - paper,
+// balloons, beach balls, ribbon - and the five that end a chapter end with
+// something bigger, because six levels finishing is a bigger moment than one.
 // All of them are played rather than watched: a two-year-old will not sit
 // through a cutscene, they will put a finger on it. What this run is really
 // checking is that none of it is a trap at either end - the way onwards always
@@ -855,15 +836,10 @@ async function tapAt(x, y) {
 }
 
 /**
- * Deal this level again, by pressing the child's own reset button.
- *
- * Every activity level opens the way onwards ten seconds after it was *dealt*,
- * whatever has been touched (`ACTIVITY_PATIENCE_MS` in src/kinds/play.ts). A
- * play-through that has been stopping to check things and take screenshots has
- * spent some of those ten seconds, so before an activity this run means to
- * finish by touching, it deals the level again and starts from a full ten. At
- * the end of a chapter that is what makes the beat before the button
- * measurable at all: the celebration is then raised at a moment this run knows.
+ * Deal this level again, by pressing the child's own reset button. It is the
+ * child's own way of starting a board over, and it is also how this run gets a
+ * board it knows the age of: everything a fresh deal puts on screen arrives
+ * after the press rather than before it.
  */
 async function dealAgain() {
   await evaluate(`(() => {
@@ -878,40 +854,6 @@ async function dealAgain() {
     5000,
   );
   if (!rebuilt) throw new Error("Starting a fresh puzzle did not rebuild the board.");
-}
-
-/**
- * Touch things until the level says it is done, one at a time, checking as it
- * goes that progress only ever climbs and that there is always something left
- * to touch. Throws if the board ever runs dry, which is the shape a stuck level
- * would take. Returns how many taps it took and how many of them the game did
- * not answer: a touch level whose touches do not register is not a level.
- */
-async function playActivity({ shotAt } = {}) {
-  let taps = 0;
-  let missed = 0;
-  for (let guard = 0; guard < 40; guard++) {
-    const before = await activityProgress();
-    if (!before) throw new Error("This level is not played by touching.");
-    if (before.touched >= before.goal) break;
-
-    const things = await thingsToTouch();
-    if (things.length === 0) throw new Error("Nothing left on screen to touch.");
-    const thing = things[taps % things.length];
-    await tapAt(thing.x, thing.y);
-    taps++;
-
-    const after = await activityProgress();
-    if (after.touched < before.touched) throw new Error("Progress went backwards.");
-    if (after.touched === before.touched) missed++;
-    if (shotAt && taps === shotAt.after) await shot(shotAt.name);
-  }
-  await waitUntil(
-    async () => ({ celebration: await celebrationName(), buttons: await finishButtons() }),
-    ({ celebration, buttons }) => celebration !== "" || buttons > 0,
-    5000,
-  );
-  return { taps, missed };
 }
 
 // --- the grown-up panel ---------------------------------------------------
@@ -1484,194 +1426,72 @@ async function runOpening() {
   const bootError = await evaluate(`document.querySelector('#stage') ? '' : 'stage missing'`);
   check("app boots and renders the stage", bootError === "");
 
-  // --- level 1: bubbles ----------------------------------------------------
-  // The game opens with something to touch rather than something to drag,
-  // because dragging is beyond a one-year-old and a first screen they cannot
-  // work is a closed door. See docs/decisions/Open the game with something to
-  // touch.md and src/kinds/play.ts.
+  // --- level 1: the first drag ---------------------------------------------
+  // The game opens on the smallest drag it can ask for: one huge animal, one
+  // huge hole, the most forgiving snap in the table. The first win is meant to
+  // arrive in the first few seconds, before a child has to learn anything at
+  // all. See the first row of the table in src/levels.ts.
   check("a new player starts on level 1", (await levelNumber()) === 1);
-  check("level 1 is in the first chapter", (await chapterName()) === "first-touches");
-  check("level 1 is played by touching", (await kindName()) === "play");
-  check("level 1 is the bubbles", (await activityName()) === "bubbles");
-  check("nothing waits in a tray on a touch level", (await pieceCount()) === 0);
-  check("nothing has to be aimed at a hole", (await holeCount()) === 0);
+  check("level 1 is in the first chapter", (await chapterName()) === "animals");
+  check("level 1 is dragged", (await kindName()) === "shape-match");
+  const firstCount = await pieceCount();
+  check(`level 1 is a single huge piece (${firstCount})`, firstCount === 1);
+  check("the one piece has a hole of its own", (await holeCount()) === 1);
+  check("nothing starts on the board", (await placedCount()) === 0);
   const dots = await chapterDots();
   check(
-    `six chapter dots, one filled (${dots.filled} of ${dots.total})`,
-    dots.total === 6 && dots.filled === 1,
+    `five chapter dots, one filled (${dots.filled} of ${dots.total})`,
+    dots.total === 5 && dots.filled === 1,
   );
 
-  const bubbles = await thingsToTouch();
-  const opening = await activityProgress();
-  check(`bubbles are on screen to touch (${bubbles.length})`, bubbles.length >= opening.goal);
-  check("nothing has been touched yet", opening.touched === 0);
-  // Every target on a touch level is a whole hand's worth: the smallest of them
-  // is still more than a tenth of the board across.
+  // The one thing on the board is a whole hand's worth: it is more than a
+  // tenth of the board across, which is the floor every target in the game is
+  // held to.
   const stage = await evaluate(`document.querySelector('#stage').getBoundingClientRect().width`);
-  const smallest = Math.min(...bubbles.map((b) => b.size));
+  const opening = await evaluate(`
+    (() => {
+      const box = document.querySelector('.piece .grab-box').getBoundingClientRect();
+      return Math.max(box.width, box.height);
+    })()
+  `);
   check(
-    `every bubble is big enough to hit (${((smallest / stage) * 100).toFixed(0)}% of the board)`,
-    smallest / stage >= 0.1,
+    `the first piece is big enough to grab (${((opening / stage) * 100).toFixed(0)}% of the board)`,
+    opening / stage >= 0.1,
   );
-  await shot("01-level1-bubbles");
+  await checkGrabBoxes(1);
+  await shot("01-level1-start");
 
-  // There is no way to be wrong here: a touch that lands on nothing does
-  // nothing at all, and there is nothing to drop in the wrong place.
+  // There is no way to be wrong here either: a touch that lands on nothing does
+  // nothing at all, and there is only one hole to aim at.
   const nowhere = await emptySpotOnBoard();
-  check("there is empty sky to touch", nowhere !== null);
+  check("there is empty board to touch", nowhere !== null);
   if (nowhere) {
     await tapAt(nowhere.x, nowhere.y);
-    check("touching nothing does nothing", (await activityProgress()).touched === 0);
+    check("touching nothing does nothing", (await placedCount()) === 0);
   }
 
-  // And no way to get stuck: pop them and more arrive.
-  const pops = await playActivity({ shotAt: { after: 2, name: "02-level1-popping" } });
-  const popped = await activityProgress();
-  check(`the level finishes on touches alone (${pops.taps} taps)`, popped.touched >= popped.goal);
-  check(`every touch on a bubble popped it (${pops.missed} missed)`, pops.missed === 0);
-  // And no interlude after it, which is the one exception to a celebration
-  // between every level: a level made of things that answer a finger is already
-  // what an interlude is, so following it with four seconds of paper is the
-  // same screen again and a rest from nothing. The way onwards is simply there.
-  check("a level played by touching raises no interlude", (await celebrationName()) === "");
-  check("finish button appears when complete", (await waitForFinishButton(2500)) === true);
-  check("level 1 offers the next puzzle", (await finishLabel()) === "Next puzzle");
-  const refilled = await thingsToTouch();
-  check(`bubbles keep arriving (${refilled.length} still afloat)`, refilled.length >= 1);
-
-  // --- level 2: the first drag ----------------------------------------------
-  // One huge animal, one huge hole: the smallest drag the game can ask for,
-  // and it comes after a level that needed no drag at all.
-  await pressFinishButton();
-  check("moves on to level 2", (await levelNumber()) === 2);
-  check("level 2 is dragged", (await kindName()) === "shape-match");
-  const firstCount = await pieceCount();
-  check(`level 2 is a single huge piece (${firstCount})`, firstCount === 1);
-  check("every piece has a hole", (await holeCount()) === firstCount);
-  await dragAnimal((await animalsOnBoard())[0], { pauseAtHalfway: () => shot("03-level2-drag") });
+  await dragAnimal((await animalsOnBoard())[0], { pauseAtHalfway: () => shot("02-level1-drag") });
   check("dragged piece snapped into its hole", (await placedCount()) === 1);
   await waitUntil(celebrationName, (name) => name !== "", 5000);
-  check("level 2 can be completed", (await placedCount()) === firstCount);
-  // The interlude a level ends into is rotated by level number, and this is the
-  // first level of the game to raise one at all.
-  check("a level that was dragged does raise one", (await finishButtons()) === 0);
-  const secondInterlude = await celebrationName();
-  check(`level 2 ends with its own interlude (${secondInterlude})`, secondInterlude !== "");
-  await shot("03a-level2-interlude");
-  // An interlude is weather rather than an event, but it is still played rather
-  // than watched: a finger on it has to do something, or the twenty-four levels
-  // that end in one have a screen the child is locked out of for four seconds.
-  const playedInterlude = await playCelebration(3);
-  check(
-    `the interlude answers a finger (${playedInterlude.missed} missed)`,
-    playedInterlude.missed === 0,
-  );
-  check("and playing it does not move the game on", (await levelNumber()) === 2);
+  check("level 1 can be completed", (await placedCount()) === firstCount);
 
-  // --- level 3: peekaboo ----------------------------------------------------
-  // A bush per animal, and a touch takes the bush away. What has been uncovered
-  // stays uncovered; nothing can be covered up again by mistake.
-  await pressFinishButton();
-  check("moves on to level 3", (await levelNumber()) === 3);
-  check("level 3 is played by touching", (await kindName()) === "play");
-  check("level 3 is peekaboo", (await activityName()) === "peekaboo");
-  check("peekaboo has nothing in a tray either", (await pieceCount()) === 0);
-  const hidden = await activityProgress();
-  const bushes = await thingsToTouch();
-  check(`a bush for each animal to find (${bushes.length})`, bushes.length >= hidden.goal);
-  await shot("04-level3-peekaboo");
-  const uncovered = await playActivity();
-  const found = await activityProgress();
-  check(`peekaboo finishes on touches alone (${uncovered.taps} taps)`, found.touched >= found.goal);
-  check(`every touch uncovered an animal (${uncovered.missed} missed)`, uncovered.missed === 0);
-  check("peekaboo raises no interlude either", (await celebrationName()) === "");
-  check("peekaboo lets the way onwards through", (await waitForFinishButton(2500)) === true);
-  check("peekaboo offers the next puzzle", (await finishLabel()) === "Next puzzle");
-  await shot("05-level3-uncovered");
-
-  // --- level 4: two animals, and a drop that must not stick -----------------
-  await pressFinishButton();
-  check("moves on to level 4", (await levelNumber()) === 4);
-  const secondCast = await animalsOnBoard();
-  check("level 4 deals two different animals", new Set(secondCast).size === 2);
-  check("level 4 starts empty", (await placedCount()) === 0);
-
-  // A deliberately bad drop must not stick.
-  const stray = await centreOf(`.piece[data-piece="${secondCast[0]}"]`);
-  await mouse("mousePressed", stray.x, stray.y);
-  await mouse("mouseMoved", 640, 120);
-  await mouse("mouseReleased", 640, 120);
-  await sleep(500);
-  check("wrong drop does not stick", (await placedCount()) === 0);
-  await shot("06-after-wrong-drop");
-
-  // A piece is picked up by the box around its artwork, not only where a finger
-  // lands on paint, so the gap between a giraffe's legs works as well as the
-  // giraffe does. Grab one somewhere the artwork is not, and it should still
-  // come along and snap in.
-  await checkGrabBoxes(2);
-  const offPaint = await emptySpotOn(secondCast[1]);
-  check("a piece has grabbable space off its artwork", offPaint !== null);
-  if (offPaint) {
-    await dragAnimal(secondCast[1], { grabAt: offPaint });
-    check("a piece picked up off its artwork snaps in", (await placedCount()) === 1);
-  }
-
-  await solveRemaining();
-  check("level 4 can be completed", (await placedCount()) === 2);
-  const fourthInterlude = await celebrationName();
-  check(`level 4 ends with its own interlude (${fourthInterlude})`, fourthInterlude !== "");
-  await shot("06a-level4-interlude");
-  check(
-    `two dragged levels, two different interludes (${secondInterlude}, ${fourthInterlude})`,
-    secondInterlude !== fourthInterlude,
-  );
-
-  // --- level 5: a scene where everything answers ----------------------------
-  // The animals, the sun and the clouds all do something when they are touched,
-  // and there are more of them than the level asks for, so a child who ignores
-  // one is not stuck with it.
-  await pressFinishButton();
-  check("moves on to level 5", (await levelNumber()) === 5);
-  check("level 5 is played by touching", (await kindName()) === "play");
-  check("level 5 is the scene that answers", (await activityName()) === "alive");
-  // From here the run is measuring the moment a chapter ends, so it starts the
-  // level from a whole clock rather than from whatever is left of one.
-  await dealAgain();
-  const scene = await activityProgress();
-  const alive = await thingsToTouch();
-  check(
-    `more things answer than the level asks for (${alive.length} for ${scene.goal})`,
-    alive.length > scene.goal,
-  );
-  check(
-    "the sun and the clouds answer too",
-    ["sun", "cloud"].every((what) => alive.some((thing) => thing.touch === what)),
-  );
-  await shot("07-level5-alive");
-  const answers = await playActivity();
-  const done = await activityProgress();
-  check(`the scene finishes on touches alone (${answers.taps} taps)`, done.touched >= done.goal);
-  check(`everything touched answered (${answers.missed} missed)`, answers.missed === 0);
-  check("touching one thing twice does not undo it", done.touched <= alive.length);
-
-  // --- the end of chapter 1: balloons ---------------------------------------
-  // The first of the five chapter moments. It has to be bigger than the 700 ms
-  // sparkle every other level ends with, and it has to be *played*: a
-  // two-year-old will not sit through a cutscene, they will put a finger on it.
-  check("finishing a chapter raises a celebration", (await celebrationName()) === "balloons");
+  // --- the interlude after level 1: balloons --------------------------------
+  // Every level ends with a celebration, and the first one a child ever sees is
+  // the balloons. It has to be *played*: a two-year-old will not sit through a
+  // cutscene, they will put a finger on it.
+  const firstInterlude = await celebrationName();
+  check(`level 1 ends with an interlude (${firstInterlude})`, firstInterlude === "balloons");
   check("the celebration starts with nothing played with", (await celebrationPlayed()) === 0);
   // The beat. By level 25 the big yellow button is the most conditioned thing on
-  // the screen, so at the end of a chapter it arrives rather than sitting there
-  // - and for that first moment the only thing on offer is something to play
-  // with.
+  // the screen, so a celebration arrives before it does - and for that first
+  // moment the only thing on offer is something to play with.
   check("the celebration has the screen to itself first", (await finishButtons()) === 0);
   const openingBalloons = await celebrationThings();
   check(
     `there is already something to pop in that first moment (${openingBalloons.length})`,
     openingBalloons.length >= 4,
   );
-  await shot("07a-chapter1-first-instant");
+  await shot("03-level1-first-instant");
   // Popping works before the way out has arrived, or the beat would be a wait.
   const early = await playCelebration(1);
   check("the first instant already answers a finger", early.answered === 1);
@@ -1680,7 +1500,7 @@ async function runOpening() {
     "the way onwards arrives on its own",
     (await waitForFinishButton()) === true && (await finishButtons()) === 1,
   );
-  check("the first chapter still offers the next puzzle", (await finishLabel()) === "Next puzzle");
+  check("the first level offers the next puzzle", (await finishLabel()) === "Next puzzle");
 
   const balloons = await celebrationThings();
   check(`balloons are up to be popped (${balloons.length})`, balloons.length >= 4);
@@ -1696,7 +1516,7 @@ async function runOpening() {
   // child who pops everything in four seconds is never left with an empty
   // screen and no way out.
   check("the way onwards is up during the celebration", (await finishButtons()) === 1);
-  await shot("07b-chapter1-balloons");
+  await shot("04-level1-balloons");
 
   const bang = await playCelebration(5);
   check(`every balloon touched popped (${bang.missed} missed)`, bang.missed === 0);
@@ -1719,9 +1539,9 @@ async function runOpening() {
     await sleep(250);
   }
   check(`the sky is never empty while the party runs (${thinnestSky} at worst)`, thinnestSky >= 2);
-  check("the celebration never takes the level away", (await levelNumber()) === 5);
+  check("the celebration never takes the level away", (await levelNumber()) === 1);
   check("the way onwards is still there after playing", (await finishButtons()) === 1);
-  await shot("07c-chapter1-balloons-popped");
+  await shot("05-level1-balloons-popped");
 
   // A celebration is drawn under the effects layer for exactly one reason: a
   // balloon must never float over the button out.
@@ -1746,15 +1566,64 @@ async function runOpening() {
   await setViewport(1280, 800);
   await waitForLayout("landscape");
 
+  // --- level 2: two animals, and a drop that must not stick -----------------
+  await pressFinishButton();
+  check("moves on to level 2", (await levelNumber()) === 2);
+  const secondCast = await animalsOnBoard();
+  check("level 2 deals two different animals", new Set(secondCast).size === 2);
+  check("level 2 starts empty", (await placedCount()) === 0);
+
+  // A deliberately bad drop must not stick.
+  const stray = await centreOf(`.piece[data-piece="${secondCast[0]}"]`);
+  await mouse("mousePressed", stray.x, stray.y);
+  await mouse("mouseMoved", 640, 120);
+  await mouse("mouseReleased", 640, 120);
+  await sleep(500);
+  check("wrong drop does not stick", (await placedCount()) === 0);
+  await shot("06-after-wrong-drop");
+
+  // A piece is picked up by the box around its artwork, not only where a finger
+  // lands on paint, so the gap between a giraffe's legs works as well as the
+  // giraffe does. Grab one somewhere the artwork is not, and it should still
+  // come along and snap in.
+  await checkGrabBoxes(2);
+  const offPaint = await emptySpotOn(secondCast[1]);
+  check("a piece has grabbable space off its artwork", offPaint !== null);
+  if (offPaint) {
+    await dragAnimal(secondCast[1], { grabAt: offPaint });
+    check("a piece picked up off its artwork snaps in", (await placedCount()) === 1);
+  }
+
+  await solveRemaining();
+  check("level 2 can be completed", (await placedCount()) === 2);
+  const secondInterlude = await celebrationName();
+  check(`level 2 ends with its own interlude (${secondInterlude})`, secondInterlude !== "");
+  await shot("07-level2-interlude");
+  // The interlude a level ends into is rotated by level number, so no two
+  // levels in a row rest the same way.
+  check(
+    `two levels, two different interludes (${firstInterlude}, ${secondInterlude})`,
+    firstInterlude !== secondInterlude,
+  );
+  // An interlude is weather rather than an event, but it is still played rather
+  // than watched: a finger on it has to do something, or the twenty-five levels
+  // that end in one have a screen the child is locked out of for four seconds.
+  const playedInterlude = await playCelebration(3);
+  check(
+    `the interlude answers a finger (${playedInterlude.missed} missed)`,
+    playedInterlude.missed === 0,
+  );
+  check("and playing it does not move the game on", (await levelNumber()) === 2);
+
   // --- coming back to it tomorrow ------------------------------------------
   // Thirty levels is more than one sitting, so the level being played is
   // remembered (src/progress.ts) and reopening the game starts there. This is
   // the only place that path is exercised end to end: a real browser, a real
   // reload, a real localStorage.
   await pressFinishButton();
-  check("moves on to level 6", (await levelNumber()) === 6);
+  check("moves on to level 3", (await levelNumber()) === 3);
   await reopenTheGame();
-  check("reopening the game resumes where the child stopped", (await levelNumber()) === 6);
+  check("reopening the game resumes where the child stopped", (await levelNumber()) === 3);
   check("resuming deals a fresh board", (await placedCount()) === 0);
   check("resuming keeps the chapter", (await chapterName()) === "animals");
 
@@ -1783,8 +1652,8 @@ async function runOpening() {
   check("holding the button opens the panel", (await panelIsOpen()) === true);
   const map = await levelSquares();
   check(`the level map shows all thirty levels (${map.total})`, map.total === 30);
-  check(`the map marks the six levels played (${map.reached})`, map.reached === 6);
-  check("the map marks the level being played", map.current === 6);
+  check(`the map marks the three levels played (${map.reached})`, map.reached === 3);
+  check("the map marks the level being played", map.current === 3);
   const options = await panelOptions();
   check(
     `the panel offers exactly the options that do something (${options.join(", ")})`,
@@ -1792,7 +1661,6 @@ async function runOpening() {
       JSON.stringify([
         "Sound",
         "Idle hints",
-        "Touch and play",
         "Whole animals",
         "Sliced animals",
         "Shape pictures",
@@ -1817,7 +1685,7 @@ async function runOpening() {
   check("a chosen level starts empty", (await placedCount()) === 0);
   const afterJump = await savedRecord();
   check("a chosen level is remembered", afterJump?.level === 12);
-  check(`reading the map does not fill it in (${afterJump?.furthest})`, afterJump?.furthest === 6);
+  check(`reading the map does not fill it in (${afterJump?.furthest})`, afterJump?.furthest === 3);
 
   // A switch that has to survive being closed, and then a whole reload.
   await holdGrownUps();
@@ -1843,7 +1711,7 @@ async function runOpening() {
   const afterReset = await levelSquares();
   check(`the map empties with it (${afterReset.reached})`, afterReset.reached === 1);
 
-  // Six switches, one per kind of puzzle, so a grown-up can fit the thirty
+  // Five switches, one per kind of puzzle, so a grown-up can fit the thirty
   // levels to the child in front of them. A kind switched off is stepped over
   // wherever it sits, and the last one on cannot be turned off - there has to
   // be a game left. See src/grownups.ts.
@@ -1851,7 +1719,7 @@ async function runOpening() {
   await pressInPanel('.grownups-switch[data-kind="shatter"]');
   check("a kind can be switched off", (await kindIsOn("shatter")) === false);
   const skipped = await skippedSquares();
-  check(`the map fades the levels being skipped (${skipped})`, skipped === 2);
+  check(`the map fades the levels being skipped (${skipped})`, skipped === 3);
   check(
     "a kind switched off is remembered",
     (await savedRecord())?.settings?.kinds?.shatter === false,
@@ -1860,10 +1728,10 @@ async function runOpening() {
   // Switching the kind out from under the child moves them on rather than
   // leaving them on a level their grown-up has just said no to.
   check("the child is on level 1 after the reset", (await levelNumber()) === 1);
-  await pressInPanel('.grownups-switch[data-kind="play"]');
-  check("switching off the kind being played moves the child", (await levelNumber()) === 2);
+  await pressInPanel('.grownups-switch[data-kind="shape-match"]');
+  check("switching off the kind being played moves the child", (await levelNumber()) === 7);
 
-  for (const kind of ["shape-match", "sliced", "polygon"]) {
+  for (const kind of ["sliced", "polygon"]) {
     await pressInPanel(`.grownups-switch[data-kind="${kind}"]`);
   }
   check("the last kind left is held on", (await kindIsHeldOn("jigsaw")) === true);
@@ -1871,7 +1739,7 @@ async function runOpening() {
   check("and cannot be switched off", (await kindIsOn("jigsaw")) === true);
   await shot("09b-grownups-kinds");
 
-  for (const kind of ["play", "shape-match", "sliced", "polygon", "shatter"]) {
+  for (const kind of ["shape-match", "sliced", "polygon", "shatter"]) {
     await pressInPanel(`.grownups-switch[data-kind="${kind}"]`);
   }
   check("every kind can be put back", (await skippedSquares()) === 0);
@@ -1927,15 +1795,6 @@ async function runHintAndRest() {
   check("placing a piece takes the hint away", (await hintOnBoard()) === null);
   check("the hinted piece was one that fitted", (await placedCount()) === 1);
 
-  // A level played by touching has no tray, no target and no wrong place: a
-  // finger anywhere already lands on something that answers, so there is
-  // nothing for a hint to point at. See docs/decisions/A hint points at both
-  // ends.md.
-  await goToLevel(3);
-  check("level 3 is played by touching", (await kindName()) === "play");
-  const onTouchLevel = await hintAfterAWhile();
-  check("a level played by touching is never hinted at", onTouchLevel === null);
-
   // --- the game asleep ------------------------------------------------------
   // Nothing on this screen moves while nobody is playing with it. `?rest=`
   // makes the two minutes a few seconds; everything else is the game as a child
@@ -1958,20 +1817,6 @@ async function runHintAndRest() {
     `and holds bright rather than mid-fade (${pulse ? pulse.opacity.toFixed(2) : "no hint"})`,
     pulse !== null && pulse.opacity >= 0.8,
   );
-  await tapEmptySpot();
-  check("a touch wakes it", (await isAsleep()) === false);
-
-  // The bubbles are the busiest thing the game leaves running by itself, and
-  // the level where waking has to do two things at once: the finger that wakes
-  // the page is the finger that pops the bubble it landed on.
-  await goToLevel(1, { restAfter: 2 });
-  check("level 1 is played by touching", (await kindName()) === "play");
-  const awakeBubbles = await runningAnimations();
-  check(`the bubbles are moving to begin with (${awakeBubbles})`, awakeBubbles > 0);
-  await sleep(3200);
-  check("a board left alone stops moving", (await isAsleep()) === true);
-  const asleepBubbles = await runningAnimations();
-  check(`the bubbles stop with it (${asleepBubbles} running)`, asleepBubbles === 0);
 
   // Turning a tablet that is already asleep rebuilds the board for the new
   // shape, and the rebuilt board must arrive as still as the one it replaced.
@@ -2001,28 +1846,25 @@ async function runHintAndRest() {
   check("nothing has woken the board up", (await isAsleep()) === true);
   const turnedBack = await runningAnimations();
   check(`and turning it back leaves it still too (${turnedBack} running)`, turnedBack === 0);
-
-  const frozen = await thingsToTouch();
-  const poppedBefore = (await activityProgress()).touched;
-  check("a sleeping board still has its bubbles on it", frozen.length > 0);
-  await tapAt(frozen[0].x, frozen[0].y);
-  check("a touch wakes the board", (await isAsleep()) === false);
-  const wokeBubbles = await runningAnimations();
-  check(`the bubbles move again (${wokeBubbles})`, wokeBubbles > 0);
-  const orphans = await orphanAnimations();
-  check(`and nothing woke up on the board it replaced (${orphans} off the page)`, orphans === 0);
+  const boardOrphans = await orphanAnimations();
   check(
-    "and the touch that woke it popped the bubble it landed on",
-    (await activityProgress()).touched > poppedBefore,
+    `and nothing woke up on the board it replaced (${boardOrphans} off the page)`,
+    boardOrphans === 0,
   );
 
-  // A celebration is the likeliest thing of all for a tablet to be put down on,
-  // and the one that keeps arriving by itself: every balloon hands its place on
-  // to the next one on a timer of its own, and the next one climbs with an
-  // animation of its own. A sleeping party has to stop filling its sky.
-  await goToLevel(5, { restAfter: 3 });
-  await playActivity();
-  check("finishing a chapter raises a celebration to sleep on", (await celebrationName()) !== "");
+  await tapEmptySpot();
+  check("a touch wakes it", (await isAsleep()) === false);
+
+  // A celebration is the busiest thing the game leaves running by itself, and
+  // the likeliest thing of all for a tablet to be put down on: every balloon
+  // hands its place on to the next one on a timer of its own, and the next one
+  // climbs with an animation of its own. A sleeping party has to stop filling
+  // its sky. Level 1 is one drag away from raising one.
+  await goToLevel(1, { restAfter: 3 });
+  await solveRemaining();
+  check("finishing a level raises a celebration to sleep on", (await celebrationName()) !== "");
+  const awakeParty = await runningAnimations();
+  check(`the balloons are moving to begin with (${awakeParty})`, awakeParty > 0);
   await sleep(4200);
   check("a celebration left alone goes to sleep", (await isAsleep()) === true);
   const sleepingParty = await runningAnimations();
@@ -2031,13 +1873,22 @@ async function runHintAndRest() {
   await sleep(2500);
   const skyLater = (await celebrationThings()).length;
   check(`and stops arriving (${skyAtOnce} up, ${skyLater} a moment later)`, skyLater === skyAtOnce);
-  const partyOrphans = await runningAnimations();
-  check(`nothing started up behind the freeze (${partyOrphans} running)`, partyOrphans === 0);
-  const sleeper = (await celebrationThings())[0];
-  if (sleeper) await tapAt(sleeper.x, sleeper.y);
+
+  // Waking has to do two things at once: the finger that wakes the page is the
+  // finger that pops the balloon it landed on.
+  const frozen = await celebrationThings();
+  const poppedBefore = await celebrationPlayed();
+  check("a sleeping party still has its balloons on it", frozen.length > 0);
+  if (frozen[0]) await tapAt(frozen[0].x, frozen[0].y);
   check("a touch wakes the party", (await isAsleep()) === false);
   const wokenParty = await runningAnimations();
   check(`and the sky fills again (${wokenParty} running)`, wokenParty > 0);
+  const orphans = await orphanAnimations();
+  check(`and nothing woke up on the board it replaced (${orphans} off the page)`, orphans === 0);
+  check(
+    "and the touch that woke it popped the balloon it landed on",
+    (await celebrationPlayed()) > poppedBefore,
+  );
   // The pause before the way onwards is a wait in time somebody was there for.
   // A tablet put down during it must not have the button arrive behind the
   // freeze - fading up and pulsing on a page that is meant to be standing
@@ -2053,8 +1904,11 @@ async function runHintAndRest() {
   // staged, and what has to be true is that the next touch asks again.
   await goToLevel(1, { restAfter: 2 });
   await stageRefusedResume();
-  const bubble = (await thingsToTouch())[0];
-  if (bubble) await tapAt(bubble.x, bubble.y);
+  // On the piece rather than on the board: the speakers are woken by a sound
+  // being played, and a tap that lands on nothing plays none. A piece picked up
+  // and put straight back down is the smallest thing that does.
+  const toLift = await centreOf(`.piece[data-piece="${(await animalsOnBoard())[0]}"]`);
+  await tapAt(toLift.x, toLift.y);
   await sleep(3200);
   check("a sleeping board puts the speakers down", (await speakerState()) === "suspended");
   await refuseResume(true);
@@ -2071,50 +1925,48 @@ async function runHintAndRest() {
 }
 
 async function runAnimals() {
-  // --- level 7: the interlude the first chapter never reaches ---------------
-  // Four interludes are rotated by level number, and the first chapter can only
-  // show two of them: three of its five levels are played by touching, and
-  // those raise nothing. So the fourth is picked up here, on the cheapest
-  // level of the second chapter, which is what keeps the coverage guard at the
-  // end of the run satisfied by playing rather than by a detour.
-  await goToLevel(7);
-  check("jumps to level 7", (await levelNumber()) === 7);
-  await solveRemaining();
-  const seventh = await celebrationName();
-  check(`level 7 ends with its own interlude (${seventh})`, seventh !== "");
-  const seventhThings = await celebrationThings();
-  check(
-    `and there is something in it to touch (${seventhThings.length})`,
-    seventhThings.length >= 3,
-  );
+  // --- levels 3 and 4: the other two interludes -----------------------------
+  // Four interludes are rotated by level number, and the opening segment sees
+  // the first two. The other two are picked up here, on the cheapest levels
+  // that raise them, which is what keeps the coverage guard at the end of the
+  // run satisfied by playing rather than by a detour.
+  for (const level of [3, 4]) {
+    await goToLevel(level);
+    check(`jumps to level ${level}`, (await levelNumber()) === level);
+    await solveRemaining();
+    const interlude = await celebrationName();
+    check(`level ${level} ends with its own interlude (${interlude})`, interlude !== "");
+    const inIt = await celebrationThings();
+    check(`and there is something in it to touch (${inIt.length})`, inIt.length >= 3);
+  }
 
-  // --- level 10: the busiest board of animals ------------------------------
+  // --- level 6: the busiest board of animals -------------------------------
   // `?level=` starts partway along the ramp. It is for this script and for
   // whoever is working on the game; nothing in the game offers it.
-  await goToLevel(10);
-  check("jumps to level 10", (await levelNumber()) === 10);
-  check("level 10 is in the animals chapter", (await chapterName()) === "animals");
+  await goToLevel(6);
+  check("jumps to level 6", (await levelNumber()) === 6);
+  check("level 6 is in the animals chapter", (await chapterName()) === "animals");
   const busyCast = await animalsOnBoard();
-  check("level 10 deals six different animals", new Set(busyCast).size === 6);
+  check("level 6 deals six different animals", new Set(busyCast).size === 6);
   const busyDots = await chapterDots();
-  check(`two chapter dots filled by level 10 (${busyDots.filled})`, busyDots.filled === 2);
+  check(`one chapter dot filled by level 6 (${busyDots.filled})`, busyDots.filled === 1);
   // Six smaller pieces: the grab boxes have to hold their shape at this size
   // too, where the tray leaves least room between them.
   await checkGrabBoxes(6);
-  await shot("10-level10-start");
+  await shot("10-level6-start");
 
   await dragAnimal(busyCast[0]);
   await dragAnimal(busyCast[1]);
   check("the pieces snap into their holes", (await placedCount()) === 2);
-  await shot("11-level10-two-placed");
+  await shot("11-level6-two-placed");
 
   // Rotating mid-puzzle must reflow and keep progress.
   await setViewport(480, 900);
   await waitForLayout("portrait");
   check("switches to the portrait layout", (await layoutName()) === "portrait");
   check("rotation preserves placed pieces", (await placedCount()) === 2);
-  check("rotation stays on the same level", (await levelNumber()) === 10);
-  await shot("12-portrait-level10");
+  check("rotation stays on the same level", (await levelNumber()) === 6);
+  await shot("12-portrait-level6");
 
   const fits = await evaluate(`
     (() => {
@@ -2139,17 +1991,17 @@ async function runAnimals() {
   check("dragging works in the portrait layout", (await placedCount()) === 6);
   await shot("13-portrait-complete");
 
-  // --- the end of chapter 2: a rainbow --------------------------------------
-  // The one celebration the child *makes*. A tap anywhere paints the next arc,
-  // and an arc arrives by itself every second or two - so it draws itself for a
-  // child who is only watching, and is painted by a child who is not. In
-  // portrait as it happens, which is the point: a celebration is composed from
-  // the layout like everything else.
-  check("finishing chapter 2 raises the rainbow", (await celebrationName()) === "rainbow");
+  // --- the end of chapter 1: a rainbow --------------------------------------
+  // The first of the five chapter moments, and the one celebration the child
+  // *makes*. A tap anywhere paints the next arc, and an arc arrives by itself
+  // every second or two - so it draws itself for a child who is only watching,
+  // and is painted by a child who is not. In portrait as it happens, which is
+  // the point: a celebration is composed from the layout like everything else.
+  check("finishing chapter 1 raises the rainbow", (await celebrationName()) === "rainbow");
   check("the rainbow has the screen to itself first", (await finishButtons()) === 0);
-  // The rule the chapter-2 celebration is chosen by: a celebration is never
-  // made of what the board is made of, so a board of animals gets one with no
-  // animal in it. See docs/decisions/A celebration is not made of the board.md.
+  // The rule the first chapter's celebration is chosen by: a celebration is
+  // never made of what the board is made of, so a board of animals gets one with
+  // no animal in it. See docs/decisions/A celebration is not made of the board.md.
   check("nothing on a board of animals is celebrated with more animals", (await parading()) === 0);
   const arcsAtFirst = await rainbowArcs();
   const skyOverAnimals = await celebrationThings();
@@ -2169,7 +2021,7 @@ async function runAnimals() {
   // against finished before the rainbow was painted, and the hint went with it.
   const duringRainbow = await hintAfterAWhile();
   check("nothing is hinted at during a celebration", duringRainbow === null);
-  await shot("13b-chapter2-rainbow");
+  await shot("13b-chapter1-rainbow");
 
   // Hints back off, so the rest of the run's screenshots show the levels rather
   // than a glow that happened to be due when the shutter went.
@@ -2188,30 +2040,30 @@ async function runSliced() {
     settings: { sound: true, hints: 'later' }
   }))`);
 
-  // --- level 30: the last one, and the loop back ---------------------------
+  // --- a place the child had got to, left alone ----------------------------
   await setViewport(1280, 800);
   // A whole level has just been played from `?level=`, which is a tool for
   // working on the game rather than a way into it: the place the child had got
   // to is exactly where they left it.
   await reopenTheGame();
   check("a level played from ?level= leaves the saved level alone", (await levelNumber()) === 6);
-  // --- level 14: one animal, arriving in four slices -----------------------
-  // The first level of the game that asks for a picture rather than a match:
-  // four pieces, one hole, and the hole stays visible underneath as the guide
-  // to what is being built.
-  await goToLevel(14);
-  check("jumps to level 14", (await levelNumber()) === 14);
+  // --- level 11: one animal, arriving in four slices -----------------------
+  // The chapter that asks for a picture rather than a match: four pieces, one
+  // hole, and the hole stays visible underneath as the guide to what is being
+  // built.
+  await goToLevel(11);
+  check("jumps to level 11", (await levelNumber()) === 11);
   check("the sliced kind plays its own levels", (await kindName()) === "sliced");
   const sliceCast = await animalsOnBoard();
-  check("level 14 deals four slices", sliceCast.length === 4);
+  check("level 11 deals four slices", sliceCast.length === 4);
   check("four slices, one hole", (await holeCount()) === 1);
   check("every slice is a slice of the same animal", new Set(sliceCast.map(holeFor)).size === 1);
-  await shot("14-level14-sliced");
+  await shot("14-level11-sliced");
 
   await dragAnimal(sliceCast[0]);
   await dragAnimal(sliceCast[1]);
   check("a slice settles into its animal's hole", (await placedCount()) === 2);
-  await shot("15-level14-half-built");
+  await shot("15-level11-half-built");
 
   await solveRemaining();
   check("the animal can be put back together", (await placedCount()) === 4);
@@ -2227,36 +2079,36 @@ async function runSliced() {
     `an assembled animal closes over its joins (${sliceClips.spread}/${sliceClips.drawn})`,
     sliceClips.drawn === 4 && sliceClips.spread === 4,
   );
-  await shot("16-level14-assembled");
+  await shot("16-level11-assembled");
 }
 
 async function runPolygon() {
-  // --- levels 16-20: a picture built out of plain shapes -------------------
+  // --- levels 13-18: a picture built out of plain shapes -------------------
   // The chapter where several pieces make one thing and each piece is still a
-  // whole shape a child can name. Level 16 is three shapes; level 20 is six,
+  // whole shape a child can name. Level 13 is three shapes; level 18 is six,
   // and is where the rule this chapter exists for is exercised: two shapes the
   // same fill either of their shadows.
-  await goToLevel(16);
-  check("jumps to level 16", (await levelNumber()) === 16);
+  await goToLevel(13);
+  check("jumps to level 13", (await levelNumber()) === 13);
   check("the polygon kind plays its own levels", (await kindName()) === "polygon");
-  check("level 16 is in the shapes chapter", (await chapterName()) === "shapes");
-  check("level 16 deals three shapes", (await pieceCount()) === 3);
+  check("level 13 is in the shapes chapter", (await chapterName()) === "shapes");
+  check("level 13 deals three shapes", (await pieceCount()) === 3);
   check("one shadow per shape", (await holeCount()) === 3);
-  await shot("17-level16-shapes");
+  await shot("17-level13-shapes");
   await solveRemaining();
   check("a picture of three shapes can be built", (await placedCount()) === 3);
-  await shot("18-level16-built");
+  await shot("18-level13-built");
 
-  await goToLevel(20);
-  check("jumps to level 20", (await levelNumber()) === 20);
+  await goToLevel(18);
+  check("jumps to level 18", (await levelNumber()) === 18);
   const shapeCast = await animalsOnBoard();
-  check("level 20 deals six shapes", shapeCast.length === 6);
+  check("level 18 deals six shapes", shapeCast.length === 6);
   check("six shapes, six shadows, one picture", (await holeCount()) === 6);
   check(
     "every shape belongs to the same picture",
     new Set(shapeCast.map((id) => id.split(":")[1])).size === 1,
   );
-  await shot("19-level20-shapes");
+  await shot("19-level18-shapes");
 
   // Portrait as well, because a picture is one target with several pieces and
   // the tray is what holds it down: the orientation that stacks the tray is
@@ -2265,7 +2117,7 @@ async function runPolygon() {
   await waitForLayout("portrait");
   check("a picture composes in portrait too", (await layoutName()) === "portrait");
   check("portrait keeps all six shadows", (await holeCount()) === 6);
-  await shot("20-level20-portrait");
+  await shot("20-level18-portrait");
   await setViewport(1280, 800);
   await waitForLayout("landscape");
 
@@ -2332,20 +2184,20 @@ async function runPolygon() {
   const owners = await shadowOwners();
   check("the shadows still name one shape each", new Set(owners).size === 6);
   check("the shape it displaced is now expected elsewhere", owners.includes(itsTwin));
-  await shot("21-level20-swapped");
+  await shot("21-level18-swapped");
 
   await solveRemaining();
   check("the picture finishes however the twins were shared out", (await placedCount()) === 6);
-  await shot("22-level20-built");
+  await shot("22-level18-built");
 
-  // --- the end of chapter 4: a parade ---------------------------------------
+  // --- the end of chapter 3: a parade ---------------------------------------
   // Animals walk across the finished sunflower, and every one of them hops and
   // sings when it is poked. The board underneath is built of plain coloured
   // shapes, so the only animals on the screen are the ones walking: a
   // celebration is never made of what the board is made of, which is why the
   // parade ends this chapter rather than the chapter of animals. See
   // docs/decisions/A celebration is not made of the board.md.
-  check("finishing chapter 4 raises the parade", (await celebrationName()) === "parade");
+  check("finishing chapter 3 raises the parade", (await celebrationName()) === "parade");
   check("the parade has the screen to itself first", (await finishButtons()) === 0);
   const marchers = await paradingPieces();
   check(
@@ -2360,7 +2212,7 @@ async function runPolygon() {
   const hops = await playCelebration(3);
   check(`a poked animal answers (${hops.missed} missed)`, hops.missed === 0);
   check("the parade lets the way onwards through", (await waitForFinishButton()) === true);
-  await shot("22b-chapter4-parade");
+  await shot("22b-chapter3-parade");
 
   // Portrait is where a parade over a finished board reads busiest, and it is
   // where the parade this one replaced failed (#65). So the same moment, turned
@@ -2369,7 +2221,7 @@ async function runPolygon() {
   await setViewport(480, 900);
   await waitForLayout("portrait");
   check("the parade is turned with the board", (await layoutName()) === "portrait");
-  check("rotation stays on the same level", (await levelNumber()) === 20);
+  check("rotation stays on the same level", (await levelNumber()) === 18);
   check("the parade is rebuilt rather than lost", (await celebrationName()) === "parade");
   // A re-mounted parade is dealt again from the level's own random, which has
   // moved on - so it is a full parade rather than the same five animals.
@@ -2379,19 +2231,19 @@ async function runPolygon() {
     stillWalking.length === 5,
   );
   check("the way onwards does not make the child wait twice", (await finishButtons()) > 0);
-  await shot("22c-chapter4-parade-portrait");
+  await shot("22c-chapter3-parade-portrait");
   await setViewport(1280, 800);
   await waitForLayout("landscape");
 }
 
 async function runJigsaw() {
-  // --- level 21: a picture cut up -------------------------------------------
+  // --- level 19: a picture cut up -------------------------------------------
   // The jigsaw chapter. One picture is one hole however many pieces it is in,
   // and the picture stays under the empty frame so the child can see what they
   // are making - a blank frame at two years old is a memory game.
-  await goToLevel(21);
-  check("jumps to level 21", (await levelNumber()) === 21);
-  check("level 21 is a jigsaw", (await kindName()) === "jigsaw");
+  await goToLevel(19);
+  check("jumps to level 19", (await levelNumber()) === 19);
+  check("level 19 is a jigsaw", (await kindName()) === "jigsaw");
   const jigsawPieces = await pieceCount();
   check(`a 2x2 board deals four pieces (${jigsawPieces})`, jigsawPieces === 4);
   check("four pieces, one picture to build them in", (await holeCount()) === 1);
@@ -2418,7 +2270,7 @@ async function runJigsaw() {
     `a piece waiting to be placed shows its cut (${looseEdges.worst.toFixed(2)})`,
     looseEdges.drawn === jigsawPieces && looseEdges.worst > 0.5,
   );
-  await shot("23-level21-jigsaw");
+  await shot("23-level19-jigsaw");
 
   // Aimed at its own cut, and it has to land there: a jigsaw piece dropped
   // where it belongs is the whole of the game.
@@ -2439,7 +2291,7 @@ async function runJigsaw() {
     `a half-built picture is cut where it was cut (${building.exact}/${building.drawn})`,
     building.drawn === jigsawPieces && building.exact === jigsawPieces,
   );
-  await shot("24-level21-first-piece");
+  await shot("24-level19-first-piece");
 
   await solveRemaining();
   check("a jigsaw can be finished", (await placedCount()) === jigsawPieces);
@@ -2487,7 +2339,7 @@ async function runJigsaw() {
     document.querySelector('.piece').classList.remove('is-settling');
     return true;
   })()`);
-  await shot("25-level21-built");
+  await shot("25-level19-built");
 }
 
 async function runFinale() {
@@ -2531,30 +2383,30 @@ async function runFinale() {
   );
   await shot("28-level26-built");
 
-  // --- the ends of chapters 3 and 5 -----------------------------------------
+  // --- the ends of chapters 2 and 4 -----------------------------------------
   // Blossom over the animal that has just been put back together, and fireworks
   // over the picture that has just been finished. Both are here to be looked at
   // as much as checked: a celebration that has gone wrong is something a person
   // sees in the contact sheet long before a check catches it.
-  await goToLevel(15);
+  await goToLevel(12);
   await solveRemaining();
-  check("finishing chapter 3 raises the petals", (await celebrationName()) === "petals");
+  check("finishing chapter 2 raises the petals", (await celebrationName()) === "petals");
   const blossom = await celebrationThings();
   check(`blossom is falling to be caught (${blossom.length})`, blossom.length >= 6);
   check("the blossom has the screen to itself first", (await finishButtons()) === 0);
   const caught = await playCelebration(3);
   check(`a caught petal scatters (${caught.missed} missed)`, caught.missed === 0);
   check("blossom lets the way onwards through", (await waitForFinishButton()) === true);
-  await shot("28b-chapter3-petals");
+  await shot("28b-chapter2-petals");
 
-  await goToLevel(25);
+  await goToLevel(24);
   await solveRemaining();
-  check("finishing chapter 5 raises the fireworks", (await celebrationName()) === "fireworks");
+  check("finishing chapter 4 raises the fireworks", (await celebrationName()) === "fireworks");
   await waitUntil(nightHasFallen, Boolean, 3000);
   check("the night sky falls over the finished picture", (await nightHasFallen()) === true);
   // A tap anywhere sets one off there, in the tick the finger landed. Three
   // spread across the sky, and the shot taken while they are still open.
-  const board25 = await evaluate(`
+  const board24 = await evaluate(`
     (() => {
       const r = document.querySelector('#stage').getBoundingClientRect();
       return { x: r.x, y: r.y, w: r.width, h: r.height };
@@ -2567,17 +2419,17 @@ async function runFinale() {
     [0.45, 0.55],
     [0.78, 0.26],
   ]) {
-    await tapAt(board25.x + fx * board25.w, board25.y + fy * board25.h);
+    await tapAt(board24.x + fx * board24.w, board24.y + fy * board24.h);
   }
   check("a tap anywhere sets one off", (await celebrationPlayed()) === beforeBangs + 3);
   check("the night lets the way onwards through", (await waitForFinishButton()) === true);
-  await shot("28c-chapter5-fireworks");
+  await shot("28c-chapter4-fireworks");
 
   await goToLevel(30);
   check("jumps to the last level", (await levelNumber()) === 30);
   check("the last level is in the mastery chapter", (await chapterName()) === "mastery");
   const lastDots = await chapterDots();
-  check(`every chapter dot filled on level 30 (${lastDots.filled})`, lastDots.filled === 6);
+  check(`every chapter dot filled on level 30 (${lastDots.filled})`, lastDots.filled === 5);
   const lastCount = await pieceCount();
   await shot("29-level30-start");
 
@@ -2589,7 +2441,7 @@ async function runFinale() {
   // Thirty levels finished. This used to be an arrow that looped silently back
   // to level 1, which told a child who had played the whole game that nothing
   // had happened. It is now every celebration at once - a rainbow, balloons,
-  // blossom, fireworks, and a parade of the animals - and unlike the five
+  // blossom, fireworks, and a parade of the animals - and unlike the four
   // chapter moments it never winds down. The end of the game is a room to stay
   // in rather than a wall, and the way out is the same big button the child has
   // pressed at the end of all thirty levels.
@@ -2641,63 +2493,38 @@ async function runFinale() {
   await pressFinishButton();
   check("play again loops back to level 1", (await levelNumber()) === 1);
   check("looping back clears the board", (await placedCount()) === 0);
-  check("looping back starts the bubbles again", (await activityName()) === "bubbles");
-  check("looping back forgets what was touched", (await activityProgress()).touched === 0);
+  check("looping back deals the one huge animal again", (await pieceCount()) === 1);
   check("looping back takes the finale away", (await celebrationName()) === "");
   await shot("31-looped-back");
 }
 
 async function runFreshDeals() {
-  await goToLevel(1);
+  await goToLevel(4);
   // --- a fresh deal every time ---------------------------------------------
-  // Reset on a touch level has to take the old bubbles away with it, or the
-  // level would go on filling up with the last board's.
-  const beforeReset = await thingsToTouch();
-  await tapAt(beforeReset[0].x, beforeReset[0].y);
-  check("a bubble popped before the reset counted", (await activityProgress()).touched === 1);
+  // The child's own reset button. What it has to leave behind is a board with
+  // nothing on it and nothing of the last one still in the tray, on the same
+  // level rather than the next one: it is a way of starting over, never a way
+  // onwards.
+  const beforeReset = await animalsOnBoard();
+  await dragAnimal(beforeReset[0]);
+  check("a piece placed before the reset counted", (await placedCount()) === 1);
   await dealAgain();
   check("reset deals a fresh puzzle", (await placedCount()) === 0);
-  check("reset keeps the level", (await levelNumber()) === 1);
-  check("reset starts the touching over", (await activityProgress()).touched === 0);
-  const afterReset2 = await thingsToTouch();
+  check("reset keeps the level", (await levelNumber()) === 4);
+  const afterReset2 = await animalsOnBoard();
   check(
-    `reset leaves one screenful of bubbles, not two (${afterReset2.length})`,
-    afterReset2.length >= 1 && afterReset2.length <= 8,
+    `reset leaves one board of pieces, not two (${afterReset2.length})`,
+    afterReset2.length === 4,
   );
-
-  // --- a child who touches nothing ------------------------------------------
-  // The goal is what an activity asks for; the clock is what it settles for. A
-  // one-year-old does not read a level as a task with a number to reach, and a
-  // child patting the same cloud for a minute is doing exactly what the level
-  // is for - so once a bubble has had time to climb the whole sky the way
-  // onwards is up whatever has been touched. It is a second way out and never a
-  // way on: nothing is taken off the screen, nothing is counted as touched that
-  // was not, and the child still presses the button themselves. The board above
-  // was just dealt again, so that clock starts here. See src/kinds/play.ts and
-  // docs/decisions/Ask a touch level for a handful, and let the child out
-  // anyway.md.
-  check("no way onwards in the first moments", (await finishButtons()) === 0);
-  const lentOut = await waitForFinishButton(14_000);
-  check(
-    "a level nobody touches opens the way onwards anyway",
-    lentOut === true && (await finishButtons()) === 1,
-  );
-  const untouched = await activityProgress();
-  check(`the clock touches nothing itself (${untouched.touched})`, untouched.touched === 0);
-  check("the level is still the level", (await levelNumber()) === 1);
-  // And it is still something to play with: the way out is an offer, not an end.
-  const stillAfloat = await thingsToTouch();
-  check(`bubbles are still there to pop (${stillAfloat.length})`, stillAfloat.length >= 1);
-  await tapAt(stillAfloat[0].x, stillAfloat[0].y);
-  check("a bubble still pops with the way out up", (await activityProgress()).touched === 1);
-  await shot("31a-level1-waited-out");
+  check("reset raises no celebration", (await celebrationName()) === "");
+  await shot("31a-level4-dealt-again");
 
   const castForSeed = async (seed) => {
     const token = ++navigation;
     await send("Page.navigate", {
-      url: `http://127.0.0.1:${PORT}/?level=10&seed=${seed}&shot=${token}`,
+      url: `http://127.0.0.1:${PORT}/?level=6&seed=${seed}&shot=${token}`,
     });
-    await waitForNavigation(token, 10);
+    await waitForNavigation(token, 6);
     return (await animalsOnBoard()).join();
   };
   const firstSeedCast = await castForSeed(SEED);
@@ -2707,33 +2534,35 @@ async function runFreshDeals() {
   check(`different seeds deal different puzzles (${deals.size} of 6)`, deals.size >= 4);
   await shot("32-another-deal");
 
-  // --- a touch level held the other way up ---------------------------------
-  // A tablet gets turned. A touch level has no tray to reflow, so what has to
-  // hold is that everything is still on the board and still big enough to hit.
+  // --- the busiest board held the other way up -----------------------------
+  // A tablet gets turned. The fullest board of animals is where the tray has
+  // least room to reflow into, so what has to hold is that every piece is still
+  // there, still big enough to grab, and still able to go home.
   await setViewport(700, 1000);
-  await goToLevel(5);
-  check("the scene composes in portrait too", (await layoutName()) === "portrait");
+  await goToLevel(6);
+  check("the busiest board composes in portrait too", (await layoutName()) === "portrait");
   await dealAgain();
-  const turned = await thingsToTouch();
-  const turnedGoal = (await activityProgress()).goal;
-  check(
-    `portrait keeps everything in reach (${turned.length} for ${turnedGoal})`,
-    turned.length > turnedGoal,
-  );
+  const turned = await animalsOnBoard();
+  check(`portrait keeps every piece in reach (${turned.length})`, turned.length === 6);
   const turnedStage = await evaluate(
     `document.querySelector('#stage').getBoundingClientRect().width`,
   );
+  const turnedSmallest = await evaluate(`
+    (() => {
+      const boxes = [...document.querySelectorAll('.piece .grab-box')].map((el) => {
+        const r = el.getBoundingClientRect();
+        return Math.max(r.width, r.height);
+      });
+      return Math.min(...boxes);
+    })()
+  `);
   check(
-    "portrait keeps every target big enough to hit",
-    Math.min(...turned.map((thing) => thing.size)) / turnedStage >= 0.1,
+    `portrait keeps every piece big enough to grab (${((turnedSmallest / turnedStage) * 100).toFixed(0)}% of the board)`,
+    turnedSmallest / turnedStage >= 0.1,
   );
-  await shot("33-portrait-alive");
-  const turnedPlay = await playActivity();
-  check(
-    `a touch level finishes in portrait too (${turnedPlay.taps} taps)`,
-    (await activityProgress()).touched >= turnedGoal,
-  );
-  check(`every touch answered in portrait (${turnedPlay.missed} missed)`, turnedPlay.missed === 0);
+  await shot("33-portrait-six-animals");
+  await solveRemaining();
+  check("the busiest board can be finished in portrait too", (await placedCount()) === 6);
 
   // --- a celebration for a child who asked for less motion -------------------
   // Every act stands still under `prefers-reduced-motion`, and every act but
@@ -2787,7 +2616,7 @@ async function runNetwork() {
   const beforeCut = await resourceCount();
   await setOffline(true);
   const offlineChapters = [];
-  for (const level of [12, 17, 22, 27]) {
+  for (const level of [8, 14, 20, 26]) {
     await jumpToLevelFromPanel(level);
     offlineChapters.push({
       level,
@@ -2815,7 +2644,7 @@ async function runNetwork() {
   await send("Network.setBlockedURLs", { urls: ["*polygon*"] });
   await reopenTheGame();
   await sleep(1500);
-  await jumpToLevelFromPanel(15);
+  await jumpToLevelFromPanel(12);
   const beforeSeam = {
     level: await levelNumber(),
     kind: await kindName(),
@@ -2825,7 +2654,7 @@ async function runNetwork() {
   // Offline, so the game waits for the connection rather than reloading into
   // the same failure. This is the state a child would actually be looking at.
   await setOffline(true);
-  await jumpToLevelFromPanel(16, { waitForArrival: false });
+  await jumpToLevelFromPanel(13, { waitForArrival: false });
   await sleep(1200);
   const heldLevel = await levelNumber();
   const heldPieces = await pieceCount();
@@ -2841,8 +2670,8 @@ async function runNetwork() {
   //    level the child asked for rather than the one behind it.
   await send("Network.setBlockedURLs", { urls: [] });
   await setOffline(false);
-  const cameBack = await waitForLevel(16, 12000);
-  check(`the game comes back by itself when the network does (level ${cameBack})`, cameBack === 16);
+  const cameBack = await waitForLevel(13, 12000);
+  check(`the game comes back by itself when the network does (level ${cameBack})`, cameBack === 13);
   check("and on the kind that was missing", (await kindName()) === "polygon");
   await shot("36-chunk-arrived-after-reconnect");
 
@@ -2898,7 +2727,7 @@ async function runScreens() {
   ];
   for (const [name, width, height, orientation] of iPads) {
     await setViewport(width, height);
-    await goToLevel(10);
+    await goToLevel(6);
     check(`${name}: picks the ${orientation} layout`, (await layoutName()) === orientation);
     const board = await evaluate(`
       (() => {
@@ -2950,7 +2779,7 @@ async function runScreens() {
   // sitting clear of where the home indicator would be.
   const HOME_INDICATOR = 34;
   await setViewport(834, 1194);
-  await goToLevel(10);
+  await goToLevel(6);
   const beforeInset = await evaluate(`
     (() => {
       const key = document.querySelector('.grownups-key').getBoundingClientRect();
@@ -3084,10 +2913,10 @@ async function runScreens() {
 const segments = [
   { name: "opening", run: runOpening },
   { name: "hint-and-rest", run: runHintAndRest },
-  { name: "level7-level10-animals", run: runAnimals },
-  { name: "level14-sliced", run: runSliced },
-  { name: "level16-level20-polygon", run: runPolygon },
-  { name: "level21-jigsaw", run: runJigsaw },
+  { name: "level3-level6-animals", run: runAnimals },
+  { name: "level11-sliced", run: runSliced },
+  { name: "level13-level18-polygon", run: runPolygon },
+  { name: "level19-jigsaw", run: runJigsaw },
   { name: "level26-finale", run: runFinale },
   { name: "fresh-deals", run: runFreshDeals },
   { name: "network", run: runNetwork },
