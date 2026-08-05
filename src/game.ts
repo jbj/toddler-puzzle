@@ -51,6 +51,7 @@ import type { Celebration, ChapterCelebrationId, InterludeId } from "./celebrati
 import { enableDragging } from "./drag";
 import { boxCenter, type Point, type Size } from "./geometry";
 import { clearHint, createIdleHint, drawHint, hintPiece, type IdleHint } from "./hint";
+import { createHoldGate, watchHold } from "./hold";
 import { ensureKind, isKindLoaded, kindFor, recoverWhenPossible } from "./kinds/registry";
 import { boxOf, chooseLayout, trayHome, waitingHome, type Layout } from "./layout";
 import {
@@ -186,6 +187,11 @@ export function createGame(
    * the element.
    */
   let stopDragging: (() => void) | null = null;
+  /**
+   * How to take down the hold on the reset button of the board being replaced,
+   * so a board thrown away takes its frame loop and its timers with it.
+   */
+  let stopReset: (() => void) | null = null;
   /**
    * The idle hint watching this board, if this level has one: a level played by
    * touching has nothing to aim at, and a finished level has a celebration on
@@ -601,6 +607,8 @@ export function createGame(
     // into is replaced.
     stopDragging?.();
     stopDragging = null;
+    stopReset?.();
+    stopReset = null;
     hint?.stop();
     hint = null;
     stopCelebration?.();
@@ -663,10 +671,26 @@ export function createGame(
       },
     });
 
-    built.resetButton.addEventListener("pointerdown", (event) => {
-      event.stopPropagation();
-      unlockAudio();
-      startPuzzle();
+    // Held, never tapped, for the same reason as the "Grown-ups" button: this
+    // one throws away the puzzle the child is part way through, and a two-year-
+    // old resting a hand in the corner of the screen must not be able to do
+    // that. The rule is `hold.ts`, and the ring round the button is the whole of
+    // what says a press is being counted - there is no wording, because the
+    // child cannot read it and the grown-up can see the ring fill.
+    const resetGate = createHoldGate();
+    const resetRing = built.resetButton.querySelector(".reset-ring");
+    stopReset = watchHold(built.resetButton, {
+      gate: resetGate,
+      now: () => performance.now(),
+      // The press is the child's, however it ends, so it counts as playing.
+      // The hint hears it too: the press is not stopped here, so it reaches the
+      // stage listener above and stirs the wait like any other touch.
+      pressed: unlockAudio,
+      paint: (state) => resetRing?.setAttribute("stroke-dasharray", `${state.fill} 1`),
+      held: () => {
+        resetGate.reset();
+        startPuzzle();
+      },
     });
 
     return built;

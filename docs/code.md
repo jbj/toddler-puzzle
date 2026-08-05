@@ -166,8 +166,9 @@ something unrelated. Why they explain themselves is
 | `src/icons.ts` | The hand-drawn SVG icons used by the chrome around the puzzle |
 | `src/drag.ts` | Pointer-event drag engine |
 | `src/game.ts` | The host: drag state, settling, sound, sparkles, level lifecycle |
-| `src/grownups.ts` | The grown-up panel: the hold that opens it, the level map, the switches |
-| `src/audio.ts` | Every sound in the game, as data: one pentatonic ladder, voices, phrases, and the single gate the sound toggle sits on |
+| `src/hold.ts` | The two-second hold both guarded buttons share: the rule, and the wiring |
+| `src/grownups.ts` | The grown-up panel: the level map, the switches, the only reset |
+| `src/audio.ts` | Every sound as data: one pentatonic ladder, voices, phrases, and the gate the toggle sits on |
 | `src/celebrate.ts` | Sparkles and the next-puzzle button |
 | `src/hint.ts` | The idle hint: how long a board is left alone, which piece it is about, and the glow at both ends |
 | `src/rest.ts` | What the game does when nobody is playing: the two-minute wait, the freeze, and the touch that undoes it |
