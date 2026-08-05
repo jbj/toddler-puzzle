@@ -54,6 +54,13 @@ export interface HoldGate {
   state(now: number): HoldState;
   /** Called once the hold has been answered, so the next press starts empty. */
   reset(): void;
+  /**
+   * The two lengths this gate was made with. The wiring arms its timers off
+   * these rather than off the constants, so a gate given a different hold
+   * cannot be watched on the default one.
+   */
+  readonly holdMs: number;
+  readonly promptMs: number;
 }
 
 export interface HoldGateOptions {
@@ -69,6 +76,8 @@ export function createHoldGate(options: HoldGateOptions = {}): HoldGate {
   let promptUntil = 0;
 
   return {
+    holdMs,
+    promptMs,
     press(now) {
       pressedAt = now;
     },
@@ -113,6 +122,9 @@ export interface HoldWatchOptions {
  */
 export function watchHold(element: Element, options: HoldWatchOptions): () => void {
   const { gate, now, held } = options;
+  // The gate's own lengths, not the constants: the rule and the timers that
+  // arm it have to be answering the same two seconds.
+  const { holdMs, promptMs } = gate;
   const listeners = new AbortController();
 
   let frame = 0;
@@ -153,7 +165,7 @@ export function watchHold(element: Element, options: HoldWatchOptions): () => vo
     // The frames are for the ring; the rule is the clock. A tab that is not
     // being painted still has to answer a long press, so it is armed on a timer
     // as well and does not depend on a frame arriving.
-    openTimer = window.setTimeout(answerIfHeld, HOLD_MS + 20);
+    openTimer = window.setTimeout(answerIfHeld, holdMs + 20);
   }
 
   element.addEventListener(
@@ -193,7 +205,7 @@ export function watchHold(element: Element, options: HoldWatchOptions): () => vo
     promptTimer = window.setTimeout(() => {
       promptTimer = 0;
       paint();
-    }, PROMPT_MS + 50);
+    }, promptMs + 50);
   };
 
   element.addEventListener("pointerup", letGo, { signal: listeners.signal });

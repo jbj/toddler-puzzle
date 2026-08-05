@@ -43,10 +43,10 @@ reset in the game.
 
 **A tap can never get in, however many taps there are.** Taps do not accumulate,
 so drumming on the button is exactly as effective as one tap, which is not at
-all. That rule is a state machine with the clock passed in (`createHoldGate` in
-`src/hold.ts`, shared with the reset button - see
-[Hold the button that throws the puzzle away](<Hold the button that throws the puzzle away.md>)),
-so two hundred taps are checked in a unit test rather than hoped about.
+all. That rule is a state machine with the clock passed in - `createHoldGate` in
+`src/hold.ts` - so two hundred taps are checked in a unit test rather than hoped
+about. The button in the corner of the board is held by the same rule; see
+[Hold the button that throws the puzzle away](<Hold the button that throws the puzzle away.md>).
 
 **A parent needs no instructions.** The button says what it is, and the first
 tap - which is what everybody does first - is what puts the instruction on

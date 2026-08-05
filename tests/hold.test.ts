@@ -11,7 +11,7 @@
  * file gives it a button, a clock and the four window functions it reaches for.
  * The ring itself is `npm run shot`'s, which taps both buttons and holds both.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { HOLD_MS, PROMPT_MS, createHoldGate, watchHold } from "../src/hold";
 
 describe("holding the button", () => {
@@ -97,6 +97,21 @@ describe("holding the button", () => {
 });
 
 /**
+ * `watchHold` takes its timers and its frames off the global `window`, which
+ * does not exist in a Vitest run, so `fakeButton` puts one there. Whatever was
+ * there before goes back after every case: another suite in this process builds
+ * its own `window` too, and a suite that leaves one behind decides what that one
+ * gets.
+ */
+const browser = globalThis as unknown as Record<string, unknown>;
+const priorWindow = browser["window"];
+
+afterEach(() => {
+  if (priorWindow === undefined) delete browser["window"];
+  else browser["window"] = priorWindow;
+});
+
+/**
  * A button, a clock and the four window functions `watchHold` reaches for. Small
  * enough to read, and the only way to play a finger sliding off the button
  * without a browser: with the pointer captured there is no `pointerleave` to
@@ -130,7 +145,6 @@ function fakeButton(): {
     },
   } as unknown as Element;
 
-  const browser = globalThis as unknown as Record<string, unknown>;
   browser["window"] = {
     // Frames never arrive here: the rule is the clock, and the timer below is
     // what arms it, which is exactly the claim these cases are checking.
@@ -211,6 +225,20 @@ describe("wiring a button to the hold", () => {
     const painted = paints.length;
     wiring.send("pointermove", 200, 30);
     expect(paints.length).toBe(painted);
+  });
+
+  it("arms its timer off the gate's own hold, not the default two seconds", () => {
+    const wiring = fakeButton();
+    let held = 0;
+    watchHold(wiring.button, {
+      gate: createHoldGate({ holdMs: 500 }),
+      now: wiring.now,
+      held: () => held++,
+    });
+
+    wiring.send("pointerdown", 30, 30);
+    wiring.tick(600);
+    expect(held).toBe(1);
   });
 
   it("takes its listeners and its timers down when the board is replaced", () => {
