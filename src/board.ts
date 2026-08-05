@@ -149,13 +149,27 @@ function fitGrabBox(piece: SVGGElement, shape: PieceShape): void {
   art.prepend(rect);
 }
 
+/**
+ * The button that throws the puzzle in front of the child away and deals
+ * another one. Like the "Grown-ups" button, it only answers a press held for
+ * `HOLD_MS` (`src/hold.ts`), because a toddler leaning on the corner of the
+ * screen must not be able to take away the animals they had nearly finished.
+ *
+ * The ring is what says so. It is drawn round the outside of the button with
+ * `pathLength="1"`, so `game.ts` can fill it by writing the hold's progress
+ * straight into `stroke-dasharray` - 0 to 1, whatever the radius - and it
+ * starts from the top because it is rotated a quarter turn back.
+ */
 function buildResetButton(canvasHeight: number): SVGGElement {
   const button = group("reset-button");
   button.setAttribute("transform", `translate(58 ${canvasHeight - 58})`);
   button.setAttribute("role", "button");
-  button.setAttribute("aria-label", "Start a fresh puzzle");
+  button.setAttribute("aria-label", "Hold to start a fresh puzzle");
   button.innerHTML = `
     <circle r="32" fill="#ffffff" fill-opacity="0.82" stroke="#4f7d8c" stroke-width="4" />
+    <circle class="reset-ring" r="32" pathLength="1" transform="rotate(-90)"
+      fill="none" stroke="#ffd23f" stroke-width="6" stroke-linecap="round"
+      stroke-dasharray="0 1" />
     ${replayArrow(13, 6, "#4f7d8c")}
   `;
   return button;

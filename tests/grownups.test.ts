@@ -1,31 +1,19 @@
 /**
  * The panel that is not for the child.
  *
- * Two things here are worth testing without a browser, and they are the two
- * that matter most.
- *
- * The **hold** is the whole of what keeps a toddler out, so it is a plain state
- * machine with the clock passed in: a hundred taps can be played through it in
- * a millisecond, which is exactly the case a real timer makes tedious to check.
- *
  * The **level map** is what a grown-up reads to decide where to send the child,
- * so what it says has to keep meaning what it says however much it is used.
+ * so what it says has to keep meaning what it says however much it is used, and
+ * that is what is worth testing here without a browser.
  *
- * The DOM around both - the button, the sheet, the switches - is covered by
- * `npm run shot`, which taps the button, holds it, jumps a level and reloads
- * the page to see whether a setting survived.
+ * The hold that opens the panel is `tests/hold.test.ts`, since the button in
+ * the corner of the board is held the same way. The DOM around all of it - the
+ * button, the sheet, the switches - is covered by `npm run shot`, which taps
+ * the button, holds it, jumps a level and reloads the page to see whether a
+ * setting survived.
  */
 import { describe, expect, it } from "vitest";
 import { setSoundEnabled, soundEnabled } from "../src/audio";
-import {
-  HOLD_MS,
-  PROMPT_MS,
-  applySettings,
-  createHoldGate,
-  isLastKindOn,
-  levelMap,
-  toggleKind,
-} from "../src/grownups";
+import { applySettings, isLastKindOn, levelMap, toggleKind } from "../src/grownups";
 import { CHAPTERS, LEVELS, LEVEL_COUNT, PUZZLE_KINDS, type EnabledKinds } from "../src/levels";
 import { ALL_KINDS, DEFAULT_SETTINGS, NEW_PLAYER, type Progress } from "../src/progress";
 
@@ -37,88 +25,6 @@ const without = (...off: readonly (keyof EnabledKinds)[]): EnabledKinds =>
 
 const settings = (kinds: EnabledKinds): Progress =>
   record({ settings: { ...DEFAULT_SETTINGS, kinds } });
-
-describe("holding the button", () => {
-  it("does not open on a tap, however many times it is tapped", () => {
-    const gate = createHoldGate();
-    let clock = 0;
-    for (let tap = 0; tap < 200; tap++) {
-      gate.press(clock);
-      // A toddler's tap, and then some: still nowhere near the hold.
-      clock += 90;
-      expect(gate.state(clock).open).toBe(false);
-      gate.cancel(clock);
-      clock += 30;
-      expect(gate.state(clock).open).toBe(false);
-    }
-  });
-
-  it("opens when the button is held long enough", () => {
-    const gate = createHoldGate();
-    gate.press(0);
-    expect(gate.state(HOLD_MS - 1).open).toBe(false);
-    expect(gate.state(HOLD_MS).open).toBe(true);
-  });
-
-  it("fills the ring evenly across the hold", () => {
-    const gate = createHoldGate();
-    gate.press(1000);
-    expect(gate.state(1000).fill).toBe(0);
-    expect(gate.state(1000 + HOLD_MS / 2).fill).toBeCloseTo(0.5);
-    expect(gate.state(1000 + HOLD_MS * 2).fill).toBe(1);
-  });
-
-  it("empties the ring when the button is let go", () => {
-    const gate = createHoldGate();
-    gate.press(0);
-    expect(gate.state(HOLD_MS - 100).fill).toBeGreaterThan(0.9);
-    gate.cancel(HOLD_MS - 100);
-    expect(gate.state(HOLD_MS - 100).fill).toBe(0);
-    // And letting go a hair early does not open it a moment later.
-    expect(gate.state(HOLD_MS + 5000).open).toBe(false);
-  });
-
-  it("starts the hold over on each press, so two near misses are not one hold", () => {
-    const gate = createHoldGate();
-    gate.press(0);
-    gate.cancel(HOLD_MS - 1);
-    gate.press(HOLD_MS - 1);
-    expect(gate.state(HOLD_MS).open).toBe(false);
-    expect(gate.state(HOLD_MS * 2 - 1).open).toBe(true);
-  });
-
-  it("answers a tap with 'Hold to open', and leaves it up long enough to read", () => {
-    const gate = createHoldGate();
-    expect(gate.state(0).prompt).toBe(false);
-    gate.press(0);
-    expect(gate.state(10).prompt).toBe(true);
-    gate.cancel(120);
-    expect(gate.state(120 + PROMPT_MS - 1).prompt).toBe(true);
-    expect(gate.state(120 + PROMPT_MS).prompt).toBe(false);
-  });
-
-  it("says nothing about a release that followed no press", () => {
-    const gate = createHoldGate();
-    gate.cancel(500);
-    expect(gate.state(600).prompt).toBe(false);
-  });
-
-  it("forgets everything once the panel is open", () => {
-    const gate = createHoldGate();
-    gate.press(0);
-    expect(gate.state(HOLD_MS).open).toBe(true);
-    gate.reset();
-    const after = gate.state(HOLD_MS);
-    expect(after).toEqual({ open: false, fill: 0, prompt: false });
-  });
-
-  it("can be given a different hold length", () => {
-    const gate = createHoldGate({ holdMs: 500, promptMs: 100 });
-    gate.press(0);
-    expect(gate.state(499).open).toBe(false);
-    expect(gate.state(500).open).toBe(true);
-  });
-});
 
 describe("the level map", () => {
   it("shows every level of the game, in order", () => {

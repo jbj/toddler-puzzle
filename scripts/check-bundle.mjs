@@ -88,9 +88,19 @@ const BUDGET = {
   // bought back on the screen: a piece drawn a third larger on a wide canvas,
   // and a board that stops being a letterbox. Layout, like sound, is needed
   // before the first level by definition.
-  // measured 2026-08-03: 118.2 kB raw, 38.7 kB gzipped
-  initialRaw: 119 * kB,
-  initialGzip: 39 * kB,
+  // raised 2026-08-05: the button that deals the level again is now held for two
+  // seconds rather than tapped, which costs a ring round it in `board.ts`, the
+  // wiring and teardown in `game.ts`, and `src/hold.ts` - the rule and the
+  // pointer handling, shared with the "Grown-ups" button so that "held" means
+  // one thing. About 0.5 kB raw for a guard on the one control that can throw
+  // away a puzzle a child is part way through; the panel's own copy of the
+  // handling went, so the growth is the ring and the second button rather than a
+  // duplicate. It is needed before the first level because the button is on
+  // every board. See
+  // docs/decisions/Hold the button that throws the puzzle away.md.
+  // measured 2026-08-05: 119.1 kB raw, 39.0 kB gzipped
+  initialRaw: 120 * kB,
+  initialGzip: 40 * kB,
   // raised 2026-08-03: every level now ends with a celebration rather than only
   // the six that end a chapter, so the celebration chunk carries three more
   // acts - beach balls, confetti and streamers. It is the largest deferred thing
