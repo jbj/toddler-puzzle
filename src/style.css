@@ -397,9 +397,11 @@ body {
   color: #5d727d;
 }
 
+/* One column per level of a chapter, so a chapter is one row and the five rows
+   read as the ramp. The squares narrow to fit rather than wrapping. */
 .grownups-chapter-levels {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 6px;
 }
 

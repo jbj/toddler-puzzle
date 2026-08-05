@@ -882,6 +882,24 @@ const levelSquares = () =>
   })()
 `);
 
+/**
+ * How many rows of squares each chapter's strip of the map is laid out over,
+ * measured from rendered positions. A chapter is meant to read as one line of
+ * the ramp, so anything but 1 means the squares no longer fit the panel.
+ */
+const chapterRowCounts = () =>
+  evaluate(`
+  (() => {
+    const strips = [...document.querySelectorAll('.grownups-chapter-levels')];
+    return strips.map((strip) => {
+      const tops = [...strip.querySelectorAll('.grownups-level')].map(
+        (square) => Math.round(square.getBoundingClientRect().top),
+      );
+      return new Set(tops).size;
+    });
+  })()
+`);
+
 const soundIsOn = () =>
   evaluate(
     `document.querySelector('.grownups-switch[data-setting="sound"]').getAttribute('aria-checked') === 'true'`,
@@ -1654,6 +1672,11 @@ async function runOpening() {
   check(`the level map shows all thirty levels (${map.total})`, map.total === 30);
   check(`the map marks the three levels played (${map.reached})`, map.reached === 3);
   check("the map marks the level being played", map.current === 3);
+  const chapterRows = await chapterRowCounts();
+  check(
+    `each chapter is one row of squares (${chapterRows.join(", ")})`,
+    chapterRows.length === 5 && chapterRows.every((rows) => rows === 1),
+  );
   const options = await panelOptions();
   check(
     `the panel offers exactly the options that do something (${options.join(", ")})`,
