@@ -48,6 +48,14 @@ things that would otherwise fit in front of it. Moving the browser run above the
 art check is the whole of the difference between 88 s and 70 s. It is also the
 order the summary prints in, which is why the two are one list rather than two.
 
+That 88 s nearly ended the question. "Overlap does not help" was a defensible
+answer to what had been asked, and it was wrong. What rescued it was noticing
+that the number was not merely no better but *worse*, and that nothing explained
+how adding parallelism could cost seven seconds. A result worse than doing
+nothing is usually a measurement of something other than the thing intended, so
+it is worth one more look before it is written up - and that is the part of this
+worth carrying to whatever is optimised next.
+
 ## What it bought
 
 Measured under the machine lock, three runs each, on a twelve-thread laptop:
