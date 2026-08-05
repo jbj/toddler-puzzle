@@ -58,13 +58,14 @@ describe("the verify runner", () => {
   it("charges worker pools to the CPU budget", () => {
     const fourCore = verifyTasks(4, 3);
 
-    expect(fourCore.find(({ name }) => name === "test")?.slots.cpu).toBe(4);
+    expect(fourCore.find(({ name }) => name === "test")?.slots.cpu).toBe(2);
     expect(fourCore.find(({ name }) => name === "shot")?.slots).toEqual({
       cpu: 2,
       browser: 3,
     });
-    // The art check spreads itself over its slots, so the two long tasks
-    // between them are the machine and neither can be starved by the other.
+    // Each of the three worker pools spreads itself over its slots, so the
+    // browser run and one other are exactly the machine and neither can be
+    // starved by the other.
     for (const [cpu, browser] of [
       [4, 3],
       [12, 6],
@@ -72,11 +73,32 @@ describe("the verify runner", () => {
     ]) {
       const scheduled = verifyTasks(cpu, browser);
       const art = scheduled.find(({ name }) => name === "art:check")?.slots.cpu;
+      const test = scheduled.find(({ name }) => name === "test")?.slots.cpu;
       const shot = scheduled.find(({ name }) => name === "shot")?.slots.cpu;
 
       expect(art).toBeGreaterThanOrEqual(1);
       expect(art + shot).toBe(cpu);
+      expect(test).toBe(art);
     }
+  });
+
+  it("asks Vitest for exactly the workers it was charged for", () => {
+    for (const [cpu, browser] of [
+      [4, 3],
+      [12, 6],
+      [2, 1],
+    ]) {
+      const test = verifyTasks(cpu, browser).find(({ name }) => name === "test");
+
+      expect(test.run).toContain(`--maxWorkers=${test.slots.cpu}`);
+    }
+  });
+
+  it("tries the longest task before the ones that would fit in front of it", () => {
+    const names = verifyTasks(12, 6).map(({ name }) => name);
+
+    expect(names.indexOf("shot")).toBeLessThan(names.indexOf("art:check"));
+    expect(names.indexOf("bundle")).toBeLessThan(names.indexOf("shot"));
   });
 
   it("tells a task how much of the machine it was given", async () => {

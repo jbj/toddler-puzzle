@@ -38,12 +38,13 @@ const VERBOSE_TASKS = new Set(["docs:check", "budget", "art:check"]);
 
 export function verifyTasks(cpuCapacity, browserCapacity) {
   const shotCpuSlots = Math.min(browserCapacity, Math.max(1, cpuCapacity - 2));
-  // The two long tasks overlap, so between them they are the machine. The art
-  // check measures the artwork with a worker per slot, and the number it gets
-  // is what is left once the browser run has been promised its share; giving it
-  // one slot while it spread itself over every core is the oversubscription
-  // this budget exists to prevent.
+  // Three tasks own worker pools, and the browser run is the longest of them,
+  // so it is promised its share first and the other two get what is left - one
+  // at a time, and each spreading itself over exactly what it was charged for.
+  // Giving one of them a slot while it spread itself over every core is the
+  // oversubscription this budget exists to prevent.
   const artCpuSlots = Math.max(1, cpuCapacity - shotCpuSlots);
+  const testCpuSlots = artCpuSlots;
   return [
     {
       name: "typecheck",
@@ -75,23 +76,19 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
     },
     {
       name: "test",
-      // Vitest brings its own worker pool, so it does not use the CPUs it is
-      // given so much as take the ones that are there. It is charged the whole
-      // machine to keep it out of everything else's way: overlapping it was
-      // measured on twelve cores and on four, and the arrangements that failed
-      // all failed the same real check for want of CPU. That costs the run
-      // seven to ten seconds and is worth paying.
-      //
-      // Read the record before revisiting this. The measurement behind it
-      // predates both the sixty-animal test getting faster and the art check
-      // growing from one core to most of them, so overlap may now be safe - but
-      // the rows that showed it was not are expired rather than wrong, and
-      // rerunning them proves nothing.
-      // See docs/decisions/The checks share the machine, and the tests get it to themselves.md.
-      run: packageTool("vitest", "vitest.mjs", "run"),
+      // Bounded, and told the bound: Vitest opens a worker per core unless it
+      // is asked otherwise, so the charge and the pool have to be the same
+      // number or the charge is a fiction. An exclusive run used to be the only
+      // safe arrangement, because overlap of any width reproduced Vitest's
+      // five-second guard in the sixty-animal layout test - but that
+      // composition now refuses an impossible cast before it searches for a
+      // board, and the slowest test in the suite is 1.6 s with six other cores
+      // busy, against the 1.8 s it took with the machine to itself before.
+      // See docs/decisions/Let the test run share the machine.md.
+      run: packageTool("vitest", "vitest.mjs", "run", `--maxWorkers=${testCpuSlots}`),
       needs: [],
       inputs: [],
-      slots: { cpu: cpuCapacity, browser: 0 },
+      slots: { cpu: testCpuSlots, browser: 0 },
     },
     {
       name: "bundle",
@@ -115,23 +112,27 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
       slots: { cpu: 1, browser: 1 },
     },
     {
+      name: "shot",
+      run: script("shot.mjs"),
+      needs: ["bundle"],
+      inputs: [],
+      // Listed before the art check, because this list is the order the runner
+      // tries things in as well as the order the summary prints them: the
+      // longest task must not be left waiting behind a shorter one that fitted
+      // into the slots it was about to want.
+      //
+      // The browser pool is a memory ceiling, while Chrome also needs most of
+      // the CPUs left after the other worker pool. Keeping the two budgets
+      // separate lets three browser workers share two CPUs on CI without
+      // pretending they cost no CPU at all.
+      slots: { cpu: shotCpuSlots, browser: browserCapacity },
+    },
+    {
       name: "art:check",
       run: script("check-art.mjs"),
       needs: [],
       inputs: [],
       slots: { cpu: artCpuSlots, browser: 0 },
-    },
-    {
-      name: "shot",
-      run: script("shot.mjs"),
-      needs: ["bundle"],
-      inputs: [],
-      // The browser pool is a memory ceiling, while Chrome also needs CPU. The
-      // two budgets are kept separate so that three browser workers can share
-      // two CPUs on CI without pretending they cost no CPU at all. What is left
-      // goes to the art check, so that between them the two long tasks are the
-      // machine and neither has to guess what the other took.
-      slots: { cpu: shotCpuSlots, browser: browserCapacity },
     },
   ];
 }
