@@ -163,6 +163,30 @@ describe("what every backdrop owes the board", () => {
     }
   });
 
+  it("washes the whole ground from one gradient, measured against the board", () => {
+    // The near band and the crest that rises out of it are two shapes cut from
+    // one wash. Left in SVG's default per-shape units each runs the whole wash
+    // inside its own box, so a crest thirty units deep finishes dark along its
+    // flat bottom edge while the band under it is still light, ruling a seam
+    // across the board - worst in portrait, where the band below is deepest.
+    // Whether it looks continuous is a matter for the eye; that the shapes are
+    // measured against the canvas rather than against themselves is not.
+    for (const { theme, layout } of THEMED_BOARDS) {
+      const markup = renderScenery(reThemed(layout, theme === "meadow" ? undefined : theme));
+      const where = `${theme} ${layout.id}`;
+      const washed = markup.match(/url\(#ground\)/g) ?? [];
+      expect(washed.length, `${where}: shapes filled from the ground wash`).toBeGreaterThan(1);
+      const wash = /<linearGradient id="ground"([^>]*)>/.exec(markup)?.[1];
+      expect(wash, where).toBeDefined();
+      expect(wash, where).toContain('gradientUnits="userSpaceOnUse"');
+      const span = /y1="([-\d.]+)"\s+x2="[-\d.]+"\s+y2="([-\d.]+)"/.exec(wash!);
+      expect(span, `${where}: ${wash}`).not.toBeNull();
+      const grassTop = layout.bands[1]?.top ?? layout.horizon;
+      expect(Number(span![1]), `${where}: wash starts at the grass`).toBe(grassTop);
+      expect(Number(span![2]), `${where}: wash ends at the bottom`).toBe(layout.canvas.height);
+    }
+  });
+
   it("draws a tray to stand the pieces on, in every theme", () => {
     // The tray's sand and its lip: every level has a shelf, because every level
     // is dragged from one.
