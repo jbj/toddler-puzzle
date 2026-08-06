@@ -55,7 +55,6 @@ const SIGNATURE: Record<ThemeId | "meadow", string> = {
   farm: "#9ed8ff",
   sea: "#2f8fd0",
   jungle: "#bfe6ff",
-  vehicles: "#7ec8e8", // the meadow's, because vehicles has nothing drawn for it
 };
 
 /**
@@ -83,7 +82,7 @@ describe("which backdrop a level gets", () => {
   it("finds one for every theme the game names", () => {
     // A theme added to `themes.ts` and dealt from without a backdrop would put
     // its cast on the meadow silently. This is what makes that a failure.
-    expect(THEMES.length).toBeGreaterThan(0);
+    expect(THEMES).toEqual(["farm", "sea", "jungle"]);
     for (const theme of THEMES) {
       expect(backdropFor(theme), theme).toBeDefined();
     }
@@ -92,7 +91,7 @@ describe("which backdrop a level gets", () => {
   it("gives an unthemed level the meadow", () => {
     const unthemed = LEVELS.filter((level) => !level.theme);
     expect(unthemed.length).toBeGreaterThan(0);
-    expect(backdropFor(undefined)).toBe(backdropFor("vehicles"));
+    expect(backdropFor(undefined).wash).toEqual(["#7ec8e8", "#d6f0f8"]);
   });
 });
 
@@ -132,7 +131,6 @@ describe("a theme reaches the screen", () => {
       asTheme(board, theme as ThemeId | undefined),
     );
     expect(new Set(worlds).size).toBe(worlds.length);
-    expect(asTheme(board, "vehicles")).toBe(asTheme(board, undefined));
   });
 });
 
