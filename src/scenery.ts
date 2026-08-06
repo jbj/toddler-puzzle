@@ -457,6 +457,18 @@ export function renderScenery(layout: Layout): string {
     scale: Math.min(1, Math.max(0.72, open.width / 1000)),
   };
 
+  /**
+   * Where the near ground starts, and so where its wash starts. Both shapes cut
+   * from `#ground` - the band itself and the crest that rises out of it - are
+   * filled from that one gradient measured in canvas units rather than in each
+   * shape's own box. A crest is a few dozen units tall against a band that is
+   * hundreds, so per-shape units run the whole light-to-dark wash inside the
+   * crest: its flat bottom edge finishes dark over a band that is still light,
+   * and rules a seam right across the board. Portrait shows it worst, because
+   * there the band below is deepest.
+   */
+  const grassTop = bands[1]?.top ?? horizon;
+
   const bandMarkup = bands
     .map((band, index) => {
       const next = bands[index + 1];
@@ -484,7 +496,8 @@ export function renderScenery(layout: Layout): string {
         <stop offset="0%" stop-color="${backdrop.wash[0]}" />
         <stop offset="100%" stop-color="${backdrop.wash[1]}" />
       </linearGradient>
-      <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <linearGradient id="ground" gradientUnits="userSpaceOnUse"
+        x1="0" y1="${grassTop}" x2="0" y2="${height}">
         <stop offset="0%" stop-color="${backdrop.near[0]}" />
         <stop offset="100%" stop-color="${backdrop.near[1]}" />
       </linearGradient>

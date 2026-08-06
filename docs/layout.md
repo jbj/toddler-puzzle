@@ -211,6 +211,10 @@ contract, not a backdrop's.
   are.
 - **The furniture is never themed.** Tray, buttons, dots and hole treatment are
   identical in every level - a child learns them once.
+- **A wash shared by two shapes is measured against the board.** The ground band
+  and the crest that rises out of it are one gradient in `userSpaceOnUse`; left
+  in SVG's default per-shape units each runs the whole wash inside its own box,
+  and the crest's flat bottom edge rules a seam right across the board.
 - **A level with no theme is the meadow, unchanged.**
 
 Adding a theme means adding its `Backdrop`; a theme without one fails
