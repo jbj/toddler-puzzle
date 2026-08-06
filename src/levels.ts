@@ -9,17 +9,16 @@
  * Nothing here places a piece or draws anything - the kind does that, and the
  * layout is composed around whatever the deal produced.
  *
- * The ramp runs in six chapters of five, from a one-year-old's first touch to a
+ * The ramp runs in five chapters of six, from one huge animal to drag to a
  * two-year-old assembling a picture:
  *
  * | Levels | Chapter | What it is |
  * | --- | --- | --- |
- * | 1-5 | First touches | Cause-and-effect play, alternating with one or two huge pieces |
- * | 6-10 | Animals | Shape-match, three to six pieces, themed casts |
- * | 11-15 | Sliced animals | One or two animals, each cut into two to four slices |
- * | 16-20 | Shapes | Polygon and tangram scenes |
- * | 21-25 | Pictures | Jigsaw, 2x2 growing to 3x3 |
- * | 26-30 | Mastery | 4x3 jigsaw, irregular partitions, mixed kinds |
+ * | 1-6 | Animals | Shape-match, one piece growing to six, themed casts |
+ * | 7-12 | Sliced animals | One or two animals, each cut into two to four slices |
+ * | 13-18 | Shapes | Polygon and tangram scenes |
+ * | 19-24 | Pictures | Jigsaw, 2x2 growing to 3x3 |
+ * | 25-30 | Mastery | 4x3 jigsaw, irregular partitions, mixed kinds |
  *
  * **The table says what kind, how many, and which cast; never which pieces.**
  * Which animals turn up and the order they stand in are dealt fresh every time
@@ -28,8 +27,8 @@
  * `?seed=` replays a deal exactly by handing the same `random` in.
  *
  * **A level is its kind, its subject and its size, and no two levels are all
- * three.** The subject is whatever the row names - the activity, the theme, the
- * scene, the shape picture - so that no two levels being the same puzzle is
+ * three.** The subject is whatever the row names - the theme, the scene, the
+ * shape picture - so that no two levels being the same puzzle is
  * something a reader can check by looking down the table, and a test holds it.
  * A picture may come back at another size, because a scene cut four ways and
  * the same scene cut nine ways are two different things to solve; the same
@@ -49,16 +48,14 @@ import { shuffle } from "./geometry";
 import { assertUniquePieceIds, type PieceShape } from "./piece";
 import type { ThemeId } from "./themes";
 
-/** A run of five levels. Chapters are what a celebration is hung on later. */
-export type ChapterId =
-  "first-touches" | "animals" | "sliced-animals" | "shapes" | "pictures" | "mastery";
+/** A run of six levels. Chapters are what a celebration is hung on later. */
+export type ChapterId = "animals" | "sliced-animals" | "shapes" | "pictures" | "mastery";
 
 /**
- * The chapters in play order. A chapter is five levels long, so a level's
+ * The chapters in play order. A chapter is six levels long, so a level's
  * chapter is also a way of asking how far into the thirty it is.
  */
 export const CHAPTERS: readonly ChapterId[] = [
-  "first-touches",
   "animals",
   "sliced-animals",
   "shapes",
@@ -73,24 +70,17 @@ export const CHAPTERS: readonly ChapterId[] = [
  *
  * It is a list rather than a bare union because a grown-up can switch a kind
  * off (`EnabledKinds`), and the panel that offers that has to be able to walk
- * the kinds without being told them a second time - a seventh kind added to the
+ * the kinds without being told them a second time - a sixth kind added to the
  * union but forgotten in the panel would be a kind nobody could turn off.
  */
-export const PUZZLE_KINDS = [
-  "play",
-  "shape-match",
-  "sliced",
-  "polygon",
-  "jigsaw",
-  "shatter",
-] as const;
+export const PUZZLE_KINDS = ["shape-match", "sliced", "polygon", "jigsaw", "shatter"] as const;
 
 export type PuzzleKindId = (typeof PUZZLE_KINDS)[number];
 
 /**
  * Which kinds of puzzle are in play, as a grown-up left them (#8). Thirty
  * levels have to suit one particular child, and a two-year-old who cannot yet
- * do jigsaws should not meet five of them: a kind switched off here is skipped
+ * do jigsaws should not meet six of them: a kind switched off here is skipped
  * wherever it appears, so the game goes on running forward through the levels
  * that are left.
  *
@@ -130,23 +120,7 @@ export interface LevelOptions {
    * art check reads the table for that word to know what to rasterise.
    */
   readonly shapePicture?: string;
-  /**
-   * Which cause-and-effect activity a `play` level runs. Every `play` level
-   * names one; the table's own tests insist on it, because a level that fell
-   * back to a default would be a level nobody chose.
-   */
-  readonly activity?: ActivityId;
 }
-
-/**
- * The cause-and-effect activities of the first chapter (`kinds/play.ts`). They
- * are levels a one-year-old can play before they can drag anything: touch a
- * thing, a thing happens, and the level ends when enough things have been
- * touched.
- */
-export const ACTIVITIES = ["bubbles", "peekaboo", "alive"] as const;
-
-export type ActivityId = (typeof ACTIVITIES)[number];
 
 export interface LevelSpec {
   /** 1-based position in the thirty. */
@@ -188,112 +162,82 @@ export const MAX_SNAP_FORGIVENESS = 1.5;
 /**
  * The curve. Read down the `pieces` and `snapForgiveness` columns to see it:
  * the board fills up as the ramp climbs, and the forgiveness that carries a
- * one-year-old through their first touches eases back to the standard two
- * thirds of a piece by the last chapter.
+ * child through their first drags eases back to the standard two thirds of a
+ * piece by the last chapter.
  */
 export const LEVELS: readonly LevelSpec[] = [
-  // Chapter 1: first touches. The chapter alternates: something to touch,
-  // something to drag, and back. Dragging is beyond many one-year-olds, so the
-  // game opens on a level that asks for nothing but a finger, and every other
-  // level after it is one of those - a child who cannot drag yet still wins
-  // something on levels 1, 3 and 5, and finds the drag waiting whenever they
-  // are ready for it. See
-  // docs/decisions/Open the game with something to touch.md.
+  // Chapter 1: animals. The game opens on the easiest drag it can ask for - one
+  // huge animal, one huge hole, and the whole cast to deal it from - and grows
+  // an animal a level to a full board. The first two deal from everything,
+  // because a theme is a promise about a boardful and one animal is not one.
   {
     level: 1,
-    chapter: "first-touches",
-    kind: "play",
+    chapter: "animals",
+    kind: "shape-match",
     targets: 1,
     pieces: 1,
     snapForgiveness: 1.5,
-    options: { activity: "bubbles" },
   },
   {
     level: 2,
-    chapter: "first-touches",
+    chapter: "animals",
     kind: "shape-match",
-    targets: 1,
-    pieces: 1,
-    snapForgiveness: 1.5,
+    targets: 2,
+    pieces: 2,
+    snapForgiveness: 1.45,
   },
   {
     level: 3,
-    chapter: "first-touches",
-    kind: "play",
-    targets: 2,
-    pieces: 2,
-    snapForgiveness: 1.45,
-    options: { activity: "peekaboo" },
-  },
-  {
-    level: 4,
-    chapter: "first-touches",
-    kind: "shape-match",
-    targets: 2,
-    pieces: 2,
-    snapForgiveness: 1.45,
-  },
-  {
-    level: 5,
-    chapter: "first-touches",
-    kind: "play",
-    targets: 3,
-    pieces: 3,
-    snapForgiveness: 1.4,
-    options: { activity: "alive" },
-  },
-
-  // Chapter 2: animals. The game as it has always been, growing to a full board.
-  {
-    level: 6,
     chapter: "animals",
     kind: "shape-match",
     theme: "farm",
     targets: 3,
     pieces: 3,
-    snapForgiveness: 1.35,
+    snapForgiveness: 1.4,
   },
   {
-    level: 7,
-    chapter: "animals",
-    kind: "shape-match",
-    theme: "sea",
-    targets: 4,
-    pieces: 4,
-    snapForgiveness: 1.3,
-  },
-  {
-    level: 8,
+    level: 4,
     chapter: "animals",
     kind: "shape-match",
     theme: "jungle",
     targets: 4,
     pieces: 4,
-    snapForgiveness: 1.3,
+    snapForgiveness: 1.35,
   },
   {
-    level: 9,
+    level: 5,
     chapter: "animals",
     kind: "shape-match",
     theme: "farm",
     targets: 5,
     pieces: 5,
-    snapForgiveness: 1.25,
+    snapForgiveness: 1.3,
   },
   {
-    level: 10,
+    level: 6,
     chapter: "animals",
     kind: "shape-match",
     theme: "sea",
     targets: 6,
     pieces: 6,
-    snapForgiveness: 1.2,
+    snapForgiveness: 1.25,
   },
 
-  // Chapter 3: sliced animals. The same silhouettes, one degree harder: a
-  // target holds several slices, so `targets` and `pieces` part company.
+  // Chapter 2: sliced animals. The same silhouettes, one degree harder: a
+  // target holds several slices, so `targets` and `pieces` part company. It
+  // opens on the gentlest form of that - one animal in two halves - twice over,
+  // because the idea is new even where the animals are not.
   {
-    level: 11,
+    level: 7,
+    chapter: "sliced-animals",
+    kind: "sliced",
+    theme: "sea",
+    targets: 1,
+    pieces: 2,
+    snapForgiveness: 1.2,
+  },
+  {
+    level: 8,
     chapter: "sliced-animals",
     kind: "sliced",
     theme: "farm",
@@ -302,7 +246,7 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.2,
   },
   {
-    level: 12,
+    level: 9,
     chapter: "sliced-animals",
     kind: "sliced",
     theme: "jungle",
@@ -311,7 +255,7 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.2,
   },
   {
-    level: 13,
+    level: 10,
     chapter: "sliced-animals",
     kind: "sliced",
     theme: "sea",
@@ -320,7 +264,7 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.15,
   },
   {
-    level: 14,
+    level: 11,
     chapter: "sliced-animals",
     kind: "sliced",
     theme: "jungle",
@@ -329,7 +273,7 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.15,
   },
   {
-    level: 15,
+    level: 12,
     chapter: "sliced-animals",
     kind: "sliced",
     theme: "farm",
@@ -338,7 +282,7 @@ export const LEVELS: readonly LevelSpec[] = [
     snapForgiveness: 1.15,
   },
 
-  // Chapter 4: shapes. One picture - a house, a boat, a car - built out of
+  // Chapter 3: shapes. One picture - a house, a boat, a car - built out of
   // plain coloured shapes, so every level here stands a single target and deals
   // the shapes it takes. Which picture is the row's business rather than the
   // deal's: a level names it, the way a jigsaw level names the scene it cuts
@@ -346,7 +290,7 @@ export const LEVELS: readonly LevelSpec[] = [
   // The catalogue holds more pictures than the chapter has room for; the spares
   // are there to retune it with.
   {
-    level: 16,
+    level: 13,
     chapter: "shapes",
     kind: "polygon",
     targets: 1,
@@ -355,7 +299,7 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { shapePicture: "house" },
   },
   {
-    level: 17,
+    level: 14,
     chapter: "shapes",
     kind: "polygon",
     targets: 1,
@@ -364,7 +308,7 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { shapePicture: "boat" },
   },
   {
-    level: 18,
+    level: 15,
     chapter: "shapes",
     kind: "polygon",
     targets: 1,
@@ -373,7 +317,16 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { shapePicture: "car" },
   },
   {
-    level: 19,
+    level: 16,
+    chapter: "shapes",
+    kind: "polygon",
+    targets: 1,
+    pieces: 5,
+    snapForgiveness: 1.1,
+    options: { shapePicture: "flower" },
+  },
+  {
+    level: 17,
     chapter: "shapes",
     kind: "polygon",
     targets: 1,
@@ -382,7 +335,7 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { shapePicture: "butterfly" },
   },
   {
-    level: 20,
+    level: 18,
     chapter: "shapes",
     kind: "polygon",
     targets: 1,
@@ -391,12 +344,12 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { shapePicture: "sunflower" },
   },
 
-  // Chapter 5: pictures. One hand-drawn scene, cut into a grid of interlocking
+  // Chapter 4: pictures. One hand-drawn scene, cut into a grid of interlocking
   // pieces and rebuilt in the frame it came out of. One picture is one thing to
   // fill however many pieces it took, so every row here stands a single target,
   // as the sliced and polygon chapters do.
   {
-    level: 21,
+    level: 19,
     chapter: "pictures",
     kind: "jigsaw",
     targets: 1,
@@ -405,7 +358,7 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { grid: { columns: 2, rows: 2 }, scene: "farmyard" },
   },
   {
-    level: 22,
+    level: 20,
     chapter: "pictures",
     kind: "jigsaw",
     targets: 1,
@@ -414,7 +367,7 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { grid: { columns: 2, rows: 2 }, scene: "rockpool" },
   },
   {
-    level: 23,
+    level: 21,
     chapter: "pictures",
     kind: "jigsaw",
     targets: 1,
@@ -423,7 +376,7 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { grid: { columns: 3, rows: 2 }, scene: "night-sky" },
   },
   {
-    level: 24,
+    level: 22,
     chapter: "pictures",
     kind: "jigsaw",
     targets: 1,
@@ -432,7 +385,16 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { grid: { columns: 3, rows: 2 }, scene: "jungle-path" },
   },
   {
-    level: 25,
+    level: 23,
+    chapter: "pictures",
+    kind: "jigsaw",
+    targets: 1,
+    pieces: 6,
+    snapForgiveness: 1.05,
+    options: { grid: { columns: 3, rows: 2 }, scene: "farmyard" },
+  },
+  {
+    level: 24,
     chapter: "pictures",
     kind: "jigsaw",
     targets: 1,
@@ -441,14 +403,23 @@ export const LEVELS: readonly LevelSpec[] = [
     options: { grid: { columns: 3, rows: 3 }, scene: "rockpool" },
   },
 
-  // Chapter 6: mastery. The kinds already met, at their busiest, mixed up, and
+  // Chapter 5: mastery. The kinds already met, at their busiest, mixed up, and
   // a twelve-piece picture to finish on.
   {
-    level: 26,
+    level: 25,
     chapter: "mastery",
     kind: "shatter",
     // One picture to fill, in six irregular shards. Like a jigsaw, the target
     // is the whole scene and the pieces are the cuts of it.
+    targets: 1,
+    pieces: 6,
+    snapForgiveness: 1,
+    options: { scene: "rockpool" },
+  },
+  {
+    level: 26,
+    chapter: "mastery",
+    kind: "shatter",
     targets: 1,
     pieces: 6,
     snapForgiveness: 1,
@@ -569,7 +540,7 @@ export function isLastPlayable(level: number, enabled?: EnabledKinds): boolean {
   return playableLevels(enabled).at(-1)?.level === level;
 }
 
-/** 1-based chapter number, which is also how far into the six the level is. */
+/** 1-based chapter number, which is also how far into the five the level is. */
 export function chapterNumber(spec: LevelSpec): number {
   const index = CHAPTERS.indexOf(spec.chapter);
   if (index < 0) throw new Error(`Level ${spec.level} names an unknown chapter "${spec.chapter}".`);
@@ -577,12 +548,12 @@ export function chapterNumber(spec: LevelSpec): number {
 }
 
 /**
- * Is this the last level of its chapter? True at 5, 10, 15, 20, 25 and 30 as the
+ * Is this the last level of its chapter? True at 6, 12, 18, 24 and 30 as the
  * table stands, and the moment a chapter celebration is hung on
  * (`celebration.ts`).
  *
  * Read off the table rather than written down as a list of level numbers, so
- * retuning the ramp - a chapter of six, a thirty-fifth level - moves the
+ * retuning the ramp - a chapter of seven, a thirty-fifth level - moves the
  * celebrations with it instead of leaving them stranded mid-chapter. A level
  * the table does not have ends nothing, rather than throwing: a number out of
  * range has already been dealt with by the time anything asks this, and a
@@ -598,22 +569,6 @@ export function endsChapter(level: number, enabled?: EnabledKinds): boolean {
   const ahead = playableLevels(enabled).find((spec) => spec.level > level);
   if (!ahead) return true;
   return levelSpec(level).chapter !== ahead.chapter;
-}
-
-/**
- * Whether this level is played by touching rather than by dragging.
- *
- * The three cause-and-effect levels of the first chapter are the ones this is
- * true of, and what asks is the end of a level rather than the start of one: a
- * level made of things that answer a finger is already the thing a celebration
- * between levels is *for*, so there is nothing to give a child a break from and
- * an interlude after one is the same screen again with different paper on it.
- * See `raiseFinish` in `game.ts`. A touch level that ends a chapter still gets
- * the chapter's own celebration, which is a moment rather than a breather.
- */
-export function isPlayedByTouching(level: number): boolean {
-  if (level < 1 || level > LEVEL_COUNT) return false;
-  return levelSpec(level).kind === "play";
 }
 
 /**

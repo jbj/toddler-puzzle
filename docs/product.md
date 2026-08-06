@@ -1,8 +1,8 @@
 # Product decisions
 
 Animal Puzzle is a drag-and-drop animal shape puzzle for toddlers: thirty
-levels, six chapters of five, growing from bubbles to pop and one animal to drag
-into more pieces, more kinds of puzzle and a little less forgiveness.
+levels, five chapters of six, growing from one animal to drag into more pieces,
+more kinds of puzzle and a little less forgiveness.
 
 Read this before changing what the game *does*. Use your judgement to read it
 whenever a task touches behaviour a player would notice; no topic document
@@ -44,8 +44,7 @@ you know why; the reason is the clause after the rule, and the record behind it.
   kind a rule of its own. See
   [One box measures a piece, and one rule places it](<decisions/One box measures a piece, and one rule places it.md>).
 - Keep the idle hint silent, unrepeated and unearned: a glow and never a sound,
-  never a second nag, never a cost. Never point it at a level played by
-  touching, and never let it land on a celebration. See
+  never a second nag, never a cost. Never let it land on a celebration. See
   [A hint points at both ends](<decisions/A hint points at both ends.md>).
 - Keep every target large: pieces stay well over a tenth of the canvas wide.
 
@@ -56,22 +55,15 @@ you know why; the reason is the clause after the rule, and the record behind it.
   an indicator for a grown-up, not a control, and `?level=` is a tool for
   working on the game, not a way in. See
   [Keep the game moving forward](<decisions/Keep the game moving forward.md>).
-- Keep the opening chapter playable without a drag. Levels 1, 3 and 5 are
-  cause-and-effect levels that end on a handful of touches, or once a bubble has
-  had time to climb the whole sky, whichever comes first. Never ask for aiming,
-  carrying or letting go there, and never ask for a screenful. See
-  [Open the game with something to touch](<decisions/Open the game with something to touch.md>)
-  and
-  [Ask a touch level for a handful, and let the child out anyway](<decisions/Ask a touch level for a handful, and let the child out anyway.md>).
-- End every level a child had to work at with a celebration, and mark the end of
-  a chapter and the end of the game with a bigger one. Make all of them something
-  to play with rather than sit through. A celebration never changes the level by
-  itself, and never runs longer than the first moment without the button onwards
-  on screen. See
+- Open on the easiest drag the game can ask for: one huge animal, one huge
+  hole, the most forgiving snap in the table, so the first win arrives in the
+  first few seconds. Never ask a first level for aiming, for carrying several
+  things, or for a screenful.
+- End every level with a celebration, and mark the end of a chapter and the end
+  of the game with a bigger one. Make all of them something to play with rather
+  than sit through. A celebration never changes the level by itself, and never
+  runs longer than the first moment without the button onwards on screen. See
   [A celebration is played, and it ends by itself](<decisions/A celebration is played, and it ends by itself.md>).
-- Never celebrate after a level played by touching unless it also ends a
-  chapter: that level was already an interlude, and following one with another
-  only holds a child away from the next thing.
 - Hold the button onwards back for the same few seconds after every celebration -
   the pause is what the child gets instead of the next board landing on the one
   they just finished - and withhold nothing else. The celebration answers a

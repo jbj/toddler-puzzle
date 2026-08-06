@@ -86,7 +86,6 @@ export function levelMap(progress: Progress, current: number): readonly LevelMap
 
 /** The chapters as a grown-up reads them, in play order. */
 const CHAPTER_NAMES: Record<ChapterId, string> = {
-  "first-touches": "First touches",
   animals: "Animals",
   "sliced-animals": "Sliced animals",
   shapes: "Shapes",
@@ -105,10 +104,6 @@ const CHAPTER_NAMES: Record<ChapterId, string> = {
  * something that was true last month.
  */
 const KIND_NAMES: Record<PuzzleKindId, { readonly label: string; readonly note: string }> = {
-  play: {
-    label: "Touch and play",
-    note: "Bubbles to pop, bushes to look behind, a scene that answers a finger. No dragging.",
-  },
   "shape-match": {
     label: "Whole animals",
     note: "One animal carried to the hole it fits. The first dragging the game asks for.",

@@ -37,8 +37,7 @@ Every pitch in the game comes off one C major pentatonic ladder, read with
 `note(degree)`. That is not decoration: it is why twenty-four sounds feel like
 one game, and why there is no wrong note whatever order a toddler triggers them
 in. The ladder generalises an instinct that was already in the code - the
-cause-and-effect levels had picked a pentatonic set for their bubbles for
-exactly this reason.
+bursting sounds had picked a pentatonic set for exactly this reason.
 
 On top of the ladder there are three layers, all of them plain objects. A
 **voice** is one oscillator and one envelope. A **phrase** is a list of voices
@@ -70,7 +69,7 @@ plays everything again with the toggle off, which has to come back bit-silent.
 What is measured is whatever `VOCABULARY` lists, and where a sound comes in
 variants it lists the ends of the range rather than the first of them. That is
 not tidiness. Written the other way, three phrases that climbed to three and a
-half kilohertz - the fifth firework, the smallest bubble, the fireworks fanfare
+half kilohertz - the fifth firework, the smallest balloon, the fireworks fanfare
 - passed every check in this file, because the only variant anything rendered
 was the lowest one. Now the ceiling is enforced in the voice factory
 (`MAX_PITCH_HZ`, C7, the highest note the game has ever played) and the

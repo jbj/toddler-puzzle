@@ -5,8 +5,8 @@
  *
  * A board left alone used to go on costing frames forever. The idle hint's glow
  * pulses (`hint-pulse` in `style.css`, and an opacity animation on SVG repaints
- * rather than composites), the bubbles drift and respawn, the finish button
- * breathes on `iterations: Infinity`, a celebration walks its parade round and
+ * rather than composites), a celebration's balloons drift and refill, the
+ * finish button breathes on `iterations: Infinity`, a parade walks round and
  * refills itself on a timer, and the audio context renders silence into the
  * speakers. A tablet put down on a finished chapter would have carried on doing
  * all of that until its battery went.
@@ -25,12 +25,12 @@
  * **`document.getAnimations()` is the blunt instrument on purpose.** Registering
  * every animation with this module would be a list to keep in step, and the one
  * that got forgotten would be the one still running. Asking the document what is
- * running catches the CSS pulse, the bubbles, the parade, the button, and
+ * running catches the CSS pulse, the balloons, the parade, the button, and
  * whatever is added next by somebody who has never read this file.
  *
  * Repeating *timers* cannot be found that way, so the two that exist ask for
- * themselves: `repeatWhileAwake` is what `kinds/play.ts` and `celebration.ts`
- * use instead of `setInterval`.
+ * themselves: `repeatWhileAwake` is what `celebration.ts` uses instead of
+ * `setInterval`.
  *
  * The rule half is a state machine with its timers passed in, in the spirit of
  * `createIdleHint` in `hint.ts`, so two minutes of sitting still is played out
@@ -145,9 +145,9 @@ export function createRest(options: RestOptions): Rest {
 /**
  * A repeating timer that only ticks while the game is awake.
  *
- * Both of the game's repeats are belt-and-braces refills - the bubbles and a
- * celebration's arrivals - so a tick missed while the screen was frozen is a
- * tick nobody wanted: there was nothing to top up, because nothing had popped.
+ * The game's repeat is a belt-and-braces refill - a celebration's arrivals -
+ * so a tick missed while the screen was frozen is a tick nobody wanted: there
+ * was nothing to top up, because nothing had popped.
  * They therefore stop dead and start again on waking rather than catching up.
  *
  * The returned function cancels it, exactly as `clearInterval` did.
@@ -237,8 +237,8 @@ export function restTimers(asleep: boolean): void {
  * Everything the freeze does to the document, and the events that undo it.
  *
  * The wake listeners are in the **capture** phase, so the touch that wakes the
- * game still reaches the game: a finger landing on a bubble wakes the page and
- * then pops the bubble, in that order, and a child never has to tap twice. They
+ * game still reaches the game: a finger landing on a piece wakes the page and
+ * then picks the piece up, in that order, and a child never has to tap twice. They
  * are passive, since none of them does anything to the event.
  *
  * `pointermove` counts as being there - a mouse being moved over the board is
@@ -313,7 +313,7 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
   // from: none of that is worth a single further frame, and the two-minute wait
   // would go on drawing for two more minutes of nobody looking. Looked at
   // again is somebody there, so it wakes without waiting to be touched: a
-  // screenful of bubbles hanging still is a poor thing to come back to, and the
+  // screenful of balloons hanging still is a poor thing to come back to, and the
   // saving that matters - a tablet face up on the sofa - is untouched by this.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") rest.restNow();
@@ -323,7 +323,7 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
   // Turning a sleeping tablet is the one thing that can start an animation with
   // no finger on the screen: `game.ts` rebuilds the board for the new
   // orientation, and a board rebuilt while the page is asleep arrives with the
-  // bubbles drifting and the finish button breathing again, at nobody. So the
+  // pieces settling and the finish button breathing again, at nobody. So the
   // sweep is run once more after the rebuild has settled - comfortably after
   // that handler's own 150ms debounce - and whatever it catches joins the rest
   // to be resumed on waking. Everything else that animates needs a touch, and a

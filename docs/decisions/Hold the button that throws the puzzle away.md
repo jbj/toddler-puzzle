@@ -53,7 +53,7 @@ panel. The tests moved with the rule, into `tests/hold.test.ts`.
 `watchHold` returns a teardown, which the grown-ups button does not need - its
 button lives for the life of the page - and the reset button does: the board is
 rebuilt under it on every level, every re-deal and every rotation, so `game.ts`
-takes the old watcher down in `mount` beside the activity and the hint. A frame
+takes the old watcher down in `mount` beside the hint. A frame
 loop left running against a detached button is the sort of leak this game
 already refuses elsewhere
 ([The game sleeps when nobody is playing](<The game sleeps when nobody is playing.md>)).
@@ -63,9 +63,9 @@ outside it and on nothing else. The watcher tracks whether a press is under way
 rather than reading how full the ring is, because a finger that leaves inside
 the same millisecond it landed has filled none of it and is still a press.
 
-`npm run shot` presses it for real, on level 4: six taps in a row leave the same
+`npm run shot` presses it for real, on level 2: six taps in a row leave the same
 board standing, the ring is empty afterwards, a hold fills the ring past a third
 of the way by halfway through, and the board it deals is a new one on the same
 level. The run's own `dealAgain` helper holds the button rather than dispatching
-a `pointerdown`, so every activity level it re-deals goes through the gesture a
-grown-up would actually make.
+a `pointerdown`, so every level it re-deals goes through the gesture a grown-up
+would actually make.

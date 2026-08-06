@@ -43,7 +43,7 @@ import { kindsAhead } from "../src/warm";
 import { sceneById } from "../src/scenes";
 import { THEMES, type ThemeId } from "../src/themes";
 
-// Four of the six kinds are chunks of their own, fetched during play so that
+// Four of the five kinds are chunks of their own, fetched during play so that
 // first paint does not wait for artwork twenty levels away. A test is not
 // playing, so it asks for all of them up front and then treats the registry the
 // way the running game does once its warm has finished.
@@ -84,12 +84,12 @@ describe("the level table", () => {
     );
   });
 
-  it("is six chapters of five, in play order", () => {
-    expect(CHAPTERS).toHaveLength(6);
-    for (const chapter of CHAPTERS) expect(inChapter(chapter)).toHaveLength(5);
+  it("is five chapters of six, in play order", () => {
+    expect(CHAPTERS).toHaveLength(5);
+    for (const chapter of CHAPTERS) expect(inChapter(chapter)).toHaveLength(6);
     // A chapter's levels are consecutive: the chapter column never goes back.
     expect(LEVELS.map((level) => chapterNumber(level))).toEqual(
-      LEVELS.map((level) => Math.ceil(level.level / 5)),
+      LEVELS.map((level) => Math.ceil(level.level / 6)),
     );
   });
 
@@ -141,7 +141,7 @@ describe("the level table", () => {
 
   it("is thirty different puzzles: no kind repeats a subject at a size", () => {
     // What stops two rows being the same level. A level is its kind, its
-    // subject - the activity, the theme, the scene, the shape picture - and its
+    // subject - the theme, the scene, the shape picture - and its
     // size, and the table is written so that a reader can see all thirty differ
     // without playing one. A picture may come back at another size, because a
     // scene cut four ways and the same scene cut nine ways are two different
@@ -150,11 +150,7 @@ describe("the level table", () => {
     const seen = new Map<string, number>();
     for (const level of LEVELS) {
       const subject =
-        level.theme ??
-        level.options?.scene ??
-        level.options?.shapePicture ??
-        level.options?.activity ??
-        "the whole cast";
+        level.theme ?? level.options?.scene ?? level.options?.shapePicture ?? "the whole cast";
       const key = `${level.kind} / ${subject} / ${level.pieces} pieces`;
       const before = seen.get(key);
       expect(before, `level ${level.level} repeats level ${before}: ${key}`).toBeUndefined();
@@ -229,20 +225,21 @@ describe("the level table", () => {
     }
   });
 
-  it("climbs: the first chapter is tiny and the last is full", () => {
-    for (const level of inChapter("first-touches")) expect(level.pieces).toBeLessThanOrEqual(3);
+  it("climbs: the first chapter counts up from one, and the last is full", () => {
+    // One animal, then two, and so on to six: the opening chapter is the count
+    // itself, so a child's first level is the smallest thing the game can ask.
+    expect(inChapter("animals").map((level) => level.pieces)).toEqual([1, 2, 3, 4, 5, 6]);
     for (const level of inChapter("mastery")) expect(level.pieces).toBeGreaterThanOrEqual(6);
   });
 
   it("gives each chapter the kinds its chapter is about", () => {
     const expected: Record<(typeof CHAPTERS)[number], readonly PuzzleKindId[]> = {
-      "first-touches": ["play", "shape-match"],
       animals: ["shape-match"],
       "sliced-animals": ["sliced"],
       shapes: ["polygon"],
       pictures: ["jigsaw"],
       // Mastery is where the kinds already met are mixed up again.
-      mastery: ["jigsaw", "shatter", "sliced", "polygon", "shape-match"],
+      mastery: ["jigsaw", "shatter", "sliced"],
     };
     for (const chapter of CHAPTERS) {
       for (const level of inChapter(chapter)) {
@@ -475,35 +472,35 @@ describe("a kind switched off", () => {
   });
 
   it("drops its levels and keeps the rest in order", () => {
-    const kinds = without("play");
+    const kinds = without("shape-match");
     expect(playableLevels(kinds).map((level) => level.level)).toEqual(
-      LEVELS.filter((level) => level.kind !== "play").map((level) => level.level),
+      LEVELS.filter((level) => level.kind !== "shape-match").map((level) => level.level),
     );
     expect(isPlayable(1, kinds)).toBe(false);
-    expect(isPlayable(2, kinds)).toBe(true);
+    expect(isPlayable(7, kinds)).toBe(true);
   });
 
   it("is stepped over on the way to the next level", () => {
-    // Levels 1, 3 and 5 are the cause-and-effect ones, so a child whose
-    // grown-up switched those off plays 2, 4, 6 and on.
-    const kinds = without("play");
-    expect(nextLevel(1, kinds)).toBe(2);
-    expect(nextLevel(2, kinds)).toBe(4);
-    expect(nextLevel(4, kinds)).toBe(6);
+    // Levels 25, 26 and 28 are the shattered pictures, so a child whose
+    // grown-up switched those off goes 24, 27, 29 and on.
+    const kinds = without("shatter");
+    expect(nextLevel(24, kinds)).toBe(27);
+    expect(nextLevel(27, kinds)).toBe(29);
+    expect(nextLevel(29, kinds)).toBe(30);
   });
 
   it("wraps to the first level still in play, not to level 1", () => {
-    const kinds = without("play", "shape-match");
-    expect(nextLevel(LEVEL_COUNT, kinds)).toBe(11);
-    expect(playableFrom(1, kinds)).toBe(11);
+    const kinds = without("shape-match", "sliced");
+    expect(nextLevel(LEVEL_COUNT, kinds)).toBe(13);
+    expect(playableFrom(1, kinds)).toBe(13);
   });
 
   it("resumes forward off a level that has just been taken out", () => {
     const kinds = without("jigsaw");
     // A child who stopped on level 21 resumes on the first level of what is
     // left rather than on a jigsaw their grown-up has switched off.
-    expect(playableFrom(21, kinds)).toBe(26);
-    expect(playableFrom(20, kinds)).toBe(20);
+    expect(playableFrom(21, kinds)).toBe(25);
+    expect(playableFrom(18, kinds)).toBe(18);
   });
 
   it("moves the end of the game to the end of what is played", () => {
@@ -515,17 +512,17 @@ describe("a kind switched off", () => {
   });
 
   it("still ends every chapter that is played", () => {
-    const kinds = without("play");
-    // Level 5 is gone, so the first chapter ends on level 4 and the party
-    // moves with it rather than being lost. Level 3 is gone too, and is not
-    // where a chapter ends.
-    expect(endsChapter(4, kinds)).toBe(true);
-    expect(endsChapter(2, kinds)).toBe(false);
-    expect(endsChapter(3, kinds)).toBe(false);
-    expect(endsChapter(10, kinds)).toBe(true);
+    const kinds = without("jigsaw");
+    // The pictures chapter is gone entirely and mastery loses its last two, so
+    // the last chapter now ends on level 28 and the party moves with it rather
+    // than being lost. The chapters before it are untouched.
+    expect(endsChapter(28, kinds)).toBe(true);
+    expect(endsChapter(26, kinds)).toBe(false);
+    expect(endsChapter(27, kinds)).toBe(false);
+    expect(endsChapter(18, kinds)).toBe(true);
     // A level whose kind is off is answered by what comes after it, which is
     // what a grown-up who jumped the child straight onto one should get.
-    expect(endsChapter(5, kinds)).toBe(true);
+    expect(endsChapter(24, kinds)).toBe(true);
     // And the last level still in play ends the game.
     expect(endsChapter(LEVEL_COUNT, kinds)).toBe(true);
   });
@@ -598,16 +595,9 @@ describe("what is fetched ahead of the child", () => {
 
   it("asks for what is coming before what has been", () => {
     // From level 16 the child is in the shapes chapter, so `polygon` is the one
-    // they are playing, `jigsaw` and `shatter` are ahead of them, and the two
-    // kinds of the first chapters - already in the bundle - come last.
-    expect(kindsAhead(16)).toEqual([
-      "polygon",
-      "jigsaw",
-      "shatter",
-      "sliced",
-      "play",
-      "shape-match",
-    ]);
+    // they are playing, `jigsaw` and `shatter` are ahead of them, and the kind
+    // of the first chapter - already in the bundle - comes last.
+    expect(kindsAhead(16)).toEqual(["polygon", "jigsaw", "shatter", "sliced", "shape-match"]);
   });
 
   it("wraps round, so a level a grown-up went back to is covered too", () => {
@@ -615,7 +605,6 @@ describe("what is fetched ahead of the child", () => {
     // read from the top, which is where a child who loops back is going.
     expect(kindsAhead(LEVEL_COUNT)).toEqual([
       "jigsaw",
-      "play",
       "shape-match",
       "sliced",
       "polygon",

@@ -11,7 +11,7 @@ looking at costs a repaint every frame for as long as the tablet is awake. It
 was a good suspicion and an incomplete one. Four other things run with nobody in
 the room:
 
-- the bubbles drift, respawn as they escape, and are topped up by a
+- a celebration's balloons drift, respawn as they escape, and are topped up by a
   `setInterval` that never stops;
 - the finish button breathes on `iterations: Infinity` until it is pressed, and
   nothing presses it;
@@ -48,15 +48,15 @@ created. That is a list to keep in step with a codebase, and the animation
 somebody forgot to add would be exactly the one still running.
 
 Asking the document what is running instead catches the CSS pulse, the drifting
-bubbles, the parade, the button, and whatever is added next by somebody who has
+balloons, the parade, the button, and whatever is added next by somebody who has
 never heard of `rest.ts`. Only *running* animations are paused, so each one
 resumes rather than restarting, and none can finish while the page is asleep.
 
 Timers cannot be found that way, so the ones the game has ask for themselves.
-`repeatWhileAwake` replaces `setInterval` in `kinds/play.ts` and in a
-celebration's `every`; both are belt-and-braces refills, so they stop dead and
-start again rather than catching up on missed ticks - nothing popped while the
-screen was frozen, so there is nothing to refill.
+`repeatWhileAwake` replaces `setInterval` in a celebration's `every`; it is a
+belt-and-braces refill, so it stops dead and starts again rather than catching up
+on missed ticks - nothing popped while the screen was frozen, so there is nothing
+to refill.
 
 A one-shot needs more care, because a celebration's `after` is what hands one
 balloon's place on to the next, and the next arrives with an animation of its
@@ -79,14 +79,14 @@ it needs no resuming.
 
 ### The touch that wakes the game also plays the game
 
-The wake listeners are in the capture phase, so a finger landing on a bubble
-wakes the page and then pops the bubble, in that order. A child never has to tap
+The wake listeners are in the capture phase, so a finger landing on a balloon
+wakes the page and then bursts the balloon, in that order. A child never has to tap
 twice, and never taps a screen that ignores them - which for a two-year-old is
 indistinguishable from a broken toy.
 
 A tab being looked at again wakes it too, without waiting to be touched. Sleep
 is a way of costing nothing while nobody is there, not a lock, and somebody
-switching back to the game *is* somebody being there: a screenful of bubbles
+switching back to the game *is* somebody being there: a skyful of balloons
 hanging motionless is a poor invitation to the child who came back for them, and
 the first thing they do is touch it anyway. The saving that matters is the
 tablet face up on the sofa, and that one is untouched either way.
@@ -122,8 +122,8 @@ and wake without sitting through two minutes to do it.
 - Sleep is invisible to the rest of the game. No kind, no celebration and no
   level knows it happened; the only trace is `data-asleep` on the document,
   which the stylesheet and the screenshot run read.
-- Bubbles hanging still in mid-air is the visible cost, and it lasts until the
-  first touch. It reads as bubbles hanging rather than as a broken screen.
+- Balloons hanging still in mid-air is the visible cost, and it lasts until the
+  first touch. It reads as balloons hanging rather than as a broken screen.
 - A celebration's arrival window is wall-clock (`Date.now() < until`), so a long
   sleep can land back on a party that has stopped refilling. That is already
   what a backgrounded tab did, and what is afloat still bursts, so it is left

@@ -6,7 +6,7 @@
  * The bundle is split by kind (`kinds/registry.ts`), and the celebration that
  * ends a chapter is a chunk of its own, so first paint no longer waits for
  * artwork the child will not see for twenty minutes. Split naively that would
- * be a *worse* game, not a smaller one: a two-year-old who finishes level 20
+ * be a *worse* game, not a smaller one: a two-year-old who finishes level 18
  * and is shown nothing while a chapter downloads has been let down in exactly
  * the way this game is careful never to let anybody down.
  *
@@ -45,8 +45,8 @@ export function kindsAhead(fromLevel: number): readonly PuzzleKindId[] {
 /**
  * Fetch what is coming, one thing at a time.
  *
- * The celebration goes first: the end of a chapter is at most five levels away
- * whatever level this is, and it is the single largest piece of the game. Then
+ * The celebration goes first: every level ends with one, so it is needed
+ * before anything else here, and it is the single largest piece of the game. Then
  * the kinds, in play order. Sequential rather than all at once, so the warm
  * never competes with itself.
  */

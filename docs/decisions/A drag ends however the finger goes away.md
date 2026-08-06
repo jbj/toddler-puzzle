@@ -89,7 +89,7 @@ them would ever be caught by a screenshot run that drags the way an adult does.
 
 `enableDragging` now returns its teardown, because its listeners live on the
 window and would otherwise outlive every stage the game mounts. `game.ts` takes
-it down with the board, alongside the activity, the hint and the celebration.
+it down with the board, alongside the hint and the celebration.
 
 ## Consequences
 

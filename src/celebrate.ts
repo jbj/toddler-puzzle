@@ -5,7 +5,7 @@
  * leads on to the next puzzle - which arrives `WAY_OUT_MS` after the level ends
  * rather than at once, so there is a moment between one puzzle and the next.
  *
- * A sparkle is the game's yes. `sparkleBurst` marks a piece landing, a bubble
+ * A sparkle is the game's yes. `sparkleBurst` marks a piece landing, a balloon
  * bursting and a thing in a celebration answering a finger; `celebrationBurst`
  * throws a screenful of them and is what a finished level opens with.
  *
@@ -121,9 +121,9 @@ const BUTTON_ICON: Record<FinishButton, string> = {
  * asked for a longer wait. It is deliberately a *number* rather than a
  * particular balloon: the pause has to be the same whether the celebration is
  * balloons, beach balls, paper or ribbon. Where it does not apply at all is
- * where there is no celebration to wait through - a level played by touching,
- * or a celebration chunk that never arrived - because a pause in front of an
- * empty board is the trap this is meant not to be.
+ * where there is no celebration to wait through - a celebration chunk that
+ * never arrived - because a pause in front of an empty board is the trap this
+ * is meant not to be.
  *
  * Nothing else is withheld. The celebration answers a finger from its first
  * frame, so this is never a wait for permission to play - only for permission
@@ -139,9 +139,9 @@ export function showFinishButton(
   onPress: () => void,
   /**
    * Hold the button back for this long, then fade it up. Zero puts it there at
-   * once, which is what a level with no celebration to wait through gets: one
-   * played by touching, a celebration chunk that never arrived, or a board laid
-   * out again after a rotation, where the pause has already been served.
+   * once, which is what a level with no celebration to wait through gets: a
+   * celebration chunk that never arrived, or a board laid out again after a
+   * rotation, where the pause has already been served.
    */
   arriveAfterMs = 0,
 ): () => void {

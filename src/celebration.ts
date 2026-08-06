@@ -66,8 +66,8 @@
  * arrive unasked; everything already on screen goes on answering a finger for
  * as long as the child stays.
  *
- * The floating and the bursting are `pop.ts`, shared with the bubbles of the
- * first chapter, so a balloon bursts with exactly the feel of a bubble.
+ * The floating and the bursting are `pop.ts`, shared with the petals of the
+ * blossom, so everything that bursts under a finger bursts the same way.
  * `prefers-reduced-motion` is honoured through `motion.ts` as everywhere else:
  * the moment still happens, more calmly.
  */
@@ -107,8 +107,7 @@ export const CELEBRATION_SPAN_MS = 30_000;
 export type InterludeId = "balloons" | "beach-balls" | "confetti" | "streamers";
 
 /** What ends a chapter, and what ends the game. These are allowed to be events. */
-export type ChapterCelebrationId =
-  "balloons" | "parade" | "petals" | "rainbow" | "fireworks" | "finale";
+export type ChapterCelebrationId = "parade" | "petals" | "rainbow" | "fireworks" | "finale";
 
 export type CelebrationId = InterludeId | ChapterCelebrationId;
 
@@ -117,19 +116,20 @@ export type CelebrationId = InterludeId | ChapterCelebrationId;
  * level number, so retuning the ramp cannot strand a celebration in the middle
  * of a chapter; `endsChapter` in `levels.ts` says when one is due.
  *
- * The order is a ramp of its own. The first chapter's is the balloons, because
- * a one-year-old has just spent five levels learning that a finger makes things
- * happen and a balloon is that sentence again; the rainbow follows it, because
- * a finger that bursts a thing and a finger that builds a thing are one step
- * apart. The last is the finale, which is every other celebration at once and
- * never stops.
+ * The order is a ramp of its own. The first chapter's is the rainbow, because a
+ * child who has just carried six animals home is owed something they paint a
+ * tap at a time rather than something that asks anything of them. The last is
+ * the finale, which is every other celebration at once and never stops.
  *
  * The rest of the order is settled by the rule at the top of this file: the
  * parade is made of animals, so it ends the chapter of coloured shapes and not
- * the chapter of animals, where it used to walk an elephant over an elephant.
+ * a chapter of animals, where it used to walk an elephant over an elephant.
+ *
+ * The balloons are not here. They end no chapter, but they are one of the four
+ * interludes and they go up again in the finale, so nothing about them goes
+ * unseen.
  */
 export const CHAPTER_CELEBRATIONS: Record<ChapterId, ChapterCelebrationId> = {
-  "first-touches": "balloons",
   animals: "rainbow",
   "sliced-animals": "petals",
   shapes: "parade",
@@ -138,7 +138,7 @@ export const CHAPTER_CELEBRATIONS: Record<ChapterId, ChapterCelebrationId> = {
 };
 
 /**
- * What plays after an ordinary level - the twenty-four that end nothing.
+ * What plays after an ordinary level - the twenty-five that end nothing.
  *
  * Every level ends with one, because going straight from a finished board into
  * a fresh one is more than a one-year-old can carry: the celebration is the
@@ -223,13 +223,13 @@ export interface Celebration {
  * grew with the board would be drawn taller than the board it walks across.
  */
 const TUNING = {
-  /** A balloon's radius. Bigger than a bubble: this is a treat, not a level. */
+  /** A balloon's radius. Big: this is a treat rather than a target to aim at. */
   balloonRadius: 0.088,
   balloonsAtOnce: 7,
   /**
-   * How fast a balloon rises, in logical units per millisecond. Twice a
-   * bubble's, and deliberately: a bubble is a level, paced so a child has time
-   * to aim, while a balloon is a party, and balloons let go at a party go up.
+   * How fast a balloon rises, in logical units per millisecond. Brisk, and
+   * deliberately: a balloon is a party rather than something to aim at, and
+   * balloons let go at a party go up.
    * It is also what keeps the sky full - a replacement that took four seconds
    * to climb into reach would leave a child who popped the lot looking at
    * nothing, which is the one thing a celebration must never do.
@@ -538,8 +538,9 @@ function balloons(party: Party, options: { at: number } = { at: TUNING.balloonsA
   }
 
   topUp();
-  // Covers a tab that was in the background while no animation was running, in
-  // the same belt-and-braces way the bubbles level does it.
+  // Covers a tab that was in the background while no animation was running.
+  // Belt and braces: `rest.ts` should have stopped the party, but a refill on a
+  // timer costs nothing and a sky that empties itself is a poor celebration.
   party.every(1500, topUp);
   party.onStop(() => {
     for (const balloon of afloat) balloon.remove();
@@ -1159,7 +1160,7 @@ function petals(party: Party, options: { at: number } = { at: TUNING.petalsAtOnc
         falling.delete(petal);
         unlockAudio();
         // A petal scatters rather than bursts, so it answers with a note out of
-        // the pentatonic scale instead of the bubble's pop.
+        // the pentatonic scale instead of the balloon's pop.
         playPlink(party.answered());
         party.answer(at);
         handOn();
@@ -1427,7 +1428,7 @@ function firework(party: Party, at: Point, note: number, byHand: boolean): void 
   popBurst(layer, at, radius, colours[0] as string);
   popBurst(layer, at, radius * 0.62, colours[1 % colours.length] as string);
   // Smaller breaks around the first one, a beat apart and each in its own
-  // colour: one ring reads as a bubble popping, and a firework is a thing that
+  // colour: one ring reads as a balloon popping, and a firework is a thing that
   // goes on happening after it has happened.
   for (let i = 1; i < TUNING.fireworkBreaks; i++) {
     const away = radius * (0.5 + random() * 0.8);
@@ -1555,7 +1556,7 @@ function nightSky(party: Party): void {
 // Thirty levels finished. Every celebration at once, and it never winds down:
 // the end of the game is a room to stay in rather than a wall to hit. The way
 // out is the button the child has pressed at the end of all thirty levels, and
-// it starts the whole thing again at the bubbles.
+// it starts the whole thing again at the first animal.
 
 function finale(party: Party): void {
   const { layer, layout } = party.stage;

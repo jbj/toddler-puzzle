@@ -55,13 +55,6 @@ no-binary-assets invariant in
 - A landed piece gets a sparkle burst; finishing a level gets a bigger one
   (`src/celebrate.ts`); finishing a chapter gets a celebration on top
   (`src/celebration.ts`).
-- On a touch level (`PuzzleKind.play`) the kind reports a touch through
-  `host.touched(at)` and gets a sparkle there plus a completion check, so a
-  bubble bursting and an animal landing are answered alike. The same call with no
-  point means the puzzle moved on without a finger (an activity's ten seconds
-  running out) and gets the check without the sparkle. Everything else - the
-  sound, the spin, the bush going - belongs to the kind and happens in the tick
-  the finger landed.
 - `prefers-reduced-motion` is honoured throughout; `prefersReducedMotion()` in
   `src/motion.ts` is the one place asked. The settle transition and the sparkles
   collapse to 1ms (same code path, element ends in place) and the finish button's
@@ -93,8 +86,6 @@ silent, never punitive. See
   and expects none.
 - **Which piece:** `hintPiece` is one pure rule - the last-touched piece if still
   unplaced, otherwise the first unplaced piece, otherwise nothing.
-- **No hint on a touch level.** A `PuzzleKind.play` level has no tray, target or
-  wrong place, and the host would point into a layer the kind owns and moves.
 - **`stop()` latches, and that is the whole race guard.** `src/game.ts` stops the
   hint in exactly two places: the `mount()` teardown before `buildBoard` replaces
   the DOM, and `checkComplete`, before any celebration is built - so a celebration
@@ -123,16 +114,16 @@ crossing the board, or the tab being looked at again undoes all of it. See
   animations are paused, so each resumes rather than restarting. Do not replace
   the sweep with a register.
 - **A timer asks for itself.** `repeatWhileAwake` in `src/rest.ts`, never
-  `setInterval`, for anything that ticks on its own (the bubbles' refill, a
-  celebration's `every`): these stop dead and start again. `afterWhileAwake`,
+  `setInterval`, for anything that ticks on its own (a celebration's `every`, the
+  balloons refilling the sky): these stop dead and start again. `afterWhileAwake`,
   never `setTimeout`, for a one-shot that *makes* something (a celebration's
   `after`): it holds its clock and serves the rest of the wait on waking, so a
   frozen sky is not filled with new animations nobody is watching.
 - **The hint holds bright.** `[data-asleep] .hint-mark` in `src/style.css` drops
   the pulse and holds the glow, as reduced motion does.
 - **Waking is in the capture phase, and the same touch still plays.** A finger on
-  a bubble wakes the page and then pops the bubble - never two taps. Looking at
-  the tab again wakes it without a touch.
+  a balloon wakes the page and then bursts the balloon - never two taps. Looking
+  at the tab again wakes it without a touch.
 - **The speakers come back in time.** `restAudio` suspends the context and
   `stirAudio` resumes it; because `resume()` settles a tick or two later,
   `audio.ts` counts a resume in flight as playable, or the first sound after every
@@ -144,7 +135,7 @@ crossing the board, or the tab being looked at again undoes all of it. See
 ## Drag feel
 
 `src/drag.ts` is the pointer-event drag engine; `src/game.ts` owns what a drag
-means. Neither is started for a touch level.
+means.
 
 - The piece is held slightly above the finger, so a small hand does not cover it.
 - A piece is picked up anywhere inside the box around its artwork, not only on

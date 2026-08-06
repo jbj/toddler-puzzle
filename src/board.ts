@@ -27,11 +27,6 @@ export interface Board {
    * quiet end reads as a halo *behind* the piece still waiting in the tray.
    */
   readonly hintLayer: SVGGElement;
-  /**
-   * Where a kind played by touch draws what the child can touch
-   * (`PuzzleKind.play`). Empty for every kind that is played by dragging.
-   */
-  readonly activityLayer: SVGGElement;
   readonly piecesLayer: SVGGElement;
   /**
    * Where a chapter celebration puts its balloons, its parade and its fireworks
@@ -43,16 +38,6 @@ export interface Board {
   readonly fxLayer: SVGGElement;
   readonly pieces: ReadonlyMap<PieceId, SVGGElement>;
   readonly resetButton: SVGGElement;
-}
-
-export interface BoardOptions {
-  /**
-   * Build the level's pieces as draggable things in the tray. False for a level
-   * that is played by touching what is already in the scene: its kind deals a
-   * cast so the board can be composed around it, but nothing goes in the tray
-   * and there is nothing to pick up. See `PuzzleKind.play`.
-   */
-  readonly pieces?: boolean;
 }
 
 /** An element built for the current level. Throws if the piece isn't in play. */
@@ -199,7 +184,7 @@ function buildChapterDots(layout: Layout): SVGGElement {
   return dots;
 }
 
-export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOptions = {}): Board {
+export function buildBoard(root: HTMLElement, layout: Layout): Board {
   const stage = document.createElementNS(SVG_NS, "svg");
   stage.setAttribute("id", "stage");
   stage.setAttribute("viewBox", `0 0 ${layout.canvas.width} ${layout.canvas.height}`);
@@ -213,27 +198,22 @@ export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOpti
 
   const backdropLayer = group("backdrop");
   const hintLayer = group("hint-layer");
-  const activityLayer = group("activity");
   const piecesLayer = group("pieces");
   const celebrationLayer = group("celebration");
   const fxLayer = group("fx");
 
-  const built = options.pieces ?? true;
   const pieces = new Map<PieceId, SVGGElement>();
-  if (built) {
-    for (const shape of layout.pieces) {
-      // Authored units -> logical units, at this piece's own scale.
-      const piece = buildPiece(shape, boxOf(layout, shape.id).scale);
-      pieces.set(shape.id, piece);
-      piecesLayer.append(piece);
-    }
+  for (const shape of layout.pieces) {
+    // Authored units -> logical units, at this piece's own scale.
+    const piece = buildPiece(shape, boxOf(layout, shape.id).scale);
+    pieces.set(shape.id, piece);
+    piecesLayer.append(piece);
   }
 
   const resetButton = buildResetButton(layout.canvas.height);
   stage.append(
     backdropLayer,
     hintLayer,
-    activityLayer,
     piecesLayer,
     celebrationLayer,
     fxLayer,
@@ -245,13 +225,12 @@ export function buildBoard(root: HTMLElement, layout: Layout, options: BoardOpti
 
   // Measuring artwork needs it in the document, so the grab boxes are fitted
   // once the board is mounted rather than while it is being built.
-  if (built) for (const shape of layout.pieces) fitGrabBox(elementFor(pieces, shape.id), shape);
+  for (const shape of layout.pieces) fitGrabBox(elementFor(pieces, shape.id), shape);
 
   return {
     stage,
     backdropLayer,
     hintLayer,
-    activityLayer,
     piecesLayer,
     celebrationLayer,
     fxLayer,

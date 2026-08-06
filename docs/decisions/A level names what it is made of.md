@@ -31,15 +31,16 @@ exists precisely so that the difficulty ramp can be read off the page.
 ## Decision
 
 **A level is its kind, its subject and its size, and no two levels are all
-three.** The subject is whatever the row names - the activity for a play level,
-the theme for an animal one, the scene for a jigsaw or a shatter, and now the
-shape picture for a polygon level. `tests/levels.test.ts` builds that triple for
-all thirty rows and fails on a duplicate, naming both levels.
+three.** The subject is whatever the row names - the theme for an animal level,
+the scene for a jigsaw or a shatter, and now the shape picture for a polygon
+level. `tests/levels.test.ts` builds that triple for all thirty rows and fails on
+a duplicate, naming both levels.
 
 So the polygon chapter names its pictures the way the jigsaw chapter always has.
-Levels 16-20 stand the house, the boat, the car, the butterfly and the
-sunflower; `polygon.deal` looks the name up instead of drawing one, and throws
-if a row names nothing, names a picture the catalogue does not hold, or names
+Levels 13-18 stand the house, the boat, the car, the flower, the butterfly and
+the sunflower; `polygon.deal` looks the name up instead of drawing one, and
+throws if a row names nothing, names a picture the catalogue does not hold, or
+names
 one whose part count disagrees with the row's `pieces`.
 
 The key in `options` is `shapePicture` rather than `scene`, because they are two

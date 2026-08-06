@@ -4,10 +4,7 @@
  * The background landscape, generated from a Layout.
  *
  * This is drawn in code rather than shipped as a fixed-size SVG so that both
- * orientations share one piece of art and stay in sync automatically. Two parts
- * of it are optional, because a level with nothing in its tray and a level that
- * draws its own answering sun both want the same landscape with one thing left
- * off it; see `SceneryOptions`.
+ * orientations share one piece of art and stay in sync automatically.
  *
  * ## A backdrop belongs to the level's theme
  *
@@ -424,22 +421,6 @@ export function backdropFor(theme: ThemeId | undefined): Backdrop {
   return BACKDROPS[theme ?? "meadow"];
 }
 
-export interface SceneryOptions {
-  /**
-   * Paint the tray band across the top. False for a level with nothing waiting
-   * in a tray - a cause-and-effect level is touched where it stands - and the
-   * sky then runs the whole height of the canvas instead of a sand-coloured
-   * band sitting over an empty shelf.
-   */
-  readonly tray?: boolean;
-  /**
-   * Draw whatever furnishes the air, and whatever stands in the distance. False
-   * for a level that draws its own because they answer a finger
-   * (`kinds/play.ts`), so the sky is not furnished twice.
-   */
-  readonly sky?: boolean;
-}
-
 /**
  * The shelf the waiting pieces stand on: a band of sand with a darker lip along
  * the edge the scene is on, which is what makes it read as a shelf rather than
@@ -461,15 +442,14 @@ export function renderTrayBands(layout: Layout): string {
     .join("");
 }
 
-export function renderScenery(layout: Layout, options: SceneryOptions = {}): string {
+export function renderScenery(layout: Layout): string {
   const { width, height } = layout.canvas;
   const { sceneTop, horizon, bands } = layout;
-  const { tray = true, sky = true } = options;
-  const skyTop = tray ? sceneTop : 0;
+  const skyTop = sceneTop;
   // The air, and everything standing in the distance, belong to the scene
   // rather than to the whole canvas: where the tray runs down the sides, the
   // room between the columns is all the sky there is.
-  const open = tray ? layout.sceneBox : { x: 0, y: 0, ...layout.canvas };
+  const open = layout.sceneBox;
   const backdrop = backdropFor(layout.level.theme);
   const scene: Scene = {
     open,
@@ -501,7 +481,7 @@ export function renderScenery(layout: Layout, options: SceneryOptions = {}): str
 
   const decor = layout.decorLines.map((groundY) => backdrop.growth(width, groundY)).join("");
 
-  const trayBand = tray ? renderTrayBands(layout) : "";
+  const trayBand = renderTrayBands(layout);
 
   return `
     <defs>
@@ -516,14 +496,14 @@ export function renderScenery(layout: Layout, options: SceneryOptions = {}): str
     </defs>
 
     <rect x="0" y="${skyTop}" width="${width}" height="${height - skyTop}" fill="url(#sky)" />
-    ${sky ? backdrop.air(scene) : ""}
+    ${backdrop.air(scene)}
 
     ${bandMarkup}
     ${crests}
 
     <!-- After the ground, because a barn stands in the field rather than behind
          it: a crest that rises above the horizon would otherwise bury a prop. -->
-    ${sky && backdrop.skyline ? backdrop.skyline(scene) : ""}
+    ${backdrop.skyline ? backdrop.skyline(scene) : ""}
     ${decor}
 
     <!-- Last, because a tray down the gutters stands in front of the ground it

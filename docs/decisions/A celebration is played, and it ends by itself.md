@@ -3,7 +3,7 @@
 > **Partly superseded** by
 > [A celebration between every level](<A celebration between every level.md>).
 > Everything here about what a celebration *is* still holds. What has moved is
-> where one happens - every level now, not only the six that end a chapter - and
+> where one happens - every level now, not only the five that end a chapter - and
 > how long the way onwards holds back, which is 4.5 seconds rather than the
 > "about two" argued for below, and which is now the point rather than a
 > precaution. Read this one first; it is the argument the later one builds on.
@@ -34,9 +34,9 @@ from the outside.
 **A celebration is played, not watched.** Everything in one answers a finger in
 the tick the finger landed: a balloon pops, a parading animal hops and sings, a
 tap paints the next arc of a rainbow or sets a firework off exactly where it
-landed. There is no passive frame anywhere in any of the six. The floating and
-the bursting come from `pop.ts`, shared with the bubbles of the first chapter,
-so a balloon feels precisely like the bubbles a child learned the game on.
+landed. There is no passive frame anywhere in any of them. The floating and the
+bursting come from `pop.ts`, which the balloons interlude and the finale share,
+so a balloon behaves the same wherever it turns up.
 
 **A celebration ends its own arrivals, and never ends the child's turn.** New
 things go on arriving unasked for thirty seconds, measured from the moment the
@@ -53,8 +53,8 @@ clock - so nothing advances by itself.
 
 **The way onwards arrives, about two seconds in, instead of sitting there.**
 This is the one thing in a celebration that is withheld, and it is withheld for
-a reason that has nothing to do with traps. By the end of chapter five the child
-has pressed that button twenty-five times. It is the most conditioned action in
+a reason that has nothing to do with traps. By the end of chapter four the child
+has pressed that button twenty-four times. It is the most conditioned action in
 the game, and it is drawn as an enormous saturated yellow disc in the middle of
 the board - louder, on a still frame, than four blossoms drifting at the edges.
 Put it up in the same tick as the celebration and a good number of two-year-olds
@@ -63,11 +63,10 @@ children the feature would not exist. A conditioned response beats a novel
 stimulus when both arrive together; it does not beat one that got there first.
 
 So the button holds back for `FINISH_BUTTON_BEAT_MS` and then fades up over
-about half a second, by which time balloons are already rising and one has
-usually been popped. (On a chapter end and only there, when this was written;
+about half a second, by which time the celebration is already under way and has
+usually been touched. (On a chapter end and only there, when this was written;
 the record above took the beat to every celebration, lengthened it, and renamed
-the constant `WAY_OUT_MS`.) Nothing is
-taken away by this. The celebration itself answers a finger from its very first
+the constant `WAY_OUT_MS`.) Nothing is taken away by this. The celebration itself answers a finger from its very first
 frame, so the beat is never a wait for *permission to play*, only for permission
 to leave, and it costs a child who genuinely wants out under two seconds. The
 button is never an invisible hit target either: it is not in the document at all
@@ -79,9 +78,9 @@ where it was - a child who has already seen it should not have to watch it
 arrive twice, and the argument above is about the first moment only.
 
 Two seconds was chosen by looking at it rather than by picking a number:
-`.art/shots/07a-chapter1-first-instant.png` is the frame the child gets, and
-`07b` is the same celebration with the button caught mid-fade. Compare them. The
-first has one thing in it to do.
+`.art/shots/03-level1-first-instant.png` is the frame the child gets, and
+`04-level1-balloons.png` is the same celebration with the button up. Compare
+them. The first has one thing in it to do.
 
 **The finale never winds down at all.** After thirty levels the celebration is
 every other one at once - a rainbow across the whole board, balloons, blossom, a
@@ -90,8 +89,8 @@ arriving for ever. The end of the game is a room to stay in rather than a wall t
 hit, and the "somewhere obvious to go from there" is the button the child has
 already pressed twenty-nine times - after the same beat as every other
 celebration, so the last thing thirty levels earns is a moment where the party
-is the only thing on the screen - which starts the whole game again at the
-bubbles. A child who cannot read can act on that; a menu of any kind, they
+is the only thing on the screen - which starts the whole game again at the first
+single animal. A child who cannot read can act on that; a menu of any kind, they
 cannot.
 
 **A celebration is not a `PuzzleKind`.** This was judged rather than assumed. A
@@ -99,18 +98,17 @@ kind is dealt a cast, composes a layout, cuts holes, judges drops, and above all
 is named by a row of the thirty-level table - the one place difficulty is tuned.
 A celebration has no pieces, no targets, no difficulty and no place in the
 thirty; putting it in the table would mean inventing levels nobody plays and
-teaching every kind-shaped thing in the codebase to expect them. What is worth
-copying is the *shape* of `PuzzleKind.play`: handed a layer, answers the finger
-itself, returns a teardown that runs before the next board goes up, and keeps
-its progress on an object outside the board so that turning the tablet does not
-lose it. `src/celebration.ts` is that parallel contract, deliberately small.
+teaching every kind-shaped thing in the codebase to expect them. What a
+celebration wants instead is its own small contract: handed a layer, answers the
+finger itself, returns a teardown that runs before the next board goes up, and
+keeps its progress on an object outside the board so that turning the tablet
+does not lose it. `src/celebration.ts` is that contract, deliberately small.
 
-**The boundaries are 5, 10, 15, 20, 25 and 30.** Issue #9 named 6, 12, 18, 24
-and 30, which predates the six-chapters-of-five structure now in `levels.ts`.
-Five celebrations and a finale is what the issue asked for and what the chapters
-give. `endsChapter` reads the boundary off the table rather than holding a list
-of level numbers, so retuning the ramp moves the celebrations with it instead of
-stranding one in the middle of a chapter.
+**The boundaries are 6, 12, 18, 24 and 30**, the ends of the five chapters in
+`levels.ts`. Four celebrations and a finale is what issue #9 asked for and what
+the chapters give. `endsChapter` reads the boundary off the table rather than
+holding a list of level numbers, so retuning the ramp moves the celebrations with
+it instead of stranding one in the middle of a chapter.
 
 ## Consequence
 
@@ -119,8 +117,7 @@ position is the point: a celebration draws below `fx`, so a rising balloon can
 never float over the button onwards and the full-board tap catcher the rainbow
 and the fireworks use can never swallow it.
 
-Balloons rise about twice as fast as bubbles. That looks like a tuning accident
-and is not: a bubble is a level, paced so a child has time to aim, and a
+Balloons rise briskly. That looks like a tuning accident and is not: a
 replacement that took four seconds to climb into reach would leave the sky empty
 for four seconds - which is the one thing a celebration must not do.
 

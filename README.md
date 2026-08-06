@@ -4,11 +4,10 @@
 
 A drag-and-drop shape puzzle for toddlers. Animals wait in a tray; each one is
 dragged onto the matching animal-shaped hole in the landscape. The game is
-thirty levels long, in six chapters of five, and it grows as it goes - a
-screenful of bubbles to pop and a single huge animal to drag to begin with, so
-the first win comes quickly, then more pieces and more kinds of puzzle from
-there. Finish a level and a big arrow leads to the next; finish the last and the
-arrow starts the game over.
+thirty levels long, in five chapters of six, and it grows as it goes - a single
+huge animal to drag to begin with, so the first win comes quickly, then more
+pieces and more kinds of puzzle from there. Finish a level and a big arrow leads
+to the next; finish the last and the arrow starts the game over.
 
 **Every puzzle is dealt fresh.** Which animals turn up and the order they stand
 in are drawn at random each time a puzzle starts, so the same animals are never

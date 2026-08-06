@@ -11,24 +11,18 @@
  * given level comes from the level table by way of the registry. The host
  * cannot tell one kind from another.
  *
- * Not every level is dragged. A kind that implements `play` is handed a layer
- * and answers the finger itself, and the host then builds no tray pieces and
- * starts no drag engine for it - the first chapter's bubbles and peekaboo are
- * that. Everything after the touch is the host's again: the sparkle, the level
- * ending, the button onwards.
- *
  * What the host does insist on is that the game stays forgiving: a drop the
  * kind refuses drifts gently back to the tray with a soft tone, never off
  * screen and never a buzzer. And a board that goes untouched for a while glows
  * quietly where the next piece wants to go (`hint.ts`), so a child who is stuck
  * is led rather than left.
  *
- * A game is thirty levels long, in six chapters of five (`levels.ts`). Every
+ * A game is thirty levels long, in five chapters of six (`levels.ts`). Every
  * level is dealt fresh, so it never plays out quite the same way twice.
  * Finishing a level shows one big button that leads to the next one, and the
  * button after the last level starts the whole game over - so the only way the
  * child can go is forward, and there is never a menu to get lost in. Finishing
- * the *fifth* level of a chapter shows that button on top of a celebration
+ * the *sixth* level of a chapter shows that button on top of a celebration
  * (`celebration.ts`): a bigger moment than a level's fanfare, and one the child
  * plays with rather than watches. Thirty
  * levels is more than one sitting, so the host tells `progress.ts` which level
@@ -63,7 +57,6 @@ import { boxOf, chooseLayout, trayHome, waitingHome, type Layout } from "./layou
 import {
   endsChapter,
   isLastPlayable,
-  isPlayedByTouching,
   levelSpec,
   nextLevel,
   type EnabledKinds,
@@ -187,13 +180,6 @@ export function createGame(
   let layout!: Layout;
   let board!: Board;
   let complete = false;
-  /**
-   * How to take down the activity of a level played by touch, if there is one.
-   * A board that is replaced - a new level, a re-deal, a turned tablet - has to
-   * let go of whatever the kind armed, or a level's bubbles would go on
-   * arriving over the top of the next one.
-   */
-  let stopActivity: (() => void) | null = null;
   /**
    * How to take the drag engine down. It listens on the window as well as on
    * the stage - a release has to be heard wherever it lands, see `drag.ts` - so
@@ -328,9 +314,6 @@ export function createGame(
   function render(): void {
     renderBackdrop();
     showComplete();
-    // A level played by touch has no pieces on the board to place: what there
-    // is to see, the kind drew for itself when the board was mounted.
-    if (kind.play) return;
     for (const shape of puzzle.pieces) {
       const element = pieceEl(shape.id);
       element.classList.remove("is-dragging", "is-settling");
@@ -366,14 +349,10 @@ export function createGame(
   /**
    * Start watching this board for a stretch with nothing happening.
    *
-   * Not every board gets one. A level played by touching has no tray, no
-   * targets and no wrong place - a finger anywhere lands on something that
-   * answers - so there is nothing an idle hint could point at; see
-   * docs/decisions/A hint points at both ends.md.
    * A finished level has a celebration on it instead.
    */
   function watchForIdle(): void {
-    if (kind.play || complete) return;
+    if (complete) return;
     hint = createIdleHint({
       show: showHint,
       hide: () => clearHint(board.hintLayer),
@@ -410,19 +389,12 @@ export function createGame(
    * onwards.
    *
    * A level ends with a celebration because a finished board leading straight
-   * into a fresh one is more than a one-year-old can carry. Ordinary levels get
+   * into a fresh one is more than a two-year-old can carry. Ordinary levels get
    * an *interlude* - balloons, beach balls, confetti, streamers, rotated so two
-   * levels running never end alike - and five levels finishing is a bigger
+   * levels running never end alike - and six levels finishing is a bigger
    * moment still, so a chapter ends with one of its own and the last chapter
    * with the finale, which does not stop. An ordinary level's fanfare walks a
    * step along the scale each time, with the interlude's own arrival behind it.
-   *
-   * A level played by touching gets no interlude, and no pause either. It is
-   * already the thing an interlude is: things on a screen that answer a finger
-   * and ask nothing, which the child leaves when they are ready. Following one
-   * with four seconds of balloons is the same screen again, and a break from
-   * nothing. Such a level that *ends a chapter* still gets the chapter's own
-   * celebration - that is a moment being marked rather than a rest being given.
    *
    * The celebration is a chunk of its own, and one that was asked for when this
    * level was dealt, so the wait here is over before it starts. If it somehow
@@ -437,7 +409,7 @@ export function createGame(
    * silent and buttonless for as long as the network felt like taking - the
    * trap the paragraph above says this must not be, arrived at by patience
    * rather than by design. So the module has `PARTY_PATIENCE_MS` to turn up,
-   * and after that the level ends without it. This matters most at level 2,
+   * and after that the level ends without it. This matters most at level 1,
    * the first level that asks for the chunk at all and so the one where it has
    * had the least time to arrive.
    */
@@ -445,23 +417,19 @@ export function createGame(
     let chapterEnd: ChapterCelebrationId | null = null;
     let interlude: InterludeId | null = null;
     const closesChapter = endsChapter(levelNumber, kindsInPlay());
-    const wants = closesChapter || !isPlayedByTouching(levelNumber);
-    let module: typeof import("./celebration") | null = null;
-    if (wants) {
-      // The timer is the bound, so it is put away as soon as the race is over
-      // however it went: one the chunk won would otherwise sit in the rest
-      // registry holding this level's closures until it fired - and a tablet
-      // put down on a finished board would hold it there until somebody came
-      // back, which is the one case where the wait is not half a second.
-      let stopWaiting = (): void => {};
-      module = await Promise.race([
-        loadCelebration().catch(() => null),
-        new Promise<null>((settle) => {
-          stopWaiting = afterWhileAwake(PARTY_PATIENCE_MS, () => settle(null));
-        }),
-      ]);
-      stopWaiting();
-    }
+    // The timer is the bound, so it is put away as soon as the race is over
+    // however it went: one the chunk won would otherwise sit in the rest
+    // registry holding this level's closures until it fired - and a tablet
+    // put down on a finished board would hold it there until somebody came
+    // back, which is the one case where the wait is not half a second.
+    let stopWaiting = (): void => {};
+    const module: typeof import("./celebration") | null = await Promise.race([
+      loadCelebration().catch(() => null),
+      new Promise<null>((settle) => {
+        stopWaiting = afterWhileAwake(PARTY_PATIENCE_MS, () => settle(null));
+      }),
+    ]);
+    stopWaiting();
     // A board dealt while that was in flight - the reset button, or a level
     // chosen from the panel - is not this board, and must not be finished.
     if (dealt !== deals) return;
@@ -637,8 +605,6 @@ export function createGame(
   function mount(next: Layout): Board {
     // Whatever the last board armed goes now, before the DOM it was drawing
     // into is replaced.
-    stopActivity?.();
-    stopActivity = null;
     stopDragging?.();
     stopDragging = null;
     stopReset?.();
@@ -650,10 +616,9 @@ export function createGame(
     cancelFinishButton?.();
     cancelFinishButton = null;
 
-    const touched = kind.play !== undefined;
     // Whatever was in the air belonged to the board being replaced.
     held = null;
-    const built = buildBoard(root, next, { pieces: !touched });
+    const built = buildBoard(root, next);
 
     // Before the drag engine, so that a press which turns out to be a piece
     // being picked up ends up *paused* rather than armed: this stirs, and the
@@ -662,51 +627,49 @@ export function createGame(
     // nothing in particular is not idle.
     built.stage.addEventListener("pointerdown", () => hint?.stir());
 
-    if (!touched) {
-      stopDragging = enableDragging(built.stage, next, {
-        isDraggable: (piece) => !isPlaced(piece),
-        getPosition: (piece) => stateOf(piece).position,
-        onPickUp: (piece) => {
-          unlockAudio();
-          lastTouched = piece;
-          held = piece;
-          // Nothing is hinted at while a piece is in the air, however long it
-          // is held there: the child is already doing the thing.
-          hint?.pause();
-          const element = elementFor(built.pieces, piece);
-          element.classList.add("is-dragging");
-          element.classList.remove("is-settling");
-          // Re-appending raises the piece above its siblings while it is held.
-          built.piecesLayer.append(element);
-          playPickUp();
-        },
-        onMove: (piece, position) => moveTo(piece, position, false),
-        onDrop: (piece, position) => {
-          held = null;
-          elementFor(built.pieces, piece).classList.remove("is-dragging");
-          if (kind.accepts(puzzle, layout, piece, position)) {
-            // The drop point is the last the kind hears of where the finger was;
-            // a kind that had a choice of place gets to write down which one.
-            kind.settle?.(puzzle, layout, piece, position);
-            place(piece);
-          } else {
-            moveTo(piece, homeOf(piece), true, true);
-            playReturn();
-            // A drag that went nowhere is still the child working at it, so the
-            // wait starts again from here rather than carrying on.
-            hint?.stir();
-          }
-          // The hand is empty again, so a screen that changed shape mid-drag
-          // gets its rebuild - after the drop has been judged, so the piece
-          // lands where the child aimed it and then the board reshapes. Not
-          // here and now, though: the newest finger wins, so this drop may be
-          // the first half of a press, and rebuilding inside it would pull the
-          // board out from under the piece being picked up. A tick later the
-          // press has finished, and if it took a piece the rebuild waits again.
-          if (relayoutWaiting) queueMicrotask(relayout);
-        },
-      });
-    }
+    stopDragging = enableDragging(built.stage, next, {
+      isDraggable: (piece) => !isPlaced(piece),
+      getPosition: (piece) => stateOf(piece).position,
+      onPickUp: (piece) => {
+        unlockAudio();
+        lastTouched = piece;
+        held = piece;
+        // Nothing is hinted at while a piece is in the air, however long it
+        // is held there: the child is already doing the thing.
+        hint?.pause();
+        const element = elementFor(built.pieces, piece);
+        element.classList.add("is-dragging");
+        element.classList.remove("is-settling");
+        // Re-appending raises the piece above its siblings while it is held.
+        built.piecesLayer.append(element);
+        playPickUp();
+      },
+      onMove: (piece, position) => moveTo(piece, position, false),
+      onDrop: (piece, position) => {
+        held = null;
+        elementFor(built.pieces, piece).classList.remove("is-dragging");
+        if (kind.accepts(puzzle, layout, piece, position)) {
+          // The drop point is the last the kind hears of where the finger was;
+          // a kind that had a choice of place gets to write down which one.
+          kind.settle?.(puzzle, layout, piece, position);
+          place(piece);
+        } else {
+          moveTo(piece, homeOf(piece), true, true);
+          playReturn();
+          // A drag that went nowhere is still the child working at it, so the
+          // wait starts again from here rather than carrying on.
+          hint?.stir();
+        }
+        // The hand is empty again, so a screen that changed shape mid-drag
+        // gets its rebuild - after the drop has been judged, so the piece
+        // lands where the child aimed it and then the board reshapes. Not
+        // here and now, though: the newest finger wins, so this drop may be
+        // the first half of a press, and rebuilding inside it would pull the
+        // board out from under the piece being picked up. A tick later the
+        // press has finished, and if it took a piece the rebuild waits again.
+        if (relayoutWaiting) queueMicrotask(relayout);
+      },
+    });
 
     // Held, never tapped, for the same reason as the "Grown-ups" button: this
     // one throws away the puzzle the child is part way through, and a two-year-
@@ -729,18 +692,6 @@ export function createGame(
         startPuzzle();
       },
     });
-
-    // Last, so the kind draws into a board that is already standing and can
-    // measure it if it wants to.
-    if (kind.play) {
-      stopActivity = kind.play(puzzle, next, {
-        layer: built.activityLayer,
-        touched: (at) => {
-          if (at) sparkleBurst(built.fxLayer, at);
-          checkComplete();
-        },
-      });
-    }
 
     return built;
   }

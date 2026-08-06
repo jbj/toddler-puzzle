@@ -135,7 +135,7 @@ const CALLS: Record<string, () => void> = {
   playPlink: () => audio.playPlink(0),
   playFirework: () => audio.playFirework(0),
   playFanfare: () => audio.playFanfare(1),
-  playChapterFanfare: () => audio.playChapterFanfare("balloons"),
+  playChapterFanfare: () => audio.playChapterFanfare("rainbow"),
   playInterludeFanfare: () => audio.playInterludeFanfare("beach-balls"),
   playBoing: () => audio.playBoing(0),
   playRustle: () => audio.playRustle(0),
@@ -180,14 +180,7 @@ describe("the sound switch", () => {
 
 // --- a voice for everything that needs one --------------------------------
 
-const KINDS: readonly PuzzleKindId[] = [
-  "play",
-  "shape-match",
-  "sliced",
-  "polygon",
-  "jigsaw",
-  "shatter",
-];
+const KINDS: readonly PuzzleKindId[] = ["shape-match", "sliced", "polygon", "jigsaw", "shatter"];
 
 const spell = (sound: audio.Phrase): string =>
   sound
@@ -328,7 +321,7 @@ describe("answering a finger over and over", () => {
     }
   });
 
-  it("still lets a bigger bubble pop lower than a smaller one", () => {
+  it("still lets a bigger balloon pop lower than a smaller one", () => {
     const at = (pitch: number): number => {
       const fresh = fakeContext();
       audio.useAudioContext(fresh as unknown as BaseAudioContext);
@@ -372,7 +365,7 @@ describe("the shape of every voice in the vocabulary", () => {
     // The ear is at its most sensitive between two and four kilohertz, which is
     // the one way a soft sine wave can still be piercing. `VOCABULARY` lists the
     // brightest variant of anything that varies, so this covers the fifth
-    // firework and the smallest bubble and not only the first of each.
+    // firework and the smallest balloon and not only the first of each.
     for (const sound of audio.VOCABULARY) {
       for (const one of sound.phrase) {
         expect(one.frequency, `${sound.name} ${one.frequency}`).toBeLessThanOrEqual(
@@ -384,7 +377,7 @@ describe("the shape of every voice in the vocabulary", () => {
   });
 
   it("refuses a pitch above the ceiling however it is asked for", () => {
-    // Every bubble in the game, including one asked to pop an octave above the
+    // Every floater in the game, including one asked to pop an octave above the
     // top of its range, which the caller is free to do.
     for (const pitch of [0.25, 0.5, 1, 2, 4, 16]) {
       audio.playPop(pitch);
