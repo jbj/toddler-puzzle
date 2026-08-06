@@ -82,3 +82,7 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          # Pages occasionally queues accepted deployments for longer than the
+          # action's ten-minute default; keep the verified site live while it waits.
+          timeout: 1800000
