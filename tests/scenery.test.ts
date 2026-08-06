@@ -179,11 +179,17 @@ describe("what every backdrop owes the board", () => {
       const wash = /<linearGradient id="ground"([^>]*)>/.exec(markup)?.[1];
       expect(wash, where).toBeDefined();
       expect(wash, where).toContain('gradientUnits="userSpaceOnUse"');
-      const span = /y1="([-\d.]+)"\s+x2="[-\d.]+"\s+y2="([-\d.]+)"/.exec(wash!);
-      expect(span, `${where}: ${wash}`).not.toBeNull();
+      // Each end read on its own rather than as one fixed run of attributes:
+      // where the wash starts and stops is the invariant, the order the tag
+      // happens to be written in is not.
+      const endAt = (name: string): number => {
+        const found = new RegExp(`\\b${name}="([-\\d.]+)"`).exec(wash!);
+        expect(found, `${where}: no ${name} in ${wash}`).not.toBeNull();
+        return Number(found![1]);
+      };
       const grassTop = layout.bands[1]?.top ?? layout.horizon;
-      expect(Number(span![1]), `${where}: wash starts at the grass`).toBe(grassTop);
-      expect(Number(span![2]), `${where}: wash ends at the bottom`).toBe(layout.canvas.height);
+      expect(endAt("y1"), `${where}: wash starts at the grass`).toBe(grassTop);
+      expect(endAt("y2"), `${where}: wash ends at the bottom`).toBe(layout.canvas.height);
     }
   });
 
