@@ -139,7 +139,7 @@ something unrelated. Why they explain themselves is
 | `src/piece.ts` | What a piece is: `PieceId` and `PieceShape`, independent of any provider |
 | `src/puzzle.ts` | What a kind of puzzle is: the `PuzzleKind` contract the host plugs into |
 | `src/levels.ts` | The thirty levels: the whole difficulty ramp, in one table, and the deal |
-| `src/themes.ts` | The themed casts a level can deal from: farm, sea, jungle, vehicles |
+| `src/themes.ts` | The themed casts a level can deal from: farm, sea, jungle |
 | `src/progress.ts` | What is remembered between sittings: the level, and the grown-up settings |
 | `src/kinds/registry.ts` | Resolves a level's kind by id, and refuses one nobody registered. Also where the bundle is cut: chapters 1 and 2 inline, the other four kinds a chunk each |
 | `src/kinds/shape-match.ts` | The animal-and-hole game, as one `PuzzleKind` |

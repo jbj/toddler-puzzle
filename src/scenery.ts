@@ -403,17 +403,12 @@ const JUNGLE: Backdrop = {
   growth: jungleGrowth,
 };
 
-/**
- * Every backdrop, by the name the level table uses. `vehicles` is a theme with
- * nothing drawn for it anywhere in the game - no cast, and no level naming one -
- * so it stands on the meadow until there is something to put in it.
- */
+/** Every backdrop, by the name the level table uses. */
 const BACKDROPS: Record<ThemeId | "meadow", Backdrop> = {
   meadow: MEADOW,
   farm: FARM,
   sea: SEA,
   jungle: JUNGLE,
-  vehicles: MEADOW,
 };
 
 /** The backdrop a level of this theme is played against. */

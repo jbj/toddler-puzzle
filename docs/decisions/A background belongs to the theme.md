@@ -32,9 +32,7 @@ free: `renderScenery` already takes the `Layout`, and the `Layout` already
 carries its `LevelSpec`. No kind, no board and no game needed a new parameter.
 
 A level with no theme resolves to the meadow, which is exactly today's art
-unchanged, so nineteen levels are untouched by this. `vehicles` is a theme
-`themes.ts` declares, no level names and no animal belongs to; it resolves to the
-meadow too, until there is something to put in it.
+unchanged, so nineteen levels are untouched by this.
 
 ### The scenes are drawn *from*, not drawn *in*
 

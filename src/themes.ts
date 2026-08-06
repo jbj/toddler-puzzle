@@ -19,14 +19,10 @@
  */
 
 /** The themed casts the level table draws from. */
-export type ThemeId = "farm" | "sea" | "jungle" | "vehicles";
+export type ThemeId = "farm" | "sea" | "jungle";
 
-/**
- * Every theme, in the order the ramp first reaches them. `vehicles` is declared
- * and unused: it is a theme of things that are not animals, and nothing has
- * been drawn for it yet.
- */
-export const THEMES: readonly ThemeId[] = ["farm", "sea", "jungle", "vehicles"];
+/** Every theme, in the order the ramp first reaches them. */
+export const THEMES: readonly ThemeId[] = ["farm", "sea", "jungle"];
 
 /** Is this one of the themes? Used where a name arrives as a plain string. */
 export const isThemeId = (value: string): value is ThemeId =>
