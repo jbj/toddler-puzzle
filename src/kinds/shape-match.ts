@@ -14,7 +14,7 @@
  *  - dropping near enough counts as in;
  *  - the level ends when every piece is standing in its hole.
  */
-import { type Point } from "../geometry";
+import { shuffle, type Point } from "../geometry";
 import { holeOf, boxOf, onTarget, type Layout } from "../layout";
 import { dealPieces } from "../levels";
 import type { PieceId, PieceShape } from "../piece";
@@ -49,13 +49,13 @@ export const shapeMatch: PuzzleKind = {
   id: ID,
 
   deal({ level, shapes }: Deal, random: () => number): Puzzle {
-    const pieces = dealPieces(level, shapes, random);
+    const targets = dealPieces(level, shapes, random);
     return {
       kind: ID,
       level,
-      pieces,
+      pieces: shuffle(targets, random),
       // One animal, one hole: every piece is its own target.
-      targets: pieces,
+      targets,
       placed: new Set<PieceId>(),
     };
   },

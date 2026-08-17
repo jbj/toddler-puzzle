@@ -131,6 +131,21 @@ describe("shape-match deal", () => {
     expect(deal(7)).toBe(deal(7));
     expect(deal(7)).not.toBe(deal(8));
   });
+
+  it("does not always stand each tray piece above its own target", () => {
+    let differentlyOrdered = false;
+    for (let seed = 1; seed <= 12; seed++) {
+      const puzzle = shapeMatch.deal(
+        { level: THREE_PIECE_LEVEL, shapes: SHAPES },
+        seededRandom(seed),
+      );
+      const pieces = puzzle.pieces.map((shape) => shape.id);
+      const targets = puzzle.targets.map((shape) => shape.id);
+      expect([...pieces].sort()).toEqual([...targets].sort());
+      differentlyOrdered ||= pieces.some((piece, index) => piece !== targets[index]);
+    }
+    expect(differentlyOrdered).toBe(true);
+  });
 });
 
 describe("shape-match rules", () => {
