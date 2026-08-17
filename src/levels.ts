@@ -321,9 +321,9 @@ export const LEVELS: readonly LevelSpec[] = [
     chapter: "shapes",
     kind: "polygon",
     targets: 1,
-    pieces: 4,
+    pieces: 5,
     snapForgiveness: 1.1,
-    options: { shapePicture: "rocket" },
+    options: { shapePicture: "castle" },
   },
   {
     level: 17,

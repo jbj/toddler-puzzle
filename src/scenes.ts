@@ -317,7 +317,7 @@ function copies(part: Omit<ScenePart, "at">, places: readonly Point[]): ScenePar
 //
 // The catalogue is longer than the chapter. A polygon level names the picture
 // it stands (`shapePicture` in the level table), and the shapes chapter has
-// six rows for these nine, so `fish`, `rocket` and `train` stand unused. They
+// six rows for these ten, so `fish`, `flower`, `rocket` and `train` stand unused. They
 // are spares, kept on purpose: retuning the chapter is then a table edit rather
 // than an afternoon's drawing, and the geometry half of `tests/polygon.test.ts`
 // goes on holding them to the same rules as the rest.
@@ -480,6 +480,43 @@ export const SCENES: readonly Scene[] = [
         fill: YELLOW,
       },
       ...ring(4, { x: 120, y: 120 }, 76, 84, "petal", PINK),
+    ],
+  },
+
+  {
+    id: "castle",
+    label: "a castle",
+    parts: [
+      ...copies(
+        {
+          name: "roof",
+          shape: { form: "triangle", width: 80, height: 80, point: "up" },
+          fill: BLUE,
+        },
+        [
+          { x: 0, y: 0 },
+          { x: 160, y: 0 },
+        ],
+      ),
+      ...copies(
+        {
+          name: "tower",
+          shape: { form: "rectangle", width: 80, height: 160 },
+          fill: YELLOW,
+          detail: pane(18, 40, 44, 48),
+        },
+        [
+          { x: 0, y: 80 },
+          { x: 160, y: 80 },
+        ],
+      ),
+      {
+        name: "gatehouse",
+        shape: { form: "rectangle", width: 80, height: 200 },
+        at: { x: 80, y: 40 },
+        fill: ORANGE,
+        detail: pane(18, 36, 44, 48) + pane(18, 126, 44, 74, 20),
+      },
     ],
   },
 
