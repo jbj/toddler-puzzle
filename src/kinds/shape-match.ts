@@ -54,7 +54,7 @@ export const shapeMatch: PuzzleKind = {
       kind: ID,
       level,
       pieces: shuffle(targets, random),
-      // One animal, one hole: every piece is its own target.
+      // One animal, one hole: the same shapes, ordered separately.
       targets,
       placed: new Set<PieceId>(),
     };
