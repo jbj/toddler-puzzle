@@ -14,9 +14,9 @@
  * box (`kinds/polygon.ts` explains why). Three rules hold for all of them, and
  * `tests/polygon.test.ts` holds them to it:
  *
- *  - **parts never overlap.** They may touch and they may leave gaps - the sky
- *    showing between a sail and a hull is fine - but two pieces on top of each
- *    other would fight over which is drawn on top;
+ *  - **parts overlap only when the picture opts into layering.** Most may touch
+ *    or leave gaps; an organic picture may overlap a little when either draw
+ *    order still reads correctly as the pieces land;
  *  - **parts are of a size with each other.** The layout packs the tray by what
  *    a piece draws, so the smallest part of a scene is what decides how big the
  *    whole scene may be. A window-sized piece in a house-sized scene would
@@ -80,9 +80,12 @@ export interface ScenePart {
    * and draw it in the same place on each of them.
    *
    * It must stay inside the part's outline: it is drawn with the piece, and
-   * would otherwise hang over a neighbour or over nothing at all.
+   * would otherwise hang over a neighbour or over nothing at all. A deliberate
+   * overhang declares `detailBox`, so every piece measurement still covers it.
    */
   readonly detail?: string;
+  /** Bounds of deliberate detail overhang, in the part's own units. */
+  readonly detailBox?: Rect;
 }
 
 export interface Scene {
@@ -90,6 +93,8 @@ export interface Scene {
   /** Spoken description of the finished picture. */
   readonly label: string;
   readonly parts: readonly ScenePart[];
+  /** The parts deliberately overlap a little, and either draw order reads well. */
+  readonly layered?: true;
 }
 
 /** Round a generated coordinate to something a human can read in a diff. */
@@ -212,6 +217,23 @@ export function boundsOf(part: ScenePart): Rect {
   return { x: part.at.x, y: part.at.y, ...sizeOf(part.shape) };
 }
 
+/** The full drawing, including any declared detail overhang. */
+export function inkedBoundsOf(part: ScenePart): Rect {
+  const body = boundsOf(part);
+  if (!part.detailBox) return body;
+  const detail = {
+    x: part.at.x + part.detailBox.x,
+    y: part.at.y + part.detailBox.y,
+    width: part.detailBox.width,
+    height: part.detailBox.height,
+  };
+  const left = Math.min(body.x, detail.x);
+  const top = Math.min(body.y, detail.y);
+  const right = Math.max(body.x + body.width, detail.x + detail.width);
+  const bottom = Math.max(body.y + body.height, detail.y + detail.height);
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
 /**
  * What makes two parts interchangeable: identical form, identical size. Nothing
  * about where they are, because that is exactly what a child is allowed to
@@ -242,7 +264,7 @@ export function shapeName(shape: Form): string {
 
 /** Everything a scene covers, which is what the whole picture stands on. */
 export function sceneBounds(scene: Scene): Rect {
-  const boxes = scene.parts.map(boundsOf);
+  const boxes = scene.parts.map(inkedBoundsOf);
   const left = Math.min(...boxes.map((box) => box.x));
   const top = Math.min(...boxes.map((box) => box.y));
   const right = Math.max(...boxes.map((box) => box.x + box.width));
@@ -486,22 +508,26 @@ export const SCENES: readonly Scene[] = [
   {
     id: "butterfly",
     label: "a butterfly",
+    layered: true,
     parts: [
-      {
-        name: "body",
-        shape: { form: "rectangle", width: 44, height: 180 },
-        at: { x: 98, y: 30 },
-        fill: SLATE,
-        detail: dot(22, 22, 9, "#ffffff"),
-      },
       ...copies({ name: "top wing", shape: { form: "circle", diameter: 96 }, fill: PINK }, [
-        { x: 0, y: 32 },
-        { x: 144, y: 32 },
+        { x: 6, y: 28 },
+        { x: 138, y: 28 },
       ]),
       ...copies({ name: "bottom wing", shape: { form: "circle", diameter: 80 }, fill: ORANGE }, [
-        { x: 8, y: 144 },
-        { x: 152, y: 144 },
+        { x: 26, y: 116 },
+        { x: 134, y: 116 },
       ]),
+      {
+        name: "body",
+        shape: { form: "trapezoid", top: 52, bottom: 24, height: 167 },
+        at: { x: 94, y: 29 },
+        fill: SLATE,
+        detail:
+          `<path data-overhang="antennae" d="M15 10 Q6 -4 -8 -10 M37 10 Q46 -4 60 -10" ` +
+          `fill="none" stroke="${SLATE}" stroke-width="5" stroke-linecap="round" />`,
+        detailBox: { x: -11, y: -13, width: 74, height: 46 },
+      },
     ],
   },
 
@@ -598,7 +624,7 @@ export function sceneShapes(scene: Scene): SceneShapes {
     outline: outlineOf(part),
     artwork: artworkOf(part),
     box: SCENE_BOX,
-    inked: boundsOf(part),
+    inked: inkedBoundsOf(part),
     anchor,
     label: `${part.name}, a ${shapeName(part.shape)}`,
   }));
