@@ -317,7 +317,7 @@ function copies(part: Omit<ScenePart, "at">, places: readonly Point[]): ScenePar
 //
 // The catalogue is longer than the chapter. A polygon level names the picture
 // it stands (`shapePicture` in the level table), and the shapes chapter has
-// six rows for these nine, so `fish`, `rocket` and `train` stand unused. They
+// six rows for these nine, so `fish`, `flower` and `rocket` stand unused. They
 // are spares, kept on purpose: retuning the chapter is then a table edit rather
 // than an afternoon's drawing, and the geometry half of `tests/polygon.test.ts`
 // goes on holding them to the same rules as the rest.

@@ -37,8 +37,8 @@ level. `tests/levels.test.ts` builds that triple for all thirty rows and fails o
 a duplicate, naming both levels.
 
 So the polygon chapter names its pictures the way the jigsaw chapter always has.
-Levels 13-18 stand the house, the boat, the car, the flower, the butterfly and
-the sunflower; `polygon.deal` looks the name up instead of drawing one, and
+Levels 13-18 stand the house, the boat, the car, the butterfly, the train and the
+sunflower; `polygon.deal` looks the name up instead of drawing one, and
 throws if a row names nothing, names a picture the catalogue does not hold, or
 names
 one whose part count disagrees with the row's `pieces`.
@@ -56,20 +56,14 @@ is the same picture at the same size twice, which is the same level twice.
 
 ## Consequence
 
-The chapter's sizes now read 3, 3, 4, 5, 6 rather than 3, 4, 4, 5, 6: two
-three-part pictures instead of two four-part ones, which still never gets
-smaller and is a gentler opening to the chapter.
+The chapter's sizes read 3, 3, 4, 5, 6, 6. It never gets smaller, opens with two
+gentle three-part pictures, and closes with two different six-part pictures.
 
-Level 17 stands the boat, and a three-part picture is drawn in a smaller slot
-than a four-part one, so its floor in `BOARD_FLOORS` drops from 0.244 to 0.203 -
-the slot the whole opening chapter plays at, and the one deliberate loss here.
-Level 16's smallest piece grew, and its floor was raised to match.
-
-The catalogue is now longer than the chapter: `rocket`, `fish`, `flower` and
-`train` are in `SCENES` and in no level. They are kept on purpose, as spares -
+The catalogue is longer than the chapter: `rocket`, `fish` and `flower` are in
+`SCENES` and in no level. They are kept on purpose, as spares -
 retuning the chapter is then a table edit rather than an afternoon's drawing -
 and the geometry half of `tests/polygon.test.ts` holds them to every rule the
-five in play are held to, so one can be dropped into the table without a second
+six in play are held to, so one can be dropped into the table without a second
 thought. A comment in `scenes.ts` says so, because unreachable data with no
 explanation is exactly what a later reader deletes.
 
@@ -81,9 +75,8 @@ the same piece](<Two shapes the same are the same piece.md>)) never comes up;
 the test that used to require an interchangeable pair at every polygon level now
 allows exactly one level without one, and no more.
 
-What this costs is a little variety: the shapes chapter is the same five
-pictures every time, where it used to be five drawn from nine. That is the
-trade, and it is the right way round. Which animals turn up, and the order every
-kind of piece waits in, are still dealt fresh every time - the freshness that
-was doing the work. Being *sure* that level 18 is not level 17 is worth more
-than being usually surprised by which of them is the car.
+Naming every level costs a little variety: the shapes chapter is the same six
+pictures every time. That is the right trade. Which animals turn up, and the
+order every kind of piece waits in, are still dealt fresh every time - the
+freshness that does the work. Being *sure* that one level is not the one before
+it is worth more than being usually surprised by which picture turns up.
