@@ -14,9 +14,9 @@
  * box (`kinds/polygon.ts` explains why). Three rules hold for all of them, and
  * `tests/polygon.test.ts` holds them to it:
  *
- *  - **parts never overlap.** They may touch and they may leave gaps - the sky
- *    showing between a sail and a hull is fine - but two pieces on top of each
- *    other would fight over which is drawn on top;
+ *  - **parts overlap only when the picture opts into layering.** Most may touch
+ *    or leave gaps; an organic picture may overlap a little when either draw
+ *    order still reads correctly as the pieces land;
  *  - **parts are of a size with each other.** The layout packs the tray by what
  *    a piece draws, so the smallest part of a scene is what decides how big the
  *    whole scene may be. A window-sized piece in a house-sized scene would
@@ -90,6 +90,8 @@ export interface Scene {
   /** Spoken description of the finished picture. */
   readonly label: string;
   readonly parts: readonly ScenePart[];
+  /** The parts deliberately overlap a little, and either draw order reads well. */
+  readonly layered?: true;
 }
 
 /** Round a generated coordinate to something a human can read in a diff. */
@@ -486,22 +488,22 @@ export const SCENES: readonly Scene[] = [
   {
     id: "butterfly",
     label: "a butterfly",
+    layered: true,
     parts: [
-      {
-        name: "body",
-        shape: { form: "rectangle", width: 44, height: 180 },
-        at: { x: 98, y: 30 },
-        fill: SLATE,
-        detail: dot(22, 22, 9, "#ffffff"),
-      },
       ...copies({ name: "top wing", shape: { form: "circle", diameter: 96 }, fill: PINK }, [
-        { x: 0, y: 32 },
-        { x: 144, y: 32 },
+        { x: 6, y: 28 },
+        { x: 138, y: 28 },
       ]),
       ...copies({ name: "bottom wing", shape: { form: "circle", diameter: 80 }, fill: ORANGE }, [
-        { x: 8, y: 144 },
-        { x: 152, y: 144 },
+        { x: 26, y: 116 },
+        { x: 134, y: 116 },
       ]),
+      {
+        name: "body",
+        shape: { form: "trapezoid", top: 52, bottom: 24, height: 167 },
+        at: { x: 94, y: 29 },
+        fill: SLATE,
+      },
     ],
   },
 

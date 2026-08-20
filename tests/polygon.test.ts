@@ -4,11 +4,11 @@
  * Two halves, and they are different sorts of thing:
  *
  *  - the **scenes** are geometry, and what is checked is that a picture is a
- *    picture: no two parts of it overlap, nothing in it is too small to be
- *    worth grabbing, and - the one that matters most - two parts a child
- *    cannot tell apart are painted identically. A shadow has no colour, so two
- *    shadows of one shape must be fillable by either piece, and that is only
- *    true if the two pieces are the same piece;
+ *    picture: overlap is absent unless a picture deliberately layers a small
+ *    area, nothing in it is too small to be worth grabbing, and - the one that
+ *    matters most - two parts a child cannot tell apart are painted identically.
+ *    A shadow has no colour, so two shadows of one shape must be fillable by
+ *    either piece, and that is only true if the two pieces are the same piece;
  *  - the **kind** is rules, and what is checked is the promise the chapter is
  *    built on: a shape is accepted by *any* free shadow of its own shape, the
  *    picture rearranges itself around that choice, and a shadow already filled
@@ -100,19 +100,32 @@ describe("the scene catalogue", () => {
     }
   });
 
-  it("never lets two parts of a picture overlap", () => {
+  it("allows only deliberately layered pictures to overlap a little", () => {
     // Sampled rather than reasoned about, because the parts are of five
     // different forms and a circle overlapping a triangle has no tidy formula.
-    // Two pieces drawn on top of each other would fight over which is in front.
+    // A layered picture has to read in either order as its pieces arrive, so no
+    // point may stack three parts and the shared area stays a small accent.
     for (const scene of SCENES) {
       let overlapping = 0;
+      let deepest = 0;
       for (let x = 0.5; x < SCENE_BOX.width; x++) {
         for (let y = 0.5; y < SCENE_BOX.height; y++) {
           const covered = scene.parts.filter((part) => covers(part, x, y)).length;
           if (covered > 1) overlapping++;
+          deepest = Math.max(deepest, covered);
         }
       }
-      expect(overlapping, `${scene.id} overlaps itself`).toBe(0);
+      if (scene.layered) {
+        expect(overlapping, `${scene.id} declares layering but does not overlap`).toBeGreaterThan(
+          0,
+        );
+        expect(overlapping, `${scene.id} overlaps too much`).toBeLessThan(
+          SCENE_BOX.width * SCENE_BOX.height * 0.04,
+        );
+        expect(deepest, `${scene.id} stacks too many parts`).toBeLessThanOrEqual(2);
+      } else {
+        expect(overlapping, `${scene.id} overlaps without declaring layering`).toBe(0);
+      }
     }
   });
 

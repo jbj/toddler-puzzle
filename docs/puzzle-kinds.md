@@ -85,6 +85,9 @@ names come along without anybody making a lesson of them.
   names are held to every rule the six in play are.
 - **A scene is one target with several pieces**: every part carries the whole
   scene box and the scene's single anchor, so `targets: 1` however many pieces.
+- **Parts do not overlap unless the scene declares itself layered.** A layered
+  picture keeps the shared area small and must read correctly whichever piece
+  was placed last.
 - **Two congruent parts are interchangeable.** A piece is accepted by any *free*
   place whose signature matches, and `settle` records the swap so `placeOf` stays
   a bijection. Congruence is geometry alone (`signatureOf`); mirrored forms
