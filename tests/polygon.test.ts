@@ -28,7 +28,6 @@ import {
   SCENE_BOX,
   boundsOf,
   cornersOf,
-  inkedBoundsOf,
   sceneAnchor,
   sceneBounds,
   sceneById,
@@ -133,7 +132,7 @@ describe("the scene catalogue", () => {
   it("keeps every part inside the scene box, and the picture filling it", () => {
     for (const scene of SCENES) {
       for (const part of scene.parts) {
-        const box = inkedBoundsOf(part);
+        const box = boundsOf(part);
         expect(box.x, `${scene.id} ${part.name}`).toBeGreaterThanOrEqual(0);
         expect(box.y, `${scene.id} ${part.name}`).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width).toBeLessThanOrEqual(SCENE_BOX.width);
@@ -209,7 +208,7 @@ describe("the scene catalogue", () => {
         // which is what makes the parts assemble by construction.
         expect(piece.box).toEqual(SCENE_BOX);
         expect(piece.anchor).toEqual(picture.anchor);
-        expect(piece.inked).toEqual(inkedBoundsOf(scene.parts[index]!));
+        expect(piece.inked).toEqual(boundsOf(scene.parts[index]!));
       }
     }
   });

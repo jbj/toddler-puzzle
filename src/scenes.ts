@@ -80,12 +80,9 @@ export interface ScenePart {
    * and draw it in the same place on each of them.
    *
    * It must stay inside the part's outline: it is drawn with the piece, and
-   * would otherwise hang over a neighbour or over nothing at all. A deliberate
-   * overhang declares `detailBox`, so every piece measurement still covers it.
+   * would otherwise hang over a neighbour or over nothing at all.
    */
   readonly detail?: string;
-  /** Bounds of deliberate detail overhang, in the part's own units. */
-  readonly detailBox?: Rect;
 }
 
 export interface Scene {
@@ -217,23 +214,6 @@ export function boundsOf(part: ScenePart): Rect {
   return { x: part.at.x, y: part.at.y, ...sizeOf(part.shape) };
 }
 
-/** The full drawing, including any declared detail overhang. */
-export function inkedBoundsOf(part: ScenePart): Rect {
-  const body = boundsOf(part);
-  if (!part.detailBox) return body;
-  const detail = {
-    x: part.at.x + part.detailBox.x,
-    y: part.at.y + part.detailBox.y,
-    width: part.detailBox.width,
-    height: part.detailBox.height,
-  };
-  const left = Math.min(body.x, detail.x);
-  const top = Math.min(body.y, detail.y);
-  const right = Math.max(body.x + body.width, detail.x + detail.width);
-  const bottom = Math.max(body.y + body.height, detail.y + detail.height);
-  return { x: left, y: top, width: right - left, height: bottom - top };
-}
-
 /**
  * What makes two parts interchangeable: identical form, identical size. Nothing
  * about where they are, because that is exactly what a child is allowed to
@@ -264,7 +244,7 @@ export function shapeName(shape: Form): string {
 
 /** Everything a scene covers, which is what the whole picture stands on. */
 export function sceneBounds(scene: Scene): Rect {
-  const boxes = scene.parts.map(inkedBoundsOf);
+  const boxes = scene.parts.map(boundsOf);
   const left = Math.min(...boxes.map((box) => box.x));
   const top = Math.min(...boxes.map((box) => box.y));
   const right = Math.max(...boxes.map((box) => box.x + box.width));
@@ -523,10 +503,6 @@ export const SCENES: readonly Scene[] = [
         shape: { form: "trapezoid", top: 52, bottom: 24, height: 167 },
         at: { x: 94, y: 29 },
         fill: SLATE,
-        detail:
-          `<path data-overhang="antennae" d="M15 10 Q6 -4 -8 -10 M37 10 Q46 -4 60 -10" ` +
-          `fill="none" stroke="${SLATE}" stroke-width="5" stroke-linecap="round" />`,
-        detailBox: { x: -11, y: -13, width: 74, height: 46 },
       },
     ],
   },
@@ -624,7 +600,7 @@ export function sceneShapes(scene: Scene): SceneShapes {
     outline: outlineOf(part),
     artwork: artworkOf(part),
     box: SCENE_BOX,
-    inked: inkedBoundsOf(part),
+    inked: boundsOf(part),
     anchor,
     label: `${part.name}, a ${shapeName(part.shape)}`,
   }));
