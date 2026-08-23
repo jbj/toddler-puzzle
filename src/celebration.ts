@@ -3,12 +3,9 @@
  *
  * What happens when a level ends, when a chapter ends, and when the game does.
  *
- * Thirty levels that all end with the same four-note fanfare and the same
- * sparkle flatten completely: by level twenty the reward for finishing has
- * stopped meaning anything, and after level thirty there was nothing at all -
- * the arrow simply looped back to level 1 as though nothing had happened. So
- * the end of each chapter is a moment of its own, and the end of the game is a
- * party that does not stop.
+ * Every completion deserves a playable reward. Progression boundaries receive
+ * a larger moment of their own, and the end of the game is a party that does
+ * not stop.
  *
  * **Every level ends with one, in two tiers.** A finished board leading
  * straight into a fresh one asks a one-year-old to start again with no gap, and
@@ -117,17 +114,16 @@ export type CelebrationId = InterludeId | ChapterCelebrationId;
  * of a chapter; `endsChapter` in `levels.ts` says when one is due.
  *
  * The order is a ramp of its own. The first chapter's is the rainbow, because a
- * child who has just carried six animals home is owed something they paint a
- * tap at a time rather than something that asks anything of them. The last is
- * the finale, which is every other celebration at once and never stops.
+ * child who has just carried animals home is owed something they paint a tap at
+ * a time rather than something that asks anything of them. The last is the
+ * finale, which is every other celebration at once and never stops.
  *
- * The rest of the order is settled by the rule at the top of this file: the
- * parade is made of animals, so it ends the chapter of coloured shapes and not
- * a chapter of animals, where it used to walk an elephant over an elephant.
+ * The rest of the order follows the rule at the top of this file: the parade is
+ * made of animals, so it ends the chapter of coloured shapes rather than
+ * covering an animal chapter with more animals.
  *
- * The balloons are not here. They end no chapter, but they are one of the four
- * interludes and they go up again in the finale, so nothing about them goes
- * unseen.
+ * The balloons are not here. They end no chapter, but they remain an interlude
+ * and appear again in the finale, so nothing about them goes unseen.
  */
 export const CHAPTER_CELEBRATIONS: Record<ChapterId, ChapterCelebrationId> = {
   animals: "rainbow",
@@ -788,14 +784,10 @@ function beachBalls(party: Party, options: { at: number } = { at: TUNING.ballsAt
 // anything, and a finger anywhere in it puffs a handful back up. It is the
 // interlude for a child who wants to do nothing at all for a moment.
 //
-// It is also the only paper in the game, and that is a rule rather than an
-// accident. Every celebration used to open with a throw of the same slips over
-// the top of whatever it was, and those could not be touched - so the game had
-// paper that answered a finger and paper that ignored one, falling the same way
-// down the same board, and no way for a child to tell which was which. A thing
-// that behaves two ways is worse than a thing that only happens sometimes. So
-// paper falls here and nowhere else; what every celebration opens with is the
-// sparkle burst in `celebrate.ts`, which nothing has ever been able to touch.
+// It is also the only paper in the game. Paper that sometimes answered a finger
+// and sometimes ignored one would be impossible for a child to distinguish, so
+// it falls here and nowhere else. Every celebration instead opens with the
+// non-interactive sparkle burst in `celebrate.ts`.
 
 /** Paper: flat, bright and opaque, so it reads against sky, sea or night. */
 const CONFETTI_COLOURS: readonly string[] = [
@@ -1553,10 +1545,9 @@ function nightSky(party: Party): void {
 }
 
 // --- the finale -------------------------------------------------------------
-// Thirty levels finished. Every celebration at once, and it never winds down:
+// The whole game finished. Every celebration at once, and it never winds down:
 // the end of the game is a room to stay in rather than a wall to hit. The way
-// out is the button the child has pressed at the end of all thirty levels, and
-// it starts the whole thing again at the first animal.
+// out is the familiar button onwards, and it starts the ramp again.
 
 function finale(party: Party): void {
   const { layer, layout } = party.stage;

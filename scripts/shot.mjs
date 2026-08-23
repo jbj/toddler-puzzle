@@ -957,10 +957,8 @@ const kindIsHeldOn = (kind) =>
 
 /**
  * Every option the panel offers, by the label a grown-up reads. A switch that
- * does nothing is worse than no switch at all, so what is on this panel is
- * checked rather than assumed - rotation mode was dropped (see
- * docs/decisions/Rotation mode is not built, and the switch is gone.md) and its
- * row went with it.
+ * does nothing is worse than no switch at all, so the panel is checked rather
+ * than assumed.
  */
 const panelOptions = () =>
   evaluate(`[...document.querySelectorAll('.grownups-option-label')].map((el) => el.textContent)`);
@@ -1051,8 +1049,7 @@ async function holdGrownUps({ pauseAtHalfway } = {}) {
 
 /**
  * Start at a given level. `?level=` exists for this script and for whoever is
- * working on the game - reaching level 30 by playing the twenty-nine before it
- * would take minutes - and is not a difficulty picker: nothing in the game
+ * working on the game, and is not a difficulty picker: nothing in the game
  * offers it, and the player cannot read.
  *
  * `restAfter` is the same sort of tool: seconds of nobody playing before the
@@ -1690,10 +1687,9 @@ async function runOpening() {
   check("and playing it does not move the game on", (await levelNumber()) === 2);
 
   // --- coming back to it tomorrow ------------------------------------------
-  // Thirty levels is more than one sitting, so the level being played is
-  // remembered (src/progress.ts) and reopening the game starts there. This is
-  // the only place that path is exercised end to end: a real browser, a real
-  // reload, a real localStorage.
+  // The level being played is remembered, and reopening the game starts there.
+  // This is the only place that path is exercised end to end: a real browser,
+  // a real reload, a real localStorage.
   await pressFinishButton();
   check("moves on to level 3", (await levelNumber()) === 3);
   await reopenTheGame();
@@ -2293,9 +2289,8 @@ async function runPolygon() {
   check("the parade lets the way onwards through", (await waitForFinishButton()) === true);
   await shot("22b-chapter3-parade");
 
-  // Portrait is where a parade over a finished board reads busiest, and it is
-  // where the parade this one replaced failed (#65). So the same moment, turned
-  // ninety degrees: the celebration is built again from the new layout, and what
+  // Portrait is where a parade over a finished board reads busiest. The same
+  // moment, turned: the celebration is built again from the new layout, and what
   // has been played with is counted outside the board and survives.
   await setViewport(480, 900);
   await waitForLayout("portrait");
@@ -2517,13 +2512,9 @@ async function runFinale() {
   await shot("30-level30-complete");
 
   // --- the finale -----------------------------------------------------------
-  // Thirty levels finished. This used to be an arrow that looped silently back
-  // to level 1, which told a child who had played the whole game that nothing
-  // had happened. It is now every celebration at once - a rainbow, balloons,
-  // blossom, fireworks, and a parade of the animals - and unlike the four
-  // chapter moments it never winds down. The end of the game is a room to stay
-  // in rather than a wall, and the way out is the same big button the child has
-  // pressed at the end of all thirty levels.
+  // The finale keeps answering the child and never winds down: the end of the
+  // game is a room to stay in rather than a wall. The ordinary way onward
+  // restarts the ramp.
   check("the last level ends with the finale", (await celebrationName()) === "finale");
   const finale = await celebrationThings();
   const kindsInFinale = new Set(finale.map((thing) => thing.touch));
@@ -2835,10 +2826,7 @@ async function runScreens() {
       `${name}: a piece stays big enough to grab (${((board.smallestPiece / board.shortSide) * 100).toFixed(0)}% of the short side)`,
       board.smallestPiece > 0 && board.smallestPiece / board.shortSide >= 0.1,
     );
-    // The whole screen, whatever its shape. This used to be a letterbox measured
-    // as a number a reviewer could see next to the screenshot - a 4:3 iPad in
-    // portrait spent a fifth of itself on bars - and the number is now the point
-    // rather than the apology.
+    // The board must use the whole screen, whatever its shape.
     check(
       `${name}: board covers ${(board.coverage * 100).toFixed(1)}% of the screen`,
       board.coverage >= 0.99,

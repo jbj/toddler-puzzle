@@ -69,19 +69,16 @@ startResting(restDelayMs === undefined ? {} : { delayMs: restDelayMs });
  * also ignores the kinds a grown-up has switched off, because it is a tool for
  * looking at a particular level and has to reach the one it names.
  *
- * Without one the game resumes where it was left - which is level 1 for a new
- * player, and level 1 again for a browser that will not store anything. A level
- * whose kind has been switched off since it was written down resumes at the
- * next one that is still in play, rather than at a board the grown-up has said
- * they do not want.
+ * Without one the game resumes where it was left, or at the start of the ramp
+ * when nothing can be stored. A saved level whose kind has been switched off
+ * resumes at the next one still in play.
  */
 const startLevel = deepLink ?? playableFrom(progress.read().level, progress.settings().kinds);
 
 /**
- * Chapters 1 and 2 are in this file's own bundle, so a new player starts with
- * nothing to wait for. A child resuming further along needs the chunk their
- * chapter is in before there is a board to draw, and gets it here - which is
- * still less to download than the single bundle this used to be. See
+ * The opening chapters are in this file's own bundle, so a new player starts
+ * with nothing to wait for. A child resuming further along gets the chunk their
+ * chapter needs before there is a board to draw. See
  * docs/decisions/A chapter is warmed before it is needed, not fetched when it
  * is.md.
  *

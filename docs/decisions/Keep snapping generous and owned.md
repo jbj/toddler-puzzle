@@ -6,14 +6,13 @@ Animal Puzzle is used by a two-year-old. The one thing a toddler certainly has
 is imprecise movement, especially when a finger covers part of the thing being
 dragged.
 
-If any animal could snap into any nearby hole, the game would need a way to say
+If any piece could snap into any nearby hole, the game would need a way to say
 "wrong" after placement. That makes the puzzle less forgiving and creates a
 failure state the rest of the game avoids.
 
 ## Decision
 
-The snap radius stays generous, about two thirds of a piece. A piece only ever
-snaps into its own hole.
+The snap radius stays generous. A piece only ever snaps into its own hole.
 
 ## Consequence
 
@@ -23,7 +22,6 @@ soft warm tone, and it is impossible to solve a stage wrongly.
 Layout changes must keep one target's reach off another's so this generosity
 does not create ambiguous drops.
 
-The generosity is unchanged; what it is *measured* by is not. A radius of two
-thirds of a piece became one box per piece and one rule for every kind - half a
-piece out, on either axis, is in - in [One box measures a piece, and one rule
-places it](<One box measures a piece, and one rule places it.md>).
+See [One box measures a piece, and one rule places
+it](<One box measures a piece, and one rule places it.md>) for how this
+generosity is measured.

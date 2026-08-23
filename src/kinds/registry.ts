@@ -30,12 +30,6 @@
  * `kindFor` stays synchronous and stays strict, so the host and the tests can
  * go on treating a kind as a plain object; `ensureKind` is the one place that
  * waits.
- *
- * There used to be a stand-in here: a level whose kind did not exist yet was
- * played as shape-match, so the whole ramp was playable while the kinds were
- * still being written. Shatter was the last of them, and the stand-in went with
- * it. See
- * docs/decisions/Play an unbuilt kind as a stand-in.md.
  */
 import type { LevelSpec, PuzzleKindId } from "../levels";
 import type { PuzzleKind } from "../puzzle";

@@ -123,10 +123,9 @@ export interface GameOptions {
    */
   readonly random?: () => number;
   /**
-   * Where the game begins: level 1 for a new player, the level they stopped on
-   * for one coming back, and whatever `?level=` said for whoever is working on
-   * the game. Which of those it is, is main.ts's business rather than the
-   * host's.
+   * Where the game begins: the start of the ramp for a new player, the saved
+   * level for one coming back, or a development override. Choosing among them is
+   * main.ts's business rather than the host's.
    */
   readonly startLevel?: number;
   /**
@@ -409,9 +408,8 @@ export function createGame(
    * silent and buttonless for as long as the network felt like taking - the
    * trap the paragraph above says this must not be, arrived at by patience
    * rather than by design. So the module has `PARTY_PATIENCE_MS` to turn up,
-   * and after that the level ends without it. This matters most at level 1,
-   * the first level that asks for the chunk at all and so the one where it has
-   * had the least time to arrive.
+   * and after that the level ends without it. This matters most at the opening,
+   * when the chunk has had the least time to arrive.
    */
   async function raiseFinish(dealt: number): Promise<void> {
     let chapterEnd: ChapterCelebrationId | null = null;
@@ -576,8 +574,8 @@ export function createGame(
     kind = dealer;
     // Asked for now rather than when the last piece lands, so the party is here
     // by the time there is anything to celebrate. Every level ends with one, so
-    // this is asked for on every deal - after the first it is a resolved
-    // promise, and `warm.ts` has usually fetched it before level 1 is finished.
+    // this is asked for on every deal - after the opening it is a resolved
+    // promise, and `warm.ts` has usually fetched it before it is needed.
     void loadCelebration().catch(() => null);
     puzzle = kind.deal({ level, shapes }, random);
     layout = chooseLayout(boxOfElement(root), level, puzzle.pieces, puzzle.targets);

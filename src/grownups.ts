@@ -3,11 +3,9 @@
  *
  * The one part of this game that is not for the child.
  *
- * Thirty levels and a difficulty option need somebody to be able to steer, and
- * that somebody is a grown-up. So there is a panel: a map of the thirty levels
- * to jump about in, the switches, and the only button in the game that clears
- * progress. Everything about it is built to be obvious to an adult and useless
- * to a two-year-old.
+ * The long ramp and its options need somebody to steer them, and that somebody
+ * is a grown-up. Everything here is obvious to an adult and useless to a
+ * two-year-old.
  *
  * **It is not hidden.** A button in the corner says "Grown-ups", because a
  * parent who has never seen the game before has to be able to find it, and a
@@ -278,14 +276,7 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
   const optionSection = el("section", "grownups-section");
   optionSection.append(el("h3", "grownups-heading", "Options"));
 
-  /**
-   * A two-state switch for one boolean setting. There is one of them among the
-   * options today - rotation mode was dropped rather than built, see
-   * docs/decisions/Rotation mode is not built, and the switch is gone.md
-   * - and it stays a factory because the next boolean setting should not have
-   * to invent this again. The kinds below use the same shape, with a handler of
-   * their own.
-   */
+  /** Kept as a factory so another boolean setting reuses the same control. */
   function makeSwitch(setting: "sound"): HTMLButtonElement {
     const control = el("button", "grownups-switch");
     control.type = "button";

@@ -3,10 +3,9 @@
  *
  * Where the child got to, and what a grown-up has set.
  *
- * Thirty levels is more than one sitting, so the game remembers the level it
- * was left on and resumes there. It also holds the grown-up settings, because
- * they are the same sort of thing: one small record, written when it changes,
- * read once at boot.
+ * The game remembers the level it was left on and resumes there. It also holds
+ * the grown-up settings: one small record, written when it changes and read at
+ * boot.
  *
  * Two rules shape everything here.
  *
@@ -22,8 +21,8 @@
  *
  * **A stored level is a suggestion, not an instruction.** The record carries
  * `STORAGE_VERSION`, and every field is checked against the game as it is now.
- * A level number the table no longer has sends the child back to level 1 rather
- * than to a board that cannot be built - see
+ * A level number the table no longer has sends the child back to the start of
+ * the ramp rather than to a board that cannot be built - see
  * docs/decisions/Remember where the child stopped.md.
  *
  * The storage object is injected, so all of this is exercised in Vitest without
@@ -33,7 +32,7 @@
 import { LEVEL_COUNT, PUZZLE_KINDS, type EnabledKinds, type PuzzleKindId } from "./levels";
 
 /**
- * How long the game waits before nudging an idle child (#21). Read by
+ * How long the game waits before nudging an idle child. Read by
  * `hint.ts`, which owns both the delays and the glow.
  */
 export type HintTiming = "off" | "sooner" | "later";
@@ -42,26 +41,21 @@ const HINT_TIMINGS: readonly HintTiming[] = ["off", "sooner", "later"];
 
 /**
  * What a grown-up can change. Deliberately tiny and deliberately flat: a
- * handful of controls on one panel (#8), each of which a parent can understand
+ * handful of controls on one panel, each of which a parent can understand
  * without being told what it does.
  *
- * It is shorter than the plan first described, because rotation mode was
- * dropped rather than built - see
- * docs/decisions/Rotation mode is not built, and the switch is gone.md.
- * A record stored while that switch existed still reads: an unknown field is
- * ignored like any other, so nobody loses their level over it.
+ * Unknown stored fields are ignored so removing a setting does not discard
+ * otherwise valid progress.
  */
 export interface Settings {
   /** Sound on. Off is for a quiet room, not for a preference about sound. */
   readonly sound: boolean;
-  /** When an idle hint appears (#21). */
+  /** When an idle hint appears. */
   readonly hints: HintTiming;
   /**
-   * Which kinds of puzzle are in play. Thirty levels have to suit one child,
-   * and this is how a grown-up narrows them: a kind switched off is skipped
-   * wherever it appears in the table. Never all off - the panel refuses to turn
-   * the last one off, and `readSettings` reads an all-off record as all-on, so
-   * there is always a game whatever arrives from storage.
+   * Which kinds of puzzle are in play. A kind switched off is skipped wherever
+   * it appears in the table. Never all off: invalid stored settings recover to
+   * the full ramp.
    */
   readonly kinds: EnabledKinds;
 }
@@ -92,7 +86,7 @@ export interface Progress {
   readonly level: number;
   /**
    * The furthest level ever reached by playing, which only ever climbs. The
-   * level map in the grown-up panel (#8) shows which levels have been seen;
+   * level map in the grown-up panel shows which levels have been seen;
    * play itself never reads it, because the game only moves forward one level
    * at a time. A grown-up jumping about the map does not move it - see
    * `jumpToLevel`.
@@ -112,14 +106,9 @@ export const STORAGE_KEY = "animal-puzzle";
  * enough that its numbers mean something else, say. An unrecognised version is
  * dropped whole rather than guessed at.
  *
- * Dropping a *field* is not that. Every field is read on its own and anything
- * unrecognised is ignored, so a record written when there was a `rotation`
- * switch reads today exactly as it should: the settings that still exist come
- * back, the one that does not is passed over, and the child keeps their level.
- * Bumping the version for that would have thrown away every player's place to
- * tidy away one boolean. Adding one is the same in reverse: a record written
- * before the per-kind switches existed has no `kinds` at all, and reads as
- * every kind in play, which is the game it was written by.
+ * Adding or removing an independently parsed field does not change the record's
+ * meaning. Unknown fields are ignored and missing fields use their defaults, so
+ * those changes do not require discarding otherwise valid progress.
  */
 export const STORAGE_VERSION = 1;
 
@@ -137,9 +126,9 @@ export interface StorageLike {
  * Anything that survives that is handed back, including storage that will
  * refuse every write. A browser can be out of quota and still hold the record
  * from yesterday, and reading that is the whole point: throwing it away because
- * tomorrow's write will fail would send the child back to level 1 while their
- * place was sitting right there. Whether writes land is `canWrite`'s question,
- * and it decides `persists` rather than whether there is any storage at all.
+ * tomorrow's write will fail would discard a place that is sitting right there.
+ * Whether writes land is `canWrite`'s question, and it decides `persists`
+ * rather than whether there is any storage at all.
  *
  * The type says `localStorage` is always there; older and stranger browsers
  * disagree, which is what the `?? null` is for.
@@ -216,8 +205,8 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
  *
  * Anything unreadable - not there, not JSON, not an object, a version this
  * build does not know - is a new player. Within a record this build does know,
- * each field stands or falls on its own, so a level number the table has since
- * dropped costs the child their place but not a grown-up's settings.
+ * each field stands or falls on its own, so a saved level absent from the
+ * current table costs the child their place but not a grown-up's settings.
  */
 export function readProgress(storage: StorageLike | null): Progress {
   let stored: string | null;
@@ -282,7 +271,7 @@ export interface ProgressStoreOptions {
  * The store is the single reader and writer of storage: it holds the record in
  * memory and writes through on every change, so a caller never has to know
  * whether storage worked. `reachLevel` is the game's; the rest are the grown-up
- * panel's (#8).
+ * panel's.
  */
 export interface ProgressStore {
   /** The record as it stands, whether or not any of it reached storage. */
@@ -292,15 +281,15 @@ export interface ProgressStore {
   /** Record that this level is being played now. Out-of-range is ignored. */
   reachLevel(level: number): Progress;
   /**
-   * Put the child on this level because a grown-up chose it from the level map
-   * (#8). Out-of-range is ignored, as with `reachLevel`.
+   * Put the child on this level because a grown-up chose it from the level map.
+   * Out-of-range is ignored, as with `reachLevel`.
    *
    * Two things make this a different method rather than the same one.
    *
    * It leaves `furthest` alone. The map's whole job is to show where the child
    * actually got to, and a `reachLevel` here would fill the map in as a
-   * grown-up read it: one look at level 30 and every level is marked reached,
-   * for ever. Where the child has been is something only playing can change.
+   * grown-up read it. Where the child has been is something only playing can
+   * change.
    *
    * And it writes even when `trackLevel` is off. A session opened by `?level=`
    * does not move the child's place, because nothing in it was chosen; picking
@@ -311,9 +300,8 @@ export interface ProgressStore {
   /** Change one setting, leaving the others where they are. */
   updateSetting<K extends keyof Settings>(key: K, value: Settings[K]): Settings;
   /**
-   * Back to level 1, keeping the settings. This is the grown-up panel's reset
-   * and nothing else: the button on the play surface re-deals the level being
-   * played, and must never do this.
+   * Back to the start of the ramp, keeping the settings. This is the grown-up
+   * panel's reset and nothing else: the play-surface button only re-deals.
    */
   clearProgress(): Progress;
   /**

@@ -16,8 +16,7 @@
  *   - the brief lists every topic file;
  *   - every source directive has the canonical form and names an indexed topic,
  *     and every locally routed topic is used by at least one source file;
- *   - no topic file is over its byte ceiling. A selected topic still has to
- *     leave room in a coding agent's context for the work itself.
+ *   - every documentation level stays within its per-file context budget.
  *
  *   npm run docs:check
  *
@@ -306,47 +305,46 @@ const SOURCE_CITATION = new RegExp(`${TOPICS_DIR}/(?:decisions/)?[A-Za-z0-9 ,.'-
 // --- how much context the documentation costs -------------------------------
 
 /**
- * Bytes stand in for tokens. The brief is spent on every call, and a topic file
- * should stay focused enough to read deliberately without crowding the work out.
- * Both have ceilings that may be raised deliberately and never quietly.
+ * Bytes stand in for tokens. Each level has a different reading cost: the brief
+ * is always loaded, topic guides are deliberately selected, and decision records
+ * are opened only when their particular rationale is in question.
  */
-// Raised 2026-08-03, 16 -> 17 kB, for `docs/tests.md`, which arrived at
-// 16284 bytes and then had to describe a celebration after every level rather
-// than after every fifth: a second tier of them in the unit suite, four
-// interludes and two staged conditions in the shot run. The prose was cut back
-// twice first, and the argument behind the tier lives in a decision record
-// rather than here. Deliberately, and said out loud, which is what the comment
-// above asks of anyone raising it.
-const FILE_CEILING = 17 * 1024;
-const INDEX_CEILING = 4 * 1024;
+const decisionFiles = paths
+  .filter((path) => path.startsWith(`${DECISIONS_DIR}/`) && path.endsWith(".md"))
+  .sort();
+const DOCUMENT_LEVELS = [
+  { name: "brief", files: [INDEX], ceiling: 4 * 1024 },
+  { name: "topic", files: topicFiles, ceiling: 8 * 1024 },
+  { name: "decision", files: decisionFiles, ceiling: 8 * 1024 },
+];
 
 {
   const problems = [];
-  const rows = [];
-  for (const file of [INDEX, ...topicFiles]) {
-    // A missing index is already reported above, as a sentence rather than a
-    // stack trace. Do not turn it into one here.
-    if (!sources.has(file)) continue;
-    const ceiling = file === INDEX ? INDEX_CEILING : FILE_CEILING;
-    const bytes = Buffer.byteLength(sources.get(file), "utf8");
-    const name = file.slice(file.lastIndexOf("/") + 1);
-    const share = Math.round((bytes / ceiling) * 100);
-    rows.push(
-      `${name.padEnd(34)} ${String(bytes).padStart(6)} B  ${String(share).padStart(3)}% of ${ceiling / 1024} kB`,
-    );
-    if (bytes > ceiling) {
-      problems.push(`${file} is ${bytes} bytes, over its ${ceiling}-byte ceiling`);
+  for (const level of DOCUMENT_LEVELS) {
+    const rows = [];
+    for (const file of level.files) {
+      // A missing index is already reported above as a useful sentence.
+      if (!sources.has(file)) continue;
+      const bytes = Buffer.byteLength(sources.get(file), "utf8");
+      const name = file.slice(file.lastIndexOf("/") + 1);
+      const share = Math.round((bytes / level.ceiling) * 100);
+      rows.push(
+        `${name.padEnd(66)} ${String(bytes).padStart(6)} B  ${String(share).padStart(3)}% of ${level.ceiling / 1024} kB`,
+      );
+      if (bytes > level.ceiling) {
+        problems.push(`${file} is ${bytes} bytes, over its ${level.ceiling}-byte ceiling`);
+      }
     }
+    report.detail(`        ${level.name}`);
+    for (const row of rows) report.detail(`          ${row}`);
   }
-  for (const row of rows) report.detail(`        ${row}`);
-  check("docs", "documentation files are within their context budget", problems);
+  check("docs", "documentation files are within their level's context budget", problems);
   if (problems.length > 0) {
     report.detail(`
-        Ways under the ceiling, in order of preference: move the argument into a
-        decision record and link it; delete what the code already says; turn a
-        run of prose into a table; split a topic with independent responsibilities.
-        Raising the ceiling is allowed when a file has genuinely grown a new
-        responsibility, and is a change to argue for rather than to slip in.`);
+        Delete code-owned detail, repeated rules, history and implementation
+        narration first. Move extended rationale into a decision record, or
+        split a topic only when it has genuinely independent responsibilities.
+        Raising a ceiling is a deliberate change to the documentation contract.`);
   }
 }
 

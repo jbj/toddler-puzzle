@@ -48,11 +48,9 @@ export interface PieceShape {
    * so a slice's box is mostly empty, and a tray of eight slices must not be
    * laid out as though it held eight whole animals.
    *
-   * It used to be optional, and a piece that said nothing was taken to fill its
-   * box. Only the animals said nothing, and no animal fills its box: a pig
-   * draws a little over half its box's height, so a whole pig was placed by a
-   * box twice as tall as the pig. Saying nothing is no longer allowed. An
-   * animal's is measured and committed as `ANIMAL_INK` in `assets.ts`. See
+   * Saying nothing is not allowed because an animal does not fill its box. An
+   * animal's bounds are measured and committed as `ANIMAL_INK` in `assets.ts`.
+   * See
    * docs/decisions/One box measures a piece, and one rule places it.md.
    */
   readonly inked: Rect;
@@ -90,12 +88,10 @@ export function inkOf(shape: PieceShape): Rect {
  * taken outside the authored box: an animal drawn to its own edges gets none,
  * and needs none, because the drawing is already there.
  *
- * The thickening that follows it is not clamped, and a sliver lying along an
- * edge does end up with a box that runs outside the authored one - the boat's
- * hull at level 16 by about a twelfth of its box. That is the right way round:
- * clamping there would push the box off the drawing's centre, and the centre is
- * the thing the whole rule aims at. Nothing downstream minds, because the tray
- * cuts its cell from this box rather than from the authored one.
+ * The thickening that follows it is not clamped, so a sliver along an edge can
+ * end up with a box outside the authored one. Clamping would push the box off
+ * the drawing's centre, which is the point the rule aims at. The tray cuts its
+ * cell from this box rather than the authored one.
  */
 export const GRAB_PADDING = 0.04;
 

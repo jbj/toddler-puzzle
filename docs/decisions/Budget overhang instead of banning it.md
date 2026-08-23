@@ -2,23 +2,20 @@
 
 ## Context
 
-The hole is cut from `#silhouette`, while `#detail` provides the marks that make
-an animal readable. Most detail should stay inside the silhouette so the piece
-looks as if it fits its hole.
-
-Some detail reads better when it breaks the outline. The giraffe's tail and the
-rabbit's cottontail look like tails precisely because they hang past the body;
-tucked inside, they flatten into markings.
+The hole is cut from an animal's silhouette, while its detail marks are what
+make it readable. Most detail should stay inside the silhouette so the piece
+looks as if it fits its hole. Some detail reads better when it breaks the
+outline - a tail hangs past the body precisely because that is what makes it
+read as a tail; tucked inside, it flattens into a marking.
 
 ## Decision
 
-Overhang is allowed only when it is intentional. Mark it with
-`data-overhang="..."`, and keep all overhang within 3% of the animal's area.
+Overhang is allowed only when it is intentional, marked explicitly in the
+artwork, and kept within a small budget enforced by `npm run art:check`.
 
 ## Consequence
 
-The rule is about intent, not purity. Accidental overhang fails loudly, while a
-small tagged tail is allowed.
-
-Past a few percent, a piece stops looking styled and starts looking like it does
-not fit its hole, so `npm run art:check` enforces the budget.
+The rule is about intent, not purity: accidental, unmarked overhang fails
+loudly, while a small, deliberately marked overhang is allowed. Past that
+budget a piece stops looking styled and starts looking like it does not fit
+its hole, which is what the check exists to catch.
