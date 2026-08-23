@@ -32,14 +32,6 @@
 import { LEVEL_COUNT, PUZZLE_KINDS, type EnabledKinds, type PuzzleKindId } from "./levels";
 
 /**
- * How long the game waits before nudging an idle child. Read by
- * `hint.ts`, which owns both the delays and the glow.
- */
-export type HintTiming = "off" | "sooner" | "later";
-
-const HINT_TIMINGS: readonly HintTiming[] = ["off", "sooner", "later"];
-
-/**
  * What a grown-up can change. Deliberately tiny and deliberately flat: a
  * handful of controls on one panel, each of which a parent can understand
  * without being told what it does.
@@ -50,8 +42,6 @@ const HINT_TIMINGS: readonly HintTiming[] = ["off", "sooner", "later"];
 export interface Settings {
   /** Sound on. Off is for a quiet room, not for a preference about sound. */
   readonly sound: boolean;
-  /** When an idle hint appears. */
-  readonly hints: HintTiming;
   /**
    * Which kinds of puzzle are in play. A kind switched off is skipped wherever
    * it appears in the table. Never all off: invalid stored settings recover to
@@ -70,13 +60,11 @@ export const ALL_KINDS: EnabledKinds = kindsWhere(() => true);
 
 /**
  * What a child who has never played gets. Sound on because the tones are half
- * the reward; hints late because a two-year-old who is still looking has not
- * given up; every kind of puzzle in play, because the ramp is the game and a
+ * the reward; every kind of puzzle in play, because the ramp is the game and a
  * grown-up should have to decide to shorten it.
  */
 export const DEFAULT_SETTINGS: Settings = {
   sound: true,
-  hints: "later",
   kinds: ALL_KINDS,
 };
 
@@ -185,12 +173,8 @@ function readKinds(raw: Record<string, unknown> | null): EnabledKinds {
 /** One setting, or the default when what was stored is not one of its values. */
 function readSettings(raw: Record<string, unknown> | null): Settings {
   if (!raw) return DEFAULT_SETTINGS;
-  const hints = raw["hints"];
   return {
     sound: typeof raw["sound"] === "boolean" ? raw["sound"] : DEFAULT_SETTINGS.sound,
-    hints: HINT_TIMINGS.includes(hints as HintTiming)
-      ? (hints as HintTiming)
-      : DEFAULT_SETTINGS.hints,
     kinds: readKinds(asRecord(raw["kinds"])),
   };
 }

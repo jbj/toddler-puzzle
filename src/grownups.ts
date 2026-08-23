@@ -29,7 +29,6 @@
  */
 import { setSoundEnabled, unlockAudio } from "./audio";
 import type { GameHandle } from "./game";
-import { setHintTiming } from "./hint";
 import { createHoldGate, watchHold, type HoldState } from "./hold";
 import {
   CHAPTERS,
@@ -43,7 +42,7 @@ import {
   type EnabledKinds,
   type PuzzleKindId,
 } from "./levels";
-import type { HintTiming, Progress, ProgressStore, Settings } from "./progress";
+import type { Progress, ProgressStore, Settings } from "./progress";
 
 /** One square of the level map. */
 export interface LevelMapEntry {
@@ -160,22 +159,15 @@ export function isLastKindOn(kinds: EnabledKinds, kind: PuzzleKindId): boolean {
  * One function rather than a handler per switch, so a setting cannot be applied
  * on the way in and forgotten on the way out.
  *
- * Sound and hints reach the game the same way: through the one function that
- * owns the thing they change, so a switch moved mid-play is answered on the
- * board in front of the grown-up who moved it. `kinds` is not here because it
- * has nothing to switch on: `game.ts` asks the record which kinds are in play
- * at the moment it needs to know, so there is no copy of it to keep in step.
+ * Sound reaches the game through the one function that owns the thing it
+ * changes, so a switch moved mid-play is answered on the board in front of the
+ * grown-up who moved it. `kinds` is not here because it has nothing to switch
+ * on: `game.ts` asks the record which kinds are in play at the moment it needs
+ * to know, so there is no copy of it to keep in step.
  */
 export function applySettings(settings: Settings): void {
   setSoundEnabled(settings.sound);
-  setHintTiming(settings.hints);
 }
-
-const HINT_CHOICES: readonly { readonly value: HintTiming; readonly label: string }[] = [
-  { value: "off", label: "Off" },
-  { value: "sooner", label: "Sooner" },
-  { value: "later", label: "Later" },
-];
 
 export interface GrownUpPanelOptions {
   readonly progress: ProgressStore;
@@ -292,31 +284,8 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
 
   const soundSwitch = makeSwitch("sound");
 
-  const hintChoices = el("div", "grownups-choices");
-  hintChoices.setAttribute("role", "radiogroup");
-  hintChoices.setAttribute("aria-label", "Idle hints");
-  const hintButtons = new Map<HintTiming, HTMLButtonElement>();
-  for (const choice of HINT_CHOICES) {
-    const button = el("button", "grownups-choice", choice.label);
-    button.type = "button";
-    button.setAttribute("role", "radio");
-    button.dataset["setting"] = "hints";
-    button.dataset["value"] = choice.value;
-    button.addEventListener("click", () => {
-      applySettings(progress.updateSetting("hints", choice.value));
-      refresh();
-    });
-    hintButtons.set(choice.value, button);
-    hintChoices.append(button);
-  }
-
   optionSection.append(
     optionRow("Sound", "Tones when a piece is picked up, lands, or finishes.", soundSwitch),
-    optionRow(
-      "Idle hints",
-      "A glow where the next piece goes, when nothing has been touched for a while.",
-      hintChoices,
-    ),
   );
 
   const kindSection = el("section", "grownups-section");
@@ -440,11 +409,6 @@ export function createGrownUpPanel(options: GrownUpPanelOptions): void {
       const on = settings[key];
       control.setAttribute("aria-checked", String(on));
       control.classList.toggle("is-on", on);
-    }
-    for (const [value, button] of hintButtons) {
-      const on = settings.hints === value;
-      button.setAttribute("aria-checked", String(on));
-      button.classList.toggle("is-on", on);
     }
     for (const [kind, control] of kindSwitches) {
       const on = settings.kinds[kind];

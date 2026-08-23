@@ -13,9 +13,7 @@
  *
  * What the host does insist on is that the game stays forgiving: a drop the
  * kind refuses drifts gently back to the tray with a soft tone, never off
- * screen and never a buzzer. And a board that goes untouched for a while glows
- * quietly where the next piece wants to go (`hint.ts`), so a child who is stuck
- * is led rather than left.
+ * screen and never a buzzer.
  *
  * A game is thirty levels long, in five chapters of six (`levels.ts`). Every
  * level is dealt fresh, so it never plays out quite the same way twice.
@@ -50,7 +48,6 @@ import { WAY_OUT_MS, celebrationBurst, showFinishButton, sparkleBurst } from "./
 import type { Celebration, ChapterCelebrationId, InterludeId } from "./celebration";
 import { enableDragging } from "./drag";
 import { boxCenter, type Point, type Size } from "./geometry";
-import { clearHint, createIdleHint, drawHint, hintPiece, type IdleHint } from "./hint";
 import { createHoldGate, watchHold } from "./hold";
 import { ensureKind, isKindLoaded, kindFor, recoverWhenPossible } from "./kinds/registry";
 import { boxOf, chooseLayout, trayHome, waitingHome, type Layout } from "./layout";
@@ -192,19 +189,6 @@ export function createGame(
    */
   let stopReset: (() => void) | null = null;
   /**
-   * The idle hint watching this board, if this level has one: a level played by
-   * touching has nothing to aim at, and a finished level has a celebration on
-   * it. Held so that a board being replaced takes its hint with it - see
-   * `hint.ts`, where `stop` latches for exactly that reason.
-   */
-  let hint: IdleHint | null = null;
-  /**
-   * The piece the child last picked up, which is the one the hint is about.
-   * Kept across re-layouts and reset when a level is dealt; a value left over
-   * from another board is ignored by `hintPiece` rather than trusted.
-   */
-  let lastTouched: PieceId | null = null;
-  /**
    * The piece in the air right now, if the child is carrying one. Only ever the
    * answer to "would rebuilding the board take something out of a hand" - see
    * `relayout`, which waits for the hand to be empty.
@@ -322,43 +306,6 @@ export function createGame(
   }
 
   /**
-   * Put the hint on the board: the glow on the target of whichever piece is
-   * meant, and a quieter one under that piece where it waits. Drawn only when
-   * there is still something to move; a level with nothing waiting is a level
-   * that is about to be over.
-   */
-  function showHint(): void {
-    const shape = hintPiece(puzzle.pieces, puzzle.placed, lastTouched);
-    if (!shape) return;
-    // Every place this piece would be taken, not just the one it is aimed at:
-    // a kind that lets two identical shapes fill either of two identical
-    // shadows must not be reported as though it had made up its mind.
-    const targets = kind.openTargets?.(puzzle, layout, shape.id) ?? [
-      kind.target(puzzle, layout, shape.id),
-    ];
-    const { scale } = boxOf(layout, shape.id);
-    const rest = waitingHome(layout, shape.id);
-    drawHint(board.hintLayer, shape, {
-      scale,
-      targets,
-      waiting: { at: rest.at, scale: scale * rest.shrink },
-    });
-  }
-
-  /**
-   * Start watching this board for a stretch with nothing happening.
-   *
-   * A finished level has a celebration on it instead.
-   */
-  function watchForIdle(): void {
-    if (complete) return;
-    hint = createIdleHint({
-      show: showHint,
-      hide: () => clearHint(board.hintLayer),
-    });
-  }
-
-  /**
    * Tell the board the puzzle is whole. The only thing that reads it is the
    * artwork of a drawing that was cut up: a slice or a piece of a picture is
    * clipped to its own cut while there is still a gap to fill, and to a hair
@@ -374,10 +321,6 @@ export function createGame(
 
     complete = true;
     showComplete();
-    // A finished level is never hinted at. This runs before the celebration is
-    // built, so nothing can glow underneath one.
-    hint?.stop();
-    hint = null;
     // Let the last snap chime land before the fanfare starts.
     const dealt = deals;
     finishTimer = window.setTimeout(() => void raiseFinish(dealt), 260);
@@ -504,9 +447,6 @@ export function createGame(
     const { ink } = boxOf(layout, piece);
     sparkleBurst(board.fxLayer, boxCenter({ x: target.x + ink.x, y: target.y + ink.y }, ink));
     checkComplete();
-    // After `checkComplete`, so a level that has just ended keeps the hint it
-    // stopped rather than arming a new wait behind the celebration.
-    hint?.stir();
   }
 
   /**
@@ -566,7 +506,6 @@ export function createGame(
     deals++;
     complete = false;
     celebration = null;
-    lastTouched = null;
     window.clearTimeout(finishTimer);
     if (arrival === "chosen") progress.jumpToLevel(levelNumber);
     else progress.reachLevel(levelNumber);
@@ -588,9 +527,6 @@ export function createGame(
       state.set(shape.id, { position: { x: 0, y: 0 } });
     }
     render();
-    // After `board` is standing and the pieces are where they belong, since the
-    // hint is drawn from both.
-    watchForIdle();
   }
 
   /** Move on to a different level: new deal, new layout, fresh board. */
@@ -607,8 +543,6 @@ export function createGame(
     stopDragging = null;
     stopReset?.();
     stopReset = null;
-    hint?.stop();
-    hint = null;
     stopCelebration?.();
     stopCelebration = null;
     cancelFinishButton?.();
@@ -618,23 +552,12 @@ export function createGame(
     held = null;
     const built = buildBoard(root, next);
 
-    // Before the drag engine, so that a press which turns out to be a piece
-    // being picked up ends up *paused* rather than armed: this stirs, and the
-    // pick-up that follows takes the hint down and leaves it down. A press on
-    // bare sky reaches only this one, and a child who is poking about at
-    // nothing in particular is not idle.
-    built.stage.addEventListener("pointerdown", () => hint?.stir());
-
     stopDragging = enableDragging(built.stage, next, {
       isDraggable: (piece) => !isPlaced(piece),
       getPosition: (piece) => stateOf(piece).position,
       onPickUp: (piece) => {
         unlockAudio();
-        lastTouched = piece;
         held = piece;
-        // Nothing is hinted at while a piece is in the air, however long it
-        // is held there: the child is already doing the thing.
-        hint?.pause();
         const element = elementFor(built.pieces, piece);
         element.classList.add("is-dragging");
         element.classList.remove("is-settling");
@@ -654,9 +577,6 @@ export function createGame(
         } else {
           moveTo(piece, homeOf(piece), true, true);
           playReturn();
-          // A drag that went nowhere is still the child working at it, so the
-          // wait starts again from here rather than carrying on.
-          hint?.stir();
         }
         // The hand is empty again, so a screen that changed shape mid-drag
         // gets its rebuild - after the drop has been judged, so the piece
@@ -681,8 +601,6 @@ export function createGame(
       gate: resetGate,
       now: () => performance.now(),
       // The press is the child's, however it ends, so it counts as playing.
-      // The hint hears it too: the press is not stopped here, so it reaches the
-      // stage listener above and stirs the wait like any other touch.
       pressed: unlockAudio,
       paint: (state) => resetRing?.setAttribute("stroke-dasharray", `${state.fill} 1`),
       held: () => {
@@ -719,7 +637,6 @@ export function createGame(
     layout = next;
     board = mount(layout);
     render();
-    watchForIdle();
     // Including the celebration, which counts what has been played with outside
     // the board precisely so a turned tablet does not undo it.
     if (complete) showFinish(false);

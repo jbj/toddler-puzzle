@@ -320,7 +320,7 @@ interface SceneRow {
  * and the child's finger is still on the bit they aimed at.
  *
  * `trayHome` stays what it always was: where the piece's box goes. This is that
- * corner adjusted for the shrink, and is what the board and the hint draw with.
+ * corner adjusted for the shrink, and is what the board draws with.
  */
 export function waitingHome(
   layout: Layout,

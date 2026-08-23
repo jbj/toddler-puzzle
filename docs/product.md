@@ -31,10 +31,6 @@ forgiving and needs less understanding from a child who cannot read.
   [One box measures a piece, and one rule places it](<decisions/One box measures a piece, and one rule places it.md>).
 - **Every target remains large enough for a young child.** The layout's checked
   floors are the source of truth; do not trade them away for a busier board.
-- **Help is quiet and truthful.** An idle hint points at both the piece and every
-  place that would accept it. It never nags, sounds punitive, resembles a filled
-  target, or interrupts a celebration. See
-  [A hint points at both ends](<decisions/A hint points at both ends.md>).
 
 ## The shape of the game
 
@@ -73,7 +69,7 @@ forgiving and needs less understanding from a child who cannot read.
 | Concern | Read |
 | --- | --- |
 | Progression, celebrations, persistence, grown-up controls | [`navigation.md`](navigation.md) |
-| Sound, hints, rest, dragging, feedback | [`feel.md`](feel.md) |
+| Sound, rest, dragging, feedback | [`feel.md`](feel.md) |
 | Puzzle contracts and the difficulty table | [`puzzle-kinds.md`](puzzle-kinds.md) |
 | Board, tray, piece boxes, backdrops | [`layout.md`](layout.md) |
 | SVG authoring and visual review | [`art.md`](art.md) |

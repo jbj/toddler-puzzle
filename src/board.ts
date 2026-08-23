@@ -21,12 +21,6 @@ export interface Board {
   readonly stage: SVGSVGElement;
   /** Everything behind the pieces; the kind decides what goes in it. */
   readonly backdropLayer: SVGGElement;
-  /**
-   * Where the idle hint glows (`hint.ts`). Directly over the backdrop, so the
-   * mark lands on the hole it was cut from, and under everything else, so the
-   * quiet end reads as a halo *behind* the piece still waiting in the tray.
-   */
-  readonly hintLayer: SVGGElement;
   readonly piecesLayer: SVGGElement;
   /**
    * Where a chapter celebration puts its balloons, its parade and its fireworks
@@ -197,7 +191,6 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
   stage.dataset["kind"] = layout.level.kind;
 
   const backdropLayer = group("backdrop");
-  const hintLayer = group("hint-layer");
   const piecesLayer = group("pieces");
   const celebrationLayer = group("celebration");
   const fxLayer = group("fx");
@@ -213,7 +206,6 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
   const resetButton = buildResetButton(layout.canvas.height);
   stage.append(
     backdropLayer,
-    hintLayer,
     piecesLayer,
     celebrationLayer,
     fxLayer,
@@ -230,7 +222,6 @@ export function buildBoard(root: HTMLElement, layout: Layout): Board {
   return {
     stage,
     backdropLayer,
-    hintLayer,
     piecesLayer,
     celebrationLayer,
     fxLayer,

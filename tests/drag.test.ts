@@ -16,8 +16,8 @@
  * with the same question: is the next press accepted?
  *
  * There is no DOM in Vitest, and this suite deliberately does not add one. The
- * rule (`createDragging`) is pure, in the spirit of `createIdleHint` and
- * `createRest`, so most of it is exercised directly. The wiring is exercised
+ * rule (`createDragging`) is pure, in the spirit of `createRest`, so most of it
+ * is exercised directly. The wiring is exercised
  * too, through a fake stage of a few dozen lines that records what was
  * registered where and fires it by hand: which listener sits on which target is
  * exactly what regressed, so a check that could not see it would be no check at

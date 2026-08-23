@@ -47,7 +47,7 @@ rest, choose the topics that fit the task.
 | [`docs/cutting.md`](../docs/cutting.md) | Cutting drawings into slices, jigsaws, or shards |
 | [`docs/layout.md`](../docs/layout.md) | Composing the board, tray, piece box, or backdrop |
 | [`docs/navigation.md`](../docs/navigation.md) | Changing progression, celebrations, resuming, or grown-up controls |
-| [`docs/feel.md`](../docs/feel.md) | Changing sound, hints, rest, dragging, or toddler-proofing |
+| [`docs/feel.md`](../docs/feel.md) | Changing sound, rest, dragging, or toddler-proofing |
 | [`docs/tests.md`](../docs/tests.md) | Writing or interpreting checks against fresh deals |
 
 Keep each rule in one topic file. Link rather than repeat.

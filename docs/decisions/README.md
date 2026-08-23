@@ -20,11 +20,5 @@ only the extra rationale needed when that rule is questioned.
 The filename is a short sentence saying what is decided, in the same words as
 the `#` heading. Use spaces, with no date or sequence number.
 
-Link a record with the destination in angle brackets:
-
-```markdown
-[A hint points at both ends](<A hint points at both ends.md>)
-```
-
 There is no maintained index. The directory listing is the index, so each
 filename must carry its own summary.

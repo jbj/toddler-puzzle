@@ -126,90 +126,6 @@ body {
   pointer-events: none;
 }
 
-/* The idle hint ---------------------------------------------------------- */
-
-/* A glow where the next piece wants to go, after a stretch with nothing
-   happening. Drawn from the piece's own outline, so it lands exactly on the
-   hole; see hint.ts. Never filled, because a filled target in this game is an
-   opaque animal and this must not be mistaken for one. */
-
-.hint {
-  pointer-events: none;
-}
-
-.hint-mark {
-  animation: hint-pulse 1600ms ease-in-out infinite;
-}
-
-/* The end under the piece still waiting in the tray. Quieter, because the
-   child can already see the piece: this only says which one is meant. In step
-   with the bright end, since the pair is one gesture rather than two. */
-.hint-mark.is-quiet {
-  animation-name: hint-pulse-quiet;
-}
-
-@keyframes hint-pulse {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes hint-pulse-quiet {
-  0%,
-  100% {
-    opacity: 0.18;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
-}
-
-/* Reduced motion keeps the invitation and drops the movement: a child who
-   needs the hint still needs it, so it appears and holds instead of pulsing.
-   `is-still` is put on by hint.ts when it draws, from the answer motion.ts
-   gives, since motion.ts is the one place the question is asked. The media
-   query below says the same thing again for a browser that never asks. */
-.hint.is-still .hint-mark {
-  animation: none;
-  opacity: 0.85;
-}
-
-.hint.is-still .hint-mark.is-quiet {
-  opacity: 0.5;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hint-mark {
-    animation: none;
-    opacity: 0.85;
-  }
-
-  .hint-mark.is-quiet {
-    opacity: 0.5;
-  }
-}
-
-/* A sleeping game says the same thing again (`rest.ts`). Everything else on the
-   page is paused where it stood, which for a pulse would mean freezing it at
-   whatever the fade had reached - possibly at its dimmest, on the one thing on
-   screen a stuck child needs to be able to see. So the hint holds, exactly as
-   it does for a player who asked for less motion, and `animation: none` takes
-   it out of the sweep rather than leaving it paused. */
-[data-asleep] .hint-mark {
-  animation: none;
-  opacity: 0.85;
-}
-
-[data-asleep] .hint-mark.is-quiet {
-  opacity: 0.5;
-}
-
 .reset-button {
   cursor: pointer;
 }
@@ -513,29 +429,6 @@ body {
 .grownups-switch:disabled {
   cursor: default;
   opacity: 0.55;
-}
-
-.grownups-choices {
-  display: flex;
-  flex: none;
-  gap: 4px;
-}
-
-.grownups-choice {
-  padding: 6px 10px;
-  border: 1px solid var(--grownups-line);
-  border-radius: 6px;
-  background: #ffffff;
-  font: inherit;
-  font-size: 14px;
-  color: var(--grownups-ink);
-  cursor: pointer;
-}
-
-.grownups-choice.is-on {
-  background: var(--grownups-accent);
-  border-color: var(--grownups-accent);
-  color: #ffffff;
 }
 
 /* Buttons --------------------------------------------------------------- */

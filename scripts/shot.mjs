@@ -1202,92 +1202,6 @@ async function tapEmptySpot() {
   await tapAt(spot.x, spot.y);
 }
 
-// --- the idle hint --------------------------------------------------------
-// After a stretch with nothing happening, a glow where the next piece wants to
-// go. Silent, and it never goes away by itself: touch anything and it goes.
-// See src/hint.ts.
-
-/** Must match `HINT_DELAY_MS.sooner` in src/hint.ts. */
-const HINT_SOONER_MS = 5000;
-
-/**
- * How long this run gives a hint to appear. Deliberately much longer than the
- * delay itself: a loaded machine can lose a second or two anywhere, and a check
- * that fails for that reason teaches nobody anything.
- */
-const HINT_WINDOW_MS = HINT_SOONER_MS + 2500;
-
-/**
- * The hint as it stands on the board: which piece it is about, whether that
- * piece is still waiting, and where its ends have landed. Centres rather than
- * boxes, because a mark is the piece's own outline *stroked*, so it is a few
- * pixels bigger than the hole it is drawn over and only the middles compare.
- *
- * `brights` is a list, and `bright` the first of them: a kind with a *choice*
- * of place is hinted at every place that would take the piece, so there is not
- * always exactly one.
- */
-const hintOnBoard = () =>
-  evaluate(`
-  (() => {
-    const hint = document.querySelector('#stage .hint');
-    if (!hint) return null;
-    const middle = (el) => {
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return { x: r.x + r.width / 2, y: r.y + r.height / 2, width: r.width, height: r.height };
-    };
-    const piece = hint.dataset.piece;
-    const escaped = JSON.stringify(piece);
-    const pieceEl = document.querySelector('.piece[data-piece=' + escaped + ']');
-    const art = pieceEl?.querySelector('.art > path');
-    return {
-      piece,
-      marks: hint.querySelectorAll('.hint-mark').length,
-      filled: hint.querySelectorAll('[fill]:not([fill="none"])').length,
-      placed: pieceEl ? pieceEl.classList.contains('is-placed') : null,
-      bright: middle(hint.querySelector('.hint-mark:not(.is-quiet)')),
-      brights: [...hint.querySelectorAll('.hint-mark:not(.is-quiet)')].map(middle),
-      quiet: middle(hint.querySelector('.hint-mark.is-quiet')),
-      hole: middle(document.querySelector('.hole[data-piece=' + escaped + ']')),
-      waiting: middle(art),
-    };
-  })()
-`);
-
-const away = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-
-/**
- * Every free shadow on the board that wants the same shape as this piece -
- * which, on a kind that treats identical shapes as interchangeable, is exactly
- * the set of places a drop would be taken. Worked out from what the shadows
- * *draw*, so it owes nothing to what the game says about itself.
- */
-const placesFor = (piece) =>
-  evaluate(`
-  (() => {
-${SHAPE_KEY}
-    const art = document.querySelector(${JSON.stringify(`.piece[data-piece="${piece}"] .art > path`)});
-    if (!art) return null;
-    const wanted = key(art.getAttribute('d'));
-    const out = [];
-    for (const hole of document.querySelectorAll('#stage .hole')) {
-      if (Number(hole.style.opacity) === 0) continue;
-      const path = hole.querySelector('path');
-      if (!path || key(path.getAttribute('d')) !== wanted) continue;
-      const r = hole.getBoundingClientRect();
-      out.push({ x: r.x + r.width / 2, y: r.y + r.height / 2, width: r.width, height: r.height });
-    }
-    return out;
-  })()
-`);
-
-/** Wait out a generous window and report whatever is glowing, or null. */
-async function hintAfterAWhile() {
-  await sleep(HINT_WINDOW_MS);
-  return hintOnBoard();
-}
-
 // --- the game asleep ------------------------------------------------------
 // Two quiet minutes and the page stops drawing altogether: every animation
 // paused where it stood, every repeating timer stopped, the speakers put down.
@@ -1318,22 +1232,6 @@ const orphanAnimations = () =>
     .getAnimations()
     .filter((a) => a.playState === 'running' && a.effect?.target && !a.effect.target.isConnected)
     .length
-`);
-
-/**
- * How the bright end of a hint is being drawn. A pulse paused wherever the fade
- * had reached could freeze the one thing a stuck child needs to see at its
- * dimmest, so a sleeping hint holds instead - the same as it does for a player
- * who asked for less motion.
- */
-const hintPulse = () =>
-  evaluate(`
-  (() => {
-    const mark = document.querySelector('#stage .hint-mark:not(.is-quiet)');
-    if (!mark) return null;
-    const style = getComputedStyle(mark);
-    return { animation: style.animationName, opacity: Number(style.opacity) };
-  })()
 `);
 
 /**
@@ -1735,7 +1633,6 @@ async function runOpening() {
     JSON.stringify(options) ===
       JSON.stringify([
         "Sound",
-        "Idle hints",
         "Whole animals",
         "Sliced animals",
         "Shape pictures",
@@ -1825,73 +1722,18 @@ async function runOpening() {
   check("a grown-up can put the child back", (await levelNumber()) === 6);
 }
 
-async function runHintAndRest() {
+async function runRest() {
   await goToLevel(6);
-  // --- the idle hint --------------------------------------------------------
-  // The anti-frustration valve, and the one part of the game that happens when
-  // nothing happens - so it cannot be checked any other way than by leaving a
-  // real board alone in a real browser. Driven from the panel, on "Sooner", so
-  // the run waits seconds rather than a quarter of a minute. See src/hint.ts.
-  await holdGrownUps();
-  await pressInPanel('.grownups-choice[data-value="sooner"]');
-  await pressInPanel(".grownups-done");
-  check("nothing glows the instant the panel closes", (await hintOnBoard()) === null);
-
-  const glow = await hintAfterAWhile();
-  check(`a board left alone gets a hint (${glow ? glow.piece : "nothing glowed"})`, glow !== null);
-  if (glow) {
-    check(`the hint points at both ends (${glow.marks} marks)`, glow.marks === 2);
-    // A filled target in this game is an opaque animal in its hole. The hint is
-    // stroke only, so it cannot be mistaken for one.
-    check(`nothing about the hint is filled in (${glow.filled} filled shapes)`, glow.filled === 0);
-    check("the hint is about a piece still waiting", glow.placed === false);
-    const onTarget = glow.bright && glow.hole ? away(glow.bright, glow.hole) : Infinity;
-    const tolerance = glow.hole ? Math.max(glow.hole.width, glow.hole.height) * 0.08 : 0;
-    check(
-      `the bright end sits on that piece's hole (${onTarget.toFixed(1)}px out of ${tolerance.toFixed(1)} allowed)`,
-      onTarget <= tolerance,
-    );
-    const onPiece = glow.quiet && glow.waiting ? away(glow.quiet, glow.waiting) : Infinity;
-    check(
-      `the quiet end sits under the piece it means (${onPiece.toFixed(1)}px out of ${tolerance.toFixed(1)} allowed)`,
-      onPiece <= tolerance,
-    );
-  }
-  await shot("09b-idle-hint");
-
-  // Any interaction at all takes it down, including one that achieves nothing.
-  await tapEmptySpot();
-  check("a touch anywhere takes the hint away", (await hintOnBoard()) === null);
-  const again = await hintAfterAWhile();
-  check("and it comes back if the child goes quiet again", again !== null);
-
-  // A piece going home is progress, so the hint goes with it.
-  if (again) await dragAnimal(again.piece);
-  check("placing a piece takes the hint away", (await hintOnBoard()) === null);
-  check("the hinted piece was one that fitted", (await placedCount()) === 1);
-
   // --- the game asleep ------------------------------------------------------
   // Nothing on this screen moves while nobody is playing with it. `?rest=`
   // makes the two minutes a few seconds; everything else is the game as a child
   // would leave it. See src/rest.ts.
 
-  // A board with a hint on it is the awkward case: the help has to stay, and it
-  // has to stay *visible*, rather than being frozen wherever the fade was.
   await goToLevel(6, { restAfter: 7 });
-  const sleepingGlow = await hintAfterAWhile();
-  check("a hinted board goes to sleep with the hint on it", sleepingGlow !== null);
+  await waitUntil(isAsleep, (asleep) => asleep === true, 10_000);
   check("the game sleeps when nobody plays with it", (await isAsleep()) === true);
   const asleepOn6 = await runningAnimations();
   check(`nothing is left running on a sleeping board (${asleepOn6})`, asleepOn6 === 0);
-  const pulse = await hintPulse();
-  check(
-    `a sleeping hint holds rather than pulsing (${pulse ? pulse.animation : "no hint"})`,
-    pulse !== null && pulse.animation === "none",
-  );
-  check(
-    `and holds bright rather than mid-fade (${pulse ? pulse.opacity.toFixed(2) : "no hint"})`,
-    pulse !== null && pulse.opacity >= 0.8,
-  );
 
   // Turning a tablet that is already asleep rebuilds the board for the new
   // shape, and the rebuilt board must arrive as still as the one it replaced.
@@ -2092,17 +1934,7 @@ async function runAnimals() {
   check(`an arc arrives even if nobody taps (${arcsAlone})`, arcsAlone > arcsAfter);
   check("the rainbow lets the way onwards through", (await waitForFinishButton()) === true);
   check("a middle level offers the next puzzle", (await finishLabel()) === "Next puzzle");
-  // A celebration is never interrupted by a hint. The board it was armed
-  // against finished before the rainbow was painted, and the hint went with it.
-  const duringRainbow = await hintAfterAWhile();
-  check("nothing is hinted at during a celebration", duringRainbow === null);
   await shot("13b-chapter1-rainbow");
-
-  // Hints back off, so the rest of the run's screenshots show the levels rather
-  // than a glow that happened to be due when the shutter went.
-  await holdGrownUps();
-  await pressInPanel('.grownups-choice[data-value="off"]');
-  await pressInPanel(".grownups-done");
 }
 
 async function runSliced() {
@@ -2112,7 +1944,7 @@ async function runSliced() {
   await goToLevel(1);
   await evaluate(`localStorage.setItem('animal-puzzle', JSON.stringify({
     version: 1, level: 6, furthest: 6,
-    settings: { sound: true, hints: 'later' }
+    settings: { sound: true }
   }))`);
 
   // --- a place the child had got to, left alone ----------------------------
@@ -2202,54 +2034,6 @@ async function runPolygon() {
   const [oneShape, itsTwin] = (await twinShapes()) ?? [];
   check("a picture of six shapes has two the same in it", Boolean(oneShape && itsTwin));
   const twinShadow = await centreOf(`.hole[data-piece="${itsTwin}"]`);
-
-  // A hint here must offer *both* shadows a twin could fill. Naming one of two
-  // equally right places would teach a rule the game does not have - and the
-  // child being hinted at is the least able to find that out. So hints go back
-  // on for one check, aimed at a piece with a twin by touching it first.
-  const ownShadow = await centreOf(`.hole[data-piece="${oneShape}"]`);
-  await holdGrownUps();
-  await pressInPanel('.grownups-choice[data-value="sooner"]');
-  await pressInPanel(".grownups-done");
-  const grabbed = await drawingCentreOf(oneShape);
-  await tapAt(grabbed.x, grabbed.y);
-  check("a drag that goes nowhere leaves the board alone", (await placedCount()) === 0);
-  const choice = await hintAfterAWhile();
-  check(
-    `the hint follows the piece last touched (${choice ? choice.piece : "nothing glowed"})`,
-    choice?.piece === oneShape,
-  );
-  const offered = choice?.brights ?? [];
-  const couldTake = (await placesFor(oneShape)) ?? [];
-  check(
-    `every place that would take it is offered, and nothing else (${offered.length} bright for ${couldTake.length} free places)`,
-    couldTake.length > 1 && offered.length === couldTake.length,
-  );
-  for (const [name, shadow] of [
-    ["its own", ownShadow],
-    ["its twin's", twinShadow],
-  ]) {
-    let closest = null;
-    let nearest = Infinity;
-    for (const mark of offered) {
-      const gap = away(mark, shadow);
-      if (gap < nearest) {
-        nearest = gap;
-        closest = mark;
-      }
-    }
-    // Measured against the mark's own size: it is the shadow's outline
-    // *stroked*, so it is bigger than the shadow but concentric with it.
-    const room = closest ? Math.max(closest.width, closest.height) * 0.12 : 0;
-    check(
-      `${name} shadow is one of the places offered (${nearest.toFixed(1)}px out of ${room.toFixed(1)} allowed)`,
-      nearest <= room,
-    );
-  }
-  await shot("19b-idle-hint-every-place");
-  await holdGrownUps();
-  await pressInPanel('.grownups-choice[data-value="off"]');
-  await pressInPanel(".grownups-done");
 
   await dragAnimal(oneShape, { onto: itsTwin });
   check("a shape is taken by its twin's shadow", (await placedCount()) === 1);
@@ -2979,7 +2763,7 @@ async function runScreens() {
 
 const segments = [
   { name: "opening", run: runOpening },
-  { name: "hint-and-rest", run: runHintAndRest },
+  { name: "rest", run: runRest },
   { name: "level3-level6-animals", run: runAnimals },
   { name: "level11-sliced", run: runSliced },
   { name: "level13-level18-polygon", run: runPolygon },

@@ -77,19 +77,6 @@ export interface PuzzleKind {
   target(puzzle: Puzzle, layout: Layout, piece: PieceId): Point;
 
   /**
-   * Every place this piece would be accepted *right now*, for a hint to point
-   * at. Top-left of each, like `target`, and never empty for an unplaced piece.
-   *
-   * The mirror image of `settle`. A kind that has a choice of place must
-   * implement this, because a hint that names one of several equally right
-   * places teaches the child a rule the game does not have - and the child who
-   * is being hinted at is in no position to discover that the rule was a lie.
-   * Most kinds have no choice to offer, so the host falls back to `target`
-   * alone and they need not implement it.
-   */
-  openTargets?(puzzle: Puzzle, layout: Layout, piece: PieceId): readonly Point[];
-
-  /**
    * Does this drop count? `at` is the top-left of the piece's box where the
    * finger let go. Kinds decide their own forgiveness.
    */
@@ -104,9 +91,7 @@ export interface PuzzleKind {
    * Most kinds have nothing to record: a piece has one hole and `target`
    * already knows it. A polygon scene does, because two identical shapes may
    * fill either of two identical shadows, and the drop point is the only thing
-   * that says which (`kinds/polygon.ts`). A kind that implements this should
-   * implement `openTargets` too: the same choice that has to be written down
-   * has to be pointed at.
+   * that says which (`kinds/polygon.ts`).
    */
   settle?(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): void;
 
