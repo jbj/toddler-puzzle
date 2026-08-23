@@ -78,11 +78,9 @@ export const PUZZLE_KINDS = ["shape-match", "sliced", "polygon", "jigsaw", "shat
 export type PuzzleKindId = (typeof PUZZLE_KINDS)[number];
 
 /**
- * Which kinds of puzzle are in play, as a grown-up left them (#8). Thirty
- * levels have to suit one particular child, and a two-year-old who cannot yet
- * do jigsaws should not meet six of them: a kind switched off here is skipped
- * wherever it appears, so the game goes on running forward through the levels
- * that are left.
+ * Which kinds of puzzle are in play, as a grown-up left them. A kind switched
+ * off here is skipped wherever it appears, so the game keeps moving forward
+ * through what remains.
  *
  * Every function here takes it as an option and treats an absent one as "all
  * of them", so nothing that does not care about the setting has to know it
@@ -532,9 +530,9 @@ export function nextLevel(level: number, enabled?: EnabledKinds): number {
 }
 
 /**
- * The last level of the set, which gets the finale and the replay arrow. With
- * a kind switched off that is not necessarily level 30 - the end of the game is
- * the end of what is being played, not the end of the table.
+ * The last playable level gets the finale and replay arrow. With a kind switched
+ * off, the end of the game is the end of what is being played, not necessarily
+ * the end of the table.
  */
 export function isLastPlayable(level: number, enabled?: EnabledKinds): boolean {
   return playableLevels(enabled).at(-1)?.level === level;

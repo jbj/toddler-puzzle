@@ -1,206 +1,100 @@
 # Navigation
 
-The shell around the puzzle: getting from one level to the next, how a chapter
-and the game end, resuming, and the one panel a grown-up can open. What a level
-holds is elsewhere - see
-[`puzzle-kinds.md`](puzzle-kinds.md). The feel of a
-level - sound, sparkles, the hint, drag, rest - is in
+This is the shell around a puzzle: forward progression, celebrations,
+persistence, reset, and grown-up controls. Puzzle contents belong in
+[`puzzle-kinds.md`](puzzle-kinds.md); sound, hints, rest, and drag belong in
 [`feel.md`](feel.md).
 
 ## Forward only
 
-- Thirty levels, five chapters of six, starting on level 1. The level table is
-  `src/levels.ts`, not here.
-- Finishing a level clears the tray and puts one big button in it, leading to the
-  next level. Every level puts that button on top of a celebration, and holds it
-  back `WAY_OUT_MS` (4.5 s) rather than putting it up in the same tick - a
-  fraction of the celebration, which runs on long after.
-- The button after the last level starts the game over (`nextLevel` in
-  `src/levels.ts` wraps).
-- No menu, difficulty picker, settings, failure state or score on the play
-  surface - putting one there weakens an invariant. See
+- The level table owns the ramp, its order, and progression boundaries.
+- Completing a puzzle clears the tray and offers one large way onward.
+- The final way onward restarts the ramp.
+- The child's surface has no menu, difficulty picker, settings, failure state,
+  or score. See
   [Keep the game moving forward](<decisions/Keep the game moving forward.md>).
-- A grown-up shortens the ramp only by switching a kind off (panel below); the
-  table is never edited and nothing is added to the play surface. Levels of an
-  off kind are stepped over. `nextLevel`, `endsChapter`, `playableFrom` and
-  `isLastPlayable` in `src/levels.ts` all take the same optional `EnabledKinds`
-  and answer about the game actually in play. `src/game.ts` reads the setting
-  when it needs it rather than copying it, so a switch moved mid-level is
-  answered by the button at that level's end. See
-  [A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
-- The five dots by the reset button (`buildChapterDots` in `src/board.ts`) are one
-  per chapter, filled up to the chapter in play. They are an indicator, not a
-  control: they carry `pointer-events: none`. Do not make them tappable.
-- `?level=` in the URL (`src/main.ts`) starts partway along the ramp - a tool for
-  the screenshot run and for working on the game, not a difficulty picker. Do not
-  surface it. It wins over the saved level and writes nothing: a deep-linked
-  level, and the loop back to level 1 after it, leave the child's own place
-  untouched.
-- The reset button re-deals the current level through the same path as moving
-  between levels (`startPuzzle` in `src/game.ts`). **It is held for two seconds,
-  never tapped**, by the same rule and the same wiring as the "Grown-ups" button
-  (`src/hold.ts`): it throws away a puzzle the child may be one piece from
-  finishing, and it sits in the corner a thumb rests on. Two things differ from
-  the panel's button, both deliberate. It shows no wording, because the child
-  cannot read and the ring says everything a grown-up needs, so the gate's
-  `prompt` is ignored here; and its watcher is taken down in `mount`, because the
-  board under it is rebuilt on every level, every re-deal and every rotation. The
-  press is not stopped, so it stirs the idle hint and unlocks audio like any
-  other touch. See
+- Progress indicators are indicators, not controls.
+- URL overrides are development tools and must not become player navigation.
+- Reset re-deals the current puzzle through the normal start path. Because it
+  discards progress, it requires the shared held-press gate and gives visible
+  progress without asking the child to read. See
   [Hold the button that throws the puzzle away](<decisions/Hold the button that throws the puzzle away.md>).
+- A grown-up kind filter changes which rows progression visits without mutating
+  the table. Every progression helper must answer about the same filtered game.
 
-## The end of a level
+## Celebrations
 
-Every level ends with a celebration, in two tiers, both owned by
-`src/celebration.ts`:
+Every completed puzzle receives a celebration. Progression boundaries receive
+the larger celebrations selected by the canonical celebration mapping; other
+levels receive a smaller interlude.
 
-- the five that end a chapter get the big ones - a rainbow, blossom, a parade,
-  fireworks, and after level 30 the finale. `CHAPTER_CELEBRATIONS` says which;
-  `endsChapter` in `src/levels.ts` says when one is due, read off the level
-  table.
-- the rest get an **interlude**: balloons, beach balls, confetti, streamers.
-  `INTERLUDES` is the rotation and `interludeFor(level)` picks by level number,
-  so two levels running never end alike and the same level always ends the way
-  it did.
-
-An interlude is deliberately the smaller thing: weather rather than an event.
-Nothing in one has to be watched, it answers a finger the same way wherever it
-is touched, and a child who sits still and looks at it has played it correctly.
-An interlude with something to achieve in it would be a sixth puzzle kind
-nobody asked for. The sound follows the same line - a level's fanfare with the
-interlude's own arrival behind it, always shorter than the shortest chapter
-fanfare.
-
-Balloons are in both tiers and end no chapter. They are first in the interlude
-rotation, so they are the first celebration a child ever sees, and they burst
-again in the finale.
+- **Played, not watched.** A celebration responds to a finger immediately.
+- **Never made from the finished board.** The puzzle remains visible, so reused
+  subject matter looks like a duplicate rather than a reward. See
+  [A celebration is not made of the board](<decisions/A celebration is not made of the board.md>).
+- **Not a puzzle kind.** Celebrations have no pieces, targets, difficulty, or
+  level-table rows.
+- **Not a trap.** The way onward appears while play continues. New arrivals may
+  stop, but things already present remain playable.
+- **Never advances by itself.** Only the child's onward action changes the level.
+- **The initial pause is deliberate.** It gives the finished board and
+  celebration a moment before the conditioned onward control appears. The
+  celebration responds throughout, a failed celebration creates no empty wait,
+  and unattended time does not consume the pause.
+- **Layering protects the control.** Celebration interaction must not cover the
+  onward control or effects above it.
+- **Reduced motion preserves the event.** It changes movement, not whether the
+  child receives and can play the celebration.
 
 See
 [A celebration is played, and it ends by itself](<decisions/A celebration is played, and it ends by itself.md>)
 and
 [A celebration between every level](<decisions/A celebration between every level.md>).
 
-- **Never made of what the finished board is made of.** The puzzle stays on
-  screen to be admired, so anything the celebration shares with it arrives as a
-  second copy. The parade ends the chapter of coloured shapes, not the chapter of
-  animals, and deals its walkers from the animals the board is *not* holding
-  (`paradeCast`). Check what a chapter's last level leaves on screen before
-  hanging a celebration on it. See
-  [A celebration is not made of the board](<decisions/A celebration is not made of the board.md>).
-- **Played, not watched.** Everything answers a finger in the tick it lands.
-- **Not a level and not a `PuzzleKind`.** No pieces, targets, difficulty or table
-  row. It is handed a layer, answers the finger itself, returns a teardown, and
-  keeps progress outside the board so a rotation does not lose it.
-- **Not a trap at either end.** The button onwards goes up while the celebration
-  is still running; new things keep arriving unasked for `CELEBRATION_SPAN_MS`;
-  when the span runs out only the *arriving* stops, and whatever is on screen
-  keeps answering. A floater hands its place on partway through its journey
-  (`TUNING.handOnAt`) so a batch released together cannot reach the edge together
-  and leave a hole.
-- **The button arrives rather than sitting there, after every celebration and
-  only the first time.** It holds back `WAY_OUT_MS` in `src/celebrate.ts`, which
-  explains the number: 4.5 seconds, one balloon's climb of a landscape board, the
-  same in both orientations and for every celebration. That pause is the point
-  rather than a precaution - it is what the child gets instead of the next board
-  landing on the one they have just finished, and it is what stops the most
-  conditioned thing on the screen being pressed before anything else is noticed.
-  Three things keep it from being a trap, all load-bearing: the celebration
-  answers a finger throughout, so only the way *out* is withheld; a celebration
-  that never arrived gets no pause at all, because an empty wait would be a fault
-  (`showFinish` puts the button up at once when there is no celebration); and the
-  wait runs on `rest.ts` rather than `setTimeout`, so a tablet put down during it
-  does not have the button arrive behind the freeze. Do not re-run it after a
-  rotation: `showFinish` takes a `fresh` flag for exactly that.
-- **There is one kind of paper.** Confetti falls in the confetti interlude and
-  nowhere else, and every slip of it answers a finger. Do not open the other
-  celebrations with a throw of the same paper that cannot be touched: a child
-  cannot tell two identical slips apart, and one that ignores a finger teaches
-  them that paper does. What every celebration opens with instead is the sparkle
-  burst in `celebrate.ts`, which has never been touchable and does not look as if
-  it should be.
-- **Nothing here changes the level by itself.** The finale never winds down; the
-  way out is the same button.
-- **Drawn below the effects layer.** `board.celebrationLayer` sits between the
-  pieces and `fx`, so a balloon or a full-board tap catcher can never cover the
-  button onwards. Do not move it above.
-- **A floater and its burst are `src/pop.ts`.** `releasePoppable` looks after one
-  floater's drift, hit target and removal; `popBurst` is the burst alone, so the
-  balloons interlude and the finale pop the same way. Under
-  `prefers-reduced-motion` a floater does not drift at all rather than collapsing
-  to a millisecond, which would leave an empty sky:
-  [Under reduced motion, a floater holds still](<decisions/Under reduced motion, a floater holds still.md>).
+The celebration mapping, rotations, spans, and timing values are code-owned.
+Tests derive coverage from those canonical sources.
 
-## Coming back to it
+## Persistence
 
-The level in play is remembered in `localStorage` and the next visit resumes
-there. `src/progress.ts` owns the record - current level, furthest reached, and
-the grown-up settings - and `startPuzzle` in `src/game.ts` is the one place that
-tells it which level is in play. Re-dealing the same level writes nothing. See
+`src/progress.ts` owns the current level, furthest progress, and grown-up
+settings. `src/game.ts` records the level actually in play.
+
+- **Storage failure is not a player-visible error.** Throwing, disabled, full,
+  corrupt, or unfamiliar storage falls back to a playable in-memory record.
+- **Read and write capability are independent.** Keep usable saved progress even
+  when a later write fails.
+- **Stored levels are validated against the current table.** Invalid progress
+  returns to the start rather than guessing another row.
+- **Re-dealing does not count as progress.**
+- **Only the grown-up panel clears progress.**
+- **Settings are read at the boundary that uses them.** Do not copy settings
+  into parallel state that can drift.
+- **Storage format changes are tolerant where fields are independent.**
+  `STORAGE_VERSION` in `src/progress.ts` and its tests own the versioning policy.
+
+See
 [Remember where the child stopped](<decisions/Remember where the child stopped.md>).
 
-- **Storage failing is not an error.** iPad Safari in private browsing throws on
-  the mere mention of `localStorage`. Every failure - throwing, disabled, full,
-  corrupt, an unknown version - falls back silently to an in-memory record and
-  level 1. Never surface it. Storage that reads but cannot write is still read, so
-  a device out of quota resumes where the child was; `persists` tells that apart,
-  and once false it stays false.
-- **A stored level is checked against the table.** A level number the thirty no
-  longer has sends the child to level 1, not the last level.
-- **Progress is cleared from the grown-up panel and nowhere else**, via
-  `clearProgress()`. The play-surface button only deals a fresh puzzle for the
-  current level.
-- **Settings live in the record** - `sound`, `hints`, `kinds` - set from the
-  panel. `applySettings` in `src/grownups.ts` is the single place `sound` and
-  `hints` reach the game: `sound` calls `setSoundEnabled` in `src/audio.ts`,
-  `hints` calls `setHintTiming` in `src/hint.ts`. Both are answered on the board
-  in front of the grown-up, not at the next level. `kinds` is deliberately not in
-  `applySettings`: `src/game.ts` asks the record which kinds are in play when it
-  needs to know, and `src/main.ts` resumes forward off a level whose kind has
-  since been switched off.
-- **No `rotation` setting**: the feature was dropped, so the field and switch went
-  with it. See
-  [Rotation mode is not built, and the switch is gone](<decisions/Rotation mode is not built, and the switch is gone.md>).
-- **`STORAGE_VERSION` is not bumped for a field coming or going.** Each field is
-  read on its own and an unknown one is passed over, so a record written before
-  `kinds` reads as the whole ramp and one written while `rotation` existed still
-  resumes on the right level.
+## Grown-up controls
 
-## The grown-up panel
+The grown-up panel is the only part of the game intended for a reader.
 
-The one part of the game not for the child (`src/grownups.ts`): a map of the
-thirty levels, the switches, and the only reset in the game. See
-[Put the settings behind a two-second hold](<decisions/Put the settings behind a two-second hold.md>).
+- The entry control is visible and plainly labelled, not a secret gesture.
+- Opening requires one continuous hold through the shared hold state machine;
+  taps do not accumulate.
+- The panel uses ordinary adult controls rather than toddler styling.
+- It is mounted outside the replaceable board so closing it returns to the same
+  puzzle.
+- Choosing a level does not mark that level as reached.
+- A kind may be disabled, but the last playable kind may not.
+- Switching off the current kind moves forward to a playable row.
+- Reset asks for confirmation and is the only progress-clearing control.
+- Every option must have a current effect; do not leave placeholder switches.
 
-- **The button is visible and says "Grown-ups".** Not a secret gesture, and must
-  not become one.
-- **Tapping never opens it.** A press starts a two-second hold (`HOLD_MS`) and
-  shows "Hold to open"; a release restarts the hold from zero, so taps never add
-  up. The rule and the wiring are `src/hold.ts`: `createHoldGate`, a pure state
-  machine with the clock passed in and no DOM, so hundreds of taps are testable
-  in Vitest, and `watchHold` round it, shared with the reset button so that
-  "held" means the same two seconds on both. The ring is painted from the same
-  gate on an animation frame, but the opening is armed on the clock.
-- **The prompt outlives the press.** "Hold to open" stays up for `PROMPT_MS`
-  after a tap.
-- **The panel is not toddler-styled.** Small text, ordinary switches and spacing.
-- **It never touches the board.** It is HTML mounted outside `#app` (which
-  `buildBoard` replaces wholesale), so closing it puts the child back mid-puzzle
-  without re-dealing. Only choosing a level, or switching off the kind of the
-  level in play, changes the board.
-- **Choosing a level is not reaching it.** The map's squares come from `furthest`,
-  and a chosen level goes through `jumpToLevel`, not `reachLevel`, so reading the
-  map never fills it in. `createGame` returns the handle the panel drives
-  (`chooseLevel`, `currentLevel`).
-- **A kind can be switched out, but never the last one.** Five switches, one per
-  `PuzzleKindId`, walked off `PUZZLE_KINDS` in `src/levels.ts` so a sixth kind
-  cannot arrive without one. `toggleKind` is the rule and is pure: it refuses the
-  press that would leave nothing to play, and `refresh` draws the lone survivor as
-  held on. Switching off the kind under the child moves them to the next level in
-  play. The map keeps all thirty squares, fades the skipped ones, and they stay
-  pressable. See
-  [A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
-- **Reset asks twice**, and is the only place progress can be cleared.
-- **Every option does something.** A switch for sound, a choice of idle-hint
-  timing, and a switch per kind. `npm run shot` reads the option labels and checks
-  the list so a dropped one cannot creep back, and reads the notes underneath and
-  fails on any that admits to doing nothing.
+See
+[Put the settings behind a deliberate hold](<decisions/Put the settings behind a deliberate hold.md>)
+and
+[A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
+
+The current controls, labels, map shape, and hold timing live in the panel,
+level table, and hold module; browser checks guard the assembled behavior.

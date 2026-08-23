@@ -5,10 +5,9 @@
  *
  * The bundle is split by kind (`kinds/registry.ts`), and the celebration that
  * ends a chapter is a chunk of its own, so first paint no longer waits for
- * artwork the child will not see for twenty minutes. Split naively that would
- * be a *worse* game, not a smaller one: a two-year-old who finishes level 18
- * and is shown nothing while a chapter downloads has been let down in exactly
- * the way this game is careful never to let anybody down.
+ * artwork the child will not see for a while. Split naively that would be a
+ * *worse* game, not a smaller one: a two-year-old who finishes a level and is
+ * shown nothing while its kind downloads has been let down.
  *
  * So nothing here is loaded on demand. It is loaded *early*, in the background,
  * in the order the levels will want it, starting as soon as the first board is
@@ -17,8 +16,7 @@
  * and the level seam is a resolved promise rather than a fetch.
  *
  * That is also what keeps the offline promise. Everything is fetched during the
- * *first* sitting, so whatever cache held the single bundle holds all of the
- * chunks, and a second sitting asks the network for no more than it used to.
+ * *first* sitting, so the browser cache has every chunk for later play.
  * See docs/decisions/A chapter is warmed before it is needed, not fetched when
  * it is.md.
  *

@@ -3,13 +3,9 @@
  *
  * Rest: what the game does when nobody is playing it.
  *
- * A board left alone used to go on costing frames forever. The idle hint's glow
- * pulses (`hint-pulse` in `style.css`, and an opacity animation on SVG repaints
- * rather than composites), a celebration's balloons drift and refill, the
- * finish button breathes on `iterations: Infinity`, a parade walks round and
- * refills itself on a timer, and the audio context renders silence into the
- * speakers. A tablet put down on a finished chapter would have carried on doing
- * all of that until its battery went.
+ * A board can keep costing frames while nobody is playing: the idle hint pulses,
+ * celebrations animate, the finish button breathes, and the audio context
+ * renders silence. A tablet put down must not carry on doing that indefinitely.
  *
  * So after two minutes with nothing touched - and the moment the tab is hidden -
  * the whole page is frozen, and anything that says somebody is there unfreezes

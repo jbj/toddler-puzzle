@@ -10,16 +10,10 @@
  * mouse, touch and stylus all take the same path and a fast-moving finger that
  * outruns the piece still keeps control of it.
  *
- * **The engine must never depend on a release arriving.** That is the whole
- * point of the split, and it is what this file used to get wrong. A drag lived
- * in one variable, the only way out of it was a `pointerup` or `pointercancel`
- * on the stage for exactly that pointer, and a press was refused while it was
- * set - so a release that never arrived left the piece frozen and every
- * subsequent finger, on any piece, ignored until the board was re-dealt. On an
- * iPad in a toddler's hands that is not a rare case: WebKit drops the release
- * for a captured pointer under multi-touch, a finger that lifts on the
- * safe-area strip outside the SVG lands on an element the stage never hears
- * about, and an edge swipe or an app switch takes the touch away outright.
+ * **The engine must never depend on a release arriving.** WebKit can drop the
+ * release for a captured pointer under multi-touch, a finger can lift outside
+ * the SVG, and an edge swipe or app switch can take the touch away outright. A
+ * new valid press therefore replaces any stale drag.
  *
  * So the rule holds a drag but never gates on one:
  *
@@ -107,9 +101,8 @@ export function createDragging(layout: Layout, callbacks: DragCallbacks): Draggi
       // Asked before anything is dropped, so a stray palm on a piece that is
       // already home cannot knock the piece a child is carrying out of the air.
       if (!callbacks.isDraggable(piece)) return false;
-      // The newest finger wins. A toddler drags with more than one hand, and a
-      // press that was refused because another finger was still notionally down
-      // is how the board used to lock up.
+      // The newest finger wins. A toddler drags with more than one hand, so a
+      // stale pointer must not block a new press.
       drop();
 
       const current = callbacks.getPosition(piece);

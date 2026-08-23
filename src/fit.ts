@@ -153,13 +153,9 @@ const orderedBy = (shares: readonly Size[], measure: (share: Size) => number): n
  * Pack the cast into `rows` shelves, taking the pieces in `order` and giving
  * each to the shelf with the least on it so far.
  *
- * A tray used to be a grid: every cell the size of the biggest piece's box,
- * however little the piece standing in it drew. That is nearly free for a cast
- * of animals, which are all much of a size, and expensive for a shattered
- * picture, whose whole point is that its shards are not - so the widest shard
- * set the size of all of them and the tray filled the canvas while drawing
- * about two thirds of it. Packed as shelves the leftover goes back into the
- * slot, which is to say into the picture the child is rebuilding.
+ * Equal cells waste space for a heterogeneous cast because the widest shard
+ * sets every cell's width. Shelves return that space to the slot, which is to
+ * say into the picture the child is rebuilding.
  *
  * Two orders are worth trying and both are offered to the search: widest first
  * balances the rows' widths, tallest first gathers the tall pieces into the same

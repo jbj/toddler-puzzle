@@ -1,40 +1,30 @@
 # Decision records
 
-A record here explains a choice that is easy to mistake for an oversight and
-"fix". Keep it lightweight: context, decision, consequence, in a few paragraphs
-and with no ceremony.
+A record here explains one current choice that is easy to mistake for an
+oversight and undo. Topic guides state the rule; a decision record supplies
+only the extra rationale needed when that rule is questioned.
 
-These are the **secondary** layer of this project's documentation. The primary
-layer is the topic files mapped by
-[`.github/copilot-instructions.md`](../../.github/copilot-instructions.md).
-Those say what the rule is; an agent chooses the ones its task needs. A record
-says why, at more length than a rule can carry. Read one when you are about to
-argue with a rule, or when you are writing a rule that needs an argument behind
-it.
+## Contents
+
+- State the current decision in present tense.
+- Keep the durable reason and consequence.
+- Remove chronology, superseded behavior, issue history, benchmarks, copied
+  code values, inventories, and implementation walkthroughs.
+- Point to the owning topic or canonical code only when it helps locate the
+  current rule.
+- Delete a record when no current decision remains. Merge records that have
+  become one decision.
 
 ## Naming
 
-**The filename is a short sentence saying what was decided**, with spaces, in
-the same words as the record's `#` heading - "A hint points at both ends",
-"Keep the game moving forward". Long is fine. No dates, no numbers, no slugs.
+The filename is a short sentence saying what is decided, in the same words as
+the `#` heading. Use spaces, with no date or sequence number.
 
-Link one from Markdown with the destination in angle brackets, because the name
-has spaces in it:
+Link a record with the destination in angle brackets:
 
-    [A hint points at both ends](<A hint points at both ends.md>)
+```markdown
+[A hint points at both ends](<A hint points at both ends.md>)
+```
 
-From a source comment or a workflow, write the path as plain text:
-`See docs/decisions/A hint points at both ends.md.`
-
-## There is deliberately no index
-
-The directory listing is the index, which is why the names have to carry their
-own summary. A table here would be a file every pull request has to edit, and
-therefore the one place two of them reliably collide.
-
-## They are living documents
-
-Revise a record in place when the reasoning moves on, and rename the file when
-the decision itself changes - the filename is the claim, so a record that no
-longer says what its name says is worse than no record. What matters is that the
-argument in front of a reader is the one the project is actually running on.
+There is no maintained index. The directory listing is the index, so each
+filename must carry its own summary.

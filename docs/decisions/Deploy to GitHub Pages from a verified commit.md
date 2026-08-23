@@ -2,66 +2,57 @@
 
 ## Context
 
-The game is a static bundle of about 24 kB with no runtime dependencies, no
-network requests and no server side, so hosting it is a matter of putting three
-files somewhere. GitHub Pages is where they already are.
+The game is a small static bundle with no runtime dependencies, no network
+requests and no server side, so hosting it is a matter of publishing a build
+folder to GitHub Pages. Two details decide how that publishing works.
 
-Two details decide how it is done.
+The first is the path: a project site is served under a repository-name
+prefix, not at the root, while the same build output is also served at the
+root by local scripts that drive real drags through it and by the preview
+command. A build configured only for the prefixed path would publish
+correctly and break those local checks, or vice versa.
 
-The first is the path. Pages serves this repository as a project site at
-`https://jbj.github.io/toddler-puzzle/`, so the site lives under a prefix. Vite's
-default `base` of `/` would emit `/assets/index-....js`, which is a 404 under
-that prefix. But the same `dist/` is served at the *root* by
-`scripts/shot.mjs`, which is what `npm run shot` drives real drags through, and
-by `npm run preview`. Pinning `base` to `/toddler-puzzle/` would publish
-correctly and break the check that proves the published thing works.
-
-The second is when to publish. `main` is protected: a change arrives by pull
-request with the `Verify` check green, so what lands has passed `npm run verify`.
-A workflow that built and deployed on `push` would nonetheless race the CI run
-of that same push, and would publish regardless of how it turned out.
+The second is when to publish. The default branch is protected so that
+whatever lands has passed full verification by pull request, but a workflow
+that builds and deploys on every push to that branch would race the CI run
+of that same push rather than depending on its result, and would publish
+regardless of how CI concluded.
 
 ## Decision
 
-Set `base: "./"` in `vite.config.ts`. Relative URLs are correct at the root and
-under any prefix, so there is one build artifact, it is the one that ships, and
-the screenshot run exercises exactly it. A custom domain later changes nothing.
+Build with relative asset URLs, so the same build artifact is correct
+whether served from the root or from a path prefix, and the same artifact
+that is checked locally is the one that ships.
 
-Trigger the deploy from the CI run rather than from the push:
-`.github/workflows/pages.yml` listens for a `workflow_run` completion of the CI
-workflow on `main`, runs only when that run came from a push and concluded
-`success`, and checks out `github.event.workflow_run.head_sha` — the commit CI
-actually verified, not whatever `main` points at by the time the deploy starts.
+Trigger the deploy from CI's completion rather than from the push itself:
+the deploy workflow watches for the CI workflow to finish on the default
+branch, runs only when that run was triggered by a push and concluded
+successfully, and checks out the exact commit CI verified rather than
+whatever the default branch points to by the time the deploy starts.
 
-Publish as an artifact: `actions/upload-pages-artifact` uploads `dist/` and
-`actions/deploy-pages` hands it to the Pages service. The workflow holds
-`contents: read`, plus the `pages: write` and `id-token: write` that the Pages
-deployment itself needs. It commits nothing, to any branch, ever.
+Publish by uploading the build output as a workflow artifact and handing it
+to the Pages deployment action, rather than committing built output to a
+branch. The deploy workflow commits nothing, to any branch, ever.
 
 ## Consequences
 
-No `gh-pages` branch and no build output in the repository. Git history after a
-hundred deploys looks like git history after one. What accumulates is a list of
-deployments under the `github-pages` environment and the workflow run history,
-both outside git and both on GitHub's own retention.
+There is no committed build branch and no build output in version control;
+what accumulates is deployment and workflow-run history, kept outside git on
+GitHub's own retention.
 
-The deploy job builds again rather than reusing CI's output. Downloading an
-artifact produced by another workflow run and publishing it is the shape of
-problem [Let the author attach the
-screenshots](<Let the author attach the screenshots.md>) is about; a second `npm
-ci && npm run build` costs a minute and needs no privilege. It does not re-run
-`npm run verify`: the art check and the shot run need Chrome and system
-packages, and CI has already run all of it on this commit.
+The deploy job builds again rather than reusing CI's build output, since
+downloading an artifact from another run and republishing it is the kind of
+indirection [Let the author attach the
+screenshots](<Let the author attach the screenshots.md>) argues against; a
+second clean build is cheap and needs no elevated privilege. It does not
+repeat the full verification CI already ran on that commit.
 
-The repository's Pages source must be "GitHub Actions". The `enablement` input
-of `actions/configure-pages` would set that from the workflow, but only with a
-token carrying administration rights, which this workflow does not have and
-should not be given for a one-off. It is set once, by hand or by
-`gh api -X POST repos/jbj/toddler-puzzle/pages -f build_type=workflow`.
+The repository's Pages source must be configured for deployment via
+workflow, which is a one-time repository setting rather than something this
+workflow can safely set for itself, since doing so needs privileges the
+deploy workflow should not be given.
 
-A `workflow_run` trigger is inert until the workflow file is on the default
-branch, so the first deploy comes from the `workflow_dispatch` button or from
-the next push to `main`.
-
-The gate means a red CI run leaves the previous site up. That is the intended
-direction of failure: for a two-year-old mid-puzzle, stale is better than blank.
+The gate means a failed CI run simply leaves the previously published site
+up rather than replacing it with something broken. That is the intended
+direction of failure: for a two-year-old mid-puzzle, stale is better than
+blank.

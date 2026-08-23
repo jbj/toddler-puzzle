@@ -1,138 +1,91 @@
 # Puzzle kinds
 
-How a level is laid out is [`layout.md`](layout.md).
-How a drawing is cut into pieces - sliced animals, jigsaws, shattered pictures -
-is [`cutting.md`](cutting.md).
+Layout belongs in [`layout.md`](layout.md). Cutting one drawing into several
+pieces belongs in [`cutting.md`](cutting.md).
 
-## The host and the kind
+## Host and kind
 
-`src/game.ts` holds no rules. It is a host: picking a piece up, following the
-finger, settling it down, sounds, sparkles, the level lifecycle. Everything that
-could differ between one sort of level and another is a `PuzzleKind`
-(`src/puzzle.ts`): `deal`, `backdrop`, `target`, `accepts`, `isComplete`, and
-the optional `openTargets` and `settle`.
+`src/game.ts` is the host for dragging, settling, feedback, and the level
+lifecycle. Behavior that varies by puzzle belongs behind the `PuzzleKind`
+contract in `src/puzzle.ts`.
 
-- `Puzzle` carries `targets` beside `pieces`: what the layout stands in the
-  scene, one hole each. For shape-match the two lists are the same; for sliced
-  animals they are not, which is why the field exists.
-- `isComplete` is in the contract because not every kind ends with an empty tray.
-- `backdrop` is redrawn whenever the puzzle moves on, which is how a filled hole
-  hides itself under the piece covering it.
-- `settle` is the only place a kind can write down a choice about a drop, since
-  `accepts` is the one moment it is told where the finger let go and `target` is
-  asked again on every re-render. Only the polygon kind implements it.
-- `openTargets` is `settle`'s mirror, and **a kind that implements one must
-  implement the other**: every equally-right place, one point each, never empty
-  for an unplaced piece, so the idle hint can glow all of them rather than naming
-  one of several right answers. See
-  [A hint points at both ends](<decisions/A hint points at both ends.md>).
-- A kind cannot opt out of forgiveness: a refused drop drifts gently back to the
-  tray with a soft tone, never off screen. See
-  [`product.md`](product.md).
+- A kind deals pieces and targets, draws its backdrop, names accepted places,
+  reports completion, and may record a placement choice.
+- Pieces and targets are separate concepts. Several pieces may rebuild one
+  target, and completion need not mean an empty tray.
+- A kind names *where* a piece may go. Shared layout code owns *how close* a drop
+  must be, so no kind can opt out of forgiveness.
+- A kind with several equally valid destinations must expose all open
+  destinations to the idle hint and record the destination actually chosen.
+  Those two capabilities are one contract and must stay paired.
+- Refused drops always return through the host's gentle shared path.
 
-## The level table
+## Difficulty table
 
-`LEVELS` in `src/levels.ts` is the whole difficulty ramp - thirty records, five
-chapters of six - and the only place that decides how hard anything is. A
-record names the `kind`, how many `targets` there are and how many `pieces` fill
-them (the same number except where one thing is cut up), the `snapForgiveness`,
-and optionally a `theme` and `options`.
+`LEVELS` in `src/levels.ts` is the sole source of truth for the difficulty ramp.
+It says what a level asks for; dealing decides which eligible pieces appear.
 
-- Tuning the game is editing that one file. Treat it as the interface it is:
+- **Tune difficulty in the table, nowhere else.** See
   [Put the whole difficulty ramp in one table](<decisions/Put the whole difficulty ramp in one table.md>).
-- The table says *what* a level is, never *which* pieces: the cast is dealt at
-  random when the puzzle starts (`dealPieces`), which is what lets `?seed=` replay
-  a level exactly while two plays are otherwise different.
-- A `theme` narrows what the level deals *from* (`src/themes.ts`, `ANIMAL_THEMES`
-  in `src/assets.ts`). A theme too short for the level is topped up from the rest
-  of the cast and reshuffled rather than throwing - a level that will not start is
-  worse than a level with a stray penguin in it. Two animals in one theme must
-  read differently at a glance, which `npm run art:check` enforces; see
-  [`art.md`](art.md).
-- **A level is its kind, its subject and its size, and no two levels are all
-  three.** The subject is what the row names - `theme`, `options.scene`,
-  `options.shapePicture` - so a reader can check the thirty are
-  thirty different puzzles by looking down the file, and
-  `tests/levels.test.ts` fails on a duplicate. The same picture at a different
-  size is a different puzzle; at the same size it is a level nobody chose. See
+- **Keep deals fresh.** A row constrains kind, subject, size, and forgiveness but
+  does not fix the cast or tray order.
+- **Name the subject explicitly.** Level identity is kind, subject, and size;
+  the level tests reject duplicate identities. See
   [A level names what it is made of](<decisions/A level names what it is made of.md>).
-- `options.scene` and `options.shapePicture` are two keys because they name two
-  catalogues - a hand-drawn `.svg` in `src/pictures.ts` that gets cut up, versus
-  parts built in `src/scenes.ts`. The art check reads the table for `scene` to
-  know what to rasterise, so they cannot share a key.
-- Adding a level is adding a record; nothing downstream knows a level count.
-- **A grown-up switching a kind off is a filter over the table, never an edit to
-  it.** `PUZZLE_KINDS` is the ordered list of kinds (`PuzzleKindId` derives from
-  it) and `EnabledKinds` is what was left on; every function that walks the table
-  takes an optional `EnabledKinds` and treats an absent one - or an all-off record
-  - as all of them. See
-  [A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
+- **Themes narrow a deal without making the game fragile.** If an eligible cast
+  is short, the deal remains playable rather than failing to start.
+- **A grown-up filter is read over the table.** It never edits the ramp, and all
+  progression helpers answer about the filtered game consistently.
+- **Code derives the level count and progression boundaries from the table.**
+  Do not copy them into docs or downstream constants.
 
-## Pictures out of shapes
+## Shape pictures
 
-`src/kinds/polygon.ts` plays levels 13-18: one picture built out of three to six
-plain, strongly coloured geometric shapes dropped into shadows inside the
-finished arrangement. Each piece is a whole thing a child can name, so the shape
-names come along without anybody making a lesson of them.
+The shape-picture kind builds one recognizable scene from whole geometric
+parts described in `src/scenes.ts`.
 
-- **The shapes are generated; the catalogue is `src/scenes.ts`.** A scene is a
-  list of named forms - square, rectangle, circle, triangle, wedge, trapezoid -
-  placed in the 240x240 scene box. There is no `.svg` to add.
-- **A level names its picture** in `options.shapePicture`. `deal` throws rather
-  than making the best of it when a row names nothing, names a picture the
-  catalogue does not hold, or names one whose part count disagrees with `pieces`.
-  What stays dealt fresh is the order the pieces wait in. Spare pictures nobody
-  names are held to every rule the six in play are.
-- **A scene is one target with several pieces**: every part carries the whole
-  scene box and the scene's single anchor, so `targets: 1` however many pieces.
-- **Parts do not overlap unless the scene declares itself layered.** A layered
-  picture keeps the shared area small and must read correctly whichever piece
-  was placed last.
-- **Two congruent parts are interchangeable.** A piece is accepted by any *free*
-  place whose signature matches, and `settle` records the swap so `placeOf` stays
-  a bijection. Congruence is geometry alone (`signatureOf`); mirrored forms
-  deliberately do not match; a scene must paint congruent parts identically or a
-  swap would change the picture. Read this before touching the kind:
+- The catalogue is geometry, not authored SVG.
+- A level names the scene it wants; missing or inconsistent data is an error, not
+  a reason to choose another scene.
+- The finished scene is one target even though several pieces build it.
+- Parts do not overlap unless the scene explicitly permits layering. A layered
+  picture keeps the shared area small and reads correctly whichever piece lands
+  last.
+- Congruent, identically painted parts are interchangeable. A visibly correct
+  placement must never be refused because the deal assigned a twin elsewhere.
+  See
   [Two shapes the same are the same piece](<decisions/Two shapes the same are the same piece.md>).
-- The same rule reaches the idle hint through `openTargets`: a piece with four
-  congruent petals free glows at all four, and the set shrinks as its twins fill
-  up.
+- Every free congruent destination is offered to the idle hint.
 
-**Adding a scene** is an entry in `SCENES`; putting it in front of a child is
-naming it in a level's `options.shapePicture`. Three things the tests hold you
-to, all about the child:
+### Adding a shape picture
 
-- the picture must read as the thing it is at a glance - render it and look;
-- no part may be much smaller than about a third of the box, or the tray draws
-  it below grabbable size and the layout refuses the cast;
-- congruent places must sit far enough apart that a part laid squarely over a
-  filled twin does not cover its own place's middle, or a piece appears to jump.
-  `tests/polygon.test.ts` measures every scene for it.
+1. Add the scene to the canonical catalogue in `src/scenes.ts`.
+2. Render it and judge whether the whole picture and every part read clearly.
+3. Ensure congruent parts are painted identically and spaced so a drop on one
+   valid place cannot be mistaken for another.
+4. Name the scene in the appropriate level-table row.
+5. Run the focused scene, level, and layout tests, then the full verification.
 
-## The kind registry
+## Kind registry
 
-`kindFor(level)` in `src/kinds/registry.ts` looks a level's kind id up. All five
-are built, so it either returns the kind or throws: no fallback, and an id that
-is not in `PuzzleKindId` does not compile. The stand-in scaffold came down when
-the last kind landed
-([Play an unbuilt kind as a stand-in](<decisions/Play an unbuilt kind as a stand-in.md>)).
+The registry in `src/kinds/registry.ts` is strict: a known and loaded kind
+resolves; a missing implementation or unavailable chunk is an error. There is
+no gameplay stand-in.
 
-- **Adding a kind** is one entry in `LOADERS` and one in `PUZZLE_KINDS`
-  (`src/levels.ts`), and the levels that named it start playing it - with a
-  switch of its own in the grown-up panel, which walks that list. Do not edit
-  `LEVELS` to switch a kind on.
-- **A kind is also where the bundle is cut.** `shapeMatch` is a static import
-  because it is the whole of chapter 1 and the opening must never wait; the other
-  four are `import()`ed, a chunk each. `kindFor` stays
-  synchronous and strict - a kind that has not arrived throws, and says so
-  differently from one nobody wrote - and `ensureKind` is the one place that
-  waits. Nothing loads on demand: `src/warm.ts` fetches every kind during play,
-  so a level seam is a resolved promise. A new kind needs a `LOADERS` entry and
-  nothing else. See
-  [A chapter is warmed before it is needed, not fetched when it is](<decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
-- **Never put a retry loop around a chunk that failed to load.** A browser
-  remembers a failed dynamic import and answers every later ask with the same
-  rejection without going near the network. The only ways back are a different URL
-  or a fresh page; `recoverWhenPossible` takes the second, once the device says it
-  is online again, never merely because a fetch failed, and capped so a flapping
-  connection cannot make the game blink.
+Deferred kinds are warmed during play so lookup remains synchronous at the
+level seam. Failed dynamic imports are not retried in a loop; browser module
+loading does not make that a meaningful recovery strategy.
+
+### Adding a kind
+
+1. Implement the `PuzzleKind` contract in its own module.
+2. Add its loader to the strict registry.
+3. Add its id to the canonical ordered kind list in `src/levels.ts`.
+4. Add level-table rows that exercise it.
+5. Confirm warming reaches it before progression does.
+6. Run kind, level, layout, audio, grown-up-control, browser, and full repository
+   checks through their existing entry points.
+
+The grown-up switch list, audio mapping, deferred loading, and coverage checks
+derive from the canonical kind list. Do not maintain their current inventory in
+this guide.

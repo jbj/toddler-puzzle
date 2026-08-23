@@ -1,64 +1,40 @@
 # Compose layouts for any cast, rather than tabulating them
 
-Extends [Generate layouts at stage start](<Generate layouts at stage start.md>).
-
 ## Context
 
-[Generate layouts at stage start](<Generate layouts at stage start.md>)
-settled that layouts are built when a puzzle starts, because a hole's height
-depends on the foot level of whichever animal was dealt into it. What it
-left behind was a table: for each of the three stages, in each of the two
-orientations, an arrangement gave the row counts, the ground lines, the tray
-rows and the slot size. Six hand-tuned entries.
+A hand-tuned table of layout arrangements - one per stage and orientation -
+does not scale: nothing composes a board for a piece count that has no
+entry, adding a count means hand-tuning a new one and checking it against
+invariants only the tests know about, and a growing level table wants counts
+the table does not have.
 
-The table was tuned, and it was good - the pieces were large, they stood on a
-line of ground with the tray a comfortable strip beneath, and the sky was worth
-looking at. It was also a wall. Nothing composed a board of five, or of nine;
-adding one meant sitting down with a pencil, and every entry had to be checked
-by eye against invariants that only the tests knew about. The thirty-level plan
-wants counts the table does not have.
-
-The obvious replacement is a rectangle packer: fit *n* boxes into the space and
-be done. That would have been worse than the table. What made the hand-tuned
-compositions good was not that the pieces fitted; it was the ground line the
-animals stand on, and the ramp that keeps a full board's pieces big enough to
+A rectangle packer that just fits boxes into the available space would be
+worse: it would fit the pieces, but it would lose what made the hand-tuned
+arrangements good in the first place - a shared ground line the animals
+stand on, and a size ramp that keeps a full board's pieces large enough to
 grab.
 
 ## Decision
 
-Compose a layout for whatever cast it is given, from fractions rather than
-coordinates.
+Compose a layout when the stage starts, after the fresh deal and current
+viewport are known. Use the cast actually dealt and fractions of a slot rather
+than fixed coordinates: margins, gaps, ground clearance, tray padding, and sky
+bounds are shares of slot size. A layout can then reason from each piece's
+actual bounds and anchor rather than guessing before the cast exists.
 
-`COMPOSITION` in `src/layout.ts` holds the composition as shares of a slot: the
-margin at the end of a row, the gap between two of them, the room below the last
-row's feet, the padding around the tray, the least sky worth keeping and the
-most worth having. A layout is then arithmetic: split the cast into scene rows
-and tray rows, take the split that yields the largest slot, size each row from
-how far the pieces *dealt into it* reach above and below their own anchors, and
-spend the height left over on sky and on the gaps.
-
-Two things are kept deliberately, because they are what the tuning was for. The
-ground line survives as a first-class idea - rows have lines, pieces stand on
-them, and `layout.groundLines` says where they came out. The size ramp survives
-as a consequence: a slot is as large as the composition can make it, so pieces
-shrink only as the board fills, and a composition that cannot keep every piece
-above `minSlot` refuses the cast instead of laying out pieces no toddler could
-pick up.
+Two properties remain first-class. Rows have a ground line and pieces stand
+on it. A slot is made as large as the composition can afford, so pieces shrink
+only as the board fills; a composition that cannot keep every piece above the
+minimum pickable size refuses the cast.
 
 ## Consequence
 
-Any piece count composes, in either orientation, without anyone drawing a new
-arrangement - so a level table can ask for counts nobody has laid out yet.
+Any piece count composes, in either orientation, without anyone drawing a
+new arrangement by hand. The layout invariants - no hole off-canvas or under
+the tray, no two snap zones overlapping, no two tray slots colliding - hold
+by construction because room for each is reserved before a size is chosen,
+rather than being checked after the fact against a fixed table.
 
-The invariants hold by construction rather than by tuning. Room for each of them
-is reserved before a size is chosen, so a hole cannot land off canvas or under
-the tray, two snap zones cannot overlap, and two tray slots cannot collide. The
-tests changed shape to match: they check the promises against every count in
-both orientations over random casts, instead of reading the coordinates of six
-arrangements.
-
-There is no longer a coordinate to nudge. Moving a piece means moving the share
-that put it there, which moves the room left for it too. That is the point, but
-it does mean a visual tweak is an argument with `COMPOSITION` rather than a
-one-line edit, and the composed numbers will not always match the old table to
-the unit.
+There is no single output coordinate to nudge. A visual adjustment changes the
+shared composition rule and the room reserved for neighboring pieces, which is
+the point of composing rather than tabulating.

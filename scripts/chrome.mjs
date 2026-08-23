@@ -68,9 +68,8 @@ export async function openChrome({ debugPort, profileDir, windowSize = "1280,800
   // not care who answers: it would find the *old* browser's page and drive
   // that, on whatever the interrupted run left on screen. The checks then fail
   // somewhere with no connection to the real problem - a screenshot run
-  // reporting that a new player does not start on level 1, because it is
-  // looking at a browser parked on level 12. Half an hour goes into the wrong
-  // question. So say what is actually wrong, once, and stop.
+  // reporting the wrong opening state because it found a browser parked
+  // elsewhere in the game. So say what is actually wrong, once, and stop.
   if (debugPort !== 0 && (await somethingAnswersOn(debugPort))) {
     const browser = await whoIsThere(debugPort);
     console.error(

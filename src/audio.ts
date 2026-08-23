@@ -7,11 +7,9 @@
  * load and nothing that can fail to download; see the no-binary-assets
  * invariant in `docs/product.md`.
  *
- * Thirty levels, six puzzle kinds and nine celebrations need more than four
- * tones, and a game a child plays every day is worse for a sound it hears too
- * often than for no sound at all. So the sounds are not written one at a time.
- * There are three things underneath them, and every sound in the game is spelt
- * out of those three:
+ * A long game needs variation without losing one musical voice, so sounds are
+ * not written one at a time. There are three things underneath them, and every
+ * sound in the game is spelt out of those three:
  *
  * 1. **A ladder.** One pentatonic scale, four octaves of it, and `note(degree)`
  *    to read a pitch off it. Everything picks its pitches from the same ladder,
@@ -701,10 +699,10 @@ const CHAPTER: Record<ChapterCelebrationId, Sounding> = {
       delayed(0.5, run([13, 15, 14], { spacing: 0.09, duration: 0.5, gain: 0.08 })),
     ),
   },
-  // Thirty levels. The longest run, the whole chord under it, and a note left
-  // ringing over the top - the finale does not wind down, and neither does this.
+  // The longest run, a whole chord, and a note left ringing over the top: the
+  // finale does not wind down, and neither does this.
   finale: {
-    when: "all thirty levels are done",
+    when: "the whole game is done",
     phrase: together(
       run([5, 6, 7, 8, 9, 10, 12, 13, 15], { spacing: 0.11, duration: 0.44, gain: 0.12 }),
       delayed(0.5, chord([0, 3, 5], { duration: 2.2, gain: 0.06 })),

@@ -2,30 +2,26 @@
 
 ## Context
 
-A two-year-old cannot read a menu, compare difficulty choices, or recover from a
-configuration screen. A grown-up should also be able to hand over the toy without
-setting it up.
-
-The game already has a natural progression: two animals, then three, then four,
-then five, then six. That gives a quick first win and lets the board fill up as
+A two-year-old cannot read a menu, compare difficulty choices, or recover from
+a configuration screen. A grown-up should also be able to hand over the toy
+without setting it up. The game already has a natural progression that grows
+harder as it goes, giving a quick first win and letting the challenge build as
 the child keeps playing.
 
 ## Decision
 
-There is no menu and no difficulty picker. The stages are always played in the
-same order, and the last stage loops back to the first.
+There is no menu and no difficulty picker on the child's play surface. Levels
+are always played in the same order, and the last one loops back to the
+first.
 
 ## Consequence
 
-The only way through the game is forward. The five dots are an indicator for a
-grown-up, not a control, and new features should not add settings, scores, or a
-failure state.
+The only way through the child's game is forward. The chapter dots are an
+indicator for a grown-up, not a control, and the play surface should not gain
+settings, scores, or a failure state.
 
-## Amended
-
-This is still true of the child's game, and the play surface has not changed.
-But the grown-up now has a door: a labelled button that has to be held for two
-seconds opens a panel with a level map, the switches and the only reset in the
-game. It is aimed squarely at the reader this decision was not about. See [Put
-the settings behind a two-second
-hold](<Put the settings behind a two-second hold.md>).
+A grown-up does have a door of their own into settings and progress: see
+[Put the settings behind a deliberate
+hold](<Put the settings behind a deliberate hold.md>). That door is aimed at
+the reader this decision was never about; the child's play surface stays
+exactly as described above.

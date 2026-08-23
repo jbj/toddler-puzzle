@@ -1,113 +1,79 @@
 # Product decisions
 
-Animal Puzzle is a drag-and-drop animal shape puzzle for toddlers: thirty
-levels, five chapters of six, growing from one animal to drag into more pieces,
-more kinds of puzzle and a little less forgiveness.
-
-Read this before changing what the game *does*. Use your judgement to read it
-whenever a task touches behaviour a player would notice; no topic document
-loads automatically.
+Animal Puzzle is a drag-and-drop shape puzzle for a two-year-old. It begins
+with the easiest useful action, grows gradually, and deals every puzzle fresh.
 
 ## Tie-breaker
 
-The player is a two-year-old who cannot read. When a design question is
-genuinely open, choose whatever is more forgiving and needs less understanding.
+When a design question is genuinely open, choose the option that is more
+forgiving and needs less understanding from a child who cannot read.
 
-## Invariants
+## Drawing and fit
 
-Deliberate, and not to be weakened silently. Several look like oversights until
-you know why; the reason is the clause after the rule, and the record behind it.
-
-### Drawing and fit
-
-- Draw the hole and the piece from the same `#silhouette` path, never
-  separately, so a piece cannot drift out of alignment with its hole.
-- Keep `#detail` inside `#silhouette` unless tagged `data-overhang="..."`;
-  tagged overhang is budgeted at 3% of the animal's area. Accidental overhang
-  makes a piece look as if it does not fit. See
-  [Budget overhang instead of banning it](<decisions/Budget overhang instead of banning it.md>).
-- Set `FOOT_LEVEL` in `src/assets.ts` from `npm run art:check`, never by eye.
-- Paint no animal into a background, ever, in any theme. A cow standing in the
-  field beside a cow-shaped hole tells a two-year-old, correctly as far as they
-  can tell, that the cow they are holding is already there. See
+- **A piece and its hole come from one silhouette.** Never maintain separate
+  drawings that can drift apart.
+- **Artwork must still look as if it fits its hole.** Keep detail inside the
+  silhouette unless the art contract explicitly allows and checks an overhang.
+- **A background never contains an animal.** An animal painted beside its hole
+  looks like the answer is already on the board. See
   [A background belongs to the theme](<decisions/A background belongs to the theme.md>).
+- **Every piece stays recognizable at play size.** Silhouettes must be distinct
+  within any cast the game can deal together. The art check owns the measure;
+  [`art.md`](art.md) owns the authoring contract.
 
-### Forgiveness
+## Forgiveness
 
-- Let a piece snap only into its own hole. A wrong drop is impossible to make;
-  it drifts back to the tray with a soft warm tone, never a buzzer.
-- Measure a piece by one box and place it by one rule, in every kind of puzzle:
-  the box is what the piece draws, thickened so neither side is under half the
-  other, and a drop is taken when that box covers the middle of where the piece
-  belongs. The same box is what a piece can be grabbed by, what holds it on the
-  canvas, and what the tray packs a cell from. Do not tighten it; do not give a
-  kind a rule of its own. See
+- **A piece snaps only into a place that truly accepts it.** A refused drop
+  returns gently to the tray with warm feedback, never a punishment.
+- **Every kind shares one placement rule.** The measured piece box governs
+  grabbing, clamping, tray packing, and drop forgiveness. A kind names valid
+  places but cannot invent stricter geometry. See
   [One box measures a piece, and one rule places it](<decisions/One box measures a piece, and one rule places it.md>).
-- Keep the idle hint silent, unrepeated and unearned: a glow and never a sound,
-  never a second nag, never a cost. Never let it land on a celebration. See
+- **Every target remains large enough for a young child.** The layout's checked
+  floors are the source of truth; do not trade them away for a busier board.
+- **Help is quiet and truthful.** An idle hint points at both the piece and every
+  place that would accept it. It never nags, sounds punitive, resembles a filled
+  target, or interrupts a celebration. See
   [A hint points at both ends](<decisions/A hint points at both ends.md>).
-- Keep every target large: pieces stay well over a tenth of the canvas wide.
 
-### The shape of the game
+## The shape of the game
 
-- Let the child's game move only forward: no menu, no difficulty picker, no
-  settings, no failure state, no score on the play surface. The chapter dots are
-  an indicator for a grown-up, not a control, and `?level=` is a tool for
-  working on the game, not a way in. See
+- **The child's game moves forward.** There is no menu, difficulty picker,
+  settings, failure state, or score on the play surface. Development URL
+  controls are not player controls. See
   [Keep the game moving forward](<decisions/Keep the game moving forward.md>).
-- Open on the easiest drag the game can ask for: one huge animal, one huge
-  hole, the most forgiving snap in the table, so the first win arrives in the
-  first few seconds. Never ask a first level for aiming, for carrying several
-  things, or for a screenful.
-- End every level with a celebration, and mark the end of a chapter and the end
-  of the game with a bigger one. Make all of them something to play with rather
-  than sit through. A celebration never changes the level by itself, and never
-  runs longer than the first moment without the button onwards on screen. See
-  [A celebration is played, and it ends by itself](<decisions/A celebration is played, and it ends by itself.md>).
-- Hold the button onwards back for the same few seconds after every celebration -
-  the pause is what the child gets instead of the next board landing on the one
-  they just finished - and withhold nothing else. The celebration answers a
-  finger from its first frame, a celebration that failed to arrive gets no pause
-  at all, and the wait is counted in time somebody was there for. See
-  [A celebration between every level](<decisions/A celebration between every level.md>).
-- Keep everything a grown-up can change behind the two-second hold on the
-  "Grown-ups" button, plainly styled for an adult. Not on the play surface, and
-  not behind a secret gesture. See
-  [Put the settings behind a two-second hold](<decisions/Put the settings behind a two-second hold.md>).
-- Let a grown-up switch a kind of puzzle out from that panel - one switch per
-  kind, never the last one, never by editing the level table. A kind switched
-  off is stepped over; the ramp, its order and the child's screen are unchanged.
-  See
-  [A grown-up can take a kind of puzzle out](<decisions/A grown-up can take a kind of puzzle out.md>).
-- Resume on the level the child stopped on, and treat storage as a nicety: any
-  failure to remember falls back silently to level 1 and a game that plays. See
-  [Remember where the child stopped](<decisions/Remember where the child stopped.md>).
+- **The opening asks for the easiest drag the game supports.** The first success
+  should arrive before the child needs to infer a system.
+- **Every completed puzzle earns a playable celebration.** Larger progression
+  boundaries earn a larger one. A celebration responds immediately, never
+  advances the game by itself, and exposes the way onward after the deliberate
+  pause owned by the celebration code.
+- **Grown-up controls are visible but guarded by a hold.** They stay outside the
+  play surface and never rely on a secret gesture.
+- **A grown-up may filter puzzle kinds without rewriting the ramp.** The filter
+  cannot leave the child with nothing to play.
+- **Progress persistence is a convenience, not a dependency.** Any storage
+  failure falls back to a playable start without surfacing an error.
 
-### What it costs
+## The whole device
 
-- Let nothing move while nobody is playing. Two minutes untouched, or a hidden
-  tab, freezes the whole page until a finger or the tab returns. A freeze is
-  never a change: nothing ends, nothing advances, and the touch that wakes the
-  game plays it too. See
-  [The game sleeps when nobody is playing](<decisions/The game sleeps when nobody is playing.md>).
-- Keep the project free of binary assets, runtime dependencies and network
-  requests: art is hand-authored SVG, sound is synthesised with the Web Audio
-  API. See
+- **An unattended game freezes rather than changes.** Nothing advances,
+  disappears, or finishes while nobody is present; the waking interaction still
+  plays.
+- **The board uses the screen it has.** It composes for the current viewport
+  without letterboxing or special-casing a small set of device shapes.
+- **The project stays self-contained.** No binary assets, runtime dependencies,
+  or network requests. Artwork is authored as SVG and sound is synthesized. See
   [Keep assets and runtime simple](<decisions/Keep assets and runtime simple.md>).
-- Keep the game inside its bundle budget, and keep every chunk warmed during
-  play rather than fetched when it is reached. See
-  [A chapter is warmed before it is needed, not fetched when it is](<decisions/A chapter is warmed before it is needed, not fetched when it is.md>).
-- Give the board the whole screen, whatever shape it is: short side always 700
-  logical units, long side whatever the ratio asks for. Never letterbox, never
-  special-case an extreme ratio. See
-  [The board is composed for the screen it is on](<decisions/The board is composed for the screen it is on.md>).
+- **Deferred code is warmed during play.** Reaching a progression boundary must
+  not introduce an on-demand wait.
 
-## Where the mechanics live
+## Mechanics
 
-| For | Read |
+| Concern | Read |
 | --- | --- |
-| Moving between levels, celebrations, resuming, the panel | [`navigation.md`](navigation.md) |
-| Sound, snapping feedback, the hint, resting, drag feel | [`feel.md`](feel.md) |
-| Kinds of puzzle, the level table, themes | [`puzzle-kinds.md`](puzzle-kinds.md) |
-| Backdrops, board shape, where pieces stand | [`layout.md`](layout.md) |
-| The SVG contract and the art checks | [`art.md`](art.md) |
+| Progression, celebrations, persistence, grown-up controls | [`navigation.md`](navigation.md) |
+| Sound, hints, rest, dragging, feedback | [`feel.md`](feel.md) |
+| Puzzle contracts and the difficulty table | [`puzzle-kinds.md`](puzzle-kinds.md) |
+| Board, tray, piece boxes, backdrops | [`layout.md`](layout.md) |
+| SVG authoring and visual review | [`art.md`](art.md) |

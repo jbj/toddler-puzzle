@@ -49,10 +49,8 @@ import rockpoolSvg from "./assets/scenes/rockpool.svg?raw";
 /**
  * The box every scene is authored in.
  *
- * Four by three, because that is the shape of the busiest grid the level table
- * cuts a picture at (level 30). A 4x3 grid over a 4:3 box gives square pieces,
- * and every other grid in the table - 2x2, 3x2, 3x3 - divides it into whole
- * units too, so a piece outline maps onto the artwork without rounding.
+ * Its aspect ratio lets every grid in the level table divide it into whole
+ * units, so a piece outline maps onto the artwork without rounding.
  */
 export const PICTURE_BOX: Size = { width: 480, height: 360 };
 

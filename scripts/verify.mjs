@@ -77,13 +77,8 @@ export function verifyTasks(cpuCapacity, browserCapacity) {
     {
       name: "test",
       // Bounded, and told the bound: Vitest opens a worker per core unless it
-      // is asked otherwise, so the charge and the pool have to be the same
-      // number or the charge is a fiction. An exclusive run used to be the only
-      // safe arrangement, because overlap of any width reproduced Vitest's
-      // five-second guard in the sixty-animal layout test - but that
-      // composition now refuses an impossible cast before it searches for a
-      // board, and the slowest test in the suite is 1.6 s with six other cores
-      // busy, against the 1.8 s it took with the machine to itself before.
+      // is asked otherwise, so the charge and the pool must match. Sharing is
+      // safe because composition rejects an impossible cast before searching.
       // See docs/decisions/Let the test run share the machine.md.
       run: packageTool("vitest", "vitest.mjs", "run", `--maxWorkers=${testCpuSlots}`),
       needs: [],

@@ -1,52 +1,33 @@
 # Repository rules
 
-`main.json` is the branch ruleset for `main`, kept here so the repository's
-rules are reviewable in a pull request rather than living only in the settings
-UI where a change leaves no trace.
+`main.json` is the reviewable source for branch protection that otherwise lives
+only in the GitHub settings UI. Read the JSON for the current rules rather than
+maintaining a prose copy here.
 
-What it says:
+The policy keeps mechanical verification strict without pretending a solo
+maintainer can supply independent human approval. See
+[`Require no approving review on main`](<../../docs/decisions/Require no approving review on main.md>).
 
-- changes reach `main` through a pull request, never a direct push;
-- no approving review is required, because there is nobody who can give one;
-  see `docs/decisions/Require no approving review on main.md`;
-- an approval, if one is given, is dismissed when new commits are pushed, so an
-  agent cannot add code after the fact to an approved branch;
-- the `Verify` check must pass - that is `npm run verify` running in CI;
-- Copilot reviews every pull request, drafts included, and again on each push;
-- `main` cannot be deleted or force-pushed.
+## Applying a change
 
-The repository admin can bypass, which covers the case where a rule itself is
-what needs fixing. With no approval to wait for, ordinary pull requests should
-not need it: the pull request, the `Verify` check and the Copilot review still
-apply, and merging without them is still a deliberate, logged override.
+1. Edit `main.json` and review the diff.
+2. List the repository rulesets to find the live ruleset id.
+3. Update that ruleset from the checked-in JSON.
+4. Fetch the live ruleset and compare it with the intended change.
 
-## Applying it
-
-```
-gh api --method POST repos/jbj/toddler-puzzle/rulesets --input .github/rulesets/main.json
-```
-
-To update an existing ruleset, list them first and PUT to the one you want:
-
-```
+```sh
 gh api repos/jbj/toddler-puzzle/rulesets
-gh api --method PUT repos/jbj/toddler-puzzle/rulesets/<id> --input .github/rulesets/main.json
+gh api --method PUT repos/jbj/toddler-puzzle/rulesets/<id> \
+  --input .github/rulesets/main.json
+gh api repos/jbj/toddler-puzzle/rulesets/<id>
 ```
 
-The `Verify` context has to match the job name in `.github/workflows/ci.yml`.
-If that job is renamed, this file has to change with it, or the rule will wait
-for a check that never reports.
+To create the ruleset when none exists:
 
-## Copilot code review
+```sh
+gh api --method POST repos/jbj/toddler-puzzle/rulesets \
+  --input .github/rulesets/main.json
+```
 
-`copilot_code_review` is part of this ruleset rather than a settings toggle, so
-it is reviewable like everything else here.
-
-`review_draft_pull_requests` is on, which is the setting that matters for this
-repository: the cloud agent opens its pull requests as drafts and works in them,
-so a rule that skipped drafts would only ever look at the finished article -
-after the agent had stopped reading feedback. `review_on_push` keeps the review
-attached to the current code rather than the first commit.
-
-Both make Copilot noisier on a long-running branch. Turn `review_on_push` off
-first if that becomes tiresome; leave draft review alone.
+The required check context must match the workflow job name. A rename on either
+side requires the other to change in the same pull request.
