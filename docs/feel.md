@@ -1,6 +1,6 @@
 # Feel
 
-This guide owns sound, landing feedback, idle help, rest, drag behavior, and the
+This guide owns sound, landing feedback, rest, drag behavior, and the
 browser protections that keep a young child in the game. Progression belongs in
 [`navigation.md`](navigation.md); kind-specific rules belong in
 [`puzzle-kinds.md`](puzzle-kinds.md).
@@ -37,29 +37,6 @@ whether the sound suits the moment. See
   collapse; content whose existence is its movement becomes still and reachable
   instead of disappearing. See
   [Under reduced motion, a floater holds still](<decisions/Under reduced motion, a floater holds still.md>).
-
-## Idle hint
-
-`src/hint.ts` owns hint timing, piece choice, and rendering.
-
-- **Point at both ends.** Glow the waiting piece quietly and every place that
-  would accept it brightly.
-- **Use the piece's own outline.** The hint, piece, and target cannot drift
-  apart.
-- **Tell the whole truth.** A kind with interchangeable destinations exposes all
-  currently valid places.
-- **Never resemble a filled target.** Use an unfilled treatment.
-- **Help without being earned.** If nothing was touched, choose an unplaced
-  piece rather than withholding help.
-- **Any interaction restarts the wait.**
-- **Stop latches.** A callback from a replaced or completed board must never draw
-  late or re-arm itself.
-- **Reduced motion keeps the guidance and removes the pulse.**
-- **Celebrations never receive puzzle hints.**
-
-See
-[A hint points at both ends](<decisions/A hint points at both ends.md>).
-The panel setting and source constants own current timing choices.
 
 ## When nobody is playing
 

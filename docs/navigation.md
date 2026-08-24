@@ -2,7 +2,7 @@
 
 This is the shell around a puzzle: forward progression, celebrations,
 persistence, reset, and grown-up controls. Puzzle contents belong in
-[`puzzle-kinds.md`](puzzle-kinds.md); sound, hints, rest, and drag belong in
+[`puzzle-kinds.md`](puzzle-kinds.md); sound, rest, and drag belong in
 [`feel.md`](feel.md).
 
 ## Forward only

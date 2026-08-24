@@ -283,28 +283,6 @@ export const polygon: PuzzleKind = {
     return homeFor(scene, layout, piece, placeIndex(scene, piece));
   },
 
-  /**
-   * Every free shadow that wants this piece's shape - which is exactly the set
-   * `chosen` would pick from, so a hint cannot point somewhere a drop would be
-   * refused, or fail to point somewhere it would be taken.
-   *
-   * Always includes the place the piece is aimed at now, because that place is
-   * congruent with its home by construction and an unplaced piece never fills
-   * anything. So this is a superset of `target`, and shrinks as its twins fill
-   * up.
-   */
-  openTargets(puzzle: Puzzle, layout: Layout, piece: PieceId): readonly Point[] {
-    const scene = asPolygon(puzzle);
-    const wanted = placeAt(scene, homeIndex(scene, piece)).signature;
-    const open: Point[] = [];
-    for (let index = 0; index < scene.places.length; index++) {
-      if (placeAt(scene, index).signature !== wanted) continue;
-      if (isFilled(scene, index)) continue;
-      open.push(homeFor(scene, layout, piece, index));
-    }
-    return open;
-  },
-
   accepts(puzzle: Puzzle, layout: Layout, piece: PieceId, at: Point): boolean {
     return chosen(asPolygon(puzzle), layout, piece, at) !== null;
   },

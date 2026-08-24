@@ -15,9 +15,8 @@ contract in `src/puzzle.ts`.
   target, and completion need not mean an empty tray.
 - A kind names *where* a piece may go. Shared layout code owns *how close* a drop
   must be, so no kind can opt out of forgiveness.
-- A kind with several equally valid destinations must expose all open
-  destinations to the idle hint and record the destination actually chosen.
-  Those two capabilities are one contract and must stay paired.
+- A kind with several equally valid destinations must record the destination
+  actually chosen.
 - Refused drops always return through the host's gentle shared path.
 
 ## Difficulty table
@@ -55,8 +54,6 @@ parts described in `src/scenes.ts`.
   placement must never be refused because the deal assigned a twin elsewhere.
   See
   [Two shapes the same are the same piece](<decisions/Two shapes the same are the same piece.md>).
-- Every free congruent destination is offered to the idle hint.
-
 ### Adding a shape picture
 
 1. Add the scene to the canonical catalogue in `src/scenes.ts`.

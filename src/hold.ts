@@ -83,7 +83,7 @@ export function createHoldGate(options: HoldGateOptions = {}): HoldGate {
     },
     cancel(now) {
       // Only a press that actually happened leaves the prompt behind, so a
-      // stray pointer-up cannot put the hint up on its own.
+      // A stray pointer-up cannot put the prompt up on its own.
       if (pressedAt !== null) promptUntil = now + promptMs;
       pressedAt = null;
     },

@@ -98,8 +98,8 @@ export type EnabledKinds = Readonly<Record<PuzzleKindId, boolean>>;
 export type { ThemeId } from "./themes";
 
 /**
- * Per-kind hints. A kind reads the ones it understands and ignores the rest - a
- * shape-match board has no grid and no scene. Anything a kind cannot work out
+ * Per-kind options. A kind reads the ones it understands and ignores the rest -
+ * a shape-match board has no grid and no scene. Anything a kind cannot work out
  * for itself belongs here rather than in the kind, so the curve stays tunable
  * from this file.
  */

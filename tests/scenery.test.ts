@@ -8,8 +8,8 @@
  * actually different from one another, and that the rules the backdrops are
  * built on still hold. Whether any of it is *nice to look at* is not checkable
  * here and is reviewed by rendering it: `npm run shot` covers all three themes
- * (`09b-idle-hint` is farm, `10-level10-start` and `12-portrait-level10` are
- * sea, `14-level14-sliced` is jungle).
+ * (`10-level10-start` and `12-portrait-level10` are sea, `14-level14-sliced` is
+ * jungle).
  */
 import { describe, expect, it } from "vitest";
 import sceneryRaw from "../src/scenery.ts?raw";

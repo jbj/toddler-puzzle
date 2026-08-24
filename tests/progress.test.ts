@@ -112,12 +112,12 @@ describe("reading a stored record", () => {
       fakeStorage(
         stored({
           level: LEVEL_COUNT + 10,
-          settings: { sound: false, hints: "sooner" },
+          settings: { sound: false },
         }),
       ),
     );
     expect(progress.level).toBe(1);
-    expect(progress.settings).toEqual({ ...DEFAULT_SETTINGS, sound: false, hints: "sooner" });
+    expect(progress.settings).toEqual({ ...DEFAULT_SETTINGS, sound: false });
   });
 
   it("passes over a setting this build no longer has", () => {
@@ -128,12 +128,12 @@ describe("reading a stored record", () => {
       fakeStorage(
         stored({
           level: 9,
-          settings: { sound: false, rotation: true, hints: "sooner" },
+          settings: { sound: false, rotation: true },
         }),
       ),
     );
     expect(progress.level).toBe(9);
-    expect(progress.settings).toEqual({ ...DEFAULT_SETTINGS, sound: false, hints: "sooner" });
+    expect(progress.settings).toEqual({ ...DEFAULT_SETTINGS, sound: false });
     expect(progress.settings).not.toHaveProperty("rotation");
   });
 
@@ -151,7 +151,7 @@ describe("reading a stored record", () => {
       fakeStorage(
         stored({
           level: 9,
-          settings: { sound: true, hints: "later", kinds: { jigsaw: false, kaleidoscope: false } },
+          settings: { sound: true, kinds: { jigsaw: false, kaleidoscope: false } },
         }),
       ),
     );
@@ -176,9 +176,7 @@ describe("reading a stored record", () => {
   });
 
   it("replaces a setting it does not recognise with the default", () => {
-    const progress = readProgress(
-      fakeStorage(stored({ level: 3, settings: { sound: "loud", hints: "immediately" } })),
-    );
+    const progress = readProgress(fakeStorage(stored({ level: 3, settings: { sound: "loud" } })));
     expect(progress.settings).toEqual(DEFAULT_SETTINGS);
     expect(progress.level).toBe(3);
   });
@@ -352,16 +350,16 @@ describe("the store", () => {
     expect(store.settings()).toEqual(DEFAULT_SETTINGS);
     store.reachLevel(5);
     expect(store.updateSetting("sound", false)).toEqual({ ...DEFAULT_SETTINGS, sound: false });
-    expect(store.updateSetting("hints", "off")).toEqual({
+    expect(store.updateSetting("kinds", { ...ALL_KINDS, shatter: false })).toEqual({
       ...DEFAULT_SETTINGS,
       sound: false,
-      hints: "off",
+      kinds: { ...ALL_KINDS, shatter: false },
     });
     // Settings and progress live in one record and neither disturbs the other.
     expect(readProgress(storage)).toEqual({
       level: 5,
       furthest: 5,
-      settings: { ...DEFAULT_SETTINGS, sound: false, hints: "off" },
+      settings: { ...DEFAULT_SETTINGS, sound: false, kinds: { ...ALL_KINDS, shatter: false } },
     });
   });
 

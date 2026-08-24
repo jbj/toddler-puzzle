@@ -3,9 +3,9 @@
  *
  * Rest: what the game does when nobody is playing it.
  *
- * A board can keep costing frames while nobody is playing: the idle hint pulses,
- * celebrations animate, the finish button breathes, and the audio context
- * renders silence. A tablet put down must not carry on doing that indefinitely.
+ * A board can keep costing frames while nobody is playing: celebrations animate,
+ * the finish button breathes, and the audio context renders silence. A tablet
+ * put down must not carry on doing that indefinitely.
  *
  * So after two minutes with nothing touched - and the moment the tab is hidden -
  * the whole page is frozen, and anything that says somebody is there unfreezes
@@ -29,8 +29,8 @@
  * `setInterval`.
  *
  * The rule half is a state machine with its timers passed in, in the spirit of
- * `createIdleHint` in `hint.ts`, so two minutes of sitting still is played out
- * in a microsecond in Vitest.
+ * the other time-based modules, so two minutes of sitting still is played out in
+ * a microsecond in Vitest.
  */
 import { restAudio, stirAudio } from "./audio";
 
@@ -41,9 +41,8 @@ import { restAudio, stirAudio } from "./audio";
  * thinking, or being talked to, or fetching a different toy to put on the
  * screen, is back well inside it - and short enough that a tablet left face up
  * on the sofa stops drawing within the same minute somebody would have noticed.
- * The hint is the thing most likely to be on screen when this lands, and the
- * hint holds rather than pulsing (`[data-asleep]` in `style.css`), so nothing
- * the child needs goes away with the animation.
+ * The page freezes every animation where it stands, so nothing the child needs
+ * goes away with the animation.
  */
 export const REST_DELAY_MS = 120_000;
 
@@ -256,10 +255,6 @@ export function startResting(options: { readonly delayMs?: number } = {}): Rest 
   const rest = createRest({
     ...(options.delayMs === undefined ? {} : { delayMs: options.delayMs }),
     sleep() {
-      // First, so the hint stops pulsing and starts holding before the sweep
-      // below would otherwise freeze its glow at whatever opacity the fade had
-      // reached. `animation: none` in the stylesheet takes it out of
-      // `getAnimations` entirely, which is why it does not need resuming.
       root.dataset["asleep"] = "true";
       freeze();
       restTimers(true);

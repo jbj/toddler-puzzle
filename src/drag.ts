@@ -5,7 +5,7 @@
  *
  * `createDragging` is the rule, and it is pure - pieces, points and boxes, no
  * DOM at all - so the sequences that break a drag can be played out in Vitest
- * (`tests/drag.test.ts`) in the spirit of `createIdleHint` and `createRest`.
+ * (`tests/drag.test.ts`) in the spirit of `createRest`.
  * `enableDragging` is the wiring: Pointer Events with pointer capture, so
  * mouse, touch and stylus all take the same path and a fast-moving finger that
  * outruns the piece still keeps control of it.

@@ -49,17 +49,6 @@ finale that never stops arriving would do it until the battery went. So
 `afterWhileAwake` stops its clock instead and serves the rest of the wait
 on waking: the balloon still hands on, a moment after somebody comes back.
 
-## The hint holds, rather than freezing mid-fade
-
-Pausing the hint's pulse would freeze it at whatever opacity the fade had
-reached, which can be its dimmest - on the one thing on screen a stuck
-child needs to be able to see. So a sleeping page gets the treatment
-`prefers-reduced-motion` already gets: `[data-asleep] .hint-mark` drops
-the animation and holds the glow bright. The help survives the sleep,
-exactly as it survives a request for less motion. It also means the hint
-is out of `getAnimations()` by the time the sweep runs, so it needs no
-resuming.
-
 ## The touch that wakes the game also plays the game
 
 The wake listeners are in the capture phase, so a finger landing on a
@@ -99,7 +88,7 @@ to do it.
 
 - `src/rest.ts` is the one home for it: the wait, the repeat registry, and
   the page wiring. The rule half takes its timers as arguments, like
-  `hint.ts` and `grownups.ts` before it, so an idle wait is played out in a
+  the game's other time-based modules, so a rest wait is played out in a
   microsecond in Vitest.
 - Sleep is invisible to the rest of the game. No kind, no celebration and
   no level knows it happened; the only trace is `data-asleep` on the
